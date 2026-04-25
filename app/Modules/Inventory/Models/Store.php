@@ -10,6 +10,7 @@ class Store extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'tenant_id',
         'company_id',
         'name',
         'code',

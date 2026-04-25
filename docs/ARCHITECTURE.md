@@ -16,6 +16,8 @@ Relationship columns use `unsignedBigInteger` plus indexes, not DB-level foreign
 
 Early SaaS-aware columns are present where needed: `tenant_id`, `company_id`, `store_id`, `created_by`, `updated_by`, `deleted_by`.
 
+The default commercial deployment model is one database with tenant/company/store scoping. Multi-database tenancy is reserved for future premium isolation because it is harder to support on shared hosting and at Nepal-market price points.
+
 ## Frontend Layout
 
 - `resources/js/core`: API client, auth provider, layout, shared components, hooks, utilities.

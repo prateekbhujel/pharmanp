@@ -47,6 +47,7 @@ class ProductService
         return DB::transaction(function () use ($data, $user) {
             $payload = $data->toArray();
             $payload['sku'] = $payload['sku'] ?: $this->nextSku($payload['company_id']);
+            $payload['tenant_id'] = $user?->tenant_id;
             $payload['created_by'] = $user?->id;
             $payload['updated_by'] = $user?->id;
 
@@ -59,6 +60,7 @@ class ProductService
         return DB::transaction(function () use ($product, $data, $user) {
             $payload = $data->toArray();
             $payload['sku'] = $payload['sku'] ?: $product->sku ?: $this->nextSku($payload['company_id']);
+            $payload['tenant_id'] = $product->tenant_id ?: $user?->tenant_id;
             $payload['updated_by'] = $user?->id;
 
             $product->update($payload);

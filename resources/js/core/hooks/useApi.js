@@ -1,21 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { http } from '../api/http';
 
 export function useApi(url) {
     const [state, setState] = useState({ loading: true, data: null, error: null });
 
+    const load = useCallback((isMounted = () => true) => {
+        setState((current) => ({ ...current, loading: true, error: null }));
+
+        return http.get(url)
+            .then(({ data }) => isMounted() && setState({ loading: false, data: data.data, error: null }))
+            .catch((error) => isMounted() && setState({ loading: false, data: null, error }));
+    }, [url]);
+
     useEffect(() => {
         let mounted = true;
-        setState({ loading: true, data: null, error: null });
-
-        http.get(url)
-            .then(({ data }) => mounted && setState({ loading: false, data: data.data, error: null }))
-            .catch((error) => mounted && setState({ loading: false, data: null, error }));
+        load(() => mounted);
 
         return () => {
             mounted = false;
         };
-    }, [url]);
+    }, [load]);
 
-    return state;
+    return { ...state, reload: () => load(true) };
 }

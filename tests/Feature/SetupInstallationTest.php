@@ -24,17 +24,27 @@ class SetupInstallationTest extends TestCase
         $payload = [
             'company' => ['name' => 'PharmaNP Test', 'address' => 'Kathmandu'],
             'store' => ['name' => 'Main Store'],
+            'branding' => [
+                'app_name' => 'PharmaNP',
+                'layout' => 'vertical',
+                'accent_color' => '#0f766e',
+            ],
+            'fiscal_year' => [
+                'name' => '2026/27',
+                'starts_on' => '2026-01-01',
+                'ends_on' => '2026-12-31',
+            ],
             'admin' => [
-                'name' => 'Owner',
-                'email' => 'owner@pharmanp.test',
-                'password' => 'StrongPass123',
-                'password_confirmation' => 'StrongPass123',
+                'name' => 'Pratik Admin',
+                'email' => 'pratik@admin.com',
+                'password' => 'done',
+                'password_confirmation' => 'done',
             ],
         ];
 
         $this->postJson('/setup/complete', $payload)->assertCreated();
 
-        $this->assertTrue(User::query()->where('email', 'owner@pharmanp.test')->where('is_owner', true)->exists());
+        $this->assertTrue(User::query()->where('email', 'pratik@admin.com')->where('is_owner', true)->exists());
         $this->assertNotNull(Setting::getValue('app.installed'));
         $this->assertTrue(File::exists(storage_path('app/installed')));
 

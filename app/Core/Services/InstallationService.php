@@ -16,7 +16,11 @@ class InstallationService
             return true;
         }
 
-        return (bool) (Setting::getValue(self::INSTALLED_KEY, false));
+        try {
+            return (bool) (Setting::getValue(self::INSTALLED_KEY, false));
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     public function status(): array
@@ -28,6 +32,7 @@ class InstallationService
                 'app_key' => filled(config('app.key')),
                 'storage_writable' => is_writable(storage_path()),
                 'cache_writable' => is_writable(storage_path('framework/cache')),
+                'logs_writable' => is_writable(storage_path('logs')),
                 'app_env' => app()->environment(),
             ],
             'database' => $this->databaseStatus(),

@@ -20,6 +20,7 @@ return new class extends Migration
 
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('tenant_id')->nullable()->index();
             $table->string('name');
             $table->string('legal_name')->nullable();
             $table->string('pan_number', 60)->nullable()->index();
@@ -40,6 +41,7 @@ return new class extends Migration
 
         Schema::create('stores', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('tenant_id')->nullable()->index();
             $table->unsignedBigInteger('company_id')->nullable()->index();
             $table->string('name');
             $table->string('code', 60)->nullable()->index();
@@ -55,6 +57,7 @@ return new class extends Migration
 
         Schema::create('units', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('tenant_id')->nullable()->index();
             $table->unsignedBigInteger('company_id')->nullable()->index();
             $table->string('name');
             $table->string('code', 30)->nullable()->index();
@@ -71,6 +74,7 @@ return new class extends Migration
 
         Schema::create('product_categories', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('tenant_id')->nullable()->index();
             $table->unsignedBigInteger('company_id')->nullable()->index();
             $table->string('name');
             $table->string('code', 60)->nullable()->index();

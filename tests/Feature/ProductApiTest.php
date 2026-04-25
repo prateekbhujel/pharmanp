@@ -31,6 +31,7 @@ class ProductApiTest extends TestCase
             'barcode' => '9900012345',
             'name' => 'Paracetamol 500',
             'generic_name' => 'Paracetamol',
+            'formulation' => 'Tablet',
             'mrp' => 20,
             'purchase_price' => 12,
             'selling_price' => 18,

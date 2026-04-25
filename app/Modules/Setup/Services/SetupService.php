@@ -4,12 +4,16 @@ namespace App\Modules\Setup\Services;
 
 use App\Core\Services\InstallationService;
 use App\Models\User;
+use App\Models\Setting;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Store;
 use App\Modules\Inventory\Models\Unit;
+use App\Modules\Setup\Models\FiscalYear;
+use App\Modules\Setup\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -36,7 +40,15 @@ class SetupService
         }
 
         return DB::transaction(function () use ($data) {
+            $tenant = Tenant::query()->create([
+                'name' => $data['company']['name'],
+                'slug' => $this->uniqueTenantSlug($data['company']['name']),
+                'status' => 'active',
+                'plan_code' => 'starter',
+            ]);
+
             $company = Company::query()->create([
+                'tenant_id' => $tenant->id,
                 'name' => $data['company']['name'],
                 'legal_name' => $data['company']['legal_name'] ?? $data['company']['name'],
                 'pan_number' => $data['company']['pan_number'] ?? null,
@@ -48,6 +60,7 @@ class SetupService
             ]);
 
             $store = Store::query()->create([
+                'tenant_id' => $tenant->id,
                 'company_id' => $company->id,
                 'name' => $data['store']['name'],
                 'code' => 'MAIN',
@@ -58,6 +71,7 @@ class SetupService
             ]);
 
             $admin = User::query()->create([
+                'tenant_id' => $tenant->id,
                 'company_id' => $company->id,
                 'store_id' => $store->id,
                 'name' => $data['admin']['name'],
@@ -68,8 +82,11 @@ class SetupService
             ]);
 
             $this->seedPermissions($admin);
-            $this->seedOperatingDefaults($company->id, $admin->id);
+            $this->seedOperatingDefaults($tenant->id, $company->id, $admin->id);
+            $this->createFiscalYear($data, $tenant->id, $company->id, $admin->id);
+            $this->storeBranding($data, $tenant->id, $company->id, $store->id);
             $this->installation->markInstalled([
+                'tenant_id' => $tenant->id,
                 'company_id' => $company->id,
                 'store_id' => $store->id,
             ]);
@@ -78,6 +95,7 @@ class SetupService
                 'company' => $company,
                 'store' => $store,
                 'admin' => $admin,
+                'tenant' => $tenant,
             ];
         });
     }
@@ -95,17 +113,26 @@ class SetupService
             'inventory.batches.view',
             'sales.invoices.view',
             'sales.invoices.create',
+            'sales.pos.use',
             'purchase.entries.view',
             'purchase.entries.create',
+            'purchase.orders.manage',
+            'purchase.returns.manage',
             'accounting.vouchers.view',
             'accounting.vouchers.create',
+            'accounting.books.view',
             'reports.view',
+            'settings.manage',
+            'users.manage',
+            'roles.manage',
             'imports.preview',
             'imports.commit',
+            'exports.download',
             'setup.manage',
             'system.update.view',
             'mr.view',
             'mr.manage',
+            'tenants.manage',
         ]);
 
         $permissions->each(fn (string $name) => Permission::query()->firstOrCreate([
@@ -122,16 +149,59 @@ class SetupService
         $admin->assignRole($role);
     }
 
-    private function seedOperatingDefaults(int $companyId, int $userId): void
+    private function seedOperatingDefaults(int $tenantId, int $companyId, int $userId): void
     {
         Unit::query()->firstOrCreate(
             ['company_id' => $companyId, 'name' => 'Piece'],
-            ['code' => 'PCS', 'type' => 'both', 'factor' => 1, 'created_by' => $userId, 'updated_by' => $userId],
+            ['tenant_id' => $tenantId, 'code' => 'PCS', 'type' => 'both', 'factor' => 1, 'created_by' => $userId, 'updated_by' => $userId],
         );
 
         ProductCategory::query()->firstOrCreate(
             ['company_id' => $companyId, 'name' => 'Medicine'],
-            ['code' => 'MED', 'created_by' => $userId, 'updated_by' => $userId],
+            ['tenant_id' => $tenantId, 'code' => 'MED', 'created_by' => $userId, 'updated_by' => $userId],
         );
+    }
+
+    private function createFiscalYear(array $data, int $tenantId, int $companyId, int $userId): void
+    {
+        FiscalYear::query()->create([
+            'tenant_id' => $tenantId,
+            'company_id' => $companyId,
+            'name' => $data['fiscal_year']['name'],
+            'starts_on' => $data['fiscal_year']['starts_on'],
+            'ends_on' => $data['fiscal_year']['ends_on'],
+            'is_current' => true,
+            'status' => 'open',
+            'created_by' => $userId,
+            'updated_by' => $userId,
+        ]);
+    }
+
+    private function storeBranding(array $data, int $tenantId, int $companyId, int $storeId): void
+    {
+        Setting::putValue('app.branding', [
+            'app_name' => $data['branding']['app_name'],
+            'logo_url' => $data['branding']['logo_url'] ?? null,
+            'sidebar_logo_url' => $data['branding']['sidebar_logo_url'] ?? null,
+            'accent_color' => $data['branding']['accent_color'] ?? '#0f766e',
+            'layout' => $data['branding']['layout'],
+            'sidebar_default_collapsed' => (bool) ($data['branding']['sidebar_default_collapsed'] ?? false),
+            'tenant_id' => $tenantId,
+            'company_id' => $companyId,
+            'store_id' => $storeId,
+        ]);
+    }
+
+    private function uniqueTenantSlug(string $name): string
+    {
+        $base = Str::slug($name) ?: 'tenant';
+        $slug = $base;
+        $counter = 2;
+
+        while (Tenant::query()->where('slug', $slug)->exists()) {
+            $slug = $base.'-'.$counter++;
+        }
+
+        return $slug;
     }
 }

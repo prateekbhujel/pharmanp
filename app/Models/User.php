@@ -24,6 +24,7 @@ class User extends Authenticatable
         'email',
         'phone',
         'password',
+        'tenant_id',
         'company_id',
         'store_id',
         'is_owner',
