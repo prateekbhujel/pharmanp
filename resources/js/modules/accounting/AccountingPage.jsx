@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { App, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space, Table, Tabs } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -8,11 +8,26 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 
 const emptyEntry = { account_type: 'cash', entry_type: 'debit', amount: 0 };
+const bookOptions = [
+    { value: 'day-book', label: 'Day Book' },
+    { value: 'cash-book', label: 'Cash Book' },
+    { value: 'bank-book', label: 'Bank Book' },
+    { value: 'ledger', label: 'Ledger: cash', account_type: 'cash' },
+];
 
 export function AccountingPage() {
     const { notification } = App.useApp();
     const [entries, setEntries] = useState([{ ...emptyEntry }, { account_type: 'sales', entry_type: 'credit', amount: 0 }]);
+    const [bookReport, setBookReport] = useState('day-book');
+    const [bookRange, setBookRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [bookRows, setBookRows] = useState([]);
+    const [bookMeta, setBookMeta] = useState({ current_page: 1, per_page: 20, total: 0 });
+    const [bookLoading, setBookLoading] = useState(false);
     const [form] = Form.useForm();
+
+    useEffect(() => {
+        loadBook(1);
+    }, [bookReport, bookRange]);
 
     function updateEntry(index, patch) {
         setEntries(entries.map((entry, rowIndex) => rowIndex === index ? { ...entry, ...patch } : entry));
@@ -34,6 +49,26 @@ export function AccountingPage() {
         }
     }
 
+    async function loadBook(page = 1) {
+        setBookLoading(true);
+        const option = bookOptions.find((item) => item.value === bookReport);
+        try {
+            const { data } = await http.get(`${endpoints.reports}/${bookReport}`, {
+                params: {
+                    page,
+                    per_page: bookMeta.per_page,
+                    from: bookRange?.[0]?.format('YYYY-MM-DD'),
+                    to: bookRange?.[1]?.format('YYYY-MM-DD'),
+                    account_type: option?.account_type,
+                },
+            });
+            setBookRows(data.data || []);
+            setBookMeta(data.meta || bookMeta);
+        } finally {
+            setBookLoading(false);
+        }
+    }
+
     const debit = entries.filter((entry) => entry.entry_type === 'debit').reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
     const credit = entries.filter((entry) => entry.entry_type === 'credit').reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
 
@@ -46,6 +81,11 @@ export function AccountingPage() {
         { title: 'Notes', render: (_, row, index) => <Input value={row.notes} onChange={(event) => updateEntry(index, { notes: event.target.value })} />, width: 220 },
         { title: '', render: (_, row, index) => <Button danger icon={<DeleteOutlined />} onClick={() => setEntries(entries.filter((_, rowIndex) => rowIndex !== index))} />, width: 70 },
     ];
+    const bookColumns = Object.keys(bookRows[0] || {}).map((key) => ({
+        title: key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        dataIndex: key,
+        render: (value) => typeof value === 'number' ? value.toLocaleString() : value,
+    }));
 
     return (
         <div className="page-stack">
@@ -86,12 +126,25 @@ export function AccountingPage() {
                     key: 'books',
                     label: 'Books',
                     children: (
-                        <Card title="Books API Ready">
-                            <ul className="plain-list">
-                                <li>Day book reads dated account transactions.</li>
-                                <li>Cash and bank book filter `account_type`.</li>
-                                <li>Ledger filters party/account and keeps debit/credit shape stable.</li>
-                            </ul>
+                        <Card>
+                            <div className="table-toolbar">
+                                <Select value={bookReport} onChange={setBookReport} options={bookOptions} />
+                                <DatePicker.RangePicker value={bookRange} onChange={setBookRange} />
+                                <span />
+                            </div>
+                            <Table
+                                loading={bookLoading}
+                                rowKey={(_, index) => index}
+                                columns={bookColumns}
+                                dataSource={bookRows}
+                                pagination={{
+                                    current: bookMeta.current_page,
+                                    pageSize: bookMeta.per_page,
+                                    total: bookMeta.total,
+                                    onChange: loadBook,
+                                }}
+                                scroll={{ x: true }}
+                            />
                         </Card>
                     ),
                 },

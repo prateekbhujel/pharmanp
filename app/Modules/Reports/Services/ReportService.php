@@ -20,7 +20,12 @@ class ReportService
             'stock' => $this->stock($perPage),
             'low-stock' => $this->lowStock($perPage),
             'expiry' => $this->expiry($request->query('to', now()->addMonths(3)->toDateString()), $perPage),
+            'day-book' => $this->accountBook($from, $to, $perPage),
+            'cash-book' => $this->accountBook($from, $to, $perPage, 'cash'),
+            'bank-book' => $this->accountBook($from, $to, $perPage, 'bank'),
+            'ledger' => $this->accountLedger($request->query('account_type'), $from, $to, $perPage),
             'supplier-performance' => $this->supplierPerformance($from, $to, $perPage),
+            'supplier-ledger' => $this->supplierLedger((int) $request->query('supplier_id'), $from, $to, $perPage),
             'customer-ledger' => $this->customerLedger((int) $request->query('customer_id'), $from, $to, $perPage),
             'product-movement' => $this->productMovement((int) $request->query('product_id'), $from, $to, $perPage),
             default => throw ValidationException::withMessages(['report' => 'Unknown report.']),
@@ -34,9 +39,30 @@ class ReportService
             ->whereNull('sales_invoices.deleted_at')
             ->whereBetween('sales_invoices.invoice_date', [$from, $to])
             ->orderByDesc('sales_invoices.invoice_date')
-            ->selectRaw('sales_invoices.invoice_no, sales_invoices.invoice_date, COALESCE(customers.name, "Walk-in") as customer, sales_invoices.payment_status, sales_invoices.grand_total, sales_invoices.paid_amount');
+            ->selectRaw("sales_invoices.invoice_no, sales_invoices.invoice_date, COALESCE(customers.name, 'Walk-in') as customer, sales_invoices.payment_status, sales_invoices.grand_total, sales_invoices.paid_amount");
 
         return $this->paged($query, $perPage);
+    }
+
+    private function accountBook(string $from, string $to, int $perPage, ?string $accountType = null): array
+    {
+        $query = DB::table('account_transactions')
+            ->whereBetween('transaction_date', [$from, $to])
+            ->when($accountType, fn ($builder) => $builder->where('account_type', $accountType))
+            ->orderBy('transaction_date')
+            ->orderBy('id')
+            ->selectRaw('transaction_date as date, account_type, party_type, party_id, source_type, source_id, debit, credit, notes');
+
+        return $this->paged($query, $perPage);
+    }
+
+    private function accountLedger(?string $accountType, string $from, string $to, int $perPage): array
+    {
+        if (! $accountType) {
+            throw ValidationException::withMessages(['account_type' => 'Account type is required for ledger.']);
+        }
+
+        return $this->accountBook($from, $to, $perPage, $accountType);
     }
 
     private function purchase(string $from, string $to, int $perPage): array
@@ -47,6 +73,23 @@ class ReportService
             ->whereBetween('purchases.purchase_date', [$from, $to])
             ->orderByDesc('purchases.purchase_date')
             ->selectRaw('purchases.purchase_no, purchases.purchase_date, suppliers.name as supplier, purchases.payment_status, purchases.grand_total, purchases.paid_amount');
+
+        return $this->paged($query, $perPage);
+    }
+
+    private function supplierLedger(int $supplierId, string $from, string $to, int $perPage): array
+    {
+        if ($supplierId < 1) {
+            throw ValidationException::withMessages(['supplier_id' => 'Supplier is required for supplier ledger.']);
+        }
+
+        $query = DB::table('purchases')
+            ->where('supplier_id', $supplierId)
+            ->whereNull('deleted_at')
+            ->whereBetween('purchase_date', [$from, $to])
+            ->orderBy('purchase_date')
+            ->orderBy('id')
+            ->selectRaw('purchase_date as date, purchase_no as reference, grand_total as credit, paid_amount as debit, payment_status');
 
         return $this->paged($query, $perPage);
     }
