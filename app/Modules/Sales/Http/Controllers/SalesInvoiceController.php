@@ -72,7 +72,7 @@ class SalesInvoiceController extends Controller
     public function pdf(SalesInvoice $invoice)
     {
         return Pdf::loadView('prints.sales-invoice', $this->printData($invoice))
-            ->setPaper('a5')
+            ->setPaper('a4', 'landscape')
             ->stream($invoice->invoice_no.'.pdf');
     }
 

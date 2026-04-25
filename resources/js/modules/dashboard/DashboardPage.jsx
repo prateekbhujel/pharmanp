@@ -62,10 +62,10 @@ export function DashboardPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title={representativeScope ? 'MR Dashboard' : 'Operations Dashboard'}
+                title={representativeScope ? 'MR Dashboard' : 'Dashboard'}
                 description={representativeScope
                     ? `Visits, invoices and target tracking for ${data?.period || 'current period'}`
-                    : `Sales, stock, expiry and ledger signals for ${data?.period || 'current period'}`}
+                    : `Overview of stock, purchases, alerts and quick admin actions for ${data?.period || 'current period'}`}
                 actions={(
                     <Space wrap>
                         {!user?.medical_representative_id && medicalRepresentatives.length > 0 && (
@@ -86,7 +86,7 @@ export function DashboardPage() {
 
             <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} xl={6}><StatCard title="Today Sales" value={stats.today_sales} tone="#0f766e" /></Col>
-                <Col xs={24} sm={12} xl={6}><StatCard title={representativeScope ? 'Period Sales' : 'Period Sales'} value={stats.period_sales} tone="#2563eb" /></Col>
+                <Col xs={24} sm={12} xl={6}><StatCard title="This Month Sales" value={stats.period_sales} tone="#2563eb" /></Col>
                 {representativeScope ? (
                     <>
                         <Col xs={24} sm={12} xl={6}><StatCard title="Visits" value={stats.visits} suffix="visits" tone="#7c3aed" /></Col>
@@ -102,7 +102,7 @@ export function DashboardPage() {
 
             {!representativeScope && (
                 <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12} xl={6}><StatCard title="Period Purchase" value={stats.period_purchase} tone="#0f766e" /></Col>
+                    <Col xs={24} sm={12} xl={6}><StatCard title="This Month Purchase" value={stats.period_purchase} tone="#0f766e" /></Col>
                     <Col xs={24} sm={12} xl={6}><StatCard title="Receivables" value={stats.receivables} tone="#ea580c" /></Col>
                     <Col xs={24} sm={12} xl={6}><StatCard title="Payables" value={stats.payables} tone="#9333ea" /></Col>
                     <Col xs={24} sm={12} xl={6}><StatCard title="Products" value={stats.products} suffix="items" tone="#0891b2" /></Col>

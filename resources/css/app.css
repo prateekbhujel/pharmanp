@@ -31,12 +31,19 @@ body {
 }
 
 .app-shell {
+    background: #f3f4f6;
     min-height: 100vh;
 }
 
 .app-sidebar {
     background: #ffffff;
-    border-right: 1px solid #e5e7eb;
+    border-right: 1px solid #e9edf4;
+    box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
+}
+
+.app-sidebar .ant-layout-sider-children {
+    display: grid;
+    grid-template-rows: 64px minmax(0, 1fr);
 }
 
 .app-shell-horizontal .app-topbar {
@@ -48,12 +55,33 @@ body {
     min-width: min(860px, 70vw);
 }
 
+.main-sidebar-header,
 .brand {
     align-items: center;
     display: flex;
     gap: 12px;
-    min-height: 72px;
-    padding: 0 18px;
+    min-height: 64px;
+    padding: 0 16px;
+}
+
+.main-sidebar-header {
+    border-bottom: 1px solid #edf0f5;
+}
+
+.header-logo {
+    align-items: center;
+    color: #111827;
+    display: flex;
+    gap: 10px;
+    min-width: 0;
+    text-decoration: none;
+}
+
+.header-logo strong {
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .brand-mark {
@@ -68,10 +96,10 @@ body {
 }
 
 .brand-logo {
-    border-radius: 8px;
-    height: 38px;
+    border-radius: 999px;
+    height: 40px;
     object-fit: contain;
-    width: 38px;
+    width: 40px;
 }
 
 .brand-logo-topbar {
@@ -96,11 +124,96 @@ body {
     display: flex;
     height: 64px;
     justify-content: space-between;
-    padding: 0 24px;
+    padding: 0 22px;
+}
+
+.header-content-left,
+.header-content-right {
+    align-items: center;
+}
+
+.welcome-text {
+    color: #475569;
+}
+
+.welcome-text strong {
+    color: #111827;
+    font-weight: 700;
+}
+
+.main-sidebar {
+    overflow: auto;
+    padding: 12px 10px 18px;
+}
+
+.app-sidebar .ant-menu {
+    border-inline-end: 0 !important;
+}
+
+.app-sidebar .ant-menu-item,
+.app-sidebar .ant-menu-submenu-title {
+    border-radius: 6px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 600;
+    height: 42px;
+    line-height: 42px;
+    margin: 2px 0;
+    width: 100%;
+}
+
+.app-sidebar .ant-menu-submenu-title {
+    padding-inline: 14px !important;
+}
+
+.app-sidebar .ant-menu-item:hover,
+.app-sidebar .ant-menu-submenu-title:hover {
+    background: #f2f6fc !important;
+    color: #2563eb !important;
+}
+
+.app-sidebar .ant-menu-item-selected {
+    background: #eef4ff !important;
+    color: #1d4ed8 !important;
+}
+
+.app-sidebar .ant-menu-submenu-open > .ant-menu-submenu-title,
+.app-sidebar .ant-menu-submenu-selected > .ant-menu-submenu-title {
+    color: #1d4ed8 !important;
+}
+
+.app-sidebar .ant-menu-inline .ant-menu-sub.ant-menu-inline {
+    background: transparent !important;
+}
+
+.app-sidebar .ant-menu-sub .ant-menu-item {
+    color: #475569;
+    font-size: 13px;
+    height: 36px;
+    line-height: 36px;
+    padding-left: 44px !important;
+}
+
+.app-sidebar .menu-category {
+    background: transparent !important;
+    color: #94a3b8 !important;
+    cursor: default !important;
+    font-size: 11px;
+    font-weight: 700;
+    height: 30px;
+    letter-spacing: .02em;
+    line-height: 30px;
+    margin-top: 8px;
+    opacity: 1 !important;
+    text-transform: uppercase;
+}
+
+.app-sidebar .menu-category .ant-menu-title-content {
+    margin-inline-start: 0 !important;
 }
 
 .app-content {
-    padding: 24px;
+    padding: 24px 28px;
 }
 
 .page-stack {
@@ -114,10 +227,46 @@ body {
     flex-wrap: wrap;
     gap: 16px;
     justify-content: space-between;
+    margin: 0 0 4px;
 }
 
 .page-header h2 {
     margin-bottom: 2px;
+}
+
+.page-header .ant-typography {
+    color: #64748b;
+}
+
+.page-header h2.ant-typography {
+    color: #111827;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.ant-card {
+    border-color: #e5e7eb;
+    border-radius: 8px;
+}
+
+.ant-card-head {
+    min-height: 48px;
+}
+
+.ant-card-head-title {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+    background: #f8fafc;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr > td {
+    font-size: 13px;
 }
 
 .metric-card {

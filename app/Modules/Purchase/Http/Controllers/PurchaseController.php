@@ -67,7 +67,7 @@ class PurchaseController extends Controller
     public function pdf(Purchase $purchase)
     {
         return Pdf::loadView('prints.purchase-invoice', $this->printData($purchase))
-            ->setPaper('a5')
+            ->setPaper('a4', 'landscape')
             ->stream($purchase->purchase_no.'.pdf');
     }
 
