@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Table, Tabs, Tag } from 'antd';
+import { App, Button, Card, DatePicker, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tag } from 'antd';
 import { DeleteOutlined, PlusOutlined, PrinterOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
@@ -13,8 +13,24 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl } from '../../core/utils/url';
 
+function salesSection() {
+    const section = window.location.pathname.split('/').filter(Boolean).pop();
+
+    if (['invoices', 'returns'].includes(section)) {
+        return section;
+    }
+
+    return 'pos';
+}
+
+function goToApp(path) {
+    window.history.pushState({}, '', appUrl(path));
+    window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
 export function SalesPage() {
     const { notification } = App.useApp();
+    const section = salesSection();
     const [barcode, setBarcode] = useState('');
     const [items, setItems] = useState([]);
     const [customers, setCustomers] = useState([]);
@@ -194,113 +210,112 @@ export function SalesPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title="Sales / POS"
-                description="Barcode-first POS with batch and expiry aware stock deduction"
+                title={section === 'invoices' ? 'Sales Invoices' : section === 'returns' ? 'Sales Return' : 'Sales / POS'}
+                description={section === 'invoices' ? 'Invoice list with customer, MR and payment filters' : section === 'returns' ? 'Customer return workflow' : 'Barcode POS with walk-in customer and batch aware stock deduction'}
                 actions={(
                     <Space>
+                        {section !== 'pos' && <Button type="primary" onClick={() => goToApp('/app/sales/pos')}>Open POS</Button>}
+                        {section !== 'invoices' && <Button onClick={() => goToApp('/app/sales/invoices')}>Sales Invoices</Button>}
                         <Button icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick Product</Button>
                         <Button disabled={!lastPrintUrl} icon={<PrinterOutlined />} onClick={() => window.open(lastPrintUrl, '_blank')}>Print Last Invoice</Button>
                     </Space>
                 )}
             />
 
-            <Tabs items={[
-                {
-                    key: 'pos',
-                    label: 'POS',
-                    children: (
-                        <Card>
-                            <div className="pos-toolbar pos-toolbar-wide">
-                                <BarcodeInput value={barcode} onChange={setBarcode} onScan={scan} />
-                                <Select
-                                    allowClear
-                                    placeholder="Walk-in Customer"
-                                    value={customerId}
-                                    onChange={setCustomerId}
-                                    options={customers.map((item) => ({ value: item.id, label: item.name }))}
-                                    dropdownRender={(menu) => (
-                                        <>
-                                            {menu}
-                                            <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickCustomerOpen(true)}>Quick add customer</Button>
-                                        </>
-                                    )}
-                                />
-                                <Select
-                                    allowClear
-                                    placeholder="MR"
-                                    value={medicalRepresentativeId}
-                                    onChange={setMedicalRepresentativeId}
-                                    options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
-                                />
-                                <DatePicker value={invoiceDate} onChange={setInvoiceDate} />
-                                <InputNumber min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
-                            </div>
-                            <div className="pos-walkin-strip">
-                                <Tag color={customerId ? 'blue' : 'default'} icon={<UserOutlined />}>{customerId ? `Customer #${customerId}` : 'Walk-in customer'}</Tag>
-                                <Button size="small" onClick={() => setCustomerId(null)}>Use Walk-in</Button>
-                            </div>
-                            <Select
-                                showSearch
-                                filterOption={false}
-                                placeholder="Search product and batch"
-                                className="full-width mb-16"
-                                options={productOptions}
-                                onSearch={(q) => searchProduct(q).then(setProductOptions)}
-                                onFocus={() => searchProduct('').then(setProductOptions)}
-                                dropdownRender={(menu) => (
-                                    <>
-                                        {menu}
-                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick add product</Button>
-                                    </>
-                                )}
-                                onChange={(_, option) => addItem(option.product, option.batch)}
-                                value={null}
-                            />
-                            <Table rowKey="key" columns={columns} dataSource={items} pagination={false} scroll={{ x: 1040 }} />
-                            <div className="pos-total">
-                                <span>Invoice Total</span>
-                                <strong><Money value={total} /></strong>
-                                <Button type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice</Button>
-                            </div>
-                        </Card>
-                    ),
-                },
-                {
-                    key: 'invoices',
-                    label: 'Invoices',
-                    children: (
-                        <Card>
-                            <div className="table-toolbar">
-                                <Input.Search value={invoiceTable.search} onChange={(event) => invoiceTable.setSearch(event.target.value)} placeholder="Search invoice or customer" allowClear />
-                                <Select
-                                    allowClear
-                                    placeholder="Payment"
-                                    value={invoiceTable.filters.payment_status}
-                                    onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, payment_status: value }))}
-                                    options={paymentStatusOptions}
-                                />
-                                <Select
-                                    allowClear
-                                    placeholder="Customer"
-                                    value={invoiceTable.filters.customer_id}
-                                    onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, customer_id: value }))}
-                                    options={customers.map((item) => ({ value: item.id, label: item.name }))}
-                                />
-                                <Select
-                                    allowClear
-                                    placeholder="MR"
-                                    value={invoiceTable.filters.medical_representative_id}
-                                    onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, medical_representative_id: value }))}
-                                    options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
-                                />
-                                <DatePicker.RangePicker value={invoiceRange} onChange={setInvoiceRange} />
-                                <Button onClick={invoiceTable.reload}>Refresh</Button>
-                            </div>
-                            <ServerTable table={invoiceTable} columns={invoiceColumns} />
-                        </Card>
-                    ),
-                },
-            ]} />
+            {section === 'pos' && (
+                <Card>
+                    <div className="pos-toolbar pos-toolbar-wide">
+                        <BarcodeInput value={barcode} onChange={setBarcode} onScan={scan} />
+                        <Select
+                            allowClear
+                            placeholder="Walk-in Customer"
+                            value={customerId}
+                            onChange={setCustomerId}
+                            options={customers.map((item) => ({ value: item.id, label: item.name }))}
+                            dropdownRender={(menu) => (
+                                <>
+                                    {menu}
+                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickCustomerOpen(true)}>Quick add customer</Button>
+                                </>
+                            )}
+                        />
+                        <Select
+                            allowClear
+                            placeholder="MR"
+                            value={medicalRepresentativeId}
+                            onChange={setMedicalRepresentativeId}
+                            options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
+                        />
+                        <DatePicker value={invoiceDate} onChange={setInvoiceDate} />
+                        <InputNumber min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
+                    </div>
+                    <div className="pos-walkin-strip">
+                        <Tag color={customerId ? 'blue' : 'default'} icon={<UserOutlined />}>{customerId ? `Customer #${customerId}` : 'Walk-in customer'}</Tag>
+                        <Button size="small" onClick={() => setCustomerId(null)}>Use Walk-in</Button>
+                    </div>
+                    <Select
+                        showSearch
+                        filterOption={false}
+                        placeholder="Search product and batch"
+                        className="full-width mb-16"
+                        options={productOptions}
+                        onSearch={(q) => searchProduct(q).then(setProductOptions)}
+                        onFocus={() => searchProduct('').then(setProductOptions)}
+                        dropdownRender={(menu) => (
+                            <>
+                                {menu}
+                                <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick add product</Button>
+                            </>
+                        )}
+                        onChange={(_, option) => addItem(option.product, option.batch)}
+                        value={null}
+                    />
+                    <Table rowKey="key" columns={columns} dataSource={items} pagination={false} scroll={{ x: 1040 }} />
+                    <div className="pos-total">
+                        <span>Invoice Total</span>
+                        <strong><Money value={total} /></strong>
+                        <Button type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice</Button>
+                    </div>
+                </Card>
+            )}
+
+            {section === 'invoices' && (
+                <Card title="Sales Invoice List">
+                    <div className="table-toolbar table-toolbar-wide">
+                        <Input.Search value={invoiceTable.search} onChange={(event) => invoiceTable.setSearch(event.target.value)} placeholder="Search invoice or customer" allowClear />
+                        <Select
+                            allowClear
+                            placeholder="Payment"
+                            value={invoiceTable.filters.payment_status}
+                            onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, payment_status: value }))}
+                            options={paymentStatusOptions}
+                        />
+                        <Select
+                            allowClear
+                            placeholder="Customer"
+                            value={invoiceTable.filters.customer_id}
+                            onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, customer_id: value }))}
+                            options={customers.map((item) => ({ value: item.id, label: item.name }))}
+                        />
+                        <Select
+                            allowClear
+                            placeholder="MR"
+                            value={invoiceTable.filters.medical_representative_id}
+                            onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, medical_representative_id: value }))}
+                            options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
+                        />
+                        <DatePicker.RangePicker value={invoiceRange} onChange={setInvoiceRange} />
+                        <Button onClick={invoiceTable.reload}>Refresh</Button>
+                    </div>
+                    <ServerTable table={invoiceTable} columns={invoiceColumns} />
+                </Card>
+            )}
+
+            {section === 'returns' && (
+                <Card title="Sales Return">
+                    <Empty description="Sales return will reuse invoice lookup and stock reversal posting." />
+                </Card>
+            )}
             <QuickProductModal
                 open={quickProductOpen}
                 onClose={() => setQuickProductOpen(false)}

@@ -11,7 +11,7 @@ import { useAuth } from '../../core/auth/AuthProvider';
 function StatCard({ title, value, suffix, tone }) {
     return (
         <Card className="metric-card">
-            <Statistic title={title} value={value || 0} suffix={suffix} valueStyle={{ color: tone }} />
+            <Statistic title={title} value={value || 0} suffix={suffix} styles={{ content: { color: tone } }} />
         </Card>
     );
 }

@@ -36,9 +36,9 @@ body {
 }
 
 .app-sidebar {
-    background: #ffffff;
-    border-right: 1px solid #e9edf4;
-    box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+    border-right: 1px solid #e7ebf2;
+    box-shadow: 12px 0 32px rgb(15 23 42 / 4%);
 }
 
 .app-sidebar .ant-layout-sider-children {
@@ -65,7 +65,7 @@ body {
 }
 
 .main-sidebar-header {
-    border-bottom: 1px solid #edf0f5;
+    border-bottom: 1px solid #edf1f7;
 }
 
 .header-logo {
@@ -78,6 +78,7 @@ body {
 }
 
 .header-logo strong {
+    font-size: 14px;
     font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -86,8 +87,8 @@ body {
 
 .brand-mark {
     align-items: center;
-    background: #0f766e;
-    border-radius: 8px;
+    background: linear-gradient(135deg, #0f766e, #2563eb);
+    border-radius: 10px;
     color: #ffffff;
     display: flex;
     height: 38px;
@@ -141,9 +142,48 @@ body {
     font-weight: 700;
 }
 
+.notification-dropdown .ant-dropdown-menu {
+    max-height: min(480px, calc(100vh - 96px));
+    overflow: auto;
+    padding: 8px;
+    width: 320px;
+}
+
+.notification-title {
+    align-items: center;
+    color: #64748b;
+    display: flex;
+    font-size: 11px;
+    font-weight: 700;
+    gap: 6px;
+    text-transform: uppercase;
+}
+
+.notification-row {
+    display: grid;
+    gap: 2px;
+    max-width: 270px;
+    padding: 3px 0;
+}
+
+.notification-row strong {
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.notification-row span,
+.notification-empty {
+    color: #64748b;
+    font-size: 12px;
+}
+
 .main-sidebar {
     overflow: auto;
-    padding: 12px 10px 18px;
+    padding: 12px 12px 18px;
 }
 
 .app-sidebar .ant-menu {
@@ -152,29 +192,31 @@ body {
 
 .app-sidebar .ant-menu-item,
 .app-sidebar .ant-menu-submenu-title {
-    border-radius: 6px;
-    color: #334155;
-    font-size: 13px;
-    font-weight: 600;
-    height: 42px;
-    line-height: 42px;
+    border-radius: 8px;
+    color: #405064;
+    font-size: 12.5px;
+    font-weight: 500;
+    height: 38px;
+    line-height: 38px;
     margin: 2px 0;
     width: 100%;
 }
 
 .app-sidebar .ant-menu-submenu-title {
-    padding-inline: 14px !important;
+    padding-inline: 12px !important;
 }
 
 .app-sidebar .ant-menu-item:hover,
 .app-sidebar .ant-menu-submenu-title:hover {
-    background: #f2f6fc !important;
-    color: #2563eb !important;
+    background: #f5f8fc !important;
+    color: #1f4fd8 !important;
 }
 
 .app-sidebar .ant-menu-item-selected {
-    background: #eef4ff !important;
+    background: #eef5ff !important;
+    box-shadow: inset 3px 0 0 #2563eb;
     color: #1d4ed8 !important;
+    font-weight: 600;
 }
 
 .app-sidebar .ant-menu-submenu-open > .ant-menu-submenu-title,
@@ -187,22 +229,23 @@ body {
 }
 
 .app-sidebar .ant-menu-sub .ant-menu-item {
-    color: #475569;
-    font-size: 13px;
-    height: 36px;
-    line-height: 36px;
-    padding-left: 44px !important;
+    color: #526174;
+    font-size: 12.5px;
+    font-weight: 500;
+    height: 34px;
+    line-height: 34px;
+    padding-left: 42px !important;
 }
 
 .app-sidebar .menu-category {
     background: transparent !important;
     color: #94a3b8 !important;
     cursor: default !important;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
-    height: 30px;
+    height: 28px;
     letter-spacing: .02em;
-    line-height: 30px;
+    line-height: 28px;
     margin-top: 8px;
     opacity: 1 !important;
     text-transform: uppercase;
@@ -300,7 +343,7 @@ body {
 }
 
 .table-toolbar-wide {
-    grid-template-columns: minmax(220px, 1fr) 220px 220px auto;
+    grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(150px, 220px)) auto;
 }
 
 .pos-toolbar-wide {
@@ -360,9 +403,78 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.form-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.form-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .switch-row {
     display: flex;
     gap: 24px;
+}
+
+.switch-row-inline {
+    align-items: center;
+    min-height: 54px;
+}
+
+.product-cell {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    min-width: 220px;
+}
+
+.product-cell img,
+.product-cell-fallback {
+    border-radius: 8px;
+    flex: 0 0 34px;
+    height: 34px;
+    object-fit: cover;
+    width: 34px;
+}
+
+.product-cell-fallback {
+    align-items: center;
+    background: #eef5ff;
+    color: #2563eb;
+    display: flex;
+    font-weight: 700;
+    justify-content: center;
+}
+
+.product-cell strong,
+.product-cell small {
+    display: block;
+}
+
+.product-cell small {
+    color: #64748b;
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+.product-image-preview {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.product-image-preview img {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    height: 56px;
+    object-fit: cover;
+    width: 56px;
+}
+
+.product-image-preview span {
+    color: #64748b;
+    font-size: 12px;
 }
 
 .full-width {
@@ -589,6 +701,8 @@ body {
 
     .table-toolbar,
     .form-grid,
+    .form-grid-3,
+    .form-grid-4,
     .mapping-row,
     .setup-page {
         grid-template-columns: 1fr;

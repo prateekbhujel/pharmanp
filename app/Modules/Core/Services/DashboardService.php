@@ -234,7 +234,15 @@ class DashboardService
             ->whereDate('batches.expires_at', '<=', today()->addMonths(3)->toDateString())
             ->orderBy('batches.expires_at')
             ->limit(8)
-            ->get(['batches.id', 'products.name', 'batches.batch_no', 'batches.expires_at', 'batches.quantity_available']);
+            ->get(['batches.id', 'products.name', 'batches.batch_no', 'batches.expires_at', 'batches.quantity_available'])
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'name' => $row->name,
+                'batch_no' => $row->batch_no,
+                'expires_at' => $row->expires_at,
+                'quantity_available' => (float) $row->quantity_available,
+            ])
+            ->all();
     }
 
     private function topRepresentatives(string $from, string $to): array

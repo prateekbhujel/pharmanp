@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Table, Tabs } from 'antd';
+import { App, Button, Card, DatePicker, Empty, Form, Input, InputNumber, Modal, Select, Space, Table } from 'antd';
 import { DeleteOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../core/components/PageHeader';
@@ -30,8 +30,24 @@ const emptyOrderItem = {
     discount_percent: 0,
 };
 
+function purchaseSection() {
+    const section = window.location.pathname.split('/').filter(Boolean).pop();
+
+    if (['entry', 'orders', 'returns'].includes(section)) {
+        return section;
+    }
+
+    return 'bills';
+}
+
+function goToApp(path) {
+    window.history.pushState({}, '', appUrl(path));
+    window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
 export function PurchasesPage() {
     const { notification } = App.useApp();
+    const section = purchaseSection();
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
     const [purchaseItems, setPurchaseItems] = useState([{ ...emptyPurchaseItem }]);
@@ -222,119 +238,113 @@ export function PurchasesPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title="Purchase"
-                description="Purchase orders and batch-creating purchase entry"
+                title={section === 'entry' ? 'Purchase Entry' : section === 'orders' ? 'Purchase Order' : section === 'returns' ? 'Purchase Return' : 'Purchase Bills'}
+                description={section === 'entry' ? 'Receive supplier bills, create batches and post stock' : section === 'orders' ? 'Prepare supplier purchase orders' : section === 'returns' ? 'Supplier return workflow' : 'Supplier purchase invoice list'}
                 actions={(
                     <Space>
+                        {section !== 'entry' && <Button type="primary" icon={<PlusOutlined />} onClick={() => goToApp('/app/purchases/entry')}>New Purchase</Button>}
+                        {section !== 'bills' && <Button onClick={() => goToApp('/app/purchases/bills')}>Purchase Bills</Button>}
                         <Button icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick Product</Button>
                         <Button disabled={!lastPurchasePrintUrl} icon={<PrinterOutlined />} onClick={() => window.open(lastPurchasePrintUrl, '_blank')}>Print Last Purchase</Button>
                     </Space>
                 )}
             />
 
-            <Tabs
-                items={[
-                    {
-                        key: 'entry',
-                        label: 'Purchase Entry',
-                        children: (
-                            <Card>
-                                <Form form={purchaseForm} layout="vertical" onFinish={submitPurchase} initialValues={{ purchase_date: dayjs(), paid_amount: 0 }}>
-                                    <div className="form-grid">
-                                        <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
-                                            <Select
-                                                showSearch
-                                                optionFilterProp="label"
-                                                options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
-                                                dropdownRender={(menu) => (
-                                                    <>
-                                                        {menu}
-                                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
-                                                    </>
-                                                )}
-                                            />
-                                        </Form.Item>
-                                        <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
-                                        <Form.Item name="purchase_date" label="Purchase Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
-                                        <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
-                                    </div>
-                                    <Table rowKey={(_, index) => index} pagination={false} columns={purchaseColumns} dataSource={purchaseItems} scroll={{ x: 1120 }} />
-                                    <div className="transaction-footer">
-                                        <Button icon={<PlusOutlined />} onClick={() => setPurchaseItems([...purchaseItems, { ...emptyPurchaseItem }])}>Add Line</Button>
-                                        <Space>
-                                            <strong>Total <Money value={purchaseTotal} /></strong>
-                                            <Button type="primary" htmlType="submit">Post Purchase</Button>
-                                        </Space>
-                                    </div>
-                                </Form>
-                            </Card>
-                        ),
-                    },
-                    {
-                        key: 'bills',
-                        label: 'Purchase Bills',
-                        children: (
-                            <Card>
-                                <div className="table-toolbar">
-                                    <Input.Search value={purchaseTable.search} onChange={(event) => purchaseTable.setSearch(event.target.value)} placeholder="Search purchase or supplier" allowClear />
-                                    <Select
-                                        allowClear
-                                        placeholder="Supplier"
-                                        value={purchaseTable.filters.supplier_id}
-                                        onChange={(value) => purchaseTable.setFilters((current) => ({ ...current, supplier_id: value }))}
-                                        options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
-                                    />
-                                    <Select
-                                        allowClear
-                                        placeholder="Payment"
-                                        value={purchaseTable.filters.payment_status}
-                                        onChange={(value) => purchaseTable.setFilters((current) => ({ ...current, payment_status: value }))}
-                                        options={paymentStatusOptions}
-                                    />
-                                    <DatePicker.RangePicker value={billRange} onChange={setBillRange} />
-                                    <Button onClick={purchaseTable.reload}>Refresh</Button>
-                                </div>
-                                <ServerTable table={purchaseTable} columns={billColumns} />
-                            </Card>
-                        ),
-                    },
-                    {
-                        key: 'order',
-                        label: 'Purchase Order',
-                        children: (
-                            <Card>
-                                <Form form={orderForm} layout="vertical" onFinish={submitOrder} initialValues={{ order_date: dayjs() }}>
-                                    <div className="form-grid">
-                                        <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
-                                            <Select
-                                                showSearch
-                                                optionFilterProp="label"
-                                                options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
-                                                dropdownRender={(menu) => (
-                                                    <>
-                                                        {menu}
-                                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
-                                                    </>
-                                                )}
-                                            />
-                                        </Form.Item>
-                                        <Form.Item name="order_date" label="Order Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
-                                        <Form.Item name="expected_date" label="Expected Date"><DatePicker className="full-width" /></Form.Item>
-                                    </div>
-                                    <Table rowKey={(_, index) => index} pagination={false} columns={orderColumns} dataSource={orderItems} scroll={{ x: 760 }} />
-                                    <div className="transaction-footer">
-                                        <Button icon={<PlusOutlined />} onClick={() => setOrderItems([...orderItems, { ...emptyOrderItem }])}>Add Line</Button>
-                                        <Space>
-                                            <strong>Total <Money value={orderTotal} /></strong>
-                                            <Button type="primary" htmlType="submit">Create Order</Button>
-                                        </Space>
-                                    </div>
-                                </Form>
-                            </Card>
-                        ),
-                    },
-                ]}
-            />
+            {section === 'entry' && (
+                <Card>
+                    <Form form={purchaseForm} layout="vertical" onFinish={submitPurchase} initialValues={{ purchase_date: dayjs(), paid_amount: 0 }}>
+                        <div className="form-grid">
+                            <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
+                                <Select
+                                    showSearch
+                                    optionFilterProp="label"
+                                    options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                                    dropdownRender={(menu) => (
+                                        <>
+                                            {menu}
+                                            <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
+                                        </>
+                                    )}
+                                />
+                            </Form.Item>
+                            <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
+                            <Form.Item name="purchase_date" label="Purchase Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
+                            <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
+                        </div>
+                        <Table rowKey={(_, index) => index} pagination={false} columns={purchaseColumns} dataSource={purchaseItems} scroll={{ x: 1120 }} />
+                        <div className="transaction-footer">
+                            <Button icon={<PlusOutlined />} onClick={() => setPurchaseItems([...purchaseItems, { ...emptyPurchaseItem }])}>Add Line</Button>
+                            <Space>
+                                <strong>Total <Money value={purchaseTotal} /></strong>
+                                <Button type="primary" htmlType="submit">Post Purchase</Button>
+                            </Space>
+                        </div>
+                    </Form>
+                </Card>
+            )}
+
+            {section === 'bills' && (
+                <Card title="Purchase Bill List">
+                    <div className="table-toolbar table-toolbar-wide">
+                        <Input.Search value={purchaseTable.search} onChange={(event) => purchaseTable.setSearch(event.target.value)} placeholder="Search purchase or supplier" allowClear />
+                        <Select
+                            allowClear
+                            placeholder="Supplier"
+                            value={purchaseTable.filters.supplier_id}
+                            onChange={(value) => purchaseTable.setFilters((current) => ({ ...current, supplier_id: value }))}
+                            options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                        />
+                        <Select
+                            allowClear
+                            placeholder="Payment"
+                            value={purchaseTable.filters.payment_status}
+                            onChange={(value) => purchaseTable.setFilters((current) => ({ ...current, payment_status: value }))}
+                            options={paymentStatusOptions}
+                        />
+                        <DatePicker.RangePicker value={billRange} onChange={setBillRange} />
+                        <Button onClick={purchaseTable.reload}>Refresh</Button>
+                    </div>
+                    <ServerTable table={purchaseTable} columns={billColumns} />
+                </Card>
+            )}
+
+            {section === 'orders' && (
+                <Card>
+                    <Form form={orderForm} layout="vertical" onFinish={submitOrder} initialValues={{ order_date: dayjs() }}>
+                        <div className="form-grid">
+                            <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
+                                <Select
+                                    showSearch
+                                    optionFilterProp="label"
+                                    options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                                    dropdownRender={(menu) => (
+                                        <>
+                                            {menu}
+                                            <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
+                                        </>
+                                    )}
+                                />
+                            </Form.Item>
+                            <Form.Item name="order_date" label="Order Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
+                            <Form.Item name="expected_date" label="Expected Date"><DatePicker className="full-width" /></Form.Item>
+                        </div>
+                        <Table rowKey={(_, index) => index} pagination={false} columns={orderColumns} dataSource={orderItems} scroll={{ x: 760 }} />
+                        <div className="transaction-footer">
+                            <Button icon={<PlusOutlined />} onClick={() => setOrderItems([...orderItems, { ...emptyOrderItem }])}>Add Line</Button>
+                            <Space>
+                                <strong>Total <Money value={orderTotal} /></strong>
+                                <Button type="primary" htmlType="submit">Create Order</Button>
+                            </Space>
+                        </div>
+                    </Form>
+                </Card>
+            )}
+
+            {section === 'returns' && (
+                <Card title="Purchase Return">
+                    <Empty description="Purchase return will reuse supplier bill lookup and stock reversal posting." />
+                </Card>
+            )}
             <QuickProductModal
                 open={quickProductOpen}
                 onClose={() => setQuickProductOpen(false)}

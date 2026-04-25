@@ -36,7 +36,11 @@ class ProductController extends Controller
     {
         $this->authorize('create', Product::class);
 
-        $product = $service->create(ProductData::fromArray($request->validated()), $request->user());
+        $product = $service->create(
+            ProductData::fromArray($request->validated()),
+            $request->user(),
+            $request->file('image')
+        );
 
         return (new ProductResource($product))
             ->additional(['message' => 'Product created.'])
@@ -48,7 +52,13 @@ class ProductController extends Controller
     {
         $this->authorize('update', $product);
 
-        $product = $service->update($product, ProductData::fromArray($request->validated()), $request->user());
+        $product = $service->update(
+            $product,
+            ProductData::fromArray($request->validated()),
+            $request->user(),
+            $request->file('image'),
+            $request->boolean('remove_image')
+        );
 
         return new ProductResource($product);
     }

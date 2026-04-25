@@ -8,7 +8,9 @@ use App\Modules\Inventory\DTOs\ProductData;
 use App\Modules\Inventory\Models\Product;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductService
@@ -42,26 +44,32 @@ class ProductService
         return $query->paginate($table->perPage, ['*'], 'page', $table->page);
     }
 
-    public function create(ProductData $data, ?User $user = null): Product
+    public function create(ProductData $data, ?User $user = null, ?UploadedFile $image = null): Product
     {
-        return DB::transaction(function () use ($data, $user) {
+        return DB::transaction(function () use ($data, $user, $image) {
             $payload = $data->toArray();
             $payload['sku'] = $payload['sku'] ?: $this->nextSku($payload['company_id']);
             $payload['tenant_id'] = $user?->tenant_id;
             $payload['created_by'] = $user?->id;
             $payload['updated_by'] = $user?->id;
+            $payload['image_path'] = $image ? $this->storeImage($image) : null;
 
             return Product::query()->create($payload)->fresh(['company', 'unit', 'category']);
         });
     }
 
-    public function update(Product $product, ProductData $data, ?User $user = null): Product
+    public function update(Product $product, ProductData $data, ?User $user = null, ?UploadedFile $image = null, bool $removeImage = false): Product
     {
-        return DB::transaction(function () use ($product, $data, $user) {
+        return DB::transaction(function () use ($product, $data, $user, $image, $removeImage) {
             $payload = $data->toArray();
             $payload['sku'] = $payload['sku'] ?: $product->sku ?: $this->nextSku($payload['company_id']);
             $payload['tenant_id'] = $product->tenant_id ?: $user?->tenant_id;
             $payload['updated_by'] = $user?->id;
+
+            if ($image || $removeImage) {
+                $this->deleteImage($product->image_path);
+                $payload['image_path'] = $image ? $this->storeImage($image) : null;
+            }
 
             $product->update($payload);
 
@@ -87,10 +95,13 @@ class ProductService
             ->when($table->search, function (Builder $builder, string $search) {
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('products.name', 'like', '%'.$search.'%')
+                        ->orWhere('products.product_code', 'like', '%'.$search.'%')
                         ->orWhere('products.generic_name', 'like', '%'.$search.'%')
                         ->orWhere('products.sku', 'like', '%'.$search.'%')
                         ->orWhere('products.barcode', 'like', '%'.$search.'%')
-                        ->orWhere('products.composition', 'like', '%'.$search.'%');
+                        ->orWhere('products.composition', 'like', '%'.$search.'%')
+                        ->orWhere('products.group_name', 'like', '%'.$search.'%')
+                        ->orWhere('products.manufacturer_name', 'like', '%'.$search.'%');
                 });
             })
             ->when(isset($table->filters['company_id']), fn (Builder $builder) => $builder->where('products.company_id', $table->filters['company_id']))
@@ -108,5 +119,17 @@ class ProductService
         }
 
         return $prefix.'-'.$suffix;
+    }
+
+    private function storeImage(UploadedFile $image): string
+    {
+        return $image->store('products', 'public');
+    }
+
+    private function deleteImage(?string $path): void
+    {
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
     }
 }
