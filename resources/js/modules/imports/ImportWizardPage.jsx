@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Select, Space, Steps, Table, Upload } from 'antd';
+import { Alert, App, Button, Card, Select, Space, Steps, Table, Upload } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
@@ -48,7 +48,7 @@ export function ImportWizardPage() {
                 mapping,
             });
             setPreview(data.data);
-            notification.success({ message: data.data.status === 'validated' ? 'Import validated' : 'Mapping needs attention' });
+            notification.success({ message: data.data.status === 'completed' ? 'Import completed' : 'Import finished with review items' });
         } finally {
             setLoading(false);
         }
@@ -115,6 +115,15 @@ export function ImportWizardPage() {
                         <Button type="primary" loading={loading} onClick={confirmMapping}>Validate Mapping</Button>
                         <span>{preview.valid_rows} valid / {preview.invalid_rows} invalid / {preview.total_rows} total</span>
                     </Space>
+                    {preview.invalid_rows > 0 && (
+                        <Alert
+                            className="mt-16"
+                            type="warning"
+                            showIcon
+                            message={`${preview.invalid_rows} rejected rows`}
+                            description={<a href={`/api/v1/imports/${preview.id}/rejected.csv`} target="_blank" rel="noreferrer">Download rejected rows</a>}
+                        />
+                    )}
                 </Card>
             )}
 

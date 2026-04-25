@@ -17,7 +17,17 @@ class ProductLookupController extends Controller
         ]);
 
         $query = Product::query()
-            ->with(['company:id,name', 'unit:id,name', 'category:id,name'])
+            ->with([
+                'company:id,name',
+                'unit:id,name',
+                'category:id,name',
+                'batches' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->where('quantity_available', '>', 0)
+                    ->orderByRaw('expires_at IS NULL')
+                    ->orderBy('expires_at')
+                    ->limit(8),
+            ])
             ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available')
             ->where('is_active', true);
 

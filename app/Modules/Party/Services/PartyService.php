@@ -1,0 +1,121 @@
+<?php
+
+namespace App\Modules\Party\Services;
+
+use App\Core\DTOs\TableQueryData;
+use App\Models\User;
+use App\Modules\Party\Models\Customer;
+use App\Modules\Party\Models\Supplier;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+
+class PartyService
+{
+    private const SORTS = [
+        'name' => 'name',
+        'phone' => 'phone',
+        'current_balance' => 'current_balance',
+        'created_at' => 'created_at',
+    ];
+
+    public function suppliers(TableQueryData $table): LengthAwarePaginator
+    {
+        return $this->paginate(Supplier::query(), $table);
+    }
+
+    public function customers(TableQueryData $table): LengthAwarePaginator
+    {
+        return $this->paginate(Customer::query(), $table);
+    }
+
+    public function createSupplier(array $data, User $user): Supplier
+    {
+        return $this->create(Supplier::class, $data, $user);
+    }
+
+    public function updateSupplier(Supplier $supplier, array $data, User $user): Supplier
+    {
+        return $this->update($supplier, $data, $user);
+    }
+
+    public function createCustomer(array $data, User $user): Customer
+    {
+        return $this->create(Customer::class, $data, $user);
+    }
+
+    public function updateCustomer(Customer $customer, array $data, User $user): Customer
+    {
+        return $this->update($customer, $data, $user);
+    }
+
+    private function paginate(Builder $query, TableQueryData $table): LengthAwarePaginator
+    {
+        $query->select('*');
+
+        $query->when($table->search, function (Builder $builder, string $search) {
+            $builder->where(function (Builder $inner) use ($search) {
+                $inner->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('contact_person', 'like', '%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhere('pan_number', 'like', '%'.$search.'%');
+            });
+        });
+
+        if (array_key_exists('is_active', $table->filters)) {
+            $query->where('is_active', (bool) $table->filters['is_active']);
+        }
+
+        $query->orderBy(self::SORTS[$table->sortField] ?? 'created_at', $table->sortOrder);
+
+        return $query->paginate($table->perPage, ['*'], 'page', $table->page);
+    }
+
+    /**
+     * @template TModel of Model
+     * @param class-string<TModel> $model
+     * @return TModel
+     */
+    private function create(string $model, array $data, User $user): Model
+    {
+        return DB::transaction(function () use ($model, $data, $user) {
+            $opening = (float) ($data['opening_balance'] ?? 0);
+
+            return $model::query()->create([
+                ...$data,
+                'tenant_id' => $user->tenant_id,
+                'company_id' => $user->company_id,
+                'opening_balance' => $opening,
+                'current_balance' => $opening,
+                'is_active' => $data['is_active'] ?? true,
+                'created_by' => $user->id,
+                'updated_by' => $user->id,
+            ]);
+        });
+    }
+
+    private function update(Model $party, array $data, User $user): Model
+    {
+        return DB::transaction(function () use ($party, $data, $user) {
+            $openingBalanceChanged = array_key_exists('opening_balance', $data)
+                && (float) $data['opening_balance'] !== (float) $party->opening_balance;
+
+            $payload = [
+                ...$data,
+                'is_active' => $data['is_active'] ?? $party->is_active,
+                'updated_by' => $user->id,
+            ];
+
+            if ($openingBalanceChanged) {
+                $difference = (float) $data['opening_balance'] - (float) $party->opening_balance;
+                $payload['current_balance'] = (float) $party->current_balance + $difference;
+            }
+
+            $party->update($payload);
+
+            return $party->fresh();
+        });
+    }
+}

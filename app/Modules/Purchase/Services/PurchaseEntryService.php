@@ -1,0 +1,186 @@
+<?php
+
+namespace App\Modules\Purchase\Services;
+
+use App\Models\User;
+use App\Modules\Inventory\Models\Batch;
+use App\Modules\Inventory\Models\Product;
+use App\Modules\Inventory\Services\StockMovementService;
+use App\Modules\Party\Models\Supplier;
+use App\Modules\Purchase\Models\Purchase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class PurchaseEntryService
+{
+    public function __construct(
+        private readonly StockMovementService $stock,
+    ) {}
+
+    public function create(array $data, User $user): Purchase
+    {
+        return DB::transaction(function () use ($data, $user) {
+            [$subtotal, $discountTotal, $grandTotal] = $this->totals($data['items']);
+            $paidAmount = (float) ($data['paid_amount'] ?? 0);
+
+            if ($paidAmount > $grandTotal) {
+                throw ValidationException::withMessages(['paid_amount' => 'Paid amount cannot be greater than purchase total.']);
+            }
+
+            $purchase = Purchase::query()->create([
+                'tenant_id' => $user->tenant_id,
+                'company_id' => $user->company_id,
+                'store_id' => $user->store_id,
+                'supplier_id' => $data['supplier_id'],
+                'purchase_no' => $this->nextNumber(),
+                'supplier_invoice_no' => $data['supplier_invoice_no'] ?? null,
+                'purchase_date' => $data['purchase_date'],
+                'status' => 'received',
+                'payment_status' => $this->paymentStatus($grandTotal, $paidAmount),
+                'subtotal' => $subtotal,
+                'discount_total' => $discountTotal,
+                'grand_total' => $grandTotal,
+                'paid_amount' => $paidAmount,
+                'notes' => $data['notes'] ?? null,
+                'created_by' => $user->id,
+                'updated_by' => $user->id,
+            ]);
+
+            foreach ($data['items'] as $item) {
+                $this->postItem($purchase, $item, $user);
+            }
+
+            Supplier::query()
+                ->whereKey($data['supplier_id'])
+                ->increment('current_balance', round($grandTotal - $paidAmount, 2));
+
+            return $purchase->fresh(['supplier', 'items.product', 'items.batch']);
+        });
+    }
+
+    private function postItem(Purchase $purchase, array $item, User $user): void
+    {
+        $product = Product::query()->lockForUpdate()->findOrFail($item['product_id']);
+        $quantity = (float) $item['quantity'];
+        $freeQuantity = (float) ($item['free_quantity'] ?? 0);
+        $receivedQuantity = $quantity + $freeQuantity;
+        $purchasePrice = (float) $item['purchase_price'];
+        $mrp = (float) $item['mrp'];
+        $discountPercent = (float) ($item['discount_percent'] ?? 0);
+        $gross = $quantity * $purchasePrice;
+        $discount = round($gross * $discountPercent / 100, 2);
+        $lineTotal = round($gross - $discount, 2);
+
+        $batch = Batch::query()
+            ->where('company_id', $purchase->company_id)
+            ->where('product_id', $product->id)
+            ->where('batch_no', $item['batch_no'])
+            ->lockForUpdate()
+            ->first();
+
+        if (! $batch) {
+            $batch = Batch::query()->create([
+                'tenant_id' => $purchase->tenant_id,
+                'company_id' => $purchase->company_id,
+                'store_id' => $purchase->store_id,
+                'product_id' => $product->id,
+                'supplier_id' => $purchase->supplier_id,
+                'purchase_id' => $purchase->id,
+                'batch_no' => $item['batch_no'],
+                'barcode' => $item['barcode'] ?? null,
+                'manufactured_at' => $item['manufactured_at'] ?? null,
+                'expires_at' => $item['expires_at'],
+                'quantity_received' => 0,
+                'quantity_available' => 0,
+                'purchase_price' => $purchasePrice,
+                'mrp' => $mrp,
+                'is_active' => true,
+                'created_by' => $user->id,
+                'updated_by' => $user->id,
+            ]);
+        }
+
+        $batch->forceFill([
+            'supplier_id' => $purchase->supplier_id,
+            'purchase_id' => $purchase->id,
+            'barcode' => $item['barcode'] ?? $batch->barcode,
+            'manufactured_at' => $item['manufactured_at'] ?? $batch->manufactured_at,
+            'expires_at' => $item['expires_at'],
+            'quantity_received' => (float) $batch->quantity_received + $receivedQuantity,
+            'purchase_price' => $purchasePrice,
+            'mrp' => $mrp,
+            'updated_by' => $user->id,
+        ])->save();
+
+        $purchase->items()->create([
+            'product_id' => $product->id,
+            'batch_id' => $batch->id,
+            'batch_no' => $batch->batch_no,
+            'manufactured_at' => $item['manufactured_at'] ?? null,
+            'expires_at' => $item['expires_at'],
+            'quantity' => $quantity,
+            'free_quantity' => $freeQuantity,
+            'purchase_price' => $purchasePrice,
+            'mrp' => $mrp,
+            'discount_percent' => $discountPercent,
+            'discount_amount' => $discount,
+            'line_total' => $lineTotal,
+        ]);
+
+        $product->forceFill([
+            'purchase_price' => $purchasePrice,
+            'mrp' => $mrp,
+            'selling_price' => max((float) $product->selling_price, $mrp),
+            'updated_by' => $user->id,
+        ])->save();
+
+        $this->stock->record([
+            'tenant_id' => $purchase->tenant_id,
+            'company_id' => $purchase->company_id,
+            'store_id' => $purchase->store_id,
+            'movement_date' => $purchase->purchase_date->toDateString(),
+            'product_id' => $product->id,
+            'batch_id' => $batch->id,
+            'movement_type' => 'purchase_receive',
+            'quantity_in' => $receivedQuantity,
+            'quantity_out' => 0,
+            'source_type' => 'purchase',
+            'source_id' => $purchase->id,
+            'reference_type' => 'batch',
+            'reference_id' => $batch->id,
+            'notes' => 'Purchase '.$purchase->purchase_no,
+            'created_by' => $user->id,
+        ]);
+    }
+
+    private function totals(array $items): array
+    {
+        $subtotal = 0;
+        $discountTotal = 0;
+
+        foreach ($items as $item) {
+            $gross = (float) $item['quantity'] * (float) $item['purchase_price'];
+            $discount = round($gross * (float) ($item['discount_percent'] ?? 0) / 100, 2);
+            $subtotal += $gross;
+            $discountTotal += $discount;
+        }
+
+        return [round($subtotal, 2), round($discountTotal, 2), round($subtotal - $discountTotal, 2)];
+    }
+
+    private function paymentStatus(float $total, float $paid): string
+    {
+        if ($paid <= 0) {
+            return 'unpaid';
+        }
+
+        return $paid >= $total ? 'paid' : 'partial';
+    }
+
+    private function nextNumber(): string
+    {
+        $nextId = ((int) DB::table('purchases')->lockForUpdate()->max('id')) + 1;
+
+        return 'PUR-'.now()->format('Ymd').'-'.str_pad((string) $nextId, 5, '0', STR_PAD_LEFT);
+    }
+}

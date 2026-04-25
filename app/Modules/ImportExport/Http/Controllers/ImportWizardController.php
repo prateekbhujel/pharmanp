@@ -8,6 +8,7 @@ use App\Modules\ImportExport\Http\Requests\PreviewImportRequest;
 use App\Modules\ImportExport\Models\ImportJob;
 use App\Modules\ImportExport\Services\ImportPreviewService;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ImportWizardController extends Controller
 {
@@ -38,9 +39,17 @@ class ImportWizardController extends Controller
         $job = $service->confirm(
             (int) $request->validated('import_job_id'),
             $request->validated('mapping'),
+            $request->user(),
         );
 
         return $this->jobResponse($job, $service);
+    }
+
+    public function rejected(ImportJob $job, ImportPreviewService $service): StreamedResponse
+    {
+        return response()->streamDownload(function () use ($job, $service) {
+            echo $service->rejectedCsv($job);
+        }, 'import-'.$job->id.'-rejected.csv', ['Content-Type' => 'text/csv']);
     }
 
     private function jobResponse(ImportJob $job, ImportPreviewService $service): JsonResponse

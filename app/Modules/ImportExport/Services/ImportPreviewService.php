@@ -2,8 +2,17 @@
 
 namespace App\Modules\ImportExport\Services;
 
+use App\Models\User;
 use App\Modules\ImportExport\Models\ImportJob;
 use App\Modules\ImportExport\Models\ImportStagedRow;
+use App\Modules\Inventory\Models\Batch;
+use App\Modules\Inventory\Models\Company;
+use App\Modules\Inventory\Models\Product;
+use App\Modules\Inventory\Models\ProductCategory;
+use App\Modules\Inventory\Models\Unit;
+use App\Modules\Inventory\Services\StockMovementService;
+use App\Modules\Party\Models\Customer;
+use App\Modules\Party\Models\Supplier;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -54,24 +63,53 @@ class ImportPreviewService
         });
     }
 
-    public function confirm(int $jobId, array $mapping): ImportJob
+    public function confirm(int $jobId, array $mapping, ?User $user = null): ImportJob
     {
-        return DB::transaction(function () use ($jobId, $mapping) {
+        return DB::transaction(function () use ($jobId, $mapping, $user) {
             $job = ImportJob::query()->lockForUpdate()->findOrFail($jobId);
             $required = $this->requiredFields($job->target);
             $mappedSystemFields = array_values(array_filter($mapping));
             $missing = array_values(array_diff($required, $mappedSystemFields));
 
+            if (! empty($missing)) {
+                $job->update([
+                    'mapping' => $mapping,
+                    'valid_rows' => 0,
+                    'invalid_rows' => (int) $job->total_rows,
+                    'status' => 'needs_mapping',
+                ]);
+
+                $job->rows()->update([
+                    'errors' => ['Missing required mapping: '.implode(', ', $missing)],
+                    'status' => 'invalid',
+                ]);
+
+                return $job->fresh('rows');
+            }
+
+            $valid = 0;
+            $invalid = 0;
+
+            $job->rows()->chunkById(50, function ($rows) use ($job, $mapping, $user, &$valid, &$invalid) {
+                foreach ($rows as $row) {
+                    $mapped = $this->mapRow($row->raw_data, $mapping);
+
+                    try {
+                        $this->insertMappedRow($job->target, $mapped, $user);
+                        $row->update(['mapped_data' => $mapped, 'errors' => null, 'status' => 'imported']);
+                        $valid++;
+                    } catch (\Throwable $throwable) {
+                        $row->update(['mapped_data' => $mapped, 'errors' => [$throwable->getMessage()], 'status' => 'invalid']);
+                        $invalid++;
+                    }
+                }
+            });
+
             $job->update([
                 'mapping' => $mapping,
-                'valid_rows' => empty($missing) ? (int) $job->total_rows : 0,
-                'invalid_rows' => empty($missing) ? 0 : (int) $job->total_rows,
-                'status' => empty($missing) ? 'validated' : 'needs_mapping',
-            ]);
-
-            $job->rows()->update([
-                'errors' => empty($missing) ? null : ['Missing required mapping: '.implode(', ', $missing)],
-                'status' => empty($missing) ? 'valid' : 'invalid',
+                'valid_rows' => $valid,
+                'invalid_rows' => $invalid,
+                'status' => $invalid > 0 ? 'completed_with_errors' : 'completed',
             ]);
 
             return $job->fresh('rows');
@@ -91,6 +129,197 @@ class ImportPreviewService
             'opening_stock', 'batches' => ['sku', 'batch_no', 'quantity_available'],
             default => [],
         };
+    }
+
+    public function rejectedCsv(ImportJob $job): string
+    {
+        $rows = $job->rows()->where('status', 'invalid')->orderBy('row_number')->get();
+        $handle = fopen('php://temp', 'r+');
+        fputcsv($handle, ['row_number', 'errors', 'raw_data']);
+
+        foreach ($rows as $row) {
+            fputcsv($handle, [
+                $row->row_number,
+                implode('; ', $row->errors ?? []),
+                json_encode($row->raw_data),
+            ]);
+        }
+
+        rewind($handle);
+        $contents = stream_get_contents($handle) ?: '';
+        fclose($handle);
+
+        return $contents;
+    }
+
+    private function mapRow(array $raw, array $mapping): array
+    {
+        $mapped = [];
+
+        foreach ($mapping as $uploadedColumn => $systemField) {
+            if ($systemField) {
+                $mapped[$systemField] = $raw[$uploadedColumn] ?? null;
+            }
+        }
+
+        return $mapped;
+    }
+
+    private function insertMappedRow(string $target, array $data, ?User $user): void
+    {
+        match ($target) {
+            'companies' => Company::query()->firstOrCreate(
+                ['name' => $this->requiredValue($data, 'name')],
+                [
+                    'tenant_id' => $user?->tenant_id,
+                    'legal_name' => $data['legal_name'] ?? null,
+                    'pan_number' => $data['pan_number'] ?? null,
+                    'phone' => $data['phone'] ?? null,
+                    'email' => $data['email'] ?? null,
+                    'address' => $data['address'] ?? null,
+                    'default_cc_rate' => (float) ($data['default_cc_rate'] ?? 0),
+                    'created_by' => $user?->id,
+                    'updated_by' => $user?->id,
+                ],
+            ),
+            'units' => Unit::query()->firstOrCreate(
+                ['company_id' => $user?->company_id, 'name' => $this->requiredValue($data, 'name')],
+                [
+                    'tenant_id' => $user?->tenant_id,
+                    'code' => $data['code'] ?? null,
+                    'type' => $data['type'] ?? 'both',
+                    'factor' => (float) ($data['factor'] ?? 1),
+                    'created_by' => $user?->id,
+                    'updated_by' => $user?->id,
+                ],
+            ),
+            'suppliers' => Supplier::query()->firstOrCreate(
+                ['company_id' => $user?->company_id, 'name' => $this->requiredValue($data, 'name')],
+                [
+                    'tenant_id' => $user?->tenant_id,
+                    'contact_person' => $data['contact_person'] ?? null,
+                    'phone' => $data['phone'] ?? null,
+                    'email' => $data['email'] ?? null,
+                    'pan_number' => $data['pan_number'] ?? null,
+                    'address' => $data['address'] ?? null,
+                    'opening_balance' => (float) ($data['opening_balance'] ?? 0),
+                    'current_balance' => (float) ($data['opening_balance'] ?? 0),
+                    'created_by' => $user?->id,
+                    'updated_by' => $user?->id,
+                ],
+            ),
+            'customers' => Customer::query()->firstOrCreate(
+                ['company_id' => $user?->company_id, 'name' => $this->requiredValue($data, 'name')],
+                [
+                    'tenant_id' => $user?->tenant_id,
+                    'contact_person' => $data['contact_person'] ?? null,
+                    'phone' => $data['phone'] ?? null,
+                    'email' => $data['email'] ?? null,
+                    'pan_number' => $data['pan_number'] ?? null,
+                    'address' => $data['address'] ?? null,
+                    'credit_limit' => (float) ($data['credit_limit'] ?? 0),
+                    'opening_balance' => (float) ($data['opening_balance'] ?? 0),
+                    'current_balance' => (float) ($data['opening_balance'] ?? 0),
+                    'created_by' => $user?->id,
+                    'updated_by' => $user?->id,
+                ],
+            ),
+            'products' => $this->insertProduct($data, $user),
+            'opening_stock', 'batches' => $this->insertBatch($data, $user),
+            default => throw new \RuntimeException('Unsupported import target.'),
+        };
+    }
+
+    private function insertProduct(array $data, ?User $user): void
+    {
+        $unitId = Unit::query()->where('company_id', $user?->company_id)->value('id');
+        $categoryId = ProductCategory::query()->where('company_id', $user?->company_id)->value('id');
+
+        Product::query()->firstOrCreate(
+            ['company_id' => $user?->company_id, 'sku' => $data['sku'] ?? null, 'name' => $this->requiredValue($data, 'name')],
+            [
+                'tenant_id' => $user?->tenant_id,
+                'store_id' => $user?->store_id,
+                'barcode' => $data['barcode'] ?? null,
+                'unit_id' => $unitId,
+                'category_id' => $categoryId,
+                'generic_name' => $data['generic_name'] ?? null,
+                'composition' => $data['composition'] ?? null,
+                'formulation' => $data['formulation'] ?? 'Other',
+                'mrp' => (float) ($data['mrp'] ?? 0),
+                'purchase_price' => (float) ($data['purchase_price'] ?? 0),
+                'selling_price' => (float) ($data['selling_price'] ?? $data['mrp'] ?? 0),
+                'reorder_level' => (int) ($data['reorder_level'] ?? 10),
+                'created_by' => $user?->id,
+                'updated_by' => $user?->id,
+            ],
+        );
+    }
+
+    private function insertBatch(array $data, ?User $user): void
+    {
+        $product = Product::query()
+            ->where('company_id', $user?->company_id)
+            ->where(function ($query) use ($data) {
+                $query->when($data['sku'] ?? null, fn ($builder, $sku) => $builder->orWhere('sku', $sku))
+                    ->when($data['barcode'] ?? null, fn ($builder, $barcode) => $builder->orWhere('barcode', $barcode));
+            })
+            ->first();
+
+        if (! $product) {
+            throw new \RuntimeException('Product not found for stock row.');
+        }
+
+        $quantity = (float) ($data['quantity_available'] ?? $data['quantity_received'] ?? 0);
+
+        if ($quantity <= 0) {
+            throw new \RuntimeException('Batch quantity must be greater than zero.');
+        }
+
+        $batch = Batch::query()->firstOrCreate(
+            ['company_id' => $user?->company_id, 'product_id' => $product->id, 'batch_no' => $this->requiredValue($data, 'batch_no')],
+            [
+                'tenant_id' => $user?->tenant_id,
+                'store_id' => $user?->store_id,
+                'barcode' => $data['barcode'] ?? null,
+                'expires_at' => $data['expires_at'] ?? null,
+                'quantity_received' => 0,
+                'quantity_available' => 0,
+                'purchase_price' => (float) ($data['purchase_price'] ?? 0),
+                'mrp' => (float) ($data['mrp'] ?? 0),
+                'created_by' => $user?->id,
+                'updated_by' => $user?->id,
+            ],
+        );
+
+        $batch->increment('quantity_received', $quantity);
+
+        app(StockMovementService::class)->record([
+            'tenant_id' => $user?->tenant_id,
+            'company_id' => $user?->company_id,
+            'store_id' => $user?->store_id,
+            'movement_date' => now()->toDateString(),
+            'product_id' => $product->id,
+            'batch_id' => $batch->id,
+            'movement_type' => 'opening_stock',
+            'quantity_in' => $quantity,
+            'quantity_out' => 0,
+            'source_type' => 'import',
+            'source_id' => 0,
+            'notes' => 'Opening stock import',
+            'created_by' => $user?->id,
+        ]);
+    }
+
+    private function requiredValue(array $data, string $key): string
+    {
+        $value = trim((string) ($data[$key] ?? ''));
+
+        if ($value === '') {
+            throw new \RuntimeException($key.' is required.');
+        }
+
+        return $value;
     }
 
     private function readRows(string $path, string $extension): Collection

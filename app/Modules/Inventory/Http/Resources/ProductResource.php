@@ -40,6 +40,15 @@ class ProductResource extends JsonResource
                 'id' => $this->category?->id,
                 'name' => $this->category?->name,
             ]),
+            'batches' => $this->whenLoaded('batches', fn () => $this->batches->map(fn ($batch) => [
+                'id' => $batch->id,
+                'batch_no' => $batch->batch_no,
+                'barcode' => $batch->barcode,
+                'expires_at' => $batch->expires_at?->toDateString(),
+                'quantity_available' => (float) $batch->quantity_available,
+                'purchase_price' => (float) $batch->purchase_price,
+                'mrp' => (float) $batch->mrp,
+            ])->values()),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
