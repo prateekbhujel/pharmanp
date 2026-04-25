@@ -2,6 +2,7 @@
 
 namespace App\Modules\Purchase\Http\Controllers;
 
+use App\Core\Support\WorkspaceScope;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Modules\Purchase\Http\Requests\PurchaseStoreRequest;
@@ -10,12 +11,15 @@ use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Purchase\Services\PurchaseEntryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PurchaseController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->is_owner || $request->user()?->can('purchase.entries.view') || $request->user()?->can('purchase.entries.create'), 403);
+
         $sorts = [
             'purchase_no' => 'purchase_no',
             'purchase_date' => 'purchase_date',
@@ -26,7 +30,7 @@ class PurchaseController extends Controller
         $sortOrder = request('sort_order') === 'asc' ? 'asc' : 'desc';
         $search = trim((string) request('search'));
 
-        $purchases = Purchase::query()
+        $purchases = WorkspaceScope::apply(Purchase::query(), $request->user(), 'purchases', ['tenant_id', 'company_id', 'store_id'])
             ->with('supplier:id,name')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
@@ -59,13 +63,19 @@ class PurchaseController extends Controller
             ->setStatusCode(201);
     }
 
-    public function print(Purchase $purchase): View
+    public function print(Request $request, Purchase $purchase): View
     {
+        abort_unless($request->user()?->is_owner || $request->user()?->can('purchase.entries.view') || $request->user()?->can('purchase.entries.create'), 403);
+        WorkspaceScope::ensure($purchase, $request->user(), ['tenant_id', 'company_id', 'store_id']);
+
         return view('prints.purchase-invoice', $this->printData($purchase));
     }
 
-    public function pdf(Purchase $purchase)
+    public function pdf(Request $request, Purchase $purchase)
     {
+        abort_unless($request->user()?->is_owner || $request->user()?->can('purchase.entries.view') || $request->user()?->can('purchase.entries.create'), 403);
+        WorkspaceScope::ensure($purchase, $request->user(), ['tenant_id', 'company_id', 'store_id']);
+
         return Pdf::loadView('prints.purchase-invoice', $this->printData($purchase))
             ->setPaper('a5')
             ->stream($purchase->purchase_no.'.pdf');

@@ -8,7 +8,7 @@ class PurchaseStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->user()?->is_owner || (bool) $this->user()?->can('purchase.entries.create');
     }
 
     public function rules(): array

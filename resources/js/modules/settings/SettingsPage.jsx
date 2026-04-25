@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Checkbox, Form, Input, Modal, Select, Space, Switch, Table, Tabs, Tag } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Button, Card, Checkbox, Col, Empty, Form, Input, Row, Select, Space, Statistic, Switch, Table, Tabs, Tag, Typography } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UserOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
@@ -10,6 +10,67 @@ import { useApi } from '../../core/hooks/useApi';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { can } from '../../core/utils/permissions';
+
+function PermissionGroupCard({ groupKey, group, selectedPermissions, permissionSearch, onTogglePermission, onToggleGroup }) {
+    const visiblePermissions = group.permissions.filter((permission) => {
+        if (!permissionSearch) {
+            return true;
+        }
+
+        const needle = permissionSearch.toLowerCase();
+
+        return [permission.label, permission.description, permission.name, group.label]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase().includes(needle));
+    });
+
+    if (!visiblePermissions.length) {
+        return null;
+    }
+
+    const visibleNames = visiblePermissions.map((permission) => permission.name);
+    const selectedCount = visibleNames.filter((name) => selectedPermissions.includes(name)).length;
+    const fullySelected = selectedCount === visibleNames.length;
+    const partiallySelected = selectedCount > 0 && !fullySelected;
+
+    return (
+        <Card
+            key={groupKey}
+            size="small"
+            className="access-permission-card"
+            title={(
+                <div>
+                    <Typography.Text strong>{group.label}</Typography.Text>
+                    <Typography.Paragraph className="access-group-description">{group.description}</Typography.Paragraph>
+                </div>
+            )}
+            extra={(
+                <Checkbox
+                    checked={fullySelected}
+                    indeterminate={partiallySelected}
+                    onChange={(event) => onToggleGroup(visibleNames, event.target.checked)}
+                >
+                    Allow all
+                </Checkbox>
+            )}
+        >
+            <div className="access-checkbox-list">
+                {visiblePermissions.map((permission) => (
+                    <Checkbox
+                        key={permission.name}
+                        checked={selectedPermissions.includes(permission.name)}
+                        onChange={(event) => onTogglePermission(permission.name, event.target.checked)}
+                    >
+                        <div className="access-checkbox-content">
+                            <strong>{permission.label}</strong>
+                            <small>{permission.description}</small>
+                        </div>
+                    </Checkbox>
+                ))}
+            </div>
+        </Card>
+    );
+}
 
 export function SettingsPage() {
     const { notification } = App.useApp();
@@ -23,10 +84,15 @@ export function SettingsPage() {
     const [profileForm] = Form.useForm();
     const [roleForm] = Form.useForm();
     const [userForm] = Form.useForm();
-    const [roleModalOpen, setRoleModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState(null);
+    const [creatingRole, setCreatingRole] = useState(false);
+    const [roleSearch, setRoleSearch] = useState('');
+    const [permissionSearch, setPermissionSearch] = useState('');
+    const [roleFocusName, setRoleFocusName] = useState(null);
     const [userDrawerOpen, setUserDrawerOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+    const selectedPermissions = Form.useWatch('permissions', roleForm) || [];
+    const selectedUserRoles = Form.useWatch('role_names', userForm) || [];
 
     useEffect(() => {
         if (branding) {
@@ -44,11 +110,65 @@ export function SettingsPage() {
         }
     }, [profile, profileForm]);
 
+    useEffect(() => {
+        const roles = roleData?.roles || [];
+
+        if (!roles.length) {
+            return;
+        }
+
+        if (roleFocusName) {
+            const focusedRole = roles.find((role) => role.name === roleFocusName);
+
+            if (focusedRole) {
+                openRole(focusedRole);
+            }
+
+            setRoleFocusName(null);
+            return;
+        }
+
+        if (creatingRole) {
+            return;
+        }
+
+        if (!editingRole) {
+            openRole(roles[0]);
+            return;
+        }
+
+        const refreshedRole = roles.find((role) => role.id === editingRole.id);
+
+        if (refreshedRole) {
+            setEditingRole(refreshedRole);
+            roleForm.setFieldsValue({
+                name: refreshedRole.name,
+                permissions: refreshedRole.permissions || [],
+            });
+        }
+    }, [creatingRole, editingRole, roleData, roleFocusName, roleForm]);
+
     function openRole(role = null) {
+        setCreatingRole(false);
         setEditingRole(role);
         roleForm.resetFields();
-        roleForm.setFieldsValue(role || { permissions: [] });
-        setRoleModalOpen(true);
+        roleForm.setFieldsValue(role ? {
+            name: role.name,
+            permissions: role.permissions || [],
+        } : {
+            name: '',
+            permissions: [],
+        });
+    }
+
+    function openNewRole() {
+        setCreatingRole(true);
+        setEditingRole(null);
+        roleForm.resetFields();
+        roleForm.setFieldsValue({
+            name: '',
+            permissions: [],
+        });
     }
 
     function openUser(userRecord = null) {
@@ -60,6 +180,32 @@ export function SettingsPage() {
             role_names: [],
         });
         setUserDrawerOpen(true);
+    }
+
+    function updatePermissionSelection(permissionName, checked) {
+        const current = new Set(roleForm.getFieldValue('permissions') || []);
+
+        if (checked) {
+            current.add(permissionName);
+        } else {
+            current.delete(permissionName);
+        }
+
+        roleForm.setFieldValue('permissions', Array.from(current));
+    }
+
+    function updatePermissionGroup(permissionNames, checked) {
+        const current = new Set(roleForm.getFieldValue('permissions') || []);
+
+        permissionNames.forEach((permissionName) => {
+            if (checked) {
+                current.add(permissionName);
+            } else {
+                current.delete(permissionName);
+            }
+        });
+
+        roleForm.setFieldValue('permissions', Array.from(current));
     }
 
     async function saveBranding(values) {
@@ -95,9 +241,10 @@ export function SettingsPage() {
                 await http.post(endpoints.roles, values);
                 notification.success({ message: 'Role created' });
             }
-            setRoleModalOpen(false);
-            roleForm.resetFields();
-            reloadRoles?.();
+
+            setCreatingRole(false);
+            setRoleFocusName(values.name);
+            await reloadRoles?.();
         } catch (error) {
             roleForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
             notification.error({ message: 'Role save failed', description: error?.response?.data?.message || error.message });
@@ -105,13 +252,15 @@ export function SettingsPage() {
     }
 
     async function deleteRole(role) {
-        confirmDelete({
+        await confirmDelete({
             title: `Delete role ${role.name}?`,
-            content: 'Users on this role should be reassigned before deleting it.',
+            content: 'Users assigned to this role should be moved first. Deleting it removes the access profile immediately.',
             onOk: async () => {
                 await http.delete(`${endpoints.roles}/${role.id}`);
                 notification.success({ message: 'Role deleted' });
-                reloadRoles?.();
+                setCreatingRole(false);
+                setEditingRole(null);
+                await reloadRoles?.();
             },
         });
     }
@@ -141,9 +290,9 @@ export function SettingsPage() {
     }
 
     async function deleteUser(record) {
-        confirmDelete({
+        await confirmDelete({
             title: `Delete ${record.name}?`,
-            content: 'The login will be removed immediately.',
+            content: 'The login will be removed immediately and the user will lose access.',
             onOk: async () => {
                 await http.delete(`${endpoints.users}/${record.id}`);
                 notification.success({ message: 'User deleted' });
@@ -153,9 +302,35 @@ export function SettingsPage() {
     }
 
     const featureRows = Object.entries(features || {}).flatMap(([module, items]) => items.map((item) => ({ ...item, module })));
-    const permissionOptions = (roleData?.permissions || []).map((name) => ({ value: name, label: name }));
-    const permissionGroups = roleData?.permission_groups || {};
+    const permissionCatalog = roleData?.permission_groups || {};
+    const permissionOptions = (roleData?.permissions || []).map((permission) => ({
+        value: permission.name,
+        label: permission.label,
+    }));
+    const roleRows = (roleData?.roles || []).filter((role) => {
+        if (!roleSearch) {
+            return true;
+        }
+
+        const needle = roleSearch.toLowerCase();
+        return [
+            role.name,
+            ...(role.summary || []).map((summary) => summary.group),
+        ].some((value) => value?.toLowerCase().includes(needle));
+    });
     const userLookups = userTable.extra?.lookups || {};
+    const userSummary = userTable.extra?.summary || {};
+    const roleProfiles = userTable.extra?.role_profiles || [];
+    const selectedRoleSummary = useMemo(() => {
+        const groups = Object.values(permissionCatalog);
+        const enabledGroups = groups.filter((group) => group.permissions.some((permission) => selectedPermissions.includes(permission.name)));
+
+        return {
+            permissions: selectedPermissions.length,
+            groups: enabledGroups.length,
+        };
+    }, [permissionCatalog, selectedPermissions]);
+    const selectedUserRoleProfiles = useMemo(() => roleProfiles.filter((role) => selectedUserRoles.includes(role.name)), [roleProfiles, selectedUserRoles]);
 
     const tabs = useMemo(() => {
         const items = [
@@ -221,6 +396,20 @@ export function SettingsPage() {
                 label: 'Users',
                 children: (
                     <div className="page-stack">
+                        <Row gutter={[16, 16]}>
+                            <Col xs={24} sm={12} xl={6}>
+                                <Card className="summary-stat-card"><Statistic title="Users" value={userSummary.total || 0} /></Card>
+                            </Col>
+                            <Col xs={24} sm={12} xl={6}>
+                                <Card className="summary-stat-card"><Statistic title="Active" value={userSummary.active || 0} valueStyle={{ color: '#15803d' }} /></Card>
+                            </Col>
+                            <Col xs={24} sm={12} xl={6}>
+                                <Card className="summary-stat-card"><Statistic title="MR Linked" value={userSummary.mr_linked || 0} valueStyle={{ color: '#6d28d9' }} /></Card>
+                            </Col>
+                            <Col xs={24} sm={12} xl={6}>
+                                <Card className="summary-stat-card"><Statistic title="Owner Access" value={userSummary.owners || 0} valueStyle={{ color: '#b45309' }} /></Card>
+                            </Col>
+                        </Row>
                         <Card>
                             <div className="table-toolbar table-toolbar-wide">
                                 <Input.Search value={userTable.search} onChange={(event) => userTable.setSearch(event.target.value)} placeholder="Search user, email or role" allowClear />
@@ -241,6 +430,26 @@ export function SettingsPage() {
                                         { value: false, label: 'Inactive' },
                                     ]}
                                 />
+                                <Select
+                                    allowClear
+                                    placeholder="MR login"
+                                    value={userTable.filters.medical_representative_linked}
+                                    onChange={(value) => userTable.setFilters((current) => ({ ...current, medical_representative_linked: value }))}
+                                    options={[
+                                        { value: true, label: 'Linked to MR' },
+                                        { value: false, label: 'No MR link' },
+                                    ]}
+                                />
+                                <Select
+                                    allowClear
+                                    placeholder="Access level"
+                                    value={userTable.filters.is_owner}
+                                    onChange={(value) => userTable.setFilters((current) => ({ ...current, is_owner: value }))}
+                                    options={[
+                                        { value: true, label: 'Owner access' },
+                                        { value: false, label: 'Staff access' },
+                                    ]}
+                                />
                                 <Button type="primary" icon={<PlusOutlined />} onClick={() => openUser()}>New User</Button>
                             </div>
                             <Table
@@ -259,6 +468,7 @@ export function SettingsPage() {
                                     { title: 'Email', dataIndex: 'email', sorter: true, field: 'email' },
                                     { title: 'Roles', dataIndex: 'role_names', render: (roles) => roles?.map((role) => <Tag key={role}>{role}</Tag>) },
                                     { title: 'MR Link', dataIndex: ['medical_representative', 'name'], render: (value) => value || '-' },
+                                    { title: 'Access', dataIndex: 'is_owner', width: 120, render: (value) => <Tag color={value ? 'gold' : 'blue'}>{value ? 'Owner' : 'Staff'}</Tag> },
                                     { title: 'Status', dataIndex: 'is_active', render: (value) => <Tag color={value ? 'green' : 'red'}>{value ? 'Active' : 'Inactive'}</Tag>, width: 110 },
                                     { title: 'Last Login', dataIndex: 'last_login_at', sorter: true, field: 'last_login_at', width: 170, render: (value) => value || '-' },
                                     {
@@ -283,40 +493,130 @@ export function SettingsPage() {
         if (user?.is_owner || can(user, 'roles.manage')) {
             items.push({
                 key: 'roles',
-                label: 'Roles / Permissions',
+                label: 'Access Control',
                 children: (
-                    <div className="page-stack">
-                        <Card title="Roles" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => openRole()}>New Role</Button>}>
+                    <div className="access-layout">
+                        <Card
+                            className="access-role-list-card"
+                            title="Roles"
+                            extra={<Button type="primary" icon={<PlusOutlined />} onClick={openNewRole}>New Role</Button>}
+                        >
+                            <div className="access-role-toolbar">
+                                <Input.Search
+                                    value={roleSearch}
+                                    onChange={(event) => setRoleSearch(event.target.value)}
+                                    placeholder="Search roles or modules"
+                                    allowClear
+                                />
+                                <Button icon={<ReloadOutlined />} onClick={() => reloadRoles?.()}>Reload</Button>
+                            </div>
                             <Table
                                 rowKey="id"
-                                dataSource={roleData?.roles || []}
+                                size="small"
                                 pagination={false}
+                                dataSource={roleRows}
+                                rowClassName={(record) => record.id === editingRole?.id && !creatingRole ? 'access-role-row-active' : ''}
+                                onRow={(record) => ({
+                                    onClick: () => openRole(record),
+                                })}
                                 columns={[
-                                    { title: 'Role', dataIndex: 'name' },
-                                    { title: 'Permissions', dataIndex: 'permissions', render: (permissions) => permissions?.map((name) => <Tag key={name}>{name}</Tag>) },
                                     {
-                                        title: '',
-                                        width: 112,
-                                        render: (_, role) => (
-                                            <Space>
-                                                <Button icon={<EditOutlined />} onClick={() => openRole(role)} />
-                                                <Button danger icon={<DeleteOutlined />} disabled={role.locked} onClick={() => deleteRole(role)} />
-                                            </Space>
+                                        title: 'Role',
+                                        dataIndex: 'name',
+                                        render: (value, record) => (
+                                            <div className="access-role-cell">
+                                                <strong>{value}</strong>
+                                                <small>{record.locked ? 'System role' : `${record.user_count || 0} assigned user${record.user_count === 1 ? '' : 's'}`}</small>
+                                            </div>
                                         ),
                                     },
+                                    { title: 'Users', dataIndex: 'user_count', align: 'right', width: 82 },
+                                    { title: 'Access', dataIndex: 'permission_count', align: 'right', width: 82 },
                                 ]}
                             />
                         </Card>
-                        <Card title="Permission Map">
-                            <div className="permission-group-grid">
-                                {Object.entries(permissionGroups).map(([group, permissions]) => (
-                                    <Card key={group} size="small" title={group}>
-                                        <Space wrap>
-                                            {permissions.map((permission) => <Tag key={permission}>{permission}</Tag>)}
-                                        </Space>
+
+                        <Card
+                            className="access-editor-card"
+                            title={creatingRole ? 'Create Role' : editingRole ? `Edit Role: ${editingRole.name}` : 'Role Editor'}
+                            extra={(
+                                <Space wrap>
+                                    {editingRole ? <Tag>{editingRole.user_count || 0} users</Tag> : null}
+                                    <Tag>{selectedRoleSummary.groups} modules</Tag>
+                                    <Tag>{selectedRoleSummary.permissions} permissions</Tag>
+                                    {editingRole && !editingRole.locked ? (
+                                        <Button danger icon={<DeleteOutlined />} onClick={() => deleteRole(editingRole)}>Delete</Button>
+                                    ) : null}
+                                    <Button type="primary" onClick={() => roleForm.submit()}>Save Role</Button>
+                                </Space>
+                            )}
+                        >
+                            <Form form={roleForm} layout="vertical" onFinish={saveRole}>
+                                <Form.Item name="permissions" hidden>
+                                    <Select mode="multiple" options={permissionOptions} />
+                                </Form.Item>
+                                <div className="access-editor-top">
+                                    <Form.Item
+                                        name="name"
+                                        label="Role Name"
+                                        rules={[{ required: true, message: 'Role name is required.' }]}
+                                        className="access-role-name-field"
+                                    >
+                                        <Input
+                                            disabled={editingRole?.locked}
+                                            placeholder="Example: Store Manager"
+                                        />
+                                    </Form.Item>
+                                    <Card size="small" className="access-summary-card">
+                                        <Typography.Text strong>Access summary</Typography.Text>
+                                        <Typography.Paragraph>
+                                            {selectedRoleSummary.permissions} permissions across {selectedRoleSummary.groups} module areas are currently enabled.
+                                        </Typography.Paragraph>
+                                        <Typography.Text type="secondary">
+                                            Use role names people understand. The access list below is grouped by business area, not by developer code.
+                                        </Typography.Text>
                                     </Card>
-                                ))}
-                            </div>
+                                </div>
+
+                                <div className="access-permission-toolbar">
+                                    <Input.Search
+                                        value={permissionSearch}
+                                        onChange={(event) => setPermissionSearch(event.target.value)}
+                                        placeholder="Search access by module, screen or action"
+                                        allowClear
+                                    />
+                                    <Typography.Text type="secondary">
+                                        Use broader access only where the role actually needs it.
+                                    </Typography.Text>
+                                </div>
+
+                                <div className="access-permission-grid">
+                                    {Object.entries(permissionCatalog).map(([groupKey, group]) => (
+                                        <PermissionGroupCard
+                                            key={groupKey}
+                                            groupKey={groupKey}
+                                            group={group}
+                                            selectedPermissions={selectedPermissions}
+                                            permissionSearch={permissionSearch}
+                                            onTogglePermission={updatePermissionSelection}
+                                            onToggleGroup={updatePermissionGroup}
+                                        />
+                                    ))}
+                                </div>
+
+                                {Object.values(permissionCatalog).every((group) => group.permissions.every((permission) => {
+                                    if (!permissionSearch) {
+                                        return false;
+                                    }
+
+                                    const needle = permissionSearch.toLowerCase();
+                                    return ![permission.label, permission.description, permission.name, group.label]
+                                        .filter(Boolean)
+                                        .some((value) => value.toLowerCase().includes(needle));
+                                })) ? (
+                                    <Empty description="No access entries matched that search." />
+                                ) : null}
+                            </Form>
                         </Card>
                     </div>
                 ),
@@ -344,7 +644,25 @@ export function SettingsPage() {
         });
 
         return items;
-    }, [brandingForm, featureRows, profileForm, roleData, user, userLookups, userTable]);
+    }, [
+        brandingForm,
+        creatingRole,
+        editingRole,
+        featureRows,
+        permissionCatalog,
+        permissionOptions,
+        permissionSearch,
+        profileForm,
+        roleRows,
+        roleSearch,
+        selectedPermissions,
+        selectedRoleSummary,
+        selectedUserRoleProfiles,
+        user,
+        userLookups,
+        userSummary,
+        userTable,
+    ]);
 
     return (
         <div className="page-stack">
@@ -355,22 +673,6 @@ export function SettingsPage() {
             />
 
             <Tabs items={tabs} />
-
-            <Modal
-                title={editingRole ? `Edit Role: ${editingRole.name}` : 'New Role'}
-                open={roleModalOpen}
-                onCancel={() => setRoleModalOpen(false)}
-                onOk={() => roleForm.submit()}
-                width={820}
-                destroyOnHidden
-            >
-                <Form form={roleForm} layout="vertical" onFinish={saveRole}>
-                    <Form.Item name="name" label="Role Name" rules={[{ required: true }]}><Input disabled={editingRole?.locked} /></Form.Item>
-                    <Form.Item name="permissions" label="Permissions">
-                        <Select mode="multiple" optionFilterProp="label" options={permissionOptions} />
-                    </Form.Item>
-                </Form>
-            </Modal>
 
             <FormDrawer
                 title={editingUser ? `Edit User: ${editingUser.name}` : 'New User'}
@@ -392,9 +694,28 @@ export function SettingsPage() {
                     <Form.Item name="role_names" label="Roles" rules={[{ required: true }]}>
                         <Select mode="multiple" options={(userLookups.roles || []).map((role) => ({ value: role.name, label: role.name }))} />
                     </Form.Item>
+                    {selectedUserRoleProfiles.length > 0 ? (
+                        <Card size="small" className="user-role-summary-card">
+                            <Typography.Text strong>Assigned access profile</Typography.Text>
+                            <div className="user-role-summary-list">
+                                {selectedUserRoleProfiles.map((role) => (
+                                    <div key={role.id || role.name}>
+                                        <strong>{role.name}</strong>
+                                        <small>
+                                            {role.permission_count} permissions
+                                            {role.summary?.length ? ` across ${role.summary.length} business areas` : ''}
+                                        </small>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    ) : null}
                     <Form.Item name="medical_representative_id" label="Linked MR">
                         <Select allowClear options={(userLookups.medical_representatives || []).map((item) => ({ value: item.id, label: item.name }))} />
                     </Form.Item>
+                    <Typography.Text type="secondary">
+                        Link an MR here when this login should open MR tracking for one field representative instead of a general back-office user.
+                    </Typography.Text>
                     <div className="switch-row">
                         <Form.Item name="is_active" valuePropName="checked" label="Active"><Switch /></Form.Item>
                         <Form.Item name="is_owner" valuePropName="checked" label="Owner Access"><Switch /></Form.Item>

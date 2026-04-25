@@ -14,24 +14,33 @@ class RolePermissionController extends Controller
 {
     public function index(Request $request, AccessControlService $accessControl): JsonResponse
     {
-        abort_unless($request->user()?->is_owner, 403);
+        abort_unless($request->user()?->is_owner || $request->user()?->can('roles.manage'), 403);
         $accessControl->syncPermissions();
+        $catalog = $accessControl->permissionCatalog();
 
         return response()->json([
             'data' => [
-                'permissions' => $accessControl->permissionNames(),
-                'permission_groups' => $accessControl->permissionGroups(),
+                'permissions' => $accessControl->permissionOptions(),
+                'permission_groups' => $catalog,
                 'roles' => Role::query()
                     ->where('guard_name', 'web')
                     ->with('permissions:id,name')
+                    ->withCount('users')
                     ->orderBy('name')
                     ->get()
-                    ->map(fn (Role $role) => [
-                        'id' => $role->id,
-                        'name' => $role->name,
-                        'locked' => in_array($role->name, ['Owner'], true),
-                        'permissions' => $role->permissions->pluck('name')->values(),
-                    ]),
+                    ->map(function (Role $role) use ($accessControl) {
+                        $permissionNames = $role->permissions->pluck('name')->values()->all();
+
+                        return [
+                            'id' => $role->id,
+                            'name' => $role->name,
+                            'locked' => in_array($role->name, ['Owner'], true),
+                            'user_count' => $role->users_count,
+                            'permission_count' => count($permissionNames),
+                            'permissions' => $permissionNames,
+                            'summary' => $accessControl->summarize($permissionNames),
+                        ];
+                    }),
             ],
         ]);
     }
@@ -56,7 +65,7 @@ class RolePermissionController extends Controller
 
     public function destroy(Request $request, Role $role): JsonResponse
     {
-        abort_unless($request->user()?->is_owner, 403);
+        abort_unless($request->user()?->is_owner || $request->user()?->can('roles.manage'), 403);
         abort_if(in_array($role->name, ['Owner'], true), 422, 'Owner role cannot be deleted.');
 
         $role->delete();

@@ -9,9 +9,8 @@ class InventoryMasterRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->is_owner
-            || $this->user()?->can('inventory.products.create')
-            || $this->user()?->can('inventory.products.update');
+        return (bool) $this->user()?->is_owner
+            || (bool) $this->user()?->can('inventory.masters.manage');
     }
 
     public function rules(): array

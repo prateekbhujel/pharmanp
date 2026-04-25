@@ -20,7 +20,10 @@ class ImportPreviewTest extends TestCase
     {
         Setting::putValue('app.installed', ['installed' => true]);
         Storage::fake('local');
-        $user = User::factory()->create(['is_owner' => true]);
+        $company = Company::query()->create(['name' => 'Preview Pharma']);
+        Unit::query()->create(['company_id' => $company->id, 'name' => 'Piece']);
+        ProductCategory::query()->create(['company_id' => $company->id, 'name' => 'Medicine']);
+        $user = User::factory()->create(['company_id' => $company->id, 'is_owner' => true]);
 
         $file = UploadedFile::fake()->createWithContent(
             'products.csv',

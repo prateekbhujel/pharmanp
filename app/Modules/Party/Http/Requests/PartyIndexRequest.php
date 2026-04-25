@@ -8,7 +8,9 @@ class PartyIndexRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->user()?->is_owner
+            || (bool) $this->user()?->can('party.suppliers.view')
+            || (bool) $this->user()?->can('party.customers.view');
     }
 
     public function rules(): array

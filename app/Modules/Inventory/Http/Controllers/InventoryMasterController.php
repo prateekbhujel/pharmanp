@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventory\Http\Controllers;
 
+use App\Core\Support\WorkspaceScope;
 use App\Http\Controllers\Controller;
 use App\Modules\Inventory\Http\Requests\InventoryMasterRequest;
 use App\Modules\Inventory\Http\Requests\QuickCategoryRequest;
@@ -21,7 +22,7 @@ class InventoryMasterController extends Controller
 {
     public function index(Request $request, string $master): JsonResponse
     {
-        $this->authorize('viewAny', Product::class);
+        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.masters.manage') || $request->user()?->can('inventory.products.view'), 403);
 
         $model = $this->modelFor($master);
         $search = trim((string) $request->query('search'));
@@ -31,6 +32,8 @@ class InventoryMasterController extends Controller
         $sortOrder = $request->query('sort_order') === 'desc' ? 'desc' : 'asc';
 
         $rows = $model::query()
+            ->when($master === 'companies', fn ($query) => WorkspaceScope::apply($query, $request->user(), 'companies', ['tenant_id']))
+            ->when($master !== 'companies', fn ($query) => WorkspaceScope::apply($query, $request->user(), $query->getModel()->getTable(), ['tenant_id', 'company_id']))
             ->when($search !== '', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
             ->orderBy($sortField, $sortOrder)
             ->paginate(min(100, max(5, $request->integer('per_page', 15))));
@@ -48,7 +51,7 @@ class InventoryMasterController extends Controller
 
     public function store(InventoryMasterRequest $request, string $master): JsonResponse
     {
-        $this->authorize('create', Product::class);
+        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.masters.manage'), 403);
 
         $row = DB::transaction(function () use ($request, $master) {
             $model = $this->modelFor($master);
@@ -65,11 +68,12 @@ class InventoryMasterController extends Controller
 
     public function update(InventoryMasterRequest $request, string $master, int $id): JsonResponse
     {
-        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.products.update'), 403);
+        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.masters.manage'), 403);
 
         $row = DB::transaction(function () use ($request, $master, $id) {
             $model = $this->modelFor($master);
             $row = $model::query()->findOrFail($id);
+            WorkspaceScope::ensure($row, $request->user(), $master === 'companies' ? ['tenant_id'] : ['tenant_id', 'company_id']);
             $row->update([
                 ...$this->payload($master, $request->validated(), $request),
                 'updated_by' => $request->user()?->id,
@@ -83,11 +87,12 @@ class InventoryMasterController extends Controller
 
     public function destroy(Request $request, string $master, int $id): JsonResponse
     {
-        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.products.delete'), 403);
+        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.masters.manage'), 403);
 
-        DB::transaction(function () use ($master, $id) {
+        DB::transaction(function () use ($master, $id, $request) {
             $model = $this->modelFor($master);
             $row = $model::query()->findOrFail($id);
+            WorkspaceScope::ensure($row, $request->user(), $master === 'companies' ? ['tenant_id'] : ['tenant_id', 'company_id']);
             $row->forceFill(['is_active' => false])->save();
             $row->delete();
         });
@@ -97,7 +102,7 @@ class InventoryMasterController extends Controller
 
     public function company(QuickCompanyRequest $request): JsonResponse
     {
-        $this->authorize('create', Product::class);
+        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.masters.manage'), 403);
 
         $company = DB::transaction(fn () => Company::query()->create([
             ...$request->validated(),
@@ -112,7 +117,7 @@ class InventoryMasterController extends Controller
 
     public function unit(QuickUnitRequest $request): JsonResponse
     {
-        $this->authorize('create', Product::class);
+        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.masters.manage'), 403);
 
         $data = $request->validated();
         $unit = DB::transaction(fn () => Unit::query()->create([
@@ -131,7 +136,7 @@ class InventoryMasterController extends Controller
 
     public function category(QuickCategoryRequest $request): JsonResponse
     {
-        $this->authorize('create', Product::class);
+        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.masters.manage'), 403);
 
         $data = $request->validated();
         $category = DB::transaction(fn () => ProductCategory::query()->create([

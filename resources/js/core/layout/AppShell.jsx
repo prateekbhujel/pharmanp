@@ -1,5 +1,5 @@
 import React, { Suspense, useMemo, useState } from 'react';
-import { Avatar, Button, Layout, Menu, Space, Spin, Typography } from 'antd';
+import { Avatar, Button, Layout, Menu, Space, Spin, Tag, Typography } from 'antd';
 import {
     BarChartOutlined,
     CloudUploadOutlined,
@@ -60,6 +60,7 @@ export function AppShell() {
     const layout = branding?.layout || 'vertical';
     const appName = branding?.app_name || 'PharmaNP';
     const logo = branding?.sidebar_logo_url || branding?.logo_url || branding?.app_icon_url;
+    const accent = branding?.accent_color || '#0f766e';
 
     const menuItems = useMemo(() => ([
         { key: appUrl('/app'), icon: <DashboardOutlined />, label: 'Dashboard', show: can(user, 'dashboard.view') },
@@ -75,10 +76,10 @@ export function AppShell() {
         { key: appUrl('/app/settings'), icon: <SettingOutlined />, label: 'Setup', show: can(user, 'settings.manage') || can(user, 'users.manage') || can(user, 'roles.manage') || user?.is_owner },
         { key: appUrl('/app/system/update-check'), icon: <SyncOutlined />, label: 'System', show: can(user, 'system.update.view') || user?.is_owner },
     ].filter((item) => item.show)), [user]);
+    const activeMenuItem = menuItems.find((item) => item.key === activeKey) || menuItems[0];
+    const roleLabel = user?.is_owner ? 'Owner' : user?.roles?.[0] || 'Staff';
 
     function navigate({ key }) {
-        window.history.pushState({}, '', key);
-        window.dispatchEvent(new PopStateEvent('popstate'));
         window.location.href = key;
     }
 
@@ -89,15 +90,15 @@ export function AppShell() {
     }
 
     return (
-        <Layout className={`app-shell app-shell-${layout}`}>
+        <Layout className={`app-shell app-shell-${layout}`} style={{ '--brand-accent': accent }}>
             {layout === 'vertical' && (
-            <Sider width={260} collapsed={collapsed} className="app-sidebar" breakpoint="lg" collapsedWidth={0}>
+            <Sider width={268} collapsed={collapsed} className="app-sidebar" breakpoint="lg" collapsedWidth={92} trigger={null}>
                 <div className="brand">
                     {logo ? <img src={logo} alt={appName} className="brand-logo" /> : <div className="brand-mark"><SafetyCertificateOutlined /></div>}
                     {!collapsed && (
                         <div>
                             <strong>{appName}</strong>
-                            <span>Pharmacy ERP</span>
+                            <span>ERP and POS workspace</span>
                         </div>
                     )}
                 </div>
@@ -106,7 +107,7 @@ export function AppShell() {
             )}
             <Layout>
                 <Header className="app-topbar">
-                    <Space>
+                    <Space size={14}>
                         {layout === 'vertical' && (
                             <Button
                                 aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -120,11 +121,22 @@ export function AppShell() {
                                 <Menu mode="horizontal" selectedKeys={[activeKey]} items={menuItems} onClick={navigate} className="topbar-menu" />
                             </>
                         )}
-                        {layout === 'vertical' && <TeamOutlined />}
-                        <Typography.Text strong>{user?.name}</Typography.Text>
+                        {layout === 'vertical' && (
+                            <div className="topbar-title-block">
+                                <Typography.Text className="topbar-app-label">Workspace</Typography.Text>
+                                <Typography.Title level={5}>{activeMenuItem?.label || 'Dashboard'}</Typography.Title>
+                            </div>
+                        )}
                     </Space>
-                    <Space>
-                        <Avatar>{user?.name?.slice(0, 1)}</Avatar>
+                    <Space size={12}>
+                        <Tag className="topbar-role-tag">{roleLabel}</Tag>
+                        <div className="topbar-user">
+                            <div>
+                                <Typography.Text strong>{user?.name}</Typography.Text>
+                                <Typography.Text type="secondary">{user?.email}</Typography.Text>
+                            </div>
+                            <Avatar>{user?.name?.slice(0, 1)}</Avatar>
+                        </div>
                         <Button onClick={logout}>Logout</Button>
                     </Space>
                 </Header>

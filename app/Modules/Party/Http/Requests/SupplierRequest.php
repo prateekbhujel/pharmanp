@@ -8,7 +8,10 @@ class SupplierRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->user()?->is_owner
+            || (bool) $this->user()?->can('party.suppliers.manage')
+            || (bool) $this->user()?->can('purchase.entries.create')
+            || (bool) $this->user()?->can('purchase.orders.manage');
     }
 
     public function rules(): array

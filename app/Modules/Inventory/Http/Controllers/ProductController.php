@@ -3,6 +3,7 @@
 namespace App\Modules\Inventory\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Support\WorkspaceScope;
 use App\Http\Controllers\Controller;
 use App\Modules\Inventory\DTOs\ProductData;
 use App\Modules\Inventory\Http\Requests\ProductIndexRequest;
@@ -27,7 +28,7 @@ class ProductController extends Controller
             'company_id',
             'category_id',
             'is_active',
-        ]));
+        ]), $request->user());
 
         return ProductResource::collection($products);
     }
@@ -46,6 +47,7 @@ class ProductController extends Controller
 
     public function update(ProductUpdateRequest $request, Product $product, ProductService $service): ProductResource
     {
+        WorkspaceScope::ensure($product, $request->user(), ['tenant_id', 'company_id']);
         $this->authorize('update', $product);
 
         $product = $service->update($product, ProductData::fromArray($request->validated()), $request->user());
@@ -55,6 +57,7 @@ class ProductController extends Controller
 
     public function destroy(Request $request, Product $product, ProductService $service): JsonResponse
     {
+        WorkspaceScope::ensure($product, $request->user(), ['tenant_id', 'company_id']);
         $this->authorize('delete', $product);
 
         $service->delete($product, $request->user());
@@ -65,12 +68,22 @@ class ProductController extends Controller
     public function meta(): JsonResponse
     {
         $this->authorize('viewAny', Product::class);
+        $user = request()->user();
 
         return response()->json([
             'data' => [
-                'companies' => Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
-                'units' => Unit::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
-                'categories' => ProductCategory::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+                'companies' => WorkspaceScope::apply(Company::query(), $user, 'companies', ['tenant_id'])
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get(['id', 'name']),
+                'units' => WorkspaceScope::apply(Unit::query(), $user, 'units', ['tenant_id', 'company_id'])
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get(['id', 'name']),
+                'categories' => WorkspaceScope::apply(ProductCategory::query(), $user, 'product_categories', ['tenant_id', 'company_id'])
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get(['id', 'name']),
                 'formulations' => ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Ointment', 'Drops', 'Inhaler', 'Other'],
             ],
         ]);

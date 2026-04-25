@@ -19,11 +19,13 @@ class ProductPolicy
 
     public function update(User $user, Product $product): bool
     {
-        return $user->is_owner || $user->can('inventory.products.update');
+        return ($user->is_owner || $user->can('inventory.products.update'))
+            && (int) $user->company_id === (int) $product->company_id;
     }
 
     public function delete(User $user, Product $product): bool
     {
-        return $user->is_owner || $user->can('inventory.products.delete');
+        return ($user->is_owner || $user->can('inventory.products.delete'))
+            && (int) $user->company_id === (int) $product->company_id;
     }
 }

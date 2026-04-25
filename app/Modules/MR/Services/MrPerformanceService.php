@@ -2,6 +2,7 @@
 
 namespace App\Modules\MR\Services;
 
+use App\Core\Support\WorkspaceScope;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -20,20 +21,23 @@ class MrPerformanceService
         }
 
         $visitTotals = DB::table('representative_visits')
-            ->whereNull('deleted_at')
-            ->whereBetween('visit_date', [$from, $to])
-            ->when($representativeId, fn ($query) => $query->where('medical_representative_id', $representativeId))
-            ->groupBy('medical_representative_id')
-            ->selectRaw('medical_representative_id, COUNT(*) as visits, COALESCE(SUM(order_value), 0) as visit_order_value');
+            ->join('medical_representatives', 'medical_representatives.id', '=', 'representative_visits.medical_representative_id')
+            ->whereNull('representative_visits.deleted_at')
+            ->whereNull('medical_representatives.deleted_at')
+            ->whereBetween('representative_visits.visit_date', [$from, $to])
+            ->when($user, fn ($query) => WorkspaceScope::apply($query, $user, 'medical_representatives', ['tenant_id', 'company_id']))
+            ->when($representativeId, fn ($query) => $query->where('representative_visits.medical_representative_id', $representativeId))
+            ->groupBy('representative_visits.medical_representative_id')
+            ->selectRaw('representative_visits.medical_representative_id, COUNT(*) as visits, COALESCE(SUM(representative_visits.order_value), 0) as visit_order_value');
 
-        $invoiceTotals = DB::table('sales_invoices')
+        $invoiceTotals = WorkspaceScope::apply(DB::table('sales_invoices'), $user, 'sales_invoices', ['tenant_id', 'company_id', 'store_id'])
             ->whereNull('deleted_at')
             ->whereBetween('invoice_date', [$from, $to])
             ->when($representativeId, fn ($query) => $query->where('medical_representative_id', $representativeId))
             ->groupBy('medical_representative_id')
             ->selectRaw('medical_representative_id, COUNT(*) as invoices, COALESCE(SUM(grand_total), 0) as invoiced_value');
 
-        $rows = DB::table('medical_representatives')
+        $rows = WorkspaceScope::apply(DB::table('medical_representatives'), $user, 'medical_representatives', ['tenant_id', 'company_id'])
             ->whereNull('medical_representatives.deleted_at')
             ->when($representativeId, fn ($query) => $query->where('medical_representatives.id', $representativeId))
             ->leftJoinSub($visitTotals, 'visit_totals', 'visit_totals.medical_representative_id', '=', 'medical_representatives.id')

@@ -59,6 +59,7 @@ class MrAndTrialBalanceTest extends TestCase
 
         $trialBalance = $this->actingAs($user)->getJson('/api/v1/reports/trial-balance?from=2026-04-01&to=2026-04-30')
             ->assertOk()
+            ->assertJsonPath('summary.balanced', true)
             ->assertJsonPath('summary.difference', 0)
             ->json('data');
 

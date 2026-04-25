@@ -2,6 +2,7 @@
 
 namespace App\Modules\Purchase\Services;
 
+use App\Core\Support\WorkspaceScope;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Models\Batch;
@@ -52,7 +53,7 @@ class PurchaseEntryService
                 $this->postItem($purchase, $item, $user);
             }
 
-            Supplier::query()
+            WorkspaceScope::apply(Supplier::query(), $user, 'suppliers', ['tenant_id', 'company_id'])
                 ->whereKey($data['supplier_id'])
                 ->increment('current_balance', round($grandTotal - $paidAmount, 2));
 
@@ -70,7 +71,9 @@ class PurchaseEntryService
 
     private function postItem(Purchase $purchase, array $item, User $user): void
     {
-        $product = Product::query()->lockForUpdate()->findOrFail($item['product_id']);
+        $product = WorkspaceScope::apply(Product::query(), $user, 'products', ['tenant_id', 'company_id'])
+            ->lockForUpdate()
+            ->findOrFail($item['product_id']);
         $quantity = (float) $item['quantity'];
         $freeQuantity = (float) ($item['free_quantity'] ?? 0);
         $receivedQuantity = $quantity + $freeQuantity;

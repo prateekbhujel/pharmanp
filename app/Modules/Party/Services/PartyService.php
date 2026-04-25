@@ -3,6 +3,7 @@
 namespace App\Modules\Party\Services;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Support\WorkspaceScope;
 use App\Models\User;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
@@ -20,14 +21,14 @@ class PartyService
         'created_at' => 'created_at',
     ];
 
-    public function suppliers(TableQueryData $table): LengthAwarePaginator
+    public function suppliers(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
-        return $this->paginate(Supplier::query(), $table);
+        return $this->paginate(Supplier::query(), $table, $user, 'suppliers');
     }
 
-    public function customers(TableQueryData $table): LengthAwarePaginator
+    public function customers(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
-        return $this->paginate(Customer::query(), $table);
+        return $this->paginate(Customer::query(), $table, $user, 'customers');
     }
 
     public function createSupplier(array $data, User $user): Supplier
@@ -50,9 +51,10 @@ class PartyService
         return $this->update($customer, $data, $user);
     }
 
-    private function paginate(Builder $query, TableQueryData $table): LengthAwarePaginator
+    private function paginate(Builder $query, TableQueryData $table, ?User $user, string $tableName): LengthAwarePaginator
     {
         $query->select('*');
+        WorkspaceScope::apply($query, $user, $tableName, ['tenant_id', 'company_id']);
 
         $query->when($table->search, function (Builder $builder, string $search) {
             $builder->where(function (Builder $inner) use ($search) {
