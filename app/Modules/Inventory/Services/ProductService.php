@@ -3,7 +3,6 @@
 namespace App\Modules\Inventory\Services;
 
 use App\Core\DTOs\TableQueryData;
-use App\Core\Support\WorkspaceScope;
 use App\Models\User;
 use App\Modules\Inventory\DTOs\ProductData;
 use App\Modules\Inventory\Models\Product;
@@ -24,14 +23,12 @@ class ProductService
         'created_at' => 'products.created_at',
     ];
 
-    public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
+    public function paginate(TableQueryData $table): LengthAwarePaginator
     {
         $query = Product::query()
             ->select('products.*')
             ->with(['company:id,name', 'unit:id,name', 'category:id,name'])
             ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available');
-
-        WorkspaceScope::apply($query, $user, 'products', ['tenant_id', 'company_id']);
 
         $this->applyFilters($query, $table);
         $sortColumn = self::SORTS[$table->sortField] ?? self::SORTS['created_at'];

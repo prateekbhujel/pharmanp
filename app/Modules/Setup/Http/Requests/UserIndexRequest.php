@@ -20,8 +20,6 @@ class UserIndexRequest extends FormRequest
             'sort_field' => ['nullable', 'in:name,email,is_active,last_login_at,created_at'],
             'sort_order' => ['nullable', 'in:asc,desc'],
             'is_active' => ['nullable', 'boolean'],
-            'is_owner' => ['nullable', 'boolean'],
-            'medical_representative_linked' => ['nullable', 'boolean'],
             'role_name' => ['nullable', 'string', 'max:80'],
         ];
     }

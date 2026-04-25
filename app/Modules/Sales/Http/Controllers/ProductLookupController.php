@@ -2,7 +2,6 @@
 
 namespace App\Modules\Sales\Http\Controllers;
 
-use App\Core\Support\WorkspaceScope;
 use App\Http\Controllers\Controller;
 use App\Modules\Inventory\Http\Resources\ProductResource;
 use App\Modules\Inventory\Models\Product;
@@ -12,17 +11,6 @@ class ProductLookupController extends Controller
 {
     public function __invoke(Request $request)
     {
-        abort_unless(
-            $request->user()?->is_owner
-            || $request->user()?->can('sales.pos.use')
-            || $request->user()?->can('sales.invoices.create')
-            || $request->user()?->can('purchase.entries.create')
-            || $request->user()?->can('purchase.orders.manage')
-            || $request->user()?->can('reports.view')
-            || $request->user()?->can('inventory.products.view'),
-            403
-        );
-
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:120'],
             'barcode' => ['nullable', 'string', 'max:120'],
@@ -33,17 +21,15 @@ class ProductLookupController extends Controller
                 'company:id,name',
                 'unit:id,name',
                 'category:id,name',
-                'batches' => fn ($query) => WorkspaceScope::apply($query, $request->user(), 'batches', ['tenant_id', 'company_id', 'store_id'])
+                'batches' => fn ($query) => $query
                     ->where('is_active', true)
                     ->where('quantity_available', '>', 0)
                     ->orderByRaw('expires_at IS NULL')
                     ->orderBy('expires_at')
                     ->limit(8),
             ])
-            ->withSum(['batches as stock_on_hand' => fn ($query) => WorkspaceScope::apply($query, $request->user(), 'batches', ['tenant_id', 'company_id', 'store_id'])->where('is_active', true)], 'quantity_available')
+            ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available')
             ->where('is_active', true);
-
-        WorkspaceScope::apply($query, $request->user(), 'products', ['tenant_id', 'company_id']);
 
         if (! empty($validated['barcode'])) {
             $query->where(function ($builder) use ($validated) {

@@ -2,7 +2,6 @@
 
 namespace App\Modules\Sales\Services;
 
-use App\Core\Support\WorkspaceScope;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Models\Batch;
@@ -55,7 +54,7 @@ class SalesInvoiceService
             }
 
             if (! empty($data['customer_id'])) {
-                WorkspaceScope::apply(Customer::query(), $user, 'customers', ['tenant_id', 'company_id'])
+                Customer::query()
                     ->whereKey($data['customer_id'])
                     ->increment('current_balance', round($grandTotal - $paidAmount, 2));
             }
@@ -74,10 +73,9 @@ class SalesInvoiceService
 
     private function postItem(SalesInvoice $invoice, array $item, User $user): void
     {
-        $product = WorkspaceScope::apply(Product::query(), $user, 'products', ['tenant_id', 'company_id'])
-            ->findOrFail($item['product_id']);
+        $product = Product::query()->findOrFail($item['product_id']);
         $quantity = (float) $item['quantity'];
-        $batch = $this->resolveBatch($user, $product->id, $quantity, $item['batch_id'] ?? null);
+        $batch = $this->resolveBatch($product->id, $quantity, $item['batch_id'] ?? null);
         $unitPrice = (float) $item['unit_price'];
         $discountPercent = (float) ($item['discount_percent'] ?? 0);
         $gross = $quantity * $unitPrice;
@@ -114,9 +112,9 @@ class SalesInvoiceService
         ]);
     }
 
-    private function resolveBatch(User $user, int $productId, float $quantity, ?int $batchId): Batch
+    private function resolveBatch(int $productId, float $quantity, ?int $batchId): Batch
     {
-        $query = WorkspaceScope::apply(Batch::query(), $user, 'batches', ['tenant_id', 'company_id', 'store_id'])
+        $query = Batch::query()
             ->where('product_id', $productId)
             ->where('is_active', true)
             ->where('quantity_available', '>=', $quantity)

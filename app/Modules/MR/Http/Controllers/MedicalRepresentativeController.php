@@ -3,7 +3,6 @@
 namespace App\Modules\MR\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
-use App\Core\Support\WorkspaceScope;
 use App\Http\Controllers\Controller;
 use App\Modules\MR\Http\Requests\MedicalRepresentativeRequest;
 use App\Modules\MR\Models\MedicalRepresentative;
@@ -42,8 +41,6 @@ class MedicalRepresentativeController extends Controller
 
     public function update(MedicalRepresentativeRequest $request, MedicalRepresentative $representative, MrManagementService $service): JsonResponse
     {
-        WorkspaceScope::ensure($representative, $request->user(), ['tenant_id', 'company_id']);
-
         return response()->json([
             'data' => $service->updateRepresentative($representative, $request->validated(), $request->user()),
             'message' => 'Medical representative updated.',
@@ -53,7 +50,6 @@ class MedicalRepresentativeController extends Controller
     public function destroy(Request $request, MedicalRepresentative $representative, MrManagementService $service): JsonResponse
     {
         abort_unless($request->user()?->is_owner || $request->user()?->can('mr.manage'), 403);
-        WorkspaceScope::ensure($representative, $request->user(), ['tenant_id', 'company_id']);
 
         $service->deleteRepresentative($representative, $request->user());
 
@@ -65,7 +61,7 @@ class MedicalRepresentativeController extends Controller
         abort_unless($request->user()?->is_owner || $request->user()?->can('mr.view') || $request->user()?->can('sales.invoices.create'), 403);
 
         return response()->json([
-            'data' => WorkspaceScope::apply(MedicalRepresentative::query(), $request->user(), 'medical_representatives', ['tenant_id', 'company_id'])
+            'data' => MedicalRepresentative::query()
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(['id', 'name', 'territory', 'monthly_target']),

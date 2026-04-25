@@ -3,7 +3,6 @@
 namespace App\Modules\MR\Services;
 
 use App\Core\DTOs\TableQueryData;
-use App\Core\Support\WorkspaceScope;
 use App\Models\User;
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\MR\Models\RepresentativeVisit;
@@ -31,7 +30,6 @@ class MrManagementService
     public function representatives(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
         $query = MedicalRepresentative::query()
-            ->when($user, fn (Builder $builder) => WorkspaceScope::apply($builder, $user, 'medical_representatives', ['tenant_id', 'company_id']))
             ->when($user && $this->isRepresentativeUser($user), fn (Builder $builder) => $builder->whereKey($user->medical_representative_id))
             ->when($table->search, function (Builder $builder, string $search) {
                 $builder->where(function (Builder $inner) use ($search) {
@@ -51,7 +49,6 @@ class MrManagementService
     {
         $query = RepresentativeVisit::query()
             ->with(['medicalRepresentative:id,name', 'customer:id,name'])
-            ->when($user, fn (Builder $builder) => $builder->whereHas('medicalRepresentative', fn (Builder $mrQuery) => WorkspaceScope::apply($mrQuery, $user, 'medical_representatives', ['tenant_id', 'company_id'])))
             ->when($user && $this->isRepresentativeUser($user), fn (Builder $builder) => $builder->where('medical_representative_id', $user->medical_representative_id))
             ->when($table->search, function (Builder $builder, string $search) {
                 $builder->where(function (Builder $inner) use ($search) {

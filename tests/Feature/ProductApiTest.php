@@ -18,8 +18,8 @@ class ProductApiTest extends TestCase
     public function test_owner_can_create_update_list_and_soft_delete_product(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create(['is_owner' => true]);
         $company = Company::query()->create(['name' => 'Himal Pharma']);
-        $user = User::factory()->create(['company_id' => $company->id, 'is_owner' => true]);
         $unit = Unit::query()->create(['company_id' => $company->id, 'name' => 'Strip', 'type' => 'both']);
         $category = ProductCategory::query()->create(['company_id' => $company->id, 'name' => 'Medicine']);
 
@@ -60,8 +60,7 @@ class ProductApiTest extends TestCase
     public function test_owner_can_manage_inventory_master_records(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);
-        $company = Company::query()->create(['name' => 'Workspace Pharma']);
-        $user = User::factory()->create(['company_id' => $company->id, 'is_owner' => true]);
+        $user = User::factory()->create(['is_owner' => true]);
 
         $response = $this->actingAs($user)->postJson('/api/v1/inventory/masters/companies', [
             'name' => 'Nepal Pharma Manufacturer',

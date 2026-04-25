@@ -2,7 +2,6 @@
 
 namespace App\Modules\Reports\Services;
 
-use App\Core\Support\WorkspaceScope;
 use App\Modules\Accounting\Support\AccountCatalog;
 use App\Modules\MR\Services\MrPerformanceService;
 use Illuminate\Http\Request;
@@ -44,7 +43,7 @@ class ReportService
 
     private function sales(Request $request, string $from, string $to, int $perPage): array
     {
-        $query = WorkspaceScope::apply(DB::table('sales_invoices'), $request->user(), 'sales_invoices', ['tenant_id', 'company_id', 'store_id'])
+        $query = DB::table('sales_invoices')
             ->leftJoin('customers', 'customers.id', '=', 'sales_invoices.customer_id')
             ->leftJoin('medical_representatives', 'medical_representatives.id', '=', 'sales_invoices.medical_representative_id')
             ->whereNull('sales_invoices.deleted_at')
@@ -60,7 +59,7 @@ class ReportService
 
     private function accountBook(Request $request, string $from, string $to, int $perPage, ?string $accountType = null): array
     {
-        $query = WorkspaceScope::apply(DB::table('account_transactions'), $request->user(), 'account_transactions', ['tenant_id', 'company_id'])
+        $query = DB::table('account_transactions')
             ->leftJoin('customers', function ($join) {
                 $join->on('customers.id', '=', 'account_transactions.party_id')
                     ->where('account_transactions.party_type', '=', 'customer');
@@ -87,11 +86,11 @@ class ReportService
         })->all();
 
         $page['summary'] = [
-            'debit' => round((float) WorkspaceScope::apply(DB::table('account_transactions'), $request->user(), 'account_transactions', ['tenant_id', 'company_id'])
+            'debit' => round((float) DB::table('account_transactions')
                 ->whereBetween('transaction_date', [$from, $to])
                 ->when($accountType, fn ($builder) => $builder->where('account_type', $accountType))
                 ->sum('debit'), 2),
-            'credit' => round((float) WorkspaceScope::apply(DB::table('account_transactions'), $request->user(), 'account_transactions', ['tenant_id', 'company_id'])
+            'credit' => round((float) DB::table('account_transactions')
                 ->whereBetween('transaction_date', [$from, $to])
                 ->when($accountType, fn ($builder) => $builder->where('account_type', $accountType))
                 ->sum('credit'), 2),
@@ -111,7 +110,7 @@ class ReportService
 
     private function purchase(Request $request, string $from, string $to, int $perPage): array
     {
-        $query = WorkspaceScope::apply(DB::table('purchases'), $request->user(), 'purchases', ['tenant_id', 'company_id', 'store_id'])
+        $query = DB::table('purchases')
             ->join('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
             ->whereNull('purchases.deleted_at')
             ->whereBetween('purchases.purchase_date', [$from, $to])
@@ -129,7 +128,7 @@ class ReportService
             throw ValidationException::withMessages(['supplier_id' => 'Supplier is required for supplier ledger.']);
         }
 
-        $query = WorkspaceScope::apply(DB::table('purchases'), request()->user(), 'purchases', ['tenant_id', 'company_id', 'store_id'])
+        $query = DB::table('purchases')
             ->where('supplier_id', $supplierId)
             ->whereNull('deleted_at')
             ->whereBetween('purchase_date', [$from, $to])
@@ -142,15 +141,11 @@ class ReportService
 
     private function stock(Request $request, int $perPage): array
     {
-        $query = WorkspaceScope::apply(DB::table('products'), $request->user(), 'products', ['tenant_id', 'company_id'])
-            ->leftJoin('batches', function ($join) use ($request) {
+        $query = DB::table('products')
+            ->leftJoin('batches', function ($join) {
                 $join->on('batches.product_id', '=', 'products.id')
                     ->whereNull('batches.deleted_at')
                     ->where('batches.is_active', true);
-
-                if ($request->user()?->store_id) {
-                    $join->where('batches.store_id', $request->user()->store_id);
-                }
             })
             ->whereNull('products.deleted_at')
             ->when($request->filled('company_id'), fn ($builder) => $builder->where('products.company_id', $request->integer('company_id')))
@@ -164,15 +159,11 @@ class ReportService
 
     private function lowStock(Request $request, int $perPage): array
     {
-        $query = WorkspaceScope::apply(DB::table('products'), $request->user(), 'products', ['tenant_id', 'company_id'])
-            ->leftJoin('batches', function ($join) use ($request) {
+        $query = DB::table('products')
+            ->leftJoin('batches', function ($join) {
                 $join->on('batches.product_id', '=', 'products.id')
                     ->whereNull('batches.deleted_at')
                     ->where('batches.is_active', true);
-
-                if ($request->user()?->store_id) {
-                    $join->where('batches.store_id', $request->user()->store_id);
-                }
             })
             ->whereNull('products.deleted_at')
             ->where('products.is_active', true)
@@ -188,7 +179,7 @@ class ReportService
 
     private function expiry(Request $request, string $to, int $perPage): array
     {
-        $query = WorkspaceScope::apply(DB::table('batches'), $request->user(), 'batches', ['tenant_id', 'company_id', 'store_id'])
+        $query = DB::table('batches')
             ->join('products', 'products.id', '=', 'batches.product_id')
             ->whereNull('batches.deleted_at')
             ->where('batches.quantity_available', '>', 0)
@@ -202,15 +193,11 @@ class ReportService
 
     private function supplierPerformance(Request $request, string $from, string $to, int $perPage): array
     {
-        $query = WorkspaceScope::apply(DB::table('suppliers'), $request->user(), 'suppliers', ['tenant_id', 'company_id'])
-            ->leftJoin('purchases', function ($join) use ($from, $to, $request) {
+        $query = DB::table('suppliers')
+            ->leftJoin('purchases', function ($join) use ($from, $to) {
                 $join->on('purchases.supplier_id', '=', 'suppliers.id')
                     ->whereNull('purchases.deleted_at')
                     ->whereBetween('purchases.purchase_date', [$from, $to]);
-
-                if ($request->user()?->store_id) {
-                    $join->where('purchases.store_id', $request->user()->store_id);
-                }
             })
             ->whereNull('suppliers.deleted_at')
             ->groupBy('suppliers.id', 'suppliers.name', 'suppliers.current_balance')
@@ -222,7 +209,7 @@ class ReportService
 
     private function trialBalance(Request $request, string $from, string $to, int $perPage): array
     {
-        $summary = WorkspaceScope::apply(DB::table('account_transactions'), $request->user(), 'account_transactions', ['tenant_id', 'company_id'])
+        $summary = DB::table('account_transactions')
             ->whereBetween('transaction_date', [$from, $to])
             ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
             ->groupBy('account_type')
@@ -263,13 +250,9 @@ class ReportService
                 'last_page' => $paginator->lastPage(),
             ],
             'summary' => [
-                'accounts' => $rows->count(),
                 'debit' => round((float) $rows->sum('debit'), 2),
                 'credit' => round((float) $rows->sum('credit'), 2),
-                'closing_debit' => round((float) $rows->where('closing_side', 'Dr')->sum('closing_amount'), 2),
-                'closing_credit' => round((float) $rows->where('closing_side', 'Cr')->sum('closing_amount'), 2),
                 'difference' => round(abs((float) $rows->sum('debit') - (float) $rows->sum('credit')), 2),
-                'balanced' => round(abs((float) $rows->sum('debit') - (float) $rows->sum('credit')), 2) === 0.0,
             ],
         ];
     }
@@ -296,7 +279,7 @@ class ReportService
             throw ValidationException::withMessages(['customer_id' => 'Customer is required for customer ledger.']);
         }
 
-        $query = WorkspaceScope::apply(DB::table('sales_invoices'), request()->user(), 'sales_invoices', ['tenant_id', 'company_id', 'store_id'])
+        $query = DB::table('sales_invoices')
             ->where('customer_id', $customerId)
             ->whereNull('deleted_at')
             ->whereBetween('invoice_date', [$from, $to])
@@ -312,7 +295,7 @@ class ReportService
             throw ValidationException::withMessages(['product_id' => 'Product is required for product movement.']);
         }
 
-        $query = WorkspaceScope::apply(DB::table('stock_movements'), request()->user(), 'stock_movements', ['tenant_id', 'company_id', 'store_id'])
+        $query = DB::table('stock_movements')
             ->leftJoin('batches', 'batches.id', '=', 'stock_movements.batch_id')
             ->where('stock_movements.product_id', $productId)
             ->whereBetween('stock_movements.movement_date', [$from, $to])

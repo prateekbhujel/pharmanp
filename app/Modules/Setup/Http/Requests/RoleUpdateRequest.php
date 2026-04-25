@@ -9,7 +9,7 @@ class RoleUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->is_owner || (bool) $this->user()?->can('roles.manage');
+        return (bool) $this->user()?->is_owner;
     }
 
     public function rules(): array

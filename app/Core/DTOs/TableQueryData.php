@@ -22,16 +22,6 @@ final readonly class TableQueryData
         foreach ($allowedFilters as $filter) {
             $value = $request->input($filter);
 
-            if (is_string($value)) {
-                $normalized = strtolower(trim($value));
-
-                if (in_array($normalized, ['true', '1'], true)) {
-                    $value = true;
-                } elseif (in_array($normalized, ['false', '0'], true)) {
-                    $value = false;
-                }
-            }
-
             if ($value !== null && $value !== '') {
                 $filters[$filter] = $value;
             }

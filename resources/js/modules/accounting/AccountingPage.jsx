@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Space, Table, Tabs, Tag, Typography } from 'antd';
+import { App, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space, Statistic, Table, Tabs } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../core/components/PageHeader';
@@ -16,33 +16,6 @@ const bookOptions = [
     { value: 'ledger', label: 'Ledger' },
     { value: 'trial-balance', label: 'Trial Balance' },
 ];
-
-const bookDescriptions = {
-    'day-book': 'All posted accounting movements for the selected date range.',
-    'cash-book': 'Cash-only entries, receipts and payments posted into the books.',
-    'bank-book': 'Bank transactions posted into vouchers and operational flows.',
-    'ledger': 'Detailed ledger for one account head with optional party filter.',
-    'trial-balance': 'Debit, credit and closing balance summary grouped by account head.',
-};
-
-const moneySummaryKeys = new Set(['debit', 'credit', 'difference', 'closing_debit', 'closing_credit']);
-
-function SummaryMetric({ title, value, money = false, tone = 'default' }) {
-    return (
-        <Card className={`summary-stat-card summary-stat-card-${tone}`}>
-            <Typography.Text type="secondary">{title}</Typography.Text>
-            <div className="summary-stat-card-value">
-                {money ? <Money value={value || 0} /> : <strong>{value || 0}</strong>}
-            </div>
-        </Card>
-    );
-}
-
-function labelize(value) {
-    return String(value || '')
-        .replaceAll('_', ' ')
-        .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
 
 export function AccountingPage() {
     const { notification } = App.useApp();
@@ -96,13 +69,13 @@ export function AccountingPage() {
         }
     }
 
-    async function loadBook(page = 1, perPage = bookMeta.per_page) {
+    async function loadBook(page = 1) {
         setBookLoading(true);
         try {
             const { data } = await http.get(`${endpoints.reports}/${bookReport}`, {
                 params: {
                     page,
-                    per_page: perPage,
+                    per_page: bookMeta.per_page,
                     from: bookRange?.[0]?.format('YYYY-MM-DD'),
                     to: bookRange?.[1]?.format('YYYY-MM-DD'),
                     ...bookFilters,
@@ -118,10 +91,8 @@ export function AccountingPage() {
 
     const debit = useMemo(() => entries.filter((entry) => entry.entry_type === 'debit').reduce((sum, entry) => sum + Number(entry.amount || 0), 0), [entries]);
     const credit = useMemo(() => entries.filter((entry) => entry.entry_type === 'credit').reduce((sum, entry) => sum + Number(entry.amount || 0), 0), [entries]);
-    const isTrialBalance = bookReport === 'trial-balance';
-    const isLedger = bookReport === 'ledger';
 
-    const voucherColumns = [
+    const columns = [
         {
             title: 'Account',
             render: (_, row, index) => (
@@ -176,52 +147,11 @@ export function AccountingPage() {
         { title: 'Notes', render: (_, row, index) => <Input value={row.notes} onChange={(event) => updateEntry(index, { notes: event.target.value })} />, width: 220 },
         { title: '', render: (_, row, index) => <Button danger icon={<DeleteOutlined />} onClick={() => setEntries(entries.filter((_, rowIndex) => rowIndex !== index))} />, width: 70 },
     ];
-
-    const bookColumns = useMemo(() => {
-        if (isTrialBalance) {
-            return [
-                { title: 'Code', dataIndex: 'code', width: 110 },
-                { title: 'Account', dataIndex: 'account', width: 220 },
-                { title: 'Group', dataIndex: 'group', width: 160, render: (value) => <Tag>{value}</Tag> },
-                { title: 'Nature', dataIndex: 'nature', width: 110, render: (value) => <Tag color={value === 'DEBIT' ? 'blue' : 'purple'}>{value}</Tag> },
-                { title: 'Debit', dataIndex: 'debit', align: 'right', width: 140, render: (value) => <Money value={value} /> },
-                { title: 'Credit', dataIndex: 'credit', align: 'right', width: 140, render: (value) => <Money value={value} /> },
-                { title: 'Closing', dataIndex: 'closing_amount', align: 'right', width: 150, render: (value) => <Money value={value} /> },
-                { title: 'Side', dataIndex: 'closing_side', width: 100, render: (value) => <Tag color={value === 'Dr' ? 'blue' : 'volcano'}>{value}</Tag> },
-            ];
-        }
-
-        return [
-            { title: 'Date', dataIndex: 'date', width: 120 },
-            { title: 'Account', dataIndex: 'account_label', width: 180, render: (value, row) => value || labelize(row.account_type) },
-            { title: 'Party', dataIndex: 'party_name', width: 180, render: (value) => value || '-' },
-            {
-                title: 'Source',
-                width: 170,
-                render: (_, row) => (
-                    <span>{labelize(row.source_type)}{row.source_id ? ` #${row.source_id}` : ''}</span>
-                ),
-            },
-            { title: 'Debit', dataIndex: 'debit', align: 'right', width: 140, render: (value) => <Money value={value} /> },
-            { title: 'Credit', dataIndex: 'credit', align: 'right', width: 140, render: (value) => <Money value={value} /> },
-            { title: 'Notes', dataIndex: 'notes', render: (value) => value || '-' },
-        ];
-    }, [isTrialBalance]);
-
-    const bookSummaryMetrics = useMemo(() => {
-        if (!bookSummary) {
-            return [];
-        }
-
-        return Object.entries(bookSummary)
-            .filter(([key]) => key !== 'balanced')
-            .map(([key, value]) => ({
-            key,
-            title: labelize(key),
-            value,
-            money: moneySummaryKeys.has(key),
-        }));
-    }, [bookSummary]);
+    const bookColumns = Object.keys(bookRows[0] || {}).map((key) => ({
+        title: key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        dataIndex: key,
+        render: (value) => typeof value === 'number' ? value.toLocaleString() : value,
+    }));
 
     return (
         <div className="page-stack">
@@ -240,7 +170,7 @@ export function AccountingPage() {
                                     </Form.Item>
                                 </div>
                                 <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
-                                <Table rowKey={(_, index) => index} columns={voucherColumns} dataSource={entries} pagination={false} scroll={{ x: 1080 }} />
+                                <Table rowKey={(_, index) => index} columns={columns} dataSource={entries} pagination={false} scroll={{ x: 1080 }} />
                                 <div className="transaction-footer">
                                     <Button icon={<PlusOutlined />} onClick={() => setEntries([...entries, { ...emptyEntry }])}>Add Entry</Button>
                                     <Space>
@@ -258,11 +188,20 @@ export function AccountingPage() {
                     label: 'Books & Trial Balance',
                     children: (
                         <div className="page-stack">
-                            <Card className="report-surface-card">
+                            {bookSummary && (
+                                <Row gutter={[16, 16]}>
+                                    {Object.entries(bookSummary).map(([key, value]) => (
+                                        <Col xs={24} sm={12} xl={6} key={key}>
+                                            <Card><Statistic title={key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())} value={value || 0} /></Card>
+                                        </Col>
+                                    ))}
+                                </Row>
+                            )}
+                            <Card>
                                 <div className="report-filter-grid">
                                     <Select value={bookReport} onChange={(value) => { setBookReport(value); setBookFilters({}); }} options={bookOptions} />
                                     <DatePicker.RangePicker value={bookRange} onChange={setBookRange} />
-                                    {isLedger && (
+                                    {bookReport === 'ledger' && (
                                         <>
                                             <Select allowClear placeholder="Account" value={bookFilters.account_type} onChange={(value) => setBookFilters((current) => ({ ...current, account_type: value }))} options={accountCatalog} />
                                             <Select allowClear placeholder="Party Type" value={bookFilters.party_type} onChange={(value) => setBookFilters((current) => ({ ...current, party_type: value, party_id: undefined }))} options={[
@@ -273,74 +212,19 @@ export function AccountingPage() {
                                             {bookFilters.party_type === 'supplier' && <Select allowClear placeholder="Supplier" value={bookFilters.party_id} onChange={(value) => setBookFilters((current) => ({ ...current, party_id: value }))} options={suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
                                         </>
                                     )}
-                                    <Button onClick={() => loadBook(1)}>Refresh</Button>
                                 </div>
-                                <Typography.Text type="secondary">{bookDescriptions[bookReport]}</Typography.Text>
-                            </Card>
-
-                            {bookSummaryMetrics.length > 0 && (
-                                <Row gutter={[16, 16]}>
-                                    {bookSummaryMetrics.map((item) => (
-                                        <Col xs={24} sm={12} xl={6} key={item.key}>
-                                            <SummaryMetric
-                                                title={item.title}
-                                                value={item.value}
-                                                money={item.money}
-                                                tone={item.key === 'difference' && item.value > 0 ? 'danger' : item.key === 'balanced' && item.value ? 'success' : 'default'}
-                                            />
-                                        </Col>
-                                    ))}
-                                </Row>
-                            )}
-
-                            {isTrialBalance && bookSummary && (
-                                <Card className="trial-balance-status-card">
-                                    <div className="trial-balance-status-row">
-                                        <div>
-                                            <Typography.Text strong>Trial Balance Status</Typography.Text>
-                                            <Typography.Paragraph>
-                                                {bookSummary.balanced
-                                                    ? 'Debit and credit totals are currently balanced for the selected period.'
-                                                    : 'There is still a difference between debit and credit totals in the selected period.'}
-                                            </Typography.Paragraph>
-                                        </div>
-                                        <Tag color={bookSummary.balanced ? 'green' : 'red'}>
-                                            {bookSummary.balanced ? 'Balanced' : 'Needs review'}
-                                        </Tag>
-                                    </div>
-                                </Card>
-                            )}
-
-                            <Card>
                                 <Table
                                     loading={bookLoading}
-                                    rowKey={(row, index) => row.code || row.date || index}
+                                    rowKey={(_, index) => index}
                                     columns={bookColumns}
                                     dataSource={bookRows}
                                     pagination={{
                                         current: bookMeta.current_page,
                                         pageSize: bookMeta.per_page,
                                         total: bookMeta.total,
-                                        showSizeChanger: true,
-                                        onChange: (page, pageSize) => {
-                                            setBookMeta((current) => ({ ...current, per_page: pageSize }));
-                                            loadBook(page, pageSize);
-                                        },
+                                        onChange: loadBook,
                                     }}
-                                    scroll={{ x: isTrialBalance ? 1180 : 960 }}
-                                    summary={() => isTrialBalance && bookSummary ? (
-                                        <Table.Summary.Row>
-                                            <Table.Summary.Cell index={0} colSpan={4}><strong>Totals</strong></Table.Summary.Cell>
-                                            <Table.Summary.Cell index={4} align="right"><Money value={bookSummary.debit} /></Table.Summary.Cell>
-                                            <Table.Summary.Cell index={5} align="right"><Money value={bookSummary.credit} /></Table.Summary.Cell>
-                                            <Table.Summary.Cell index={6} align="right"><Money value={bookSummary.difference} /></Table.Summary.Cell>
-                                            <Table.Summary.Cell index={7}>
-                                                <Tag color={bookSummary.balanced ? 'green' : 'red'}>
-                                                    {bookSummary.balanced ? 'OK' : 'Diff'}
-                                                </Tag>
-                                            </Table.Summary.Cell>
-                                        </Table.Summary.Row>
-                                    ) : null}
+                                    scroll={{ x: true }}
                                 />
                             </Card>
                         </div>

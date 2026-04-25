@@ -9,7 +9,7 @@ class ProductIndexRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->is_owner || (bool) $this->user()?->can('inventory.products.view');
+        return true;
     }
 
     public function rules(): array

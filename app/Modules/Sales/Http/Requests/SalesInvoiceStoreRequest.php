@@ -8,9 +8,7 @@ class SalesInvoiceStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->is_owner
-            || (bool) $this->user()?->can('sales.invoices.create')
-            || (bool) $this->user()?->can('sales.pos.use');
+        return true;
     }
 
     public function rules(): array
