@@ -1,0 +1,337 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+@source '../**/*.jsx';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+html,
+body,
+#pharmanp-root {
+    min-height: 100%;
+}
+
+body {
+    background: #f3f4f6;
+    color: #111827;
+    margin: 0;
+}
+
+.screen-center {
+    align-items: center;
+    display: flex;
+    min-height: 100vh;
+    justify-content: center;
+}
+
+.app-shell {
+    min-height: 100vh;
+}
+
+.app-sidebar {
+    background: #ffffff;
+    border-right: 1px solid #e5e7eb;
+}
+
+.brand {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    min-height: 72px;
+    padding: 0 18px;
+}
+
+.brand-mark {
+    align-items: center;
+    background: #0f766e;
+    border-radius: 8px;
+    color: #ffffff;
+    display: flex;
+    height: 38px;
+    justify-content: center;
+    width: 38px;
+}
+
+.brand strong,
+.brand span {
+    display: block;
+}
+
+.brand span {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.app-topbar {
+    align-items: center;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    height: 64px;
+    justify-content: space-between;
+    padding: 0 24px;
+}
+
+.app-content {
+    padding: 24px;
+}
+
+.page-stack {
+    display: grid;
+    gap: 16px;
+}
+
+.page-header {
+    align-items: center;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.page-header h2 {
+    margin-bottom: 2px;
+}
+
+.metric-card {
+    min-height: 126px;
+}
+
+.finance-stack,
+.command-stack {
+    display: grid;
+    gap: 12px;
+}
+
+.finance-stack div {
+    align-items: center;
+    border-bottom: 1px solid #eef2f7;
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 10px;
+}
+
+.finance-stack div:last-child {
+    border-bottom: 0;
+}
+
+.table-toolbar,
+.pos-toolbar {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(260px, 1fr) 220px auto;
+    margin-bottom: 16px;
+}
+
+.import-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.mapping-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.mapping-row {
+    align-items: center;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr);
+}
+
+.form-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.switch-row {
+    display: flex;
+    gap: 24px;
+}
+
+.full-width {
+    width: 100%;
+}
+
+.tabular {
+    font-variant-numeric: tabular-nums;
+}
+
+.mt-16 {
+    margin-top: 16px;
+}
+
+.pos-total {
+    align-items: center;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    font-size: 18px;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-top: 16px;
+    padding-top: 16px;
+}
+
+.customer-select {
+    min-width: 220px;
+}
+
+.auth-page {
+    align-items: center;
+    background: #eef2f7;
+    display: flex;
+    min-height: 100vh;
+    justify-content: center;
+    padding: 20px;
+}
+
+.auth-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 18px 45px rgb(15 23 42 / 8%);
+    max-width: 420px;
+    padding: 28px;
+    width: 100%;
+}
+
+.auth-brand {
+    margin-bottom: 20px;
+}
+
+.auth-brand span,
+.auth-brand strong {
+    display: block;
+}
+
+.auth-brand span {
+    color: #0f766e;
+    font-weight: 700;
+}
+
+.auth-brand strong {
+    font-size: 24px;
+}
+
+.auth-form {
+    display: grid;
+    gap: 14px;
+}
+
+.auth-form label {
+    color: #334155;
+    display: grid;
+    font-size: 14px;
+    gap: 6px;
+}
+
+.auth-form input {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font: inherit;
+    min-height: 40px;
+    padding: 8px 10px;
+}
+
+.auth-check {
+    align-items: center;
+    display: flex !important;
+    gap: 8px !important;
+}
+
+.auth-check input {
+    min-height: 0;
+}
+
+.auth-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    color: #991b1b;
+    padding: 10px;
+}
+
+.auth-form button {
+    background: #0f766e;
+    border: 0;
+    border-radius: 6px;
+    color: #ffffff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    min-height: 42px;
+}
+
+.setup-page {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 320px minmax(0, 720px);
+    min-height: 100vh;
+    padding: 32px;
+}
+
+.setup-panel {
+    background: #0f172a;
+    color: #ffffff;
+    padding: 28px;
+}
+
+.setup-panel .ant-steps-item-title,
+.setup-panel .ant-steps-item-description {
+    color: #ffffff !important;
+}
+
+.setup-brand {
+    margin-bottom: 28px;
+}
+
+.setup-brand strong,
+.setup-brand span {
+    display: block;
+}
+
+.setup-brand strong {
+    font-size: 28px;
+}
+
+.setup-brand span {
+    color: #cbd5e1;
+}
+
+.setup-card {
+    align-self: start;
+}
+
+@media (max-width: 900px) {
+    .app-content {
+        padding: 16px;
+    }
+
+    .page-header,
+    .pos-toolbar {
+        align-items: stretch;
+        grid-template-columns: 1fr;
+    }
+
+    .page-header {
+        flex-direction: column;
+    }
+
+    .table-toolbar,
+    .form-grid,
+    .mapping-row,
+    .setup-page {
+        grid-template-columns: 1fr;
+    }
+
+    .setup-page {
+        padding: 16px;
+    }
+}
