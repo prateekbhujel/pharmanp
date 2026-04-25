@@ -8,15 +8,15 @@
 - The schema avoids database-level foreign keys but keeps indexed relationship columns for performance.
 - Spatie permission is installed and setup seeds a broad owner permission set.
 - Setup now captures company, store, branding, fiscal year and owner details.
-- Import/export, MR, setup invite and feature catalog foundations are present.
+- Import/export, MR and feature catalog foundations are present.
 
 ## What Is Still Foundation, Not Complete ERP
 
-- Purchase order, purchase entry, sales/POS, returns and voucher posting still need full transaction services.
-- Supplier, customer, role/permission and accounting UIs are visible as module surfaces but need CRUD/API implementation.
-- Import preview exists, but confirmed chunked imports and rejected-row download are next.
-- Tenant isolation columns and invite links exist, but global tenant scoping middleware/query helpers must be added before multi-client production hosting.
-- Report pages need dedicated backend query builders before they are production-ready.
+- Returns, payment allocation and report exports are still foundation-level.
+- Supplier, customer, role/permission and accounting UIs have first-pass CRUD/API implementation and need deeper workflow polish.
+- Import preview and confirmed chunked import exist; large-file background workers are a later hardening task.
+- Installation-scoped columns exist, but this product is currently positioned as a standalone per-pharmacy install.
+- Report pages have dedicated first-pass query services and need export formats before they are production-ready.
 
 ## Next Engineering Focus
 

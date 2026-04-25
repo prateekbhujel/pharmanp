@@ -242,7 +242,17 @@ body {
 }
 
 .auth-brand {
+    align-items: center;
+    display: grid;
+    gap: 4px;
     margin-bottom: 20px;
+}
+
+.auth-brand img {
+    border-radius: 8px;
+    height: 42px;
+    object-fit: contain;
+    width: 42px;
 }
 
 .auth-brand span,
@@ -367,25 +377,6 @@ body {
 .feature-card p {
     color: #64748b;
     margin: 4px 0 8px;
-}
-
-.setup-link-result {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    display: grid;
-    gap: 8px;
-    margin-top: 16px;
-    padding: 12px;
-}
-
-.setup-link-result code {
-    background: #0f172a;
-    border-radius: 6px;
-    color: #d1fae5;
-    display: block;
-    overflow-x: auto;
-    padding: 10px;
 }
 
 .plain-list {

@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space, Table, Tabs } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Table, Tabs } from 'antd';
+import { DeleteOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
+import { QuickProductModal } from '../../core/components/QuickProductModal';
+import { ServerTable } from '../../core/components/ServerTable';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { useServerTable } from '../../core/hooks/useServerTable';
 
 const emptyPurchaseItem = {
     product_id: null,
@@ -31,13 +34,23 @@ export function PurchasesPage() {
     const [products, setProducts] = useState([]);
     const [purchaseItems, setPurchaseItems] = useState([{ ...emptyPurchaseItem }]);
     const [orderItems, setOrderItems] = useState([{ ...emptyOrderItem }]);
+    const [quickSupplierOpen, setQuickSupplierOpen] = useState(false);
+    const [quickProductOpen, setQuickProductOpen] = useState(false);
+    const [lastPurchasePrintUrl, setLastPurchasePrintUrl] = useState(null);
     const [purchaseForm] = Form.useForm();
     const [orderForm] = Form.useForm();
+    const [supplierForm] = Form.useForm();
+    const purchaseTable = useServerTable({ endpoint: endpoints.purchases });
 
     useEffect(() => {
-        http.get(endpoints.supplierOptions).then(({ data }) => setSuppliers(data.data));
+        loadSuppliers();
         searchProducts('');
     }, []);
+
+    async function loadSuppliers() {
+        const { data } = await http.get(endpoints.supplierOptions);
+        setSuppliers(data.data);
+    }
 
     async function searchProducts(q) {
         const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
@@ -82,13 +95,30 @@ export function PurchasesPage() {
                     manufactured_at: item.manufactured_at?.format('YYYY-MM-DD'),
                 })),
             };
-            await http.post(endpoints.purchases, payload);
+            const { data } = await http.post(endpoints.purchases, payload);
             notification.success({ message: 'Purchase posted and stock received' });
             purchaseForm.resetFields();
             setPurchaseItems([{ ...emptyPurchaseItem }]);
+            setLastPurchasePrintUrl(data.print_url);
+            purchaseTable.reload();
         } catch (error) {
             purchaseForm.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name: name.split('.'), errors })));
             notification.error({ message: 'Purchase failed', description: error?.response?.data?.message || error.message });
+        }
+    }
+
+    async function submitSupplier(values) {
+        try {
+            const { data } = await http.post(endpoints.suppliers, values);
+            await loadSuppliers();
+            purchaseForm.setFieldValue('supplier_id', data.data.id);
+            orderForm.setFieldValue('supplier_id', data.data.id);
+            supplierForm.resetFields();
+            setQuickSupplierOpen(false);
+            notification.success({ message: 'Supplier added' });
+        } catch (error) {
+            supplierForm.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name, errors })));
+            notification.error({ message: 'Supplier save failed', description: error?.response?.data?.message || error.message });
         }
     }
 
@@ -116,6 +146,12 @@ export function PurchasesPage() {
             filterOption={false}
             onSearch={searchProducts}
             options={productOptions()}
+            dropdownRender={(menu) => (
+                <>
+                    {menu}
+                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick add product</Button>
+                </>
+            )}
             onChange={(product_id, option) => {
                 const product = option.product;
                 updateRow(rows, setRows, index, {
@@ -146,10 +182,28 @@ export function PurchasesPage() {
         { title: 'Discount %', render: (_, row, index) => <InputNumber min={0} max={100} value={row.discount_percent} onChange={(discount_percent) => updateRow(orderItems, setOrderItems, index, { discount_percent })} />, width: 130 },
         { title: '', render: (_, row, index) => <Button danger icon={<DeleteOutlined />} onClick={() => removeRow(orderItems, setOrderItems, index, emptyOrderItem)} />, width: 70 },
     ];
+    const billColumns = [
+        { title: 'Bill', dataIndex: 'purchase_no', field: 'purchase_no', sorter: true },
+        { title: 'Date', dataIndex: 'purchase_date', field: 'purchase_date', sorter: true, width: 130 },
+        { title: 'Supplier Bill', dataIndex: 'supplier_invoice_no', width: 150 },
+        { title: 'Supplier', dataIndex: ['supplier', 'name'] },
+        { title: 'Payment', dataIndex: 'payment_status', width: 120 },
+        { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 140, render: (value) => <Money value={value} /> },
+        { title: '', width: 90, render: (_, row) => <Button icon={<PrinterOutlined />} onClick={() => window.open(`/purchases/${row.id}/print`, '_blank')}>Print</Button> },
+    ];
 
     return (
         <div className="page-stack">
-            <PageHeader title="Purchase" description="Purchase orders and batch-creating purchase entry" />
+            <PageHeader
+                title="Purchase"
+                description="Purchase orders and batch-creating purchase entry"
+                actions={(
+                    <Space>
+                        <Button icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick Product</Button>
+                        <Button disabled={!lastPurchasePrintUrl} icon={<PrinterOutlined />} onClick={() => window.open(lastPurchasePrintUrl, '_blank')}>Print Last Purchase</Button>
+                    </Space>
+                )}
+            />
 
             <Tabs
                 items={[
@@ -161,7 +215,17 @@ export function PurchasesPage() {
                                 <Form form={purchaseForm} layout="vertical" onFinish={submitPurchase} initialValues={{ purchase_date: dayjs(), paid_amount: 0 }}>
                                     <div className="form-grid">
                                         <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
-                                            <Select showSearch optionFilterProp="label" options={suppliers.map((item) => ({ value: item.id, label: item.name }))} />
+                                            <Select
+                                                showSearch
+                                                optionFilterProp="label"
+                                                options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                                                dropdownRender={(menu) => (
+                                                    <>
+                                                        {menu}
+                                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
+                                                    </>
+                                                )}
+                                            />
                                         </Form.Item>
                                         <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
                                         <Form.Item name="purchase_date" label="Purchase Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
@@ -180,6 +244,20 @@ export function PurchasesPage() {
                         ),
                     },
                     {
+                        key: 'bills',
+                        label: 'Purchase Bills',
+                        children: (
+                            <Card>
+                                <div className="table-toolbar">
+                                    <Input.Search value={purchaseTable.search} onChange={(event) => purchaseTable.setSearch(event.target.value)} placeholder="Search purchase or supplier" allowClear />
+                                    <span />
+                                    <Button onClick={purchaseTable.reload}>Refresh</Button>
+                                </div>
+                                <ServerTable table={purchaseTable} columns={billColumns} />
+                            </Card>
+                        ),
+                    },
+                    {
                         key: 'order',
                         label: 'Purchase Order',
                         children: (
@@ -187,7 +265,17 @@ export function PurchasesPage() {
                                 <Form form={orderForm} layout="vertical" onFinish={submitOrder} initialValues={{ order_date: dayjs() }}>
                                     <div className="form-grid">
                                         <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
-                                            <Select showSearch optionFilterProp="label" options={suppliers.map((item) => ({ value: item.id, label: item.name }))} />
+                                            <Select
+                                                showSearch
+                                                optionFilterProp="label"
+                                                options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                                                dropdownRender={(menu) => (
+                                                    <>
+                                                        {menu}
+                                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
+                                                    </>
+                                                )}
+                                            />
                                         </Form.Item>
                                         <Form.Item name="order_date" label="Order Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
                                         <Form.Item name="expected_date" label="Expected Date"><DatePicker className="full-width" /></Form.Item>
@@ -206,6 +294,27 @@ export function PurchasesPage() {
                     },
                 ]}
             />
+            <QuickProductModal
+                open={quickProductOpen}
+                onClose={() => setQuickProductOpen(false)}
+                onCreated={(product) => setProducts((current) => [product, ...current.filter((item) => item.id !== product.id)])}
+            />
+            <Modal
+                title="Quick Add Supplier"
+                open={quickSupplierOpen}
+                onCancel={() => setQuickSupplierOpen(false)}
+                onOk={() => supplierForm.submit()}
+                destroyOnHidden
+            >
+                <Form form={supplierForm} layout="vertical" onFinish={submitSupplier}>
+                    <Form.Item name="name" label="Supplier Name" rules={[{ required: true }]}><Input autoFocus /></Form.Item>
+                    <div className="form-grid">
+                        <Form.Item name="phone" label="Phone"><Input /></Form.Item>
+                        <Form.Item name="email" label="Email"><Input /></Form.Item>
+                    </div>
+                    <Form.Item name="address" label="Address"><Input /></Form.Item>
+                </Form>
+            </Modal>
         </div>
     );
 }

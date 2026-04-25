@@ -14,9 +14,9 @@ PharmaNP is one Laravel application serving a same-domain React SPA. Laravel own
 
 Relationship columns use `unsignedBigInteger` plus indexes, not DB-level foreign key constraints. Integrity is enforced in FormRequests and services. This keeps shared-hosting migrations and rollback/drop operations practical while preserving reliable application-level rules.
 
-Early SaaS-aware columns are present where needed: `tenant_id`, `company_id`, `store_id`, `created_by`, `updated_by`, `deleted_by`.
+Company/store scoped columns are present where needed: `tenant_id`, `company_id`, `store_id`, `created_by`, `updated_by`, `deleted_by`. The internal `tenant_id` remains an installation scope identifier, not a hosted-service promise.
 
-The default commercial deployment model is one database with tenant/company/store scoping. Multi-database tenancy is reserved for future premium isolation because it is harder to support on shared hosting and at Nepal-market price points.
+The default commercial deployment model is one standalone database per installation. This is easier to support on shared hosting, easier to hand over to a pharmacy, and simpler for backups and upgrades.
 
 ## Frontend Layout
 

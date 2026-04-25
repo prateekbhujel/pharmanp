@@ -97,7 +97,7 @@ export function DashboardPage() {
                 <Tag color="blue">Server-side tables</Tag>
                 <Tag color="green">Session API</Tag>
                 <Tag color="gold">Shared-hosting ready</Tag>
-                <Tag color="purple">SaaS-aware columns</Tag>
+                <Tag color="purple">Company/store scoped</Tag>
             </Card>
         </div>
     );

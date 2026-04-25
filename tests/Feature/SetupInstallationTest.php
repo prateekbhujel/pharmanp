@@ -50,4 +50,27 @@ class SetupInstallationTest extends TestCase
 
         $this->postJson('/setup/complete', $payload)->assertStatus(409);
     }
+
+    public function test_owner_can_update_application_branding(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create(['is_owner' => true]);
+
+        $this->actingAs($user)->putJson('/api/v1/setup/branding', [
+            'app_name' => 'Bhujel Pharmacy',
+            'logo_url' => '/storage/settings/logo.png',
+            'sidebar_logo_url' => '/storage/settings/sidebar.png',
+            'app_icon_url' => '/storage/settings/icon.png',
+            'favicon_url' => '/storage/settings/favicon.ico',
+            'accent_color' => '#0f766e',
+            'layout' => 'vertical',
+            'sidebar_default_collapsed' => true,
+        ])->assertOk();
+
+        $branding = Setting::getValue('app.branding');
+
+        $this->assertSame('Bhujel Pharmacy', $branding['app_name']);
+        $this->assertSame('/storage/settings/favicon.ico', $branding['favicon_url']);
+        $this->assertTrue($branding['sidebar_default_collapsed']);
+    }
 }

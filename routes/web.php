@@ -17,9 +17,9 @@ use App\Modules\Purchase\Http\Controllers\PurchaseOrderController;
 use App\Modules\Reports\Http\Controllers\ReportController;
 use App\Modules\Sales\Http\Controllers\SalesInvoiceController;
 use App\Modules\Sales\Http\Controllers\ProductLookupController;
+use App\Modules\Setup\Http\Controllers\BrandingController;
 use App\Modules\Setup\Http\Controllers\FeatureCatalogController;
 use App\Modules\Setup\Http\Controllers\RolePermissionController;
-use App\Modules\Setup\Http\Controllers\SetupInviteController;
 use App\Modules\Setup\Http\Controllers\SetupController;
 use Illuminate\Support\Facades\Route;
 
@@ -54,9 +54,8 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/dashboard/summary', DashboardController::class)->name('dashboard.summary');
         Route::get('/system/update-check', SystemUpdateController::class)->name('system.update-check');
         Route::get('/setup/features', FeatureCatalogController::class)->name('setup.features');
-        Route::get('/setup/invites', [SetupInviteController::class, 'index'])->name('setup.invites.index');
-        Route::post('/setup/invites', [SetupInviteController::class, 'store'])->name('setup.invites.store');
-        Route::post('/setup/invites/{invite}/revoke', [SetupInviteController::class, 'revoke'])->name('setup.invites.revoke');
+        Route::get('/setup/branding', [BrandingController::class, 'show'])->name('setup.branding.show');
+        Route::put('/setup/branding', [BrandingController::class, 'update'])->name('setup.branding.update');
         Route::get('/setup/roles', [RolePermissionController::class, 'index'])->name('setup.roles.index');
         Route::post('/setup/roles', [RolePermissionController::class, 'store'])->name('setup.roles.store');
         Route::put('/setup/roles/{role}', [RolePermissionController::class, 'update'])->name('setup.roles.update');
@@ -65,6 +64,10 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::post('/inventory/companies/quick', [InventoryMasterController::class, 'company'])->name('inventory.companies.quick');
         Route::post('/inventory/units/quick', [InventoryMasterController::class, 'unit'])->name('inventory.units.quick');
         Route::post('/inventory/categories/quick', [InventoryMasterController::class, 'category'])->name('inventory.categories.quick');
+        Route::get('/inventory/masters/{master}', [InventoryMasterController::class, 'index'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.index');
+        Route::post('/inventory/masters/{master}', [InventoryMasterController::class, 'store'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.store');
+        Route::put('/inventory/masters/{master}/{id}', [InventoryMasterController::class, 'update'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.update');
+        Route::delete('/inventory/masters/{master}/{id}', [InventoryMasterController::class, 'destroy'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.destroy');
         Route::apiResource('inventory/products', ProductController::class)->only(['index', 'store', 'update', 'destroy']);
 
         Route::get('/suppliers/options', [SupplierController::class, 'options'])->name('suppliers.options');
@@ -88,6 +91,8 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/imports/{job}/rejected.csv', [ImportWizardController::class, 'rejected'])->name('imports.rejected');
     });
 
+    Route::get('/purchases/{purchase}/print', [PurchaseController::class, 'print'])->name('purchases.print');
+    Route::get('/purchases/{purchase}/pdf', [PurchaseController::class, 'pdf'])->name('purchases.pdf');
     Route::get('/sales/invoices/{invoice}/print', [SalesInvoiceController::class, 'print'])->name('sales.invoices.print');
     Route::get('/sales/invoices/{invoice}/pdf', [SalesInvoiceController::class, 'pdf'])->name('sales.invoices.pdf');
 

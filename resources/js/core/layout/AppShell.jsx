@@ -57,12 +57,12 @@ export function AppShell() {
     const ActivePage = routes[activeKey] || DashboardPage;
     const layout = branding?.layout || 'vertical';
     const appName = branding?.app_name || 'PharmaNP';
-    const logo = branding?.sidebar_logo_url || branding?.logo_url;
+    const logo = branding?.sidebar_logo_url || branding?.logo_url || branding?.app_icon_url;
 
     const menuItems = useMemo(() => [
         { key: '/app', icon: <DashboardOutlined />, label: 'Dashboard' },
-        { key: '/app/onboarding', icon: <SafetyCertificateOutlined />, label: 'Setup Guide' },
-        { key: '/app/inventory/products', icon: <MedicineBoxOutlined />, label: 'Products' },
+        { key: '/app/onboarding', icon: <SafetyCertificateOutlined />, label: 'First Run Guide' },
+        { key: '/app/inventory/products', icon: <MedicineBoxOutlined />, label: 'Inventory' },
         { key: '/app/purchases', icon: <ShopOutlined />, label: 'Purchase' },
         { key: '/app/sales/pos', icon: <ShoppingCartOutlined />, label: 'Sales / POS' },
         { key: '/app/parties', icon: <TeamOutlined />, label: 'Parties' },
@@ -70,7 +70,7 @@ export function AppShell() {
         { key: '/app/mr/performance', icon: <UserSwitchOutlined />, label: 'MR Tracking' },
         { key: '/app/imports', icon: <CloudUploadOutlined />, label: 'Imports' },
         { key: '/app/reports', icon: <BarChartOutlined />, label: 'Reports' },
-        { key: '/app/settings', icon: <SettingOutlined />, label: 'Settings' },
+        { key: '/app/settings', icon: <SettingOutlined />, label: 'Setup' },
         { key: '/app/system/update-check', icon: <SyncOutlined />, label: 'System' },
     ], []);
 

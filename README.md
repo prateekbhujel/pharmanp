@@ -50,6 +50,6 @@ npm run dev
 
 The frontend still expects a running Laravel backend from the same app URL. Production uses `npm run build`; no Node server is required on shared hosting.
 
-## Architecture Position
+## Product Position
 
-PharmaNP uses one MySQL/MariaDB database with `tenant_id`, `company_id`, and `store_id` columns instead of one database per client. That is the practical shared-hosting path today and the SaaS-ready path tomorrow. Separate databases can be added later for high-end isolated deployments, but the default product should stay one database with strict service-level tenant scoping, permissions, backups, and feature flags.
+PharmaNP is shipped as a standalone Laravel application. A pharmacy installs it, completes the first-run setup, configures branding/fiscal year/roles, and begins daily operation from the same codebase. It uses one MySQL/MariaDB database with company and store scoped columns, which keeps shared-hosting deployment simple while still protecting data boundaries inside the app.

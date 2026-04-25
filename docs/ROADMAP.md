@@ -4,9 +4,9 @@
 
 - Setup wizard with installed lock.
 - Branding, sidebar layout and fiscal year setup.
-- Tenant/demo invite and feature catalog foundation.
+- Application setup and feature catalog foundation.
 - Session auth and protected API.
-- Product master with server-side Ant Design table.
+- Inventory tabs for product, company, unit and category masters.
 - Product quick-create support for company, unit and category.
 - Import wizard preview and mapping.
 - Dashboard summary.
@@ -16,8 +16,8 @@
 
 ## Phase 2
 
-- Full purchase entry with batch creation and stock movement posting.
-- Full sales invoice/POS with batch selection, stock deduction, invoice print/PDF.
+- Purchase entry with batch creation, stock movement posting and purchase invoice print/PDF.
+- Sales invoice/POS with batch selection, stock deduction and invoice print/PDF.
 - Purchase returns and sales returns.
 - Supplier/customer ledgers.
 - Voucher posting and finance books.
@@ -30,4 +30,3 @@
 - MR visit/order workflow and performance reports.
 - Queue-ready import/export workers with sync fallback.
 - OpenAPI package integration.
-- Rubix ML analytics for reorder, expiry risk, and stock movement classification.

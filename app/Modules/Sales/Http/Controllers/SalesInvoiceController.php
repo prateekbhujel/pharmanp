@@ -16,11 +16,27 @@ class SalesInvoiceController extends Controller
 {
     public function index(): JsonResponse
     {
+        $sorts = [
+            'invoice_no' => 'invoice_no',
+            'invoice_date' => 'invoice_date',
+            'grand_total' => 'grand_total',
+            'created_at' => 'created_at',
+        ];
+        $sortField = $sorts[request('sort_field', 'invoice_date')] ?? 'invoice_date';
+        $sortOrder = request('sort_order') === 'asc' ? 'asc' : 'desc';
+        $search = trim((string) request('search'));
+
         $invoices = SalesInvoice::query()
             ->with('customer:id,name')
-            ->latest('invoice_date')
-            ->latest('id')
-            ->paginate(request()->integer('per_page', 15));
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('invoice_no', 'like', '%'.$search.'%')
+                        ->orWhereHas('customer', fn ($customer) => $customer->where('name', 'like', '%'.$search.'%'));
+                });
+            })
+            ->orderBy($sortField, $sortOrder)
+            ->orderByDesc('id')
+            ->paginate(min(100, max(5, request()->integer('per_page', 15))));
 
         return response()->json(SalesInvoiceResource::collection($invoices)->response()->getData(true));
     }

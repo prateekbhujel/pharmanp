@@ -27,6 +27,8 @@ class CompleteSetupRequest extends FormRequest
             'branding.app_name' => ['required', 'string', 'max:120'],
             'branding.logo_url' => ['nullable', 'string', 'max:255'],
             'branding.sidebar_logo_url' => ['nullable', 'string', 'max:255'],
+            'branding.app_icon_url' => ['nullable', 'string', 'max:255'],
+            'branding.favicon_url' => ['nullable', 'string', 'max:255'],
             'branding.accent_color' => ['nullable', 'string', 'max:20'],
             'branding.layout' => ['required', 'in:vertical,horizontal'],
             'branding.sidebar_default_collapsed' => ['sometimes', 'boolean'],

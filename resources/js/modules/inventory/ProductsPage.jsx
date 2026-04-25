@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Switch } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Switch, Tabs } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
 import { FormDrawer } from '../../core/components/FormDrawer';
@@ -11,6 +11,7 @@ import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { InventoryMasterTable } from './InventoryMasterTable';
 
 export function ProductsPage() {
     const { notification } = App.useApp();
@@ -146,24 +147,35 @@ export function ProductsPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title="Products"
-                description="Batch-ready product master with barcode, stock and reorder fields"
+                title="Inventory"
+                description="Products, companies, units, categories and stock-facing master data"
                 actions={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>New Product</Button>}
             />
 
-            <Card>
-                <div className="table-toolbar">
-                    <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search name, generic, SKU or barcode" allowClear />
-                    <Select
-                        allowClear
-                        placeholder="Company"
-                        options={meta.companies?.map((item) => ({ value: item.id, label: item.name }))}
-                        onChange={(company_id) => table.setFilters((filters) => ({ ...filters, company_id }))}
-                    />
-                    <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
-                </div>
-                <ServerTable table={table} columns={columns} />
-            </Card>
+            <Tabs items={[
+                {
+                    key: 'products',
+                    label: 'Products',
+                    children: (
+                        <Card>
+                            <div className="table-toolbar">
+                                <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search name, generic, SKU or barcode" allowClear />
+                                <Select
+                                    allowClear
+                                    placeholder="Company"
+                                    options={meta.companies?.map((item) => ({ value: item.id, label: item.name }))}
+                                    onChange={(company_id) => table.setFilters((filters) => ({ ...filters, company_id }))}
+                                />
+                                <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
+                            </div>
+                            <ServerTable table={table} columns={columns} />
+                        </Card>
+                    ),
+                },
+                { key: 'companies', label: 'Companies', children: <InventoryMasterTable master="companies" /> },
+                { key: 'units', label: 'Units', children: <InventoryMasterTable master="units" /> },
+                { key: 'categories', label: 'Categories', children: <InventoryMasterTable master="categories" /> },
+            ]} />
 
             <FormDrawer
                 title={editing ? 'Edit Product' : 'New Product'}

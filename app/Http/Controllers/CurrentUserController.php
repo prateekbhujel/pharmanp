@@ -26,6 +26,8 @@ class CurrentUserController extends Controller
                 'app_name' => config('app.name', 'PharmaNP'),
                 'logo_url' => null,
                 'sidebar_logo_url' => null,
+                'app_icon_url' => null,
+                'favicon_url' => null,
                 'accent_color' => '#0f766e',
                 'layout' => 'vertical',
                 'sidebar_default_collapsed' => false,

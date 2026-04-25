@@ -132,7 +132,6 @@ class SetupService
             'system.update.view',
             'mr.view',
             'mr.manage',
-            'tenants.manage',
         ]);
 
         $permissions->each(fn (string $name) => Permission::query()->firstOrCreate([
@@ -183,6 +182,8 @@ class SetupService
             'app_name' => $data['branding']['app_name'],
             'logo_url' => $data['branding']['logo_url'] ?? null,
             'sidebar_logo_url' => $data['branding']['sidebar_logo_url'] ?? null,
+            'app_icon_url' => $data['branding']['app_icon_url'] ?? null,
+            'favicon_url' => $data['branding']['favicon_url'] ?? null,
             'accent_color' => $data['branding']['accent_color'] ?? '#0f766e',
             'layout' => $data['branding']['layout'],
             'sidebar_default_collapsed' => (bool) ($data['branding']['sidebar_default_collapsed'] ?? false),

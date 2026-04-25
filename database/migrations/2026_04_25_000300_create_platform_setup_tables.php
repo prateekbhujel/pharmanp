@@ -75,22 +75,6 @@ return new class extends Migration
             $table->unique(['tenant_id', 'company_id', 'feature_code'], 'tenant_feature_unique');
         });
 
-        Schema::create('setup_invites', function (Blueprint $table) {
-            $table->id();
-            $table->string('token_hash', 128)->unique();
-            $table->string('client_name')->nullable();
-            $table->string('client_email')->nullable()->index();
-            $table->string('status', 40)->default('active')->index();
-            $table->json('requested_features')->nullable();
-            $table->json('prefill')->nullable();
-            $table->date('expires_on')->nullable()->index();
-            $table->timestamp('used_at')->nullable()->index();
-            $table->unsignedBigInteger('tenant_id')->nullable()->index();
-            $table->unsignedBigInteger('company_id')->nullable()->index();
-            $table->unsignedBigInteger('created_by')->nullable()->index();
-            $table->timestamps();
-        });
-
         Schema::create('onboarding_states', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('tenant_id')->nullable()->index();
@@ -108,7 +92,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('onboarding_states');
-        Schema::dropIfExists('setup_invites');
         Schema::dropIfExists('tenant_feature_flags');
         Schema::dropIfExists('feature_catalog_items');
         Schema::dropIfExists('fiscal_years');

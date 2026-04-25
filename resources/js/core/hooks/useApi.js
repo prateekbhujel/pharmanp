@@ -21,5 +21,5 @@ export function useApi(url) {
         };
     }, [load]);
 
-    return { ...state, reload: () => load(true) };
+    return { ...state, reload: () => load(() => true) };
 }

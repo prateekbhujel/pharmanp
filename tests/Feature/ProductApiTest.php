@@ -56,4 +56,35 @@ class ProductApiTest extends TestCase
         $this->actingAs($user)->deleteJson('/api/v1/inventory/products/'.$product->id)->assertOk();
         $this->assertSoftDeleted('products', ['id' => $product->id]);
     }
+
+    public function test_owner_can_manage_inventory_master_records(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create(['is_owner' => true]);
+
+        $response = $this->actingAs($user)->postJson('/api/v1/inventory/masters/companies', [
+            'name' => 'Nepal Pharma Manufacturer',
+            'company_type' => 'manufacturer',
+            'default_cc_rate' => 5,
+            'is_active' => true,
+        ])->assertCreated();
+
+        $companyId = $response->json('data.id');
+
+        $this->actingAs($user)->getJson('/api/v1/inventory/masters/companies?search=Nepal')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'Nepal Pharma Manufacturer');
+
+        $this->actingAs($user)->putJson('/api/v1/inventory/masters/companies/'.$companyId, [
+            'name' => 'Nepal Pharma Labs',
+            'company_type' => 'manufacturer',
+            'default_cc_rate' => 6,
+            'is_active' => true,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('companies', ['id' => $companyId, 'name' => 'Nepal Pharma Labs']);
+
+        $this->actingAs($user)->deleteJson('/api/v1/inventory/masters/companies/'.$companyId)->assertOk();
+        $this->assertSoftDeleted('companies', ['id' => $companyId]);
+    }
 }

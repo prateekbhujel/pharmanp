@@ -140,6 +140,14 @@ export function SetupWizard() {
                         </Form.Item>
                     </div>
                     <div className="form-grid">
+                        <Form.Item name={['branding', 'app_icon_url']} label="App Icon URL / Path">
+                            <Input placeholder="/storage/settings/app-icon.png" />
+                        </Form.Item>
+                        <Form.Item name={['branding', 'favicon_url']} label="Favicon URL / Path">
+                            <Input placeholder="/storage/settings/favicon.ico" />
+                        </Form.Item>
+                    </div>
+                    <div className="form-grid">
                         <Form.Item name={['branding', 'accent_color']} label="Accent Color">
                             <Input />
                         </Form.Item>
