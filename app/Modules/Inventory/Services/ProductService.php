@@ -1,0 +1,110 @@
+<?php
+
+namespace App\Modules\Inventory\Services;
+
+use App\Core\DTOs\TableQueryData;
+use App\Models\User;
+use App\Modules\Inventory\DTOs\ProductData;
+use App\Modules\Inventory\Models\Product;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class ProductService
+{
+    private const SORTS = [
+        'name' => 'products.name',
+        'sku' => 'products.sku',
+        'barcode' => 'products.barcode',
+        'mrp' => 'products.mrp',
+        'reorder_level' => 'products.reorder_level',
+        'stock_on_hand' => 'stock_on_hand',
+        'created_at' => 'products.created_at',
+    ];
+
+    public function paginate(TableQueryData $table): LengthAwarePaginator
+    {
+        $query = Product::query()
+            ->select('products.*')
+            ->with(['company:id,name', 'unit:id,name', 'category:id,name'])
+            ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available');
+
+        $this->applyFilters($query, $table);
+        $sortColumn = self::SORTS[$table->sortField] ?? self::SORTS['created_at'];
+
+        if ($sortColumn === 'stock_on_hand') {
+            $query->orderByRaw('COALESCE(stock_on_hand, 0) '.$table->sortOrder);
+        } else {
+            $query->orderBy($sortColumn, $table->sortOrder);
+        }
+
+        return $query->paginate($table->perPage, ['*'], 'page', $table->page);
+    }
+
+    public function create(ProductData $data, ?User $user = null): Product
+    {
+        return DB::transaction(function () use ($data, $user) {
+            $payload = $data->toArray();
+            $payload['sku'] = $payload['sku'] ?: $this->nextSku($payload['company_id']);
+            $payload['created_by'] = $user?->id;
+            $payload['updated_by'] = $user?->id;
+
+            return Product::query()->create($payload)->fresh(['company', 'unit', 'category']);
+        });
+    }
+
+    public function update(Product $product, ProductData $data, ?User $user = null): Product
+    {
+        return DB::transaction(function () use ($product, $data, $user) {
+            $payload = $data->toArray();
+            $payload['sku'] = $payload['sku'] ?: $product->sku ?: $this->nextSku($payload['company_id']);
+            $payload['updated_by'] = $user?->id;
+
+            $product->update($payload);
+
+            return $product->fresh(['company', 'unit', 'category']);
+        });
+    }
+
+    public function delete(Product $product, ?User $user = null): void
+    {
+        DB::transaction(function () use ($product, $user) {
+            $product->forceFill([
+                'deleted_by' => $user?->id,
+                'is_active' => false,
+            ])->save();
+
+            $product->delete();
+        });
+    }
+
+    private function applyFilters(Builder $query, TableQueryData $table): void
+    {
+        $query
+            ->when($table->search, function (Builder $builder, string $search) {
+                $builder->where(function (Builder $inner) use ($search) {
+                    $inner->where('products.name', 'like', '%'.$search.'%')
+                        ->orWhere('products.generic_name', 'like', '%'.$search.'%')
+                        ->orWhere('products.sku', 'like', '%'.$search.'%')
+                        ->orWhere('products.barcode', 'like', '%'.$search.'%')
+                        ->orWhere('products.composition', 'like', '%'.$search.'%');
+                });
+            })
+            ->when(isset($table->filters['company_id']), fn (Builder $builder) => $builder->where('products.company_id', $table->filters['company_id']))
+            ->when(isset($table->filters['category_id']), fn (Builder $builder) => $builder->where('products.category_id', $table->filters['category_id']))
+            ->when(isset($table->filters['is_active']), fn (Builder $builder) => $builder->where('products.is_active', (bool) $table->filters['is_active']));
+    }
+
+    private function nextSku(?int $companyId): string
+    {
+        $prefix = $companyId ? 'P'.$companyId : 'PNP';
+        $suffix = Str::upper(Str::random(6));
+
+        while (Product::query()->where('company_id', $companyId)->where('sku', $prefix.'-'.$suffix)->exists()) {
+            $suffix = Str::upper(Str::random(6));
+        }
+
+        return $prefix.'-'.$suffix;
+    }
+}
