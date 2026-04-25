@@ -9,6 +9,8 @@ import { ServerTable } from '../../core/components/ServerTable';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { paymentStatusOptions } from '../../core/utils/accountCatalog';
+import { appUrl } from '../../core/utils/url';
 
 const emptyPurchaseItem = {
     product_id: null,
@@ -37,15 +39,31 @@ export function PurchasesPage() {
     const [quickSupplierOpen, setQuickSupplierOpen] = useState(false);
     const [quickProductOpen, setQuickProductOpen] = useState(false);
     const [lastPurchasePrintUrl, setLastPurchasePrintUrl] = useState(null);
+    const [billRange, setBillRange] = useState([dayjs().startOf('month'), dayjs()]);
     const [purchaseForm] = Form.useForm();
     const [orderForm] = Form.useForm();
     const [supplierForm] = Form.useForm();
-    const purchaseTable = useServerTable({ endpoint: endpoints.purchases });
+    const purchaseTable = useServerTable({
+        endpoint: endpoints.purchases,
+        defaultSort: { field: 'purchase_date', order: 'desc' },
+        defaultFilters: {
+            from: billRange[0].format('YYYY-MM-DD'),
+            to: billRange[1].format('YYYY-MM-DD'),
+        },
+    });
 
     useEffect(() => {
         loadSuppliers();
         searchProducts('');
     }, []);
+
+    useEffect(() => {
+        purchaseTable.setFilters((current) => ({
+            ...current,
+            from: billRange?.[0]?.format('YYYY-MM-DD'),
+            to: billRange?.[1]?.format('YYYY-MM-DD'),
+        }));
+    }, [billRange]);
 
     async function loadSuppliers() {
         const { data } = await http.get(endpoints.supplierOptions);
@@ -189,7 +207,16 @@ export function PurchasesPage() {
         { title: 'Supplier', dataIndex: ['supplier', 'name'] },
         { title: 'Payment', dataIndex: 'payment_status', width: 120 },
         { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 140, render: (value) => <Money value={value} /> },
-        { title: '', width: 90, render: (_, row) => <Button icon={<PrinterOutlined />} onClick={() => window.open(`/purchases/${row.id}/print`, '_blank')}>Print</Button> },
+        {
+            title: '',
+            width: 150,
+            render: (_, row) => (
+                <Space>
+                    <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/purchases/${row.id}/print`), '_blank')}>Print</Button>
+                    <Button onClick={() => window.open(appUrl(`/purchases/${row.id}/pdf`), '_blank')}>PDF</Button>
+                </Space>
+            ),
+        },
     ];
 
     return (
@@ -250,7 +277,21 @@ export function PurchasesPage() {
                             <Card>
                                 <div className="table-toolbar">
                                     <Input.Search value={purchaseTable.search} onChange={(event) => purchaseTable.setSearch(event.target.value)} placeholder="Search purchase or supplier" allowClear />
-                                    <span />
+                                    <Select
+                                        allowClear
+                                        placeholder="Supplier"
+                                        value={purchaseTable.filters.supplier_id}
+                                        onChange={(value) => purchaseTable.setFilters((current) => ({ ...current, supplier_id: value }))}
+                                        options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                                    />
+                                    <Select
+                                        allowClear
+                                        placeholder="Payment"
+                                        value={purchaseTable.filters.payment_status}
+                                        onChange={(value) => purchaseTable.setFilters((current) => ({ ...current, payment_status: value }))}
+                                        options={paymentStatusOptions}
+                                    />
+                                    <DatePicker.RangePicker value={billRange} onChange={setBillRange} />
                                     <Button onClick={purchaseTable.reload}>Refresh</Button>
                                 </div>
                                 <ServerTable table={purchaseTable} columns={billColumns} />

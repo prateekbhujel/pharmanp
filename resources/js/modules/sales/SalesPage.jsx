@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Table, Tabs } from 'antd';
-import { DeleteOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
+import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Table, Tabs, Tag } from 'antd';
+import { DeleteOutlined, PlusOutlined, PrinterOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
 import { PageHeader } from '../../core/components/PageHeader';
@@ -10,28 +10,58 @@ import { ServerTable } from '../../core/components/ServerTable';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { paymentStatusOptions } from '../../core/utils/accountCatalog';
+import { appUrl } from '../../core/utils/url';
 
 export function SalesPage() {
     const { notification } = App.useApp();
     const [barcode, setBarcode] = useState('');
     const [items, setItems] = useState([]);
     const [customers, setCustomers] = useState([]);
+    const [medicalRepresentatives, setMedicalRepresentatives] = useState([]);
     const [customerId, setCustomerId] = useState(null);
+    const [medicalRepresentativeId, setMedicalRepresentativeId] = useState(undefined);
     const [invoiceDate, setInvoiceDate] = useState(dayjs());
+    const [invoiceRange, setInvoiceRange] = useState([dayjs().startOf('month'), dayjs()]);
     const [paidAmount, setPaidAmount] = useState(0);
     const [lastPrintUrl, setLastPrintUrl] = useState(null);
     const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
     const [quickProductOpen, setQuickProductOpen] = useState(false);
     const [customerForm] = Form.useForm();
-    const invoiceTable = useServerTable({ endpoint: endpoints.salesInvoices });
+    const invoiceTable = useServerTable({
+        endpoint: endpoints.salesInvoices,
+        defaultSort: { field: 'invoice_date', order: 'desc' },
+        defaultFilters: {
+            from: invoiceRange[0].format('YYYY-MM-DD'),
+            to: invoiceRange[1].format('YYYY-MM-DD'),
+        },
+    });
 
     useEffect(() => {
         loadCustomers();
+        loadMedicalRepresentatives();
     }, []);
+
+    useEffect(() => {
+        invoiceTable.setFilters((current) => ({
+            ...current,
+            from: invoiceRange?.[0]?.format('YYYY-MM-DD'),
+            to: invoiceRange?.[1]?.format('YYYY-MM-DD'),
+        }));
+    }, [invoiceRange]);
 
     async function loadCustomers() {
         const { data } = await http.get(endpoints.customerOptions);
         setCustomers(data.data);
+    }
+
+    async function loadMedicalRepresentatives() {
+        try {
+            const { data } = await http.get(endpoints.mrOptions);
+            setMedicalRepresentatives(data.data || []);
+        } catch {
+            setMedicalRepresentatives([]);
+        }
     }
 
     async function scan(value) {
@@ -95,6 +125,7 @@ export function SalesPage() {
         try {
             const { data } = await http.post(endpoints.salesInvoices, {
                 customer_id: customerId,
+                medical_representative_id: medicalRepresentativeId,
                 invoice_date: invoiceDate.format('YYYY-MM-DD'),
                 sale_type: 'pos',
                 paid_amount: paidAmount,
@@ -103,6 +134,7 @@ export function SalesPage() {
             notification.success({ message: 'Invoice posted and stock deducted' });
             setItems([]);
             setPaidAmount(0);
+            setCustomerId(null);
             setLastPrintUrl(data.print_url);
             invoiceTable.reload();
         } catch (error) {
@@ -144,9 +176,19 @@ export function SalesPage() {
         { title: 'Invoice', dataIndex: 'invoice_no', field: 'invoice_no', sorter: true },
         { title: 'Date', dataIndex: 'invoice_date', field: 'invoice_date', sorter: true, width: 130 },
         { title: 'Customer', dataIndex: ['customer', 'name'], render: (value) => value || 'Walk-in' },
-        { title: 'Payment', dataIndex: 'payment_status', width: 120 },
+        { title: 'MR', dataIndex: ['medical_representative', 'name'], render: (value) => value || '-' },
+        { title: 'Payment', dataIndex: 'payment_status', width: 120, render: (value) => <Tag color={value === 'paid' ? 'green' : value === 'partial' ? 'gold' : 'red'}>{value}</Tag> },
         { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 140, render: (value) => <Money value={value} /> },
-        { title: '', width: 90, render: (_, row) => <Button icon={<PrinterOutlined />} onClick={() => window.open(`/sales/invoices/${row.id}/print`, '_blank')}>Print</Button> },
+        {
+            title: '',
+            width: 150,
+            render: (_, row) => (
+                <Space>
+                    <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/sales/invoices/${row.id}/print`), '_blank')}>Print</Button>
+                    <Button onClick={() => window.open(appUrl(`/sales/invoices/${row.id}/pdf`), '_blank')}>PDF</Button>
+                </Space>
+            ),
+        },
     ];
 
     return (
@@ -183,8 +225,19 @@ export function SalesPage() {
                                         </>
                                     )}
                                 />
+                                <Select
+                                    allowClear
+                                    placeholder="MR"
+                                    value={medicalRepresentativeId}
+                                    onChange={setMedicalRepresentativeId}
+                                    options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
+                                />
                                 <DatePicker value={invoiceDate} onChange={setInvoiceDate} />
                                 <InputNumber min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
+                            </div>
+                            <div className="pos-walkin-strip">
+                                <Tag color={customerId ? 'blue' : 'default'} icon={<UserOutlined />}>{customerId ? `Customer #${customerId}` : 'Walk-in customer'}</Tag>
+                                <Button size="small" onClick={() => setCustomerId(null)}>Use Walk-in</Button>
                             </div>
                             <Select
                                 showSearch
@@ -219,7 +272,28 @@ export function SalesPage() {
                         <Card>
                             <div className="table-toolbar">
                                 <Input.Search value={invoiceTable.search} onChange={(event) => invoiceTable.setSearch(event.target.value)} placeholder="Search invoice or customer" allowClear />
-                                <span />
+                                <Select
+                                    allowClear
+                                    placeholder="Payment"
+                                    value={invoiceTable.filters.payment_status}
+                                    onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, payment_status: value }))}
+                                    options={paymentStatusOptions}
+                                />
+                                <Select
+                                    allowClear
+                                    placeholder="Customer"
+                                    value={invoiceTable.filters.customer_id}
+                                    onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, customer_id: value }))}
+                                    options={customers.map((item) => ({ value: item.id, label: item.name }))}
+                                />
+                                <Select
+                                    allowClear
+                                    placeholder="MR"
+                                    value={invoiceTable.filters.medical_representative_id}
+                                    onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, medical_representative_id: value }))}
+                                    options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
+                                />
+                                <DatePicker.RangePicker value={invoiceRange} onChange={setInvoiceRange} />
                                 <Button onClick={invoiceTable.reload}>Refresh</Button>
                             </div>
                             <ServerTable table={invoiceTable} columns={invoiceColumns} />

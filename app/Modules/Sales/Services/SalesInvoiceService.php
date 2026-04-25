@@ -3,6 +3,7 @@
 namespace App\Modules\Sales\Services;
 
 use App\Models\User;
+use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Services\StockMovementService;
@@ -15,6 +16,7 @@ class SalesInvoiceService
 {
     public function __construct(
         private readonly StockMovementService $stock,
+        private readonly AccountTransactionPostingService $accounts,
     ) {}
 
     public function create(array $data, User $user): SalesInvoice
@@ -57,7 +59,15 @@ class SalesInvoiceService
                     ->increment('current_balance', round($grandTotal - $paidAmount, 2));
             }
 
-            return $invoice->fresh(['customer', 'items.product', 'items.batch']);
+            $this->accounts->replaceForSource(
+                $user,
+                'sales_invoice',
+                $invoice->id,
+                $invoice->invoice_date->toDateString(),
+                $this->journalEntries($invoice, $paidAmount),
+            );
+
+            return $invoice->fresh(['customer', 'medicalRepresentative', 'items.product', 'items.batch']);
         });
     }
 
@@ -155,5 +165,41 @@ class SalesInvoiceService
         $nextId = ((int) DB::table('sales_invoices')->lockForUpdate()->max('id')) + 1;
 
         return 'SI-'.now()->format('Ymd').'-'.str_pad((string) $nextId, 5, '0', STR_PAD_LEFT);
+    }
+
+    private function journalEntries(SalesInvoice $invoice, float $paidAmount): array
+    {
+        $entries = [];
+
+        if ($paidAmount > 0) {
+            $entries[] = [
+                'account_type' => 'cash',
+                'debit' => $paidAmount,
+                'credit' => 0,
+                'notes' => 'Collected on '.$invoice->invoice_no,
+            ];
+        }
+
+        $outstanding = round((float) $invoice->grand_total - $paidAmount, 2);
+
+        if ($outstanding > 0) {
+            $entries[] = [
+                'account_type' => 'receivable',
+                'party_type' => $invoice->customer_id ? 'customer' : null,
+                'party_id' => $invoice->customer_id,
+                'debit' => $outstanding,
+                'credit' => 0,
+                'notes' => 'Outstanding on '.$invoice->invoice_no,
+            ];
+        }
+
+        $entries[] = [
+            'account_type' => 'sales',
+            'debit' => 0,
+            'credit' => (float) $invoice->grand_total,
+            'notes' => 'Sales '.$invoice->invoice_no,
+        ];
+
+        return $entries;
     }
 }

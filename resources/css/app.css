@@ -111,6 +111,7 @@ body {
 .page-header {
     align-items: center;
     display: flex;
+    flex-wrap: wrap;
     gap: 16px;
     justify-content: space-between;
 }
@@ -149,8 +150,32 @@ body {
     margin-bottom: 16px;
 }
 
+.table-toolbar-wide {
+    grid-template-columns: minmax(220px, 1fr) 220px 220px auto;
+}
+
 .pos-toolbar-wide {
-    grid-template-columns: minmax(260px, 1fr) 220px 160px 140px;
+    grid-template-columns: minmax(220px, 1.2fr) 220px 180px 160px 140px;
+}
+
+.pos-walkin-strip {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.report-filter-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    margin-bottom: 16px;
+}
+
+.permission-group-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .transaction-footer {

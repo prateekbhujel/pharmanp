@@ -6,6 +6,7 @@ import { useDebounce } from './useDebounce';
 export function useServerTable({ endpoint, defaultSort = { field: 'created_at', order: 'desc' }, defaultFilters = {} }) {
     const { notification } = App.useApp();
     const [rows, setRows] = useState([]);
+    const [extra, setExtra] = useState({});
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search);
@@ -27,6 +28,7 @@ export function useServerTable({ endpoint, defaultSort = { field: 'created_at', 
         http.get(endpoint, { params })
             .then(({ data }) => {
                 setRows(data.data || []);
+                setExtra(Object.fromEntries(Object.entries(data).filter(([key]) => !['data', 'meta'].includes(key))));
                 setPagination((current) => ({
                     ...current,
                     total: data.meta?.total || 0,
@@ -68,6 +70,7 @@ export function useServerTable({ endpoint, defaultSort = { field: 'created_at', 
         search,
         setSearch,
         pagination,
+        extra,
         filters,
         setFilters,
         reload: load,

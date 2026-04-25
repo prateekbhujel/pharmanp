@@ -3,6 +3,7 @@ import { Alert, App, Button, Card, Checkbox, DatePicker, Form, Input, Select, St
 import dayjs from 'dayjs';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { appUrl } from '../../core/utils/url';
 
 export function SetupWizard() {
     const { notification } = App.useApp();
@@ -29,7 +30,7 @@ export function SetupWizard() {
                 },
             });
             notification.success({ message: 'Setup completed' });
-            window.location.href = '/login';
+            window.location.href = appUrl('/login');
         } catch (error) {
             const errors = validationErrors(error);
             form.setFields(Object.entries(errors).map(([name, messages]) => ({ name: name.split('.'), errors: messages })));

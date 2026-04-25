@@ -12,15 +12,21 @@ class InstallationService
 
     public function installed(): bool
     {
-        if (File::exists(storage_path('app/installed'))) {
-            return true;
+        try {
+            $dbInstalled = (bool) (Setting::getValue(self::INSTALLED_KEY, false));
+        } catch (\Throwable) {
+            $dbInstalled = false;
         }
 
-        try {
-            return (bool) (Setting::getValue(self::INSTALLED_KEY, false));
-        } catch (\Throwable) {
+        $fileInstalled = File::exists(storage_path('app/installed'));
+
+        if ($fileInstalled && ! $dbInstalled) {
+            File::delete(storage_path('app/installed'));
+
             return false;
         }
+
+        return $dbInstalled || $fileInstalled;
     }
 
     public function status(): array

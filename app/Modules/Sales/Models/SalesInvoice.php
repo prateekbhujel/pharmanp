@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sales\Models;
 
+use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\Party\Models\Customer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,6 +47,11 @@ class SalesInvoice extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function medicalRepresentative(): BelongsTo
+    {
+        return $this->belongsTo(MedicalRepresentative::class, 'medical_representative_id');
     }
 
     public function items(): HasMany

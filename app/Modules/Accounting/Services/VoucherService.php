@@ -5,6 +5,8 @@ namespace App\Modules\Accounting\Services;
 use App\Models\User;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Models\Voucher;
+use App\Modules\Party\Models\Customer;
+use App\Modules\Party\Models\Supplier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -33,6 +35,8 @@ class VoucherService
             ]);
 
             foreach (array_values($data['entries']) as $index => $entry) {
+                $this->assertParty($entry['party_type'] ?? null, $entry['party_id'] ?? null);
+
                 $voucherEntry = $voucher->entries()->create([
                     'line_no' => $index + 1,
                     'account_type' => $entry['account_type'],
@@ -68,5 +72,24 @@ class VoucherService
         $nextId = ((int) DB::table('vouchers')->lockForUpdate()->max('id')) + 1;
 
         return 'VCH-'.now()->format('Ymd').'-'.str_pad((string) $nextId, 5, '0', STR_PAD_LEFT);
+    }
+
+    private function assertParty(?string $partyType, ?int $partyId): void
+    {
+        if (! $partyType || ! $partyId || $partyType === 'other') {
+            return;
+        }
+
+        $exists = match ($partyType) {
+            'supplier' => Supplier::query()->whereKey($partyId)->exists(),
+            'customer' => Customer::query()->whereKey($partyId)->exists(),
+            default => true,
+        };
+
+        if (! $exists) {
+            throw ValidationException::withMessages([
+                'party_id' => 'Selected party does not exist.',
+            ]);
+        }
     }
 }

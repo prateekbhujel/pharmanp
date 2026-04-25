@@ -1,0 +1,65 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Setting;
+use App\Models\User;
+use App\Modules\Inventory\Models\Company;
+use App\Modules\MR\Models\MedicalRepresentative;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class SetupAccessManagementTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_owner_can_manage_roles_users_and_profile(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $company = Company::query()->create(['name' => 'Access Pharma']);
+        $owner = User::factory()->create([
+            'company_id' => $company->id,
+            'is_owner' => true,
+            'password' => bcrypt('secret12345'),
+        ]);
+
+        $mr = MedicalRepresentative::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Nabin MR',
+            'territory' => 'Kathmandu',
+            'monthly_target' => 50000,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)->getJson('/api/v1/setup/roles')
+            ->assertOk()
+            ->assertJsonPath('data.permission_groups.Dashboard.0', 'dashboard.view');
+
+        $this->actingAs($owner)->postJson('/api/v1/setup/roles', [
+            'name' => 'Manager',
+            'permissions' => ['dashboard.view', 'reports.view'],
+        ])->assertCreated();
+
+        $this->actingAs($owner)->postJson('/api/v1/setup/users', [
+            'name' => 'Store Manager',
+            'email' => 'manager@example.com',
+            'phone' => '9800000000',
+            'password' => 'secret12345',
+            'role_names' => ['Manager'],
+            'medical_representative_id' => $mr->id,
+            'is_active' => true,
+        ])->assertCreated()
+            ->assertJsonPath('data.medical_representative.id', $mr->id);
+
+        $this->actingAs($owner)->putJson('/api/v1/profile', [
+            'name' => 'Owner Updated',
+            'email' => $owner->email,
+            'phone' => '9811111111',
+            'current_password' => 'secret12345',
+            'password' => 'secret67890',
+        ])->assertOk()
+            ->assertJsonPath('data.name', 'Owner Updated');
+
+        $this->assertTrue(password_verify('secret67890', $owner->fresh()->password));
+    }
+}

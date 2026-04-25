@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { Spin } from 'antd';
 import { endpoints } from '../api/endpoints';
 import { http } from '../api/http';
+import { appUrl } from '../utils/url';
 
 const AuthContext = createContext(null);
 
@@ -12,7 +13,7 @@ export function AuthProvider({ children }) {
         http.get(endpoints.me)
             .then(({ data }) => setState({ loading: false, user: data.data, branding: data.branding }))
             .catch(() => {
-                window.location.href = '/login';
+                window.location.href = appUrl('/login');
             });
     }, []);
 

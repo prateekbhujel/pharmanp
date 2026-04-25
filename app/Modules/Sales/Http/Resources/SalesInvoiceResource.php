@@ -20,6 +20,10 @@ class SalesInvoiceResource extends JsonResource
                 'id' => $this->customer?->id,
                 'name' => $this->customer?->name,
             ]),
+            'medical_representative' => $this->whenLoaded('medicalRepresentative', fn () => [
+                'id' => $this->medicalRepresentative?->id,
+                'name' => $this->medicalRepresentative?->name,
+            ]),
             'subtotal' => (float) $this->subtotal,
             'discount_total' => (float) $this->discount_total,
             'grand_total' => (float) $this->grand_total,

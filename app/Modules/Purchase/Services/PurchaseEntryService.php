@@ -3,6 +3,7 @@
 namespace App\Modules\Purchase\Services;
 
 use App\Models\User;
+use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Services\StockMovementService;
@@ -15,6 +16,7 @@ class PurchaseEntryService
 {
     public function __construct(
         private readonly StockMovementService $stock,
+        private readonly AccountTransactionPostingService $accounts,
     ) {}
 
     public function create(array $data, User $user): Purchase
@@ -53,6 +55,14 @@ class PurchaseEntryService
             Supplier::query()
                 ->whereKey($data['supplier_id'])
                 ->increment('current_balance', round($grandTotal - $paidAmount, 2));
+
+            $this->accounts->replaceForSource(
+                $user,
+                'purchase',
+                $purchase->id,
+                $purchase->purchase_date->toDateString(),
+                $this->journalEntries($purchase, $paidAmount),
+            );
 
             return $purchase->fresh(['supplier', 'items.product', 'items.batch']);
         });
@@ -182,5 +192,39 @@ class PurchaseEntryService
         $nextId = ((int) DB::table('purchases')->lockForUpdate()->max('id')) + 1;
 
         return 'PUR-'.now()->format('Ymd').'-'.str_pad((string) $nextId, 5, '0', STR_PAD_LEFT);
+    }
+
+    private function journalEntries(Purchase $purchase, float $paidAmount): array
+    {
+        $entries = [[
+            'account_type' => 'inventory',
+            'debit' => (float) $purchase->grand_total,
+            'credit' => 0,
+            'notes' => 'Inventory received '.$purchase->purchase_no,
+        ]];
+
+        if ($paidAmount > 0) {
+            $entries[] = [
+                'account_type' => 'cash',
+                'debit' => 0,
+                'credit' => $paidAmount,
+                'notes' => 'Paid on '.$purchase->purchase_no,
+            ];
+        }
+
+        $outstanding = round((float) $purchase->grand_total - $paidAmount, 2);
+
+        if ($outstanding > 0) {
+            $entries[] = [
+                'account_type' => 'payable',
+                'party_type' => 'supplier',
+                'party_id' => $purchase->supplier_id,
+                'debit' => 0,
+                'credit' => $outstanding,
+                'notes' => 'Outstanding on '.$purchase->purchase_no,
+            ];
+        }
+
+        return $entries;
     }
 }

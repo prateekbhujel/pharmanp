@@ -35,6 +35,10 @@ class PurchaseController extends Controller
                         ->orWhereHas('supplier', fn ($supplier) => $supplier->where('name', 'like', '%'.$search.'%'));
                 });
             })
+            ->when(request()->filled('supplier_id'), fn ($query) => $query->where('supplier_id', request()->integer('supplier_id')))
+            ->when(request()->filled('payment_status'), fn ($query) => $query->where('payment_status', request('payment_status')))
+            ->when(request()->filled('from'), fn ($query) => $query->whereDate('purchase_date', '>=', request('from')))
+            ->when(request()->filled('to'), fn ($query) => $query->whereDate('purchase_date', '<=', request('to')))
             ->orderBy($sortField, $sortOrder)
             ->orderByDesc('id')
             ->paginate(min(100, max(5, request()->integer('per_page', 15))));

@@ -27,13 +27,18 @@ class SalesInvoiceController extends Controller
         $search = trim((string) request('search'));
 
         $invoices = SalesInvoice::query()
-            ->with('customer:id,name')
+            ->with(['customer:id,name', 'medicalRepresentative:id,name'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('invoice_no', 'like', '%'.$search.'%')
                         ->orWhereHas('customer', fn ($customer) => $customer->where('name', 'like', '%'.$search.'%'));
                 });
             })
+            ->when(request()->filled('customer_id'), fn ($query) => $query->where('customer_id', request()->integer('customer_id')))
+            ->when(request()->filled('payment_status'), fn ($query) => $query->where('payment_status', request('payment_status')))
+            ->when(request()->filled('medical_representative_id'), fn ($query) => $query->where('medical_representative_id', request()->integer('medical_representative_id')))
+            ->when(request()->filled('from'), fn ($query) => $query->whereDate('invoice_date', '>=', request('from')))
+            ->when(request()->filled('to'), fn ($query) => $query->whereDate('invoice_date', '<=', request('to')))
             ->orderBy($sortField, $sortOrder)
             ->orderByDesc('id')
             ->paginate(min(100, max(5, request()->integer('per_page', 15))));
@@ -56,7 +61,7 @@ class SalesInvoiceController extends Controller
 
     public function show(SalesInvoice $invoice): SalesInvoiceResource
     {
-        return new SalesInvoiceResource($invoice->load(['customer', 'items.product', 'items.batch']));
+        return new SalesInvoiceResource($invoice->load(['customer', 'medicalRepresentative', 'items.product', 'items.batch']));
     }
 
     public function print(SalesInvoice $invoice): View
@@ -74,7 +79,7 @@ class SalesInvoiceController extends Controller
     private function printData(SalesInvoice $invoice): array
     {
         return [
-            'invoice' => $invoice->load(['customer', 'items.product', 'items.batch']),
+            'invoice' => $invoice->load(['customer', 'medicalRepresentative', 'items.product', 'items.batch']),
             'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
         ];
     }

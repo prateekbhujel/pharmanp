@@ -15,14 +15,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Spatie\Permission\PermissionRegistrar;
 
 class SetupService
 {
     public function __construct(
         private readonly InstallationService $installation,
+        private readonly AccessControlService $accessControl,
     ) {}
 
     public function complete(array $data): array
@@ -102,50 +101,24 @@ class SetupService
 
     private function seedPermissions(User $admin): void
     {
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        $permissions = collect([
-            'dashboard.view',
-            'inventory.products.view',
-            'inventory.products.create',
-            'inventory.products.update',
-            'inventory.products.delete',
-            'inventory.batches.view',
-            'sales.invoices.view',
-            'sales.invoices.create',
-            'sales.pos.use',
-            'purchase.entries.view',
-            'purchase.entries.create',
-            'purchase.orders.manage',
-            'purchase.returns.manage',
-            'accounting.vouchers.view',
-            'accounting.vouchers.create',
-            'accounting.books.view',
-            'reports.view',
-            'settings.manage',
-            'users.manage',
-            'roles.manage',
-            'imports.preview',
-            'imports.commit',
-            'exports.download',
-            'setup.manage',
-            'system.update.view',
-            'mr.view',
-            'mr.manage',
-        ]);
-
-        $permissions->each(fn (string $name) => Permission::query()->firstOrCreate([
-            'name' => $name,
-            'guard_name' => 'web',
-        ]));
+        $this->accessControl->syncPermissions();
 
         $role = Role::query()->firstOrCreate([
             'name' => 'Owner',
             'guard_name' => 'web',
         ]);
 
-        $role->syncPermissions($permissions->all());
+        $role->syncPermissions($this->accessControl->permissionNames());
         $admin->assignRole($role);
+
+        Role::query()->firstOrCreate([
+            'name' => 'MR',
+            'guard_name' => 'web',
+        ])->syncPermissions([
+            'dashboard.view',
+            'mr.view',
+            'mr.visits.manage',
+        ]);
     }
 
     private function seedOperatingDefaults(int $tenantId, int $companyId, int $userId): void

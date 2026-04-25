@@ -3,7 +3,9 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Modules\MR\Models\MedicalRepresentative;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -27,6 +29,7 @@ class User extends Authenticatable
         'tenant_id',
         'company_id',
         'store_id',
+        'medical_representative_id',
         'is_owner',
         'is_active',
         'last_login_at',
@@ -56,5 +59,10 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
         ];
+    }
+
+    public function medicalRepresentative(): BelongsTo
+    {
+        return $this->belongsTo(MedicalRepresentative::class, 'medical_representative_id');
     }
 }

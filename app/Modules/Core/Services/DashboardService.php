@@ -2,60 +2,140 @@
 
 namespace App\Modules\Core\Services;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 class DashboardService
 {
-    public function summary(): array
+    public function summary(array $filters = [], ?User $user = null): array
     {
         $today = CarbonImmutable::today();
-        $monthStart = $today->startOfMonth();
-        $monthEnd = $today->endOfMonth();
+        $from = CarbonImmutable::parse($filters['from'] ?? $today->startOfMonth()->toDateString());
+        $to = CarbonImmutable::parse($filters['to'] ?? $today->endOfMonth()->toDateString());
+        $representativeId = isset($filters['medical_representative_id']) ? (int) $filters['medical_representative_id'] : null;
+
+        if ($user && $user->hasRole('MR') && (int) $user->medical_representative_id > 0) {
+            return $this->representativeSummary($from, $to, $user->medical_representative_id);
+        }
 
         return [
-            'period' => $today->format('F Y'),
+            'period' => $from->format('j M Y').' - '.$to->format('j M Y'),
+            'filters' => [
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+                'medical_representative_id' => $representativeId,
+            ],
             'stats' => [
-                'today_sales' => $this->sumSales($today->toDateString(), $today->toDateString()),
-                'month_sales' => $this->sumSales($monthStart->toDateString(), $monthEnd->toDateString()),
-                'month_purchase' => $this->sumPurchases($monthStart->toDateString(), $monthEnd->toDateString()),
+                'today_sales' => $this->sumSales($today->toDateString(), $today->toDateString(), $representativeId),
+                'period_sales' => $this->sumSales($from->toDateString(), $to->toDateString(), $representativeId),
+                'period_purchase' => $this->sumPurchases($from->toDateString(), $to->toDateString()),
                 'low_stock' => $this->lowStockCount(),
                 'expiring_batches' => $this->expiringBatchCount(),
                 'receivables' => (float) DB::table('customers')->whereNull('deleted_at')->sum('current_balance'),
                 'payables' => (float) DB::table('suppliers')->whereNull('deleted_at')->sum('current_balance'),
                 'products' => DB::table('products')->whereNull('deleted_at')->count(),
+                'sales_invoices' => DB::table('sales_invoices')
+                    ->whereNull('deleted_at')
+                    ->whereBetween('invoice_date', [$from->toDateString(), $to->toDateString()])
+                    ->when($representativeId, fn ($query) => $query->where('medical_representative_id', $representativeId))
+                    ->count(),
+                'purchase_bills' => DB::table('purchases')
+                    ->whereNull('deleted_at')
+                    ->whereBetween('purchase_date', [$from->toDateString(), $to->toDateString()])
+                    ->count(),
             ],
-            'top_products' => $this->topProducts($monthStart->toDateString(), $monthEnd->toDateString()),
+            'top_products' => $this->topProducts($from->toDateString(), $to->toDateString(), $representativeId),
+            'low_stock_rows' => $this->lowStockRows(),
+            'expiry_rows' => $this->expiryRows(),
+            'top_representatives' => $this->topRepresentatives($from->toDateString(), $to->toDateString()),
             'recent_sales' => DB::table('sales_invoices')
                 ->leftJoin('customers', 'customers.id', '=', 'sales_invoices.customer_id')
+                ->leftJoin('medical_representatives', 'medical_representatives.id', '=', 'sales_invoices.medical_representative_id')
                 ->whereNull('sales_invoices.deleted_at')
+                ->when($representativeId, fn ($query) => $query->where('sales_invoices.medical_representative_id', $representativeId))
                 ->orderByDesc('sales_invoices.invoice_date')
                 ->orderByDesc('sales_invoices.id')
                 ->limit(6)
-                ->get(['sales_invoices.id', 'sales_invoices.invoice_no', 'sales_invoices.invoice_date', 'sales_invoices.grand_total', 'customers.name as customer_name']),
+                ->get(['sales_invoices.id', 'sales_invoices.invoice_no', 'sales_invoices.invoice_date', 'sales_invoices.grand_total', 'sales_invoices.payment_status', 'customers.name as customer_name', 'medical_representatives.name as mr_name']),
             'recent_purchases' => DB::table('purchases')
                 ->leftJoin('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
                 ->whereNull('purchases.deleted_at')
                 ->orderByDesc('purchases.purchase_date')
                 ->orderByDesc('purchases.id')
                 ->limit(6)
-                ->get(['purchases.id', 'purchases.purchase_no', 'purchases.purchase_date', 'purchases.grand_total', 'suppliers.name as supplier_name']),
+                ->get(['purchases.id', 'purchases.purchase_no', 'purchases.purchase_date', 'purchases.grand_total', 'purchases.payment_status', 'suppliers.name as supplier_name']),
             'mr' => [
                 'active' => DB::table('medical_representatives')->where('is_active', true)->whereNull('deleted_at')->count(),
                 'month_orders' => (float) DB::table('representative_visits')
                     ->whereNull('deleted_at')
-                    ->whereBetween('visit_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                    ->whereBetween('visit_date', [$from->toDateString(), $to->toDateString()])
                     ->sum('order_value'),
             ],
         ];
     }
 
-    private function sumSales(string $from, string $to): float
+    private function representativeSummary(CarbonImmutable $from, CarbonImmutable $to, int $representativeId): array
+    {
+        $visitQuery = DB::table('representative_visits')
+            ->whereNull('deleted_at')
+            ->where('medical_representative_id', $representativeId)
+            ->whereBetween('visit_date', [$from->toDateString(), $to->toDateString()]);
+
+        $salesQuery = DB::table('sales_invoices')
+            ->whereNull('deleted_at')
+            ->where('medical_representative_id', $representativeId)
+            ->whereBetween('invoice_date', [$from->toDateString(), $to->toDateString()]);
+
+        $representative = DB::table('medical_representatives')->whereKey($representativeId)->first();
+
+        return [
+            'scope' => 'medical_representative',
+            'period' => $from->format('j M Y').' - '.$to->format('j M Y'),
+            'filters' => [
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+                'medical_representative_id' => $representativeId,
+            ],
+            'stats' => [
+                'today_sales' => round((float) DB::table('sales_invoices')
+                    ->whereNull('deleted_at')
+                    ->where('medical_representative_id', $representativeId)
+                    ->whereDate('invoice_date', today()->toDateString())
+                    ->sum('grand_total'), 2),
+                'period_sales' => round((float) $salesQuery->sum('grand_total'), 2),
+                'visits' => $visitQuery->count(),
+                'visit_orders' => round((float) $visitQuery->sum('order_value'), 2),
+                'invoices' => $salesQuery->count(),
+                'target' => (float) ($representative->monthly_target ?? 0),
+            ],
+            'top_products' => $this->topProducts($from->toDateString(), $to->toDateString(), $representativeId),
+            'recent_sales' => DB::table('sales_invoices')
+                ->leftJoin('customers', 'customers.id', '=', 'sales_invoices.customer_id')
+                ->whereNull('sales_invoices.deleted_at')
+                ->where('sales_invoices.medical_representative_id', $representativeId)
+                ->orderByDesc('sales_invoices.invoice_date')
+                ->orderByDesc('sales_invoices.id')
+                ->limit(6)
+                ->get(['sales_invoices.id', 'sales_invoices.invoice_no', 'sales_invoices.invoice_date', 'sales_invoices.grand_total', 'sales_invoices.payment_status', 'customers.name as customer_name']),
+            'recent_visits' => DB::table('representative_visits')
+                ->leftJoin('customers', 'customers.id', '=', 'representative_visits.customer_id')
+                ->whereNull('representative_visits.deleted_at')
+                ->where('representative_visits.medical_representative_id', $representativeId)
+                ->orderByDesc('representative_visits.visit_date')
+                ->orderByDesc('representative_visits.id')
+                ->limit(6)
+                ->get(['representative_visits.id', 'representative_visits.visit_date', 'representative_visits.status', 'representative_visits.order_value', 'customers.name as customer_name']),
+        ];
+    }
+
+    private function sumSales(string $from, string $to, ?int $representativeId = null): float
     {
         return round((float) DB::table('sales_invoices')
             ->whereNull('deleted_at')
             ->where('status', 'confirmed')
             ->whereBetween('invoice_date', [$from, $to])
+            ->when($representativeId, fn ($query) => $query->where('medical_representative_id', $representativeId))
             ->sum('grand_total'), 2);
     }
 
@@ -96,13 +176,14 @@ class DashboardService
             ->count();
     }
 
-    private function topProducts(string $from, string $to): array
+    private function topProducts(string $from, string $to, ?int $representativeId = null): array
     {
         return DB::table('sales_invoice_items')
             ->join('sales_invoices', 'sales_invoices.id', '=', 'sales_invoice_items.sales_invoice_id')
             ->join('products', 'products.id', '=', 'sales_invoice_items.product_id')
             ->whereNull('sales_invoices.deleted_at')
             ->whereBetween('sales_invoices.invoice_date', [$from, $to])
+            ->when($representativeId, fn ($query) => $query->where('sales_invoices.medical_representative_id', $representativeId))
             ->groupBy('products.id', 'products.name')
             ->selectRaw('products.id, products.name, SUM(sales_invoice_items.quantity) as quantity, SUM(sales_invoice_items.line_total) as amount')
             ->orderByDesc('quantity')
@@ -112,6 +193,69 @@ class DashboardService
                 'id' => $row->id,
                 'name' => $row->name,
                 'quantity' => (float) $row->quantity,
+                'amount' => (float) $row->amount,
+            ])
+            ->all();
+    }
+
+    private function lowStockRows(): array
+    {
+        return DB::table('products')
+            ->leftJoin('batches', function ($join) {
+                $join->on('batches.product_id', '=', 'products.id')
+                    ->whereNull('batches.deleted_at')
+                    ->where('batches.is_active', true);
+            })
+            ->whereNull('products.deleted_at')
+            ->where('products.is_active', true)
+            ->groupBy('products.id', 'products.name', 'products.reorder_level')
+            ->havingRaw('COALESCE(SUM(batches.quantity_available), 0) <= products.reorder_level')
+            ->orderByRaw('COALESCE(SUM(batches.quantity_available), 0) asc')
+            ->limit(8)
+            ->selectRaw('products.id, products.name, products.reorder_level, COALESCE(SUM(batches.quantity_available), 0) as stock_on_hand')
+            ->get()
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'name' => $row->name,
+                'stock_on_hand' => (float) $row->stock_on_hand,
+                'reorder_level' => (float) $row->reorder_level,
+            ])
+            ->all();
+    }
+
+    private function expiryRows(): array
+    {
+        return DB::table('batches')
+            ->join('products', 'products.id', '=', 'batches.product_id')
+            ->whereNull('batches.deleted_at')
+            ->where('batches.is_active', true)
+            ->where('batches.quantity_available', '>', 0)
+            ->whereDate('batches.expires_at', '>=', today()->toDateString())
+            ->whereDate('batches.expires_at', '<=', today()->addMonths(3)->toDateString())
+            ->orderBy('batches.expires_at')
+            ->limit(8)
+            ->get(['batches.id', 'products.name', 'batches.batch_no', 'batches.expires_at', 'batches.quantity_available']);
+    }
+
+    private function topRepresentatives(string $from, string $to): array
+    {
+        return DB::table('medical_representatives')
+            ->leftJoin('sales_invoices', function ($join) use ($from, $to) {
+                $join->on('sales_invoices.medical_representative_id', '=', 'medical_representatives.id')
+                    ->whereNull('sales_invoices.deleted_at')
+                    ->whereBetween('sales_invoices.invoice_date', [$from, $to]);
+            })
+            ->whereNull('medical_representatives.deleted_at')
+            ->groupBy('medical_representatives.id', 'medical_representatives.name', 'medical_representatives.territory')
+            ->orderByDesc(DB::raw('COALESCE(SUM(sales_invoices.grand_total), 0)'))
+            ->limit(6)
+            ->selectRaw('medical_representatives.id, medical_representatives.name, medical_representatives.territory, COUNT(sales_invoices.id) as invoices, COALESCE(SUM(sales_invoices.grand_total), 0) as amount')
+            ->get()
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'name' => $row->name,
+                'territory' => $row->territory,
+                'invoices' => (int) $row->invoices,
                 'amount' => (float) $row->amount,
             ])
             ->all();

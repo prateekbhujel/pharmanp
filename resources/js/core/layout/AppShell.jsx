@@ -18,6 +18,8 @@ import {
 } from '@ant-design/icons';
 import { http } from '../api/http';
 import { useAuth } from '../auth/AuthProvider';
+import { can } from '../utils/permissions';
+import { appUrl } from '../utils/url';
 
 const { Header, Sider, Content } = Layout;
 
@@ -35,44 +37,44 @@ const PartiesPage = React.lazy(() => import('../../modules/party/PartiesPage').t
 const ReportsPage = React.lazy(() => import('../../modules/reports/ReportsPage').then((module) => ({ default: module.ReportsPage })));
 
 const routes = {
-    '/app': DashboardPage,
-    '/app/onboarding': OnboardingPage,
-    '/app/inventory/products': ProductsPage,
-    '/app/purchases': PurchasesPage,
-    '/app/sales/pos': SalesPage,
-    '/app/parties': PartiesPage,
-    '/app/accounting': AccountingPage,
-    '/app/mr/performance': MrPerformancePage,
-    '/app/imports': ImportWizardPage,
-    '/app/reports': ReportsPage,
-    '/app/settings': SettingsPage,
-    '/app/system/update-check': SystemUpdatePage,
+    [appUrl('/app')]: DashboardPage,
+    [appUrl('/app/onboarding')]: OnboardingPage,
+    [appUrl('/app/inventory/products')]: ProductsPage,
+    [appUrl('/app/purchases')]: PurchasesPage,
+    [appUrl('/app/sales/pos')]: SalesPage,
+    [appUrl('/app/parties')]: PartiesPage,
+    [appUrl('/app/accounting')]: AccountingPage,
+    [appUrl('/app/mr/performance')]: MrPerformancePage,
+    [appUrl('/app/imports')]: ImportWizardPage,
+    [appUrl('/app/reports')]: ReportsPage,
+    [appUrl('/app/settings')]: SettingsPage,
+    [appUrl('/app/system/update-check')]: SystemUpdatePage,
 };
 
 export function AppShell() {
     const { user, branding } = useAuth();
     const [collapsed, setCollapsed] = useState(Boolean(branding?.sidebar_default_collapsed));
-    const pathname = window.location.pathname.replace(/\/$/, '') || '/app';
-    const activeKey = routes[pathname] ? pathname : '/app';
+    const pathname = window.location.pathname.replace(/\/$/, '') || appUrl('/app');
+    const activeKey = routes[pathname] ? pathname : appUrl('/app');
     const ActivePage = routes[activeKey] || DashboardPage;
     const layout = branding?.layout || 'vertical';
     const appName = branding?.app_name || 'PharmaNP';
     const logo = branding?.sidebar_logo_url || branding?.logo_url || branding?.app_icon_url;
 
-    const menuItems = useMemo(() => [
-        { key: '/app', icon: <DashboardOutlined />, label: 'Dashboard' },
-        { key: '/app/onboarding', icon: <SafetyCertificateOutlined />, label: 'First Run Guide' },
-        { key: '/app/inventory/products', icon: <MedicineBoxOutlined />, label: 'Inventory' },
-        { key: '/app/purchases', icon: <ShopOutlined />, label: 'Purchase' },
-        { key: '/app/sales/pos', icon: <ShoppingCartOutlined />, label: 'Sales / POS' },
-        { key: '/app/parties', icon: <TeamOutlined />, label: 'Parties' },
-        { key: '/app/accounting', icon: <DollarOutlined />, label: 'Accounting' },
-        { key: '/app/mr/performance', icon: <UserSwitchOutlined />, label: 'MR Tracking' },
-        { key: '/app/imports', icon: <CloudUploadOutlined />, label: 'Imports' },
-        { key: '/app/reports', icon: <BarChartOutlined />, label: 'Reports' },
-        { key: '/app/settings', icon: <SettingOutlined />, label: 'Setup' },
-        { key: '/app/system/update-check', icon: <SyncOutlined />, label: 'System' },
-    ], []);
+    const menuItems = useMemo(() => ([
+        { key: appUrl('/app'), icon: <DashboardOutlined />, label: 'Dashboard', show: can(user, 'dashboard.view') },
+        { key: appUrl('/app/onboarding'), icon: <SafetyCertificateOutlined />, label: 'First Run Guide', show: user?.is_owner || can(user, 'setup.manage') },
+        { key: appUrl('/app/inventory/products'), icon: <MedicineBoxOutlined />, label: 'Inventory', show: can(user, 'inventory.products.view') },
+        { key: appUrl('/app/purchases'), icon: <ShopOutlined />, label: 'Purchase', show: can(user, 'purchase.entries.view') || can(user, 'purchase.entries.create') },
+        { key: appUrl('/app/sales/pos'), icon: <ShoppingCartOutlined />, label: 'Sales / POS', show: can(user, 'sales.invoices.view') || can(user, 'sales.pos.use') },
+        { key: appUrl('/app/parties'), icon: <TeamOutlined />, label: 'Parties', show: can(user, 'party.suppliers.view') || can(user, 'party.customers.view') || user?.is_owner },
+        { key: appUrl('/app/accounting'), icon: <DollarOutlined />, label: 'Accounting', show: can(user, 'accounting.vouchers.view') || can(user, 'accounting.books.view') },
+        { key: appUrl('/app/mr/performance'), icon: <UserSwitchOutlined />, label: 'MR Tracking', show: can(user, 'mr.view') || can(user, 'mr.visits.manage') },
+        { key: appUrl('/app/imports'), icon: <CloudUploadOutlined />, label: 'Imports', show: can(user, 'imports.preview') || can(user, 'imports.commit') },
+        { key: appUrl('/app/reports'), icon: <BarChartOutlined />, label: 'Reports', show: can(user, 'reports.view') },
+        { key: appUrl('/app/settings'), icon: <SettingOutlined />, label: 'Setup', show: can(user, 'settings.manage') || can(user, 'users.manage') || can(user, 'roles.manage') || user?.is_owner },
+        { key: appUrl('/app/system/update-check'), icon: <SyncOutlined />, label: 'System', show: can(user, 'system.update.view') || user?.is_owner },
+    ].filter((item) => item.show)), [user]);
 
     function navigate({ key }) {
         window.history.pushState({}, '', key);
@@ -81,8 +83,8 @@ export function AppShell() {
     }
 
     function logout() {
-        http.post('/logout').finally(() => {
-            window.location.href = '/login';
+        http.post(appUrl('/logout')).finally(() => {
+            window.location.href = appUrl('/login');
         });
     }
 
