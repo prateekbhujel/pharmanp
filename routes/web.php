@@ -8,7 +8,10 @@ use App\Modules\Core\Http\Controllers\DashboardController;
 use App\Modules\Core\Http\Controllers\SystemUpdateController;
 use App\Modules\ImportExport\Http\Controllers\ImportWizardController;
 use App\Modules\Inventory\Http\Controllers\InventoryMasterController;
+use App\Modules\Inventory\Http\Controllers\BatchController;
 use App\Modules\Inventory\Http\Controllers\ProductController;
+use App\Modules\Inventory\Http\Controllers\StockAdjustmentController;
+use App\Modules\Inventory\Http\Controllers\StockMovementController;
 use App\Modules\MR\Http\Controllers\MedicalRepresentativeController;
 use App\Modules\MR\Http\Controllers\MrPerformanceController;
 use App\Modules\MR\Http\Controllers\RepresentativeVisitController;
@@ -16,6 +19,7 @@ use App\Modules\Party\Http\Controllers\CustomerController;
 use App\Modules\Party\Http\Controllers\SupplierController;
 use App\Modules\Purchase\Http\Controllers\PurchaseController;
 use App\Modules\Purchase\Http\Controllers\PurchaseOrderController;
+use App\Modules\Purchase\Http\Controllers\PurchaseReturnController;
 use App\Modules\Reports\Http\Controllers\ReportController;
 use App\Modules\Sales\Http\Controllers\SalesInvoiceController;
 use App\Modules\Sales\Http\Controllers\ProductLookupController;
@@ -59,6 +63,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/system/update-check', SystemUpdateController::class)->name('system.update-check');
         Route::get('/setup/features', FeatureCatalogController::class)->name('setup.features');
         Route::get('/setup/branding', [BrandingController::class, 'show'])->name('setup.branding.show');
+        Route::post('/setup/branding', [BrandingController::class, 'update'])->name('setup.branding.store');
         Route::put('/setup/branding', [BrandingController::class, 'update'])->name('setup.branding.update');
         Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
         Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -72,6 +77,12 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::delete('/setup/users/{user}', [UserManagementController::class, 'destroy'])->name('setup.users.destroy');
 
         Route::get('/inventory/products/meta', [ProductController::class, 'meta'])->name('inventory.products.meta');
+        Route::get('/inventory/batches/options', [BatchController::class, 'options'])->name('inventory.batches.options');
+        Route::apiResource('inventory/batches', BatchController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::apiResource('inventory/stock-adjustments', StockAdjustmentController::class)
+            ->only(['index', 'store', 'update', 'destroy'])
+            ->parameter('stock-adjustments', 'adjustment');
+        Route::get('/inventory/stock-movements', [StockMovementController::class, 'index'])->name('inventory.stock-movements.index');
         Route::post('/inventory/companies/quick', [InventoryMasterController::class, 'company'])->name('inventory.companies.quick');
         Route::post('/inventory/units/quick', [InventoryMasterController::class, 'unit'])->name('inventory.units.quick');
         Route::post('/inventory/categories/quick', [InventoryMasterController::class, 'category'])->name('inventory.categories.quick');
@@ -88,6 +99,12 @@ Route::middleware(['installed', 'auth'])->group(function () {
 
         Route::apiResource('purchase/orders', PurchaseOrderController::class)->only(['index', 'store']);
         Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store']);
+        Route::get('/purchase/returns/purchases', [PurchaseReturnController::class, 'purchases'])->name('purchase.returns.purchases');
+        Route::get('/purchase/returns/purchases/{purchase}/items', [PurchaseReturnController::class, 'items'])->name('purchase.returns.purchase-items');
+        Route::get('/purchase/returns/batches', [PurchaseReturnController::class, 'supplierBatches'])->name('purchase.returns.batches');
+        Route::apiResource('purchase/returns', PurchaseReturnController::class)
+            ->only(['index', 'show', 'store', 'update', 'destroy'])
+            ->parameter('returns', 'purchaseReturn');
 
         Route::get('/sales/product-lookup', ProductLookupController::class)->name('sales.product-lookup');
         Route::apiResource('sales/invoices', SalesInvoiceController::class)->only(['index', 'store', 'show']);
@@ -107,6 +124,8 @@ Route::middleware(['installed', 'auth'])->group(function () {
 
     Route::get('/purchases/{purchase}/print', [PurchaseController::class, 'print'])->name('purchases.print');
     Route::get('/purchases/{purchase}/pdf', [PurchaseController::class, 'pdf'])->name('purchases.pdf');
+    Route::get('/purchase-returns/{purchaseReturn}/print', [PurchaseReturnController::class, 'print'])->name('purchase-returns.print');
+    Route::get('/purchase-returns/{purchaseReturn}/pdf', [PurchaseReturnController::class, 'pdf'])->name('purchase-returns.pdf');
     Route::get('/sales/invoices/{invoice}/print', [SalesInvoiceController::class, 'print'])->name('sales.invoices.print');
     Route::get('/sales/invoices/{invoice}/pdf', [SalesInvoiceController::class, 'pdf'])->name('sales.invoices.pdf');
 

@@ -75,21 +75,29 @@ class SalesInvoiceService
     {
         $product = Product::query()->findOrFail($item['product_id']);
         $quantity = (float) $item['quantity'];
-        $batch = $this->resolveBatch($product->id, $quantity, $item['batch_id'] ?? null);
+        $freeQuantity = (float) ($item['free_quantity'] ?? 0);
+        $issueQuantity = $quantity + $freeQuantity;
+        $batch = $this->resolveBatch($product->id, $issueQuantity, $item['batch_id'] ?? null);
         $unitPrice = (float) $item['unit_price'];
+        $mrp = (float) ($item['mrp'] ?? $batch->mrp ?: $product->mrp);
+        $ccRate = (float) ($item['cc_rate'] ?? $product->cc_rate ?? 0);
         $discountPercent = (float) ($item['discount_percent'] ?? 0);
         $gross = $quantity * $unitPrice;
         $discount = round($gross * $discountPercent / 100, 2);
+        $freeGoodsValue = round($freeQuantity * ($mrp * $ccRate / 100), 2);
         $lineTotal = round($gross - $discount, 2);
 
         $invoice->items()->create([
             'product_id' => $product->id,
             'batch_id' => $batch->id,
             'quantity' => $quantity,
-            'mrp' => $batch->mrp ?: $product->mrp,
+            'free_quantity' => $freeQuantity,
+            'mrp' => $mrp,
             'unit_price' => $unitPrice,
+            'cc_rate' => $ccRate,
             'discount_percent' => $discountPercent,
             'discount_amount' => $discount,
+            'free_goods_value' => $freeGoodsValue,
             'line_total' => $lineTotal,
         ]);
 
@@ -102,7 +110,7 @@ class SalesInvoiceService
             'batch_id' => $batch->id,
             'movement_type' => 'sales_issue',
             'quantity_in' => 0,
-            'quantity_out' => $quantity,
+            'quantity_out' => $issueQuantity,
             'source_type' => 'sales_invoice',
             'source_id' => $invoice->id,
             'reference_type' => 'batch',

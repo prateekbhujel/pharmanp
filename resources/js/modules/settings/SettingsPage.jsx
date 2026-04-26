@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Checkbox, Form, Input, Modal, Select, Space, Switch, Table, Tabs, Tag } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Button, Card, Checkbox, Form, Input, Modal, Select, Space, Switch, Table, Tabs, Tag, Upload } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined, UploadOutlined, UserOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
@@ -10,6 +10,38 @@ import { useApi } from '../../core/hooks/useApi';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { can } from '../../core/utils/permissions';
+
+function normalizeFile(event) {
+    return Array.isArray(event) ? event : event?.fileList;
+}
+
+function brandingPayload(values) {
+    const payload = new FormData();
+
+    Object.entries(values).forEach(([key, value]) => {
+        if (key.endsWith('_upload')) {
+            const file = value?.[0]?.originFileObj;
+            if (file) {
+                payload.append(key.replace('_upload', '_file'), file);
+            }
+
+            return;
+        }
+
+        if (typeof value === 'boolean') {
+            payload.append(key, value ? '1' : '0');
+            return;
+        }
+
+        if (value !== undefined && value !== null) {
+            payload.append(key, value);
+        }
+    });
+
+    payload.append('_method', 'PUT');
+
+    return payload;
+}
 
 export function SettingsPage() {
     const { notification } = App.useApp();
@@ -64,7 +96,7 @@ export function SettingsPage() {
 
     async function saveBranding(values) {
         try {
-            await http.put(endpoints.branding, values);
+            await http.post(endpoints.branding, brandingPayload(values));
             notification.success({ message: 'Application setup saved' });
             reloadBranding?.();
             window.location.reload();
@@ -174,13 +206,25 @@ export function SettingsPage() {
                                     ]} />
                                 </Form.Item>
                             </div>
-                            <div className="form-grid">
-                                <Form.Item name="logo_url" label="Logo URL / Path"><Input placeholder="/storage/settings/logo.png" /></Form.Item>
-                                <Form.Item name="sidebar_logo_url" label="Sidebar Logo URL / Path"><Input placeholder="/storage/settings/sidebar-logo.png" /></Form.Item>
-                            </div>
-                            <div className="form-grid">
-                                <Form.Item name="app_icon_url" label="App Icon URL / Path"><Input placeholder="/storage/settings/app-icon.png" /></Form.Item>
-                                <Form.Item name="favicon_url" label="Favicon URL / Path"><Input placeholder="/storage/settings/favicon.ico" /></Form.Item>
+                            <div className="branding-upload-grid">
+                                {[
+                                    ['logo_upload', 'Main Logo', branding?.logo_url],
+                                    ['sidebar_logo_upload', 'Sidebar Logo', branding?.sidebar_logo_url],
+                                    ['app_icon_upload', 'App Icon', branding?.app_icon_url],
+                                    ['favicon_upload', 'Favicon', branding?.favicon_url],
+                                ].map(([name, label, url]) => (
+                                    <Form.Item key={name} name={name} label={label} valuePropName="fileList" getValueFromEvent={normalizeFile}>
+                                        <Upload beforeUpload={() => false} maxCount={1} accept={name === 'favicon_upload' ? '.ico,image/*' : 'image/*'} listType="picture">
+                                            <Button icon={<UploadOutlined />}>{url ? 'Replace File' : 'Upload File'}</Button>
+                                        </Upload>
+                                        {url && (
+                                            <div className="brand-upload-current">
+                                                <img src={url} alt="" />
+                                                <span>Current file</span>
+                                            </div>
+                                        )}
+                                    </Form.Item>
+                                ))}
                             </div>
                             <div className="form-grid">
                                 <Form.Item name="accent_color" label="Accent Color"><Input /></Form.Item>
@@ -344,7 +388,7 @@ export function SettingsPage() {
         });
 
         return items;
-    }, [brandingForm, featureRows, profileForm, roleData, user, userLookups, userTable]);
+    }, [branding, brandingForm, featureRows, profileForm, roleData, user, userLookups, userTable]);
 
     return (
         <div className="page-stack">

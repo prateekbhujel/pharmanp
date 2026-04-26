@@ -21,9 +21,13 @@ class QuickCompanyRequest extends FormRequest
                 'max:180',
                 Rule::unique('companies', 'name')->whereNull('deleted_at'),
             ],
+            'legal_name' => ['nullable', 'string', 'max:180'],
             'phone' => ['nullable', 'string', 'max:40'],
+            'email' => ['nullable', 'email', 'max:180'],
+            'address' => ['nullable', 'string', 'max:255'],
             'pan_number' => ['nullable', 'string', 'max:60'],
             'company_type' => ['nullable', 'in:pharmacy,distributor,manufacturer,supplier'],
+            'default_cc_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }
 }

@@ -5,33 +5,32 @@ namespace App\Modules\Inventory\Models;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockMovement extends Model
+class StockAdjustment extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'tenant_id',
         'company_id',
         'store_id',
-        'movement_date',
+        'adjustment_date',
         'product_id',
         'batch_id',
-        'movement_type',
-        'quantity_in',
-        'quantity_out',
-        'source_type',
-        'source_id',
-        'reference_type',
-        'reference_id',
-        'notes',
+        'adjustment_type',
+        'quantity',
+        'reason',
+        'adjusted_by',
         'created_by',
+        'updated_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'movement_date' => 'date',
-            'quantity_in' => 'decimal:3',
-            'quantity_out' => 'decimal:3',
+            'adjustment_date' => 'date',
+            'quantity' => 'decimal:3',
         ];
     }
 
@@ -45,8 +44,8 @@ class StockMovement extends Model
         return $this->belongsTo(Batch::class);
     }
 
-    public function creator(): BelongsTo
+    public function adjustedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'adjusted_by');
     }
 }

@@ -14,10 +14,13 @@ class SalesInvoiceItem extends Model
         'product_id',
         'batch_id',
         'quantity',
+        'free_quantity',
         'mrp',
         'unit_price',
+        'cc_rate',
         'discount_percent',
         'discount_amount',
+        'free_goods_value',
         'line_total',
     ];
 
@@ -25,10 +28,13 @@ class SalesInvoiceItem extends Model
     {
         return [
             'quantity' => 'decimal:3',
+            'free_quantity' => 'decimal:3',
             'mrp' => 'decimal:2',
             'unit_price' => 'decimal:2',
+            'cc_rate' => 'decimal:2',
             'discount_percent' => 'decimal:2',
             'discount_amount' => 'decimal:2',
+            'free_goods_value' => 'decimal:2',
             'line_total' => 'decimal:2',
         ];
     }

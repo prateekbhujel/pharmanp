@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Divider, Empty, Form, Input, InputNumber, Modal, Select, Space, Switch, Upload } from 'antd';
+import { App, Button, Card, Divider, Form, Input, InputNumber, Modal, Select, Space, Switch, Upload } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
 import { FormDrawer } from '../../core/components/FormDrawer';
@@ -12,6 +12,9 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { InventoryMasterTable } from './InventoryMasterTable';
+import { InventoryBatchesPanel } from './InventoryBatchesPanel';
+import { StockAdjustmentsPanel } from './StockAdjustmentsPanel';
+import { StockMovementsPanel } from './StockMovementsPanel';
 
 const inventorySections = {
     companies: { title: 'Company', description: 'Company and manufacturer master records', master: 'companies' },
@@ -213,6 +216,7 @@ export function ProductsPage() {
             dataIndex: 'name',
             field: 'name',
             sorter: true,
+            width: 300,
             render: (value, row) => (
                 <div className="product-cell">
                     {row.image_url ? <img src={row.image_url} alt="" /> : <span className="product-cell-fallback">{value?.slice(0, 1)}</span>}
@@ -268,12 +272,16 @@ export function ProductsPage() {
             return <InventoryMasterTable master={sectionConfig.master} />;
         }
 
-        if (section !== 'products') {
-            return (
-                <Card title={sectionConfig.title}>
-                    <Empty description={`${sectionConfig.title} screen will follow this same index and form pattern.`} />
-                </Card>
-            );
+        if (section === 'batches') {
+            return <InventoryBatchesPanel />;
+        }
+
+        if (section === 'stock-adjustment') {
+            return <StockAdjustmentsPanel />;
+        }
+
+        if (section === 'case-movement') {
+            return <StockMovementsPanel />;
         }
 
         return productList();
@@ -423,13 +431,20 @@ export function ProductsPage() {
                                     { value: 'sale', label: 'Sale only' },
                                 ]} />
                             </Form.Item>
+                            <Form.Item name="factor" label="Factor" initialValue={1}><InputNumber min={0.0001} className="full-width" /></Form.Item>
                         </div>
                     )}
                     {quickMaster === 'company' && (
-                        <div className="form-grid">
-                            <Form.Item name="phone" label="Phone"><Input /></Form.Item>
-                            <Form.Item name="pan_number" label="PAN"><Input /></Form.Item>
-                        </div>
+                        <>
+                            <div className="form-grid">
+                                <Form.Item name="legal_name" label="Legal Name"><Input /></Form.Item>
+                                <Form.Item name="pan_number" label="PAN"><Input /></Form.Item>
+                            </div>
+                            <div className="form-grid">
+                                <Form.Item name="phone" label="Phone"><Input /></Form.Item>
+                                <Form.Item name="default_cc_rate" label="Default CC %"><InputNumber min={0} max={100} className="full-width" /></Form.Item>
+                            </div>
+                        </>
                     )}
                     {quickMaster === 'category' && (
                         <Form.Item name="code" label="Code"><Input /></Form.Item>

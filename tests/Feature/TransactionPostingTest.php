@@ -75,6 +75,54 @@ class TransactionPostingTest extends TestCase
         ])->assertUnprocessable();
     }
 
+    public function test_purchase_return_deducts_stock_and_delete_restores_it(): void
+    {
+        [$user, $product, $supplier] = $this->fixture();
+
+        $purchaseResponse = $this->actingAs($user)->postJson('/api/v1/purchases', [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => '2026-04-25',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_no' => 'RET-001',
+                'expires_at' => '2027-04-25',
+                'quantity' => 10,
+                'free_quantity' => 2,
+                'purchase_price' => 5,
+                'mrp' => 8,
+            ]],
+        ])->assertCreated();
+
+        $purchaseId = $purchaseResponse->json('data.id');
+        $batch = Batch::query()->where('batch_no', 'RET-001')->firstOrFail();
+        $purchaseItemId = $purchaseResponse->json('data.items.0.id');
+
+        $returnResponse = $this->actingAs($user)->postJson('/api/v1/purchase/returns', [
+            'supplier_id' => $supplier->id,
+            'purchase_id' => $purchaseId,
+            'return_date' => '2026-04-26',
+            'items' => [[
+                'purchase_item_id' => $purchaseItemId,
+                'product_id' => $product->id,
+                'batch_id' => $batch->id,
+                'return_qty' => 2,
+                'rate' => 5,
+                'discount_percent' => 0,
+            ]],
+        ])->assertCreated();
+
+        $this->assertSame('10.000', (string) $batch->fresh()->quantity_available);
+        $this->assertSame('40.00', (string) $supplier->fresh()->current_balance);
+        $this->assertDatabaseHas('stock_movements', ['movement_type' => 'purchase_return_out', 'quantity_out' => 2]);
+        $this->assertDatabaseHas('purchase_return_items', ['product_id' => $product->id, 'batch_id' => $batch->id]);
+
+        $this->actingAs($user)->deleteJson('/api/v1/purchase/returns/'.$returnResponse->json('data.id'))->assertOk();
+
+        $this->assertSame('12.000', (string) $batch->fresh()->quantity_available);
+        $this->assertSame('50.00', (string) $supplier->fresh()->current_balance);
+    }
+
     private function fixture(): array
     {
         Setting::putValue('app.installed', ['installed' => true]);

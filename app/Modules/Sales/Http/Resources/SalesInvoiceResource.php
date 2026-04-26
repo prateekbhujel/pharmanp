@@ -37,10 +37,13 @@ class SalesInvoiceResource extends JsonResource
                 'batch_no' => $item->batch?->batch_no,
                 'expires_at' => $item->batch?->expires_at?->toDateString(),
                 'quantity' => (float) $item->quantity,
+                'free_quantity' => (float) ($item->free_quantity ?? 0),
                 'mrp' => (float) $item->mrp,
                 'unit_price' => (float) $item->unit_price,
+                'cc_rate' => (float) ($item->cc_rate ?? 0),
                 'discount_percent' => (float) $item->discount_percent,
                 'discount_amount' => (float) $item->discount_amount,
+                'free_goods_value' => (float) ($item->free_goods_value ?? 0),
                 'line_total' => (float) $item->line_total,
             ])->values()),
         ];

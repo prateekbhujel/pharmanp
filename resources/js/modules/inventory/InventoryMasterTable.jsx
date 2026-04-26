@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Switch } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { CopyOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { ServerTable } from '../../core/components/ServerTable';
 import { StatusTag } from '../../core/components/StatusTag';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
@@ -12,7 +12,7 @@ const configs = {
     companies: {
         title: 'Companies / Manufacturers',
         createLabel: 'New Company',
-        fields: ['name', 'legal_name', 'pan_number', 'phone', 'email', 'company_type', 'default_cc_rate'],
+        fields: ['name', 'legal_name', 'pan_number', 'phone', 'email', 'address', 'company_type', 'default_cc_rate'],
         columns: [
             { title: 'Name', dataIndex: 'name', field: 'name', sorter: true },
             { title: 'PAN', dataIndex: 'pan_number', width: 130 },
@@ -64,6 +64,7 @@ export function InventoryMasterTable({ master }) {
             render: (_, record) => (
                 <Space>
                     <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+                    <Button aria-label="Copy" icon={<CopyOutlined />} onClick={() => openCopy(record)} />
                     <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
                 </Space>
             ),
@@ -80,6 +81,17 @@ export function InventoryMasterTable({ master }) {
     function openEdit(record) {
         setEditing(record);
         form.setFieldsValue(record);
+        setOpen(true);
+    }
+
+    function openCopy(record) {
+        setEditing(null);
+        form.resetFields();
+        form.setFieldsValue({
+            ...record,
+            name: `${record.name} Copy`,
+            is_active: true,
+        });
         setOpen(true);
     }
 
@@ -139,6 +151,7 @@ export function InventoryMasterTable({ master }) {
                     {config.fields.includes('pan_number') && <Form.Item name="pan_number" label="PAN"><Input /></Form.Item>}
                     {config.fields.includes('phone') && <Form.Item name="phone" label="Phone"><Input /></Form.Item>}
                     {config.fields.includes('email') && <Form.Item name="email" label="Email"><Input /></Form.Item>}
+                    {config.fields.includes('address') && <Form.Item name="address" label="Address"><Input.TextArea rows={2} /></Form.Item>}
                     {config.fields.includes('company_type') && <Form.Item name="company_type" label="Type" initialValue="manufacturer"><Input /></Form.Item>}
                     {config.fields.includes('default_cc_rate') && <Form.Item name="default_cc_rate" label="Default CC %"><InputNumber min={0} max={100} className="full-width" /></Form.Item>}
                     {config.fields.includes('type') && (

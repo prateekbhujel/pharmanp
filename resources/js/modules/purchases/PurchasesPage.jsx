@@ -1,16 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Empty, Form, Input, InputNumber, Modal, Select, Space, Table } from 'antd';
-import { DeleteOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
+import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
+import { PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
 import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { ServerTable } from '../../core/components/ServerTable';
+import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { itemFreeGoodsValue, itemGross, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl } from '../../core/utils/url';
+import { PurchaseReturnsPanel } from './PurchaseReturnsPanel';
 
 const emptyPurchaseItem = {
     product_id: null,
@@ -20,6 +23,7 @@ const emptyPurchaseItem = {
     free_quantity: 0,
     purchase_price: 0,
     mrp: 0,
+    cc_rate: 0,
     discount_percent: 0,
 };
 
@@ -52,6 +56,8 @@ export function PurchasesPage() {
     const [products, setProducts] = useState([]);
     const [purchaseItems, setPurchaseItems] = useState([{ ...emptyPurchaseItem }]);
     const [orderItems, setOrderItems] = useState([{ ...emptyOrderItem }]);
+    const [purchaseLineErrors, setPurchaseLineErrors] = useState({});
+    const [orderLineErrors, setOrderLineErrors] = useState({});
     const [quickSupplierOpen, setQuickSupplierOpen] = useState(false);
     const [quickProductOpen, setQuickProductOpen] = useState(false);
     const [lastPurchasePrintUrl, setLastPurchasePrintUrl] = useState(null);
@@ -108,15 +114,8 @@ export function PurchasesPage() {
         setRows(nextRows.length ? nextRows : [{ ...emptyRow }]);
     }
 
-    const purchaseTotal = useMemo(() => purchaseItems.reduce((sum, item) => {
-        const gross = (Number(item.quantity) || 0) * (Number(item.purchase_price) || 0);
-        return sum + gross - (gross * (Number(item.discount_percent) || 0) / 100);
-    }, 0), [purchaseItems]);
-
-    const orderTotal = useMemo(() => orderItems.reduce((sum, item) => {
-        const gross = (Number(item.quantity) || 0) * (Number(item.unit_price) || 0);
-        return sum + gross - (gross * (Number(item.discount_percent) || 0) / 100);
-    }, 0), [orderItems]);
+    const purchaseSummary = useMemo(() => summarizeItems(purchaseItems, 'purchase_price'), [purchaseItems]);
+    const orderSummary = useMemo(() => summarizeItems(orderItems, 'unit_price'), [orderItems]);
 
     async function submitPurchase(values) {
         try {
@@ -133,10 +132,13 @@ export function PurchasesPage() {
             notification.success({ message: 'Purchase posted and stock received' });
             purchaseForm.resetFields();
             setPurchaseItems([{ ...emptyPurchaseItem }]);
+            setPurchaseLineErrors({});
             setLastPurchasePrintUrl(data.print_url);
             purchaseTable.reload();
         } catch (error) {
-            purchaseForm.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name: name.split('.'), errors })));
+            const errors = validationErrors(error);
+            setPurchaseLineErrors(validationErrorsByLine(errors, 'items'));
+            purchaseForm.setFields(Object.entries(errors).map(([name, messages]) => ({ name: name.split('.'), errors: messages })));
             notification.error({ message: 'Purchase failed', description: error?.response?.data?.message || error.message });
         }
     }
@@ -167,8 +169,11 @@ export function PurchasesPage() {
             notification.success({ message: 'Purchase order created' });
             orderForm.resetFields();
             setOrderItems([{ ...emptyOrderItem }]);
+            setOrderLineErrors({});
         } catch (error) {
-            orderForm.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name: name.split('.'), errors })));
+            const errors = validationErrors(error);
+            setOrderLineErrors(validationErrorsByLine(errors, 'items'));
+            orderForm.setFields(Object.entries(errors).map(([name, messages]) => ({ name: name.split('.'), errors: messages })));
             notification.error({ message: 'Order failed', description: error?.response?.data?.message || error.message });
         }
     }
@@ -192,6 +197,7 @@ export function PurchasesPage() {
                     product_id,
                     [priceField]: product.purchase_price || product.selling_price || product.mrp || 0,
                     mrp: product.mrp || row.mrp || 0,
+                    cc_rate: product.cc_rate || row.cc_rate || 0,
                 });
             }}
             className="full-width"
@@ -199,22 +205,25 @@ export function PurchasesPage() {
     );
 
     const purchaseColumns = [
-        { title: 'Product', render: (_, row, index) => productSelect(row, index, purchaseItems, setPurchaseItems, 'purchase_price'), width: 260 },
-        { title: 'Batch', render: (_, row, index) => <Input value={row.batch_no} onChange={(event) => updateRow(purchaseItems, setPurchaseItems, index, { batch_no: event.target.value })} />, width: 150 },
-        { title: 'Expiry', render: (_, row, index) => <DatePicker value={row.expires_at} onChange={(expires_at) => updateRow(purchaseItems, setPurchaseItems, index, { expires_at })} />, width: 150 },
-        { title: 'Qty', render: (_, row, index) => <InputNumber min={0.001} value={row.quantity} onChange={(quantity) => updateRow(purchaseItems, setPurchaseItems, index, { quantity })} />, width: 100 },
-        { title: 'Free', render: (_, row, index) => <InputNumber min={0} value={row.free_quantity} onChange={(free_quantity) => updateRow(purchaseItems, setPurchaseItems, index, { free_quantity })} />, width: 100 },
-        { title: 'Rate', render: (_, row, index) => <InputNumber min={0} value={row.purchase_price} onChange={(purchase_price) => updateRow(purchaseItems, setPurchaseItems, index, { purchase_price })} />, width: 120 },
-        { title: 'MRP', render: (_, row, index) => <InputNumber min={0} value={row.mrp} onChange={(mrp) => updateRow(purchaseItems, setPurchaseItems, index, { mrp })} />, width: 120 },
-        { title: '', render: (_, row, index) => <Button danger icon={<DeleteOutlined />} onClick={() => removeRow(purchaseItems, setPurchaseItems, index, emptyPurchaseItem)} />, width: 70 },
+        { key: 'product', title: 'Product', render: (row, index) => productSelect(row, index, purchaseItems, setPurchaseItems, 'purchase_price'), width: 280 },
+        { key: 'batch', title: 'Batch', render: (row, index) => <Input value={row.batch_no} onChange={(event) => updateRow(purchaseItems, setPurchaseItems, index, { batch_no: event.target.value })} />, width: 150 },
+        { key: 'expiry', title: 'Expiry', render: (row, index) => <DatePicker value={row.expires_at} onChange={(expires_at) => updateRow(purchaseItems, setPurchaseItems, index, { expires_at })} />, width: 150 },
+        { key: 'quantity', title: 'Qty', render: (row, index) => <InputNumber min={0.001} value={row.quantity} onChange={(quantity) => updateRow(purchaseItems, setPurchaseItems, index, { quantity })} />, width: 100 },
+        { key: 'free_quantity', title: 'Free Qty', render: (row, index) => <InputNumber min={0} value={row.free_quantity} onChange={(free_quantity) => updateRow(purchaseItems, setPurchaseItems, index, { free_quantity })} />, width: 105 },
+        { key: 'mrp', title: 'MRP', render: (row, index) => <InputNumber min={0} value={row.mrp} onChange={(mrp) => updateRow(purchaseItems, setPurchaseItems, index, { mrp })} />, width: 115 },
+        { key: 'rate', title: 'Rate', render: (row, index) => <InputNumber min={0} value={row.purchase_price} onChange={(purchase_price) => updateRow(purchaseItems, setPurchaseItems, index, { purchase_price })} />, width: 115 },
+        { key: 'cc_rate', title: 'CC %', render: (row, index) => <InputNumber min={0} max={100} value={row.cc_rate} onChange={(cc_rate) => updateRow(purchaseItems, setPurchaseItems, index, { cc_rate })} />, width: 95 },
+        { key: 'discount_percent', title: 'Disc %', render: (row, index) => <InputNumber min={0} max={100} value={row.discount_percent} onChange={(discount_percent) => updateRow(purchaseItems, setPurchaseItems, index, { discount_percent })} />, width: 95 },
+        { key: 'free_goods', title: 'Free Goods', className: 'line-money-cell', render: (row) => <Money value={itemFreeGoodsValue(row)} />, width: 120 },
+        { key: 'amount', title: 'Amount', className: 'line-money-cell', render: (row) => <Money value={itemGross(row, 'purchase_price')} />, width: 120 },
     ];
 
     const orderColumns = [
-        { title: 'Product', render: (_, row, index) => productSelect(row, index, orderItems, setOrderItems, 'unit_price'), width: 320 },
-        { title: 'Qty', render: (_, row, index) => <InputNumber min={0.001} value={row.quantity} onChange={(quantity) => updateRow(orderItems, setOrderItems, index, { quantity })} />, width: 120 },
-        { title: 'Rate', render: (_, row, index) => <InputNumber min={0} value={row.unit_price} onChange={(unit_price) => updateRow(orderItems, setOrderItems, index, { unit_price })} />, width: 120 },
-        { title: 'Discount %', render: (_, row, index) => <InputNumber min={0} max={100} value={row.discount_percent} onChange={(discount_percent) => updateRow(orderItems, setOrderItems, index, { discount_percent })} />, width: 130 },
-        { title: '', render: (_, row, index) => <Button danger icon={<DeleteOutlined />} onClick={() => removeRow(orderItems, setOrderItems, index, emptyOrderItem)} />, width: 70 },
+        { key: 'product', title: 'Product', render: (row, index) => productSelect(row, index, orderItems, setOrderItems, 'unit_price'), width: 360 },
+        { key: 'quantity', title: 'Qty', render: (row, index) => <InputNumber min={0.001} value={row.quantity} onChange={(quantity) => updateRow(orderItems, setOrderItems, index, { quantity })} />, width: 120 },
+        { key: 'rate', title: 'Rate', render: (row, index) => <InputNumber min={0} value={row.unit_price} onChange={(unit_price) => updateRow(orderItems, setOrderItems, index, { unit_price })} />, width: 120 },
+        { key: 'discount_percent', title: 'Discount %', render: (row, index) => <InputNumber min={0} max={100} value={row.discount_percent} onChange={(discount_percent) => updateRow(orderItems, setOrderItems, index, { discount_percent })} />, width: 130 },
+        { key: 'amount', title: 'Amount', className: 'line-money-cell', render: (row) => <Money value={itemNet(row, 'unit_price')} />, width: 130 },
     ];
     const billColumns = [
         { title: 'Bill', dataIndex: 'purchase_no', field: 'purchase_no', sorter: true },
@@ -271,14 +280,22 @@ export function PurchasesPage() {
                             <Form.Item name="purchase_date" label="Purchase Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
                             <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
                         </div>
-                        <Table rowKey={(_, index) => index} pagination={false} columns={purchaseColumns} dataSource={purchaseItems} scroll={{ x: 1120 }} />
-                        <div className="transaction-footer">
-                            <Button icon={<PlusOutlined />} onClick={() => setPurchaseItems([...purchaseItems, { ...emptyPurchaseItem }])}>Add Line</Button>
-                            <Space>
-                                <strong>Total <Money value={purchaseTotal} /></strong>
-                                <Button type="primary" htmlType="submit">Post Purchase</Button>
-                            </Space>
-                        </div>
+                        <TransactionLineItems
+                            rows={purchaseItems}
+                            columns={purchaseColumns}
+                            errors={purchaseLineErrors}
+                            addLabel="Add Item"
+                            onAdd={() => setPurchaseItems([...purchaseItems, { ...emptyPurchaseItem }])}
+                            onRemove={(index) => removeRow(purchaseItems, setPurchaseItems, index, emptyPurchaseItem)}
+                            summary={[
+                                { label: 'Subtotal', value: <Money value={purchaseSummary.subtotal} /> },
+                                { label: 'Discount', value: <Money value={purchaseSummary.discount} /> },
+                                { label: 'Tax', value: <Money value={purchaseSummary.tax} /> },
+                                { label: 'Free Goods Value', value: <Money value={purchaseSummary.freeGoods} /> },
+                                { label: 'Grand Total', value: <Money value={purchaseSummary.grandTotal} />, strong: true },
+                            ]}
+                            actions={<Button type="primary" htmlType="submit">Post Purchase</Button>}
+                        />
                     </Form>
                 </Card>
             )}
@@ -328,22 +345,27 @@ export function PurchasesPage() {
                             <Form.Item name="order_date" label="Order Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
                             <Form.Item name="expected_date" label="Expected Date"><DatePicker className="full-width" /></Form.Item>
                         </div>
-                        <Table rowKey={(_, index) => index} pagination={false} columns={orderColumns} dataSource={orderItems} scroll={{ x: 760 }} />
-                        <div className="transaction-footer">
-                            <Button icon={<PlusOutlined />} onClick={() => setOrderItems([...orderItems, { ...emptyOrderItem }])}>Add Line</Button>
-                            <Space>
-                                <strong>Total <Money value={orderTotal} /></strong>
-                                <Button type="primary" htmlType="submit">Create Order</Button>
-                            </Space>
-                        </div>
+                        <TransactionLineItems
+                            rows={orderItems}
+                            columns={orderColumns}
+                            errors={orderLineErrors}
+                            addLabel="Add Item"
+                            onAdd={() => setOrderItems([...orderItems, { ...emptyOrderItem }])}
+                            onRemove={(index) => removeRow(orderItems, setOrderItems, index, emptyOrderItem)}
+                            summary={[
+                                { label: 'Subtotal', value: <Money value={orderSummary.subtotal} /> },
+                                { label: 'Discount', value: <Money value={orderSummary.discount} /> },
+                                { label: 'Tax', value: <Money value={orderSummary.tax} /> },
+                                { label: 'Grand Total', value: <Money value={orderSummary.grandTotal} />, strong: true },
+                            ]}
+                            actions={<Button type="primary" htmlType="submit">Create Order</Button>}
+                        />
                     </Form>
                 </Card>
             )}
 
             {section === 'returns' && (
-                <Card title="Purchase Return">
-                    <Empty description="Purchase return will reuse supplier bill lookup and stock reversal posting." />
-                </Card>
+                <PurchaseReturnsPanel />
             )}
             <QuickProductModal
                 open={quickProductOpen}

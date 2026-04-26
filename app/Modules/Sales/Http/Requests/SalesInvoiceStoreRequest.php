@@ -24,7 +24,9 @@ class SalesInvoiceStoreRequest extends FormRequest
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.batch_id' => ['nullable', 'integer', 'exists:batches,id'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.001', 'max:999999'],
+            'items.*.free_quantity' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0', 'max:999999999'],
+            'items.*.cc_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }

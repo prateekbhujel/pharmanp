@@ -76,9 +76,11 @@ class PurchaseEntryService
         $receivedQuantity = $quantity + $freeQuantity;
         $purchasePrice = (float) $item['purchase_price'];
         $mrp = (float) $item['mrp'];
+        $ccRate = (float) ($item['cc_rate'] ?? $product->cc_rate ?? 0);
         $discountPercent = (float) ($item['discount_percent'] ?? 0);
         $gross = $quantity * $purchasePrice;
         $discount = round($gross * $discountPercent / 100, 2);
+        $freeGoodsValue = round($freeQuantity * ($mrp * $ccRate / 100), 2);
         $lineTotal = round($gross - $discount, 2);
 
         $batch = Batch::query()
@@ -132,8 +134,10 @@ class PurchaseEntryService
             'free_quantity' => $freeQuantity,
             'purchase_price' => $purchasePrice,
             'mrp' => $mrp,
+            'cc_rate' => $ccRate,
             'discount_percent' => $discountPercent,
             'discount_amount' => $discount,
+            'free_goods_value' => $freeGoodsValue,
             'line_total' => $lineTotal,
         ]);
 

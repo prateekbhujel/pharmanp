@@ -1,15 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tag } from 'antd';
-import { DeleteOutlined, PlusOutlined, PrinterOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Button, Card, DatePicker, Empty, Form, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
+import { PlusOutlined, PrinterOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
 import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
 import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { ServerTable } from '../../core/components/ServerTable';
+import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { itemFreeGoodsValue, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl } from '../../core/utils/url';
 
@@ -33,6 +35,7 @@ export function SalesPage() {
     const section = salesSection();
     const [barcode, setBarcode] = useState('');
     const [items, setItems] = useState([]);
+    const [lineErrors, setLineErrors] = useState({});
     const [customers, setCustomers] = useState([]);
     const [medicalRepresentatives, setMedicalRepresentatives] = useState([]);
     const [customerId, setCustomerId] = useState(null);
@@ -122,7 +125,10 @@ export function SalesPage() {
                 expires_at: batch.expires_at,
                 stock_on_hand: batch.quantity_available,
                 quantity: 1,
+                free_quantity: 0,
+                mrp: batch.mrp || product.mrp || 0,
                 unit_price: product.selling_price || batch.mrp || product.mrp,
+                cc_rate: product.cc_rate || 0,
                 discount_percent: 0,
             }];
         });
@@ -132,10 +138,7 @@ export function SalesPage() {
         setItems((current) => current.map((item) => item.key === row.key ? { ...item, ...patch } : item));
     }
 
-    const total = useMemo(() => items.reduce((sum, item) => {
-        const gross = (Number(item.quantity) || 0) * (Number(item.unit_price) || 0);
-        return sum + gross - (gross * (Number(item.discount_percent) || 0) / 100);
-    }, 0), [items]);
+    const invoiceSummary = useMemo(() => summarizeItems(items, 'unit_price'), [items]);
 
     async function submitInvoice() {
         try {
@@ -149,11 +152,13 @@ export function SalesPage() {
             });
             notification.success({ message: 'Invoice posted and stock deducted' });
             setItems([]);
+            setLineErrors({});
             setPaidAmount(0);
             setCustomerId(null);
             setLastPrintUrl(data.print_url);
             invoiceTable.reload();
         } catch (error) {
+            setLineErrors(validationErrorsByLine(validationErrors(error), 'items'));
             notification.error({ message: 'Invoice failed', description: error?.response?.data?.message || error.message });
         }
     }
@@ -173,20 +178,25 @@ export function SalesPage() {
     }
 
     const columns = [
-        { title: 'Product', dataIndex: 'name' },
-        { title: 'Batch', dataIndex: 'batch_no', width: 130 },
-        { title: 'Expiry', dataIndex: 'expires_at', width: 120 },
-        { title: 'Stock', dataIndex: 'stock_on_hand', align: 'right', width: 100 },
         {
-            title: 'Qty',
-            dataIndex: 'quantity',
-            width: 120,
-            render: (value, row) => <InputNumber min={0.001} max={row.stock_on_hand} value={value} onChange={(quantity) => updateItem(row, { quantity })} />,
+            key: 'product',
+            title: 'Product',
+            width: 260,
+            render: (row) => (
+                <div>
+                    <strong>{row.name}</strong>
+                    <span className="line-muted-note">Batch {row.batch_no || '-'} | Expiry {row.expires_at || '-'} | Stock {row.stock_on_hand}</span>
+                </div>
+            ),
         },
-        { title: 'Rate', dataIndex: 'unit_price', align: 'right', width: 130, render: (value, row) => <InputNumber min={0} value={value} onChange={(unit_price) => updateItem(row, { unit_price })} /> },
-        { title: 'Disc %', dataIndex: 'discount_percent', align: 'right', width: 110, render: (value, row) => <InputNumber min={0} max={100} value={value} onChange={(discount_percent) => updateItem(row, { discount_percent })} /> },
-        { title: 'Line Total', align: 'right', width: 140, render: (_, row) => <Money value={(row.quantity || 0) * (row.unit_price || 0) * (1 - ((row.discount_percent || 0) / 100))} /> },
-        { title: '', width: 70, render: (_, row) => <Button danger icon={<DeleteOutlined />} onClick={() => setItems((current) => current.filter((item) => item.key !== row.key))} /> },
+        { key: 'quantity', title: 'Qty', render: (row) => <InputNumber min={0.001} max={row.stock_on_hand} value={row.quantity} onChange={(quantity) => updateItem(row, { quantity })} />, width: 105 },
+        { key: 'free_quantity', title: 'Free Qty', render: (row) => <InputNumber min={0} value={row.free_quantity} onChange={(free_quantity) => updateItem(row, { free_quantity })} />, width: 105 },
+        { key: 'mrp', title: 'MRP', render: (row) => <InputNumber min={0} value={row.mrp} onChange={(mrp) => updateItem(row, { mrp })} />, width: 115 },
+        { key: 'rate', title: 'Rate', render: (row) => <InputNumber min={0} value={row.unit_price} onChange={(unit_price) => updateItem(row, { unit_price })} />, width: 115 },
+        { key: 'cc_rate', title: 'CC %', render: (row) => <InputNumber min={0} max={100} value={row.cc_rate} onChange={(cc_rate) => updateItem(row, { cc_rate })} />, width: 95 },
+        { key: 'discount_percent', title: 'Disc %', render: (row) => <InputNumber min={0} max={100} value={row.discount_percent} onChange={(discount_percent) => updateItem(row, { discount_percent })} />, width: 95 },
+        { key: 'free_goods', title: 'Free Goods', className: 'line-money-cell', render: (row) => <Money value={itemFreeGoodsValue(row)} />, width: 120 },
+        { key: 'line_total', title: 'Line Total', className: 'line-money-cell', render: (row) => <Money value={itemNet(row, 'unit_price')} />, width: 130 },
     ];
     const invoiceColumns = [
         { title: 'Invoice', dataIndex: 'invoice_no', field: 'invoice_no', sorter: true },
@@ -257,7 +267,7 @@ export function SalesPage() {
                         showSearch
                         filterOption={false}
                         placeholder="Search product and batch"
-                        className="full-width mb-16"
+                        className="full-width mb-16 pos-product-search"
                         options={productOptions}
                         onSearch={(q) => searchProduct(q).then(setProductOptions)}
                         onFocus={() => searchProduct('').then(setProductOptions)}
@@ -270,12 +280,27 @@ export function SalesPage() {
                         onChange={(_, option) => addItem(option.product, option.batch)}
                         value={null}
                     />
-                    <Table rowKey="key" columns={columns} dataSource={items} pagination={false} scroll={{ x: 1040 }} />
-                    <div className="pos-total">
-                        <span>Invoice Total</span>
-                        <strong><Money value={total} /></strong>
-                        <Button type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice</Button>
-                    </div>
+                    <TransactionLineItems
+                        rows={items}
+                        columns={columns}
+                        errors={lineErrors}
+                        rowKey={(row) => row.key}
+                        addLabel="Add Item"
+                        onAdd={() => {
+                            searchProduct('').then(setProductOptions);
+                            document.querySelector('.pos-product-search input')?.focus();
+                        }}
+                        onRemove={(index) => setItems((current) => current.filter((_, rowIndex) => rowIndex !== index))}
+                        minRows={0}
+                        summary={[
+                            { label: 'Subtotal', value: <Money value={invoiceSummary.subtotal} /> },
+                            { label: 'Discount', value: <Money value={invoiceSummary.discount} /> },
+                            { label: 'Tax', value: <Money value={invoiceSummary.tax} /> },
+                            { label: 'Free Goods Value', value: <Money value={invoiceSummary.freeGoods} /> },
+                            { label: 'Grand Total', value: <Money value={invoiceSummary.grandTotal} />, strong: true },
+                        ]}
+                        actions={<Button type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice</Button>}
+                    />
                 </Card>
             )}
 

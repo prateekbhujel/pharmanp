@@ -5,7 +5,10 @@ namespace App\Modules\Setup\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Modules\Setup\Http\Requests\BrandingSettingsRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Storage;
 
 class BrandingController extends Controller
 {
@@ -20,12 +23,24 @@ class BrandingController extends Controller
     {
         $current = $this->branding();
         $data = $request->validated();
-
-        Setting::putValue('app.branding', [
+        $payload = [
             ...$current,
-            ...$data,
+            ...Arr::except($data, ['logo_file', 'sidebar_logo_file', 'app_icon_file', 'favicon_file']),
             'sidebar_default_collapsed' => (bool) ($data['sidebar_default_collapsed'] ?? false),
-        ]);
+        ];
+
+        foreach ([
+            'logo_file' => 'logo_url',
+            'sidebar_logo_file' => 'sidebar_logo_url',
+            'app_icon_file' => 'app_icon_url',
+            'favicon_file' => 'favicon_url',
+        ] as $fileKey => $settingKey) {
+            if ($request->hasFile($fileKey)) {
+                $payload[$settingKey] = $this->storeBrandAsset($request->file($fileKey));
+            }
+        }
+
+        Setting::putValue('app.branding', $payload);
 
         return response()->json([
             'message' => 'Branding settings updated.',
@@ -45,5 +60,10 @@ class BrandingController extends Controller
             'layout' => 'vertical',
             'sidebar_default_collapsed' => false,
         ]);
+    }
+
+    private function storeBrandAsset(UploadedFile $file): string
+    {
+        return Storage::disk('public')->url($file->store('settings/branding', 'public'));
     }
 }

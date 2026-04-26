@@ -79,9 +79,12 @@
                 <th>Batch</th>
                 <th>Expiry</th>
                 <th class="right">Qty</th>
+                <th class="right">Free</th>
                 <th class="right">MRP</th>
                 <th class="right">Rate</th>
+                <th class="right">CC %</th>
                 <th class="right">Disc %</th>
+                <th class="right">Free Goods</th>
                 <th class="right">Discount</th>
                 <th class="right">Line Total</th>
             </tr>
@@ -94,9 +97,12 @@
                     <td>{{ $item->batch?->batch_no ?? '-' }}</td>
                     <td>{{ $item->batch?->expires_at?->format('Y-m-d') ?? '-' }}</td>
                     <td class="right">{{ number_format((float) $item->quantity, 3) }}</td>
+                    <td class="right">{{ number_format((float) ($item->free_quantity ?? 0), 3) }}</td>
                     <td class="right">{{ number_format((float) ($item->mrp ?? $item->batch?->mrp ?? $item->product?->mrp ?? 0), 2) }}</td>
                     <td class="right">{{ number_format((float) $item->unit_price, 2) }}</td>
+                    <td class="right">{{ number_format((float) ($item->cc_rate ?? 0), 2) }}</td>
                     <td class="right">{{ number_format((float) $item->discount_percent, 2) }}</td>
+                    <td class="right">{{ number_format((float) ($item->free_goods_value ?? 0), 2) }}</td>
                     <td class="right">{{ number_format((float) $item->discount_amount, 2) }}</td>
                     <td class="right">{{ number_format((float) $item->line_total, 2) }}</td>
                 </tr>

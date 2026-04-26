@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space, Statistic, Table, Tabs } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Space, Statistic, Table, Tabs } from 'antd';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
+import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { accountCatalog, voucherTypeOptions } from '../../core/utils/accountCatalog';
+import { validationErrorsByLine } from '../../core/utils/lineItems';
 
 const emptyEntry = { account_type: 'cash', entry_type: 'debit', amount: 0 };
 const bookOptions = [
@@ -27,6 +28,7 @@ export function AccountingPage() {
     const [bookSummary, setBookSummary] = useState(null);
     const [bookMeta, setBookMeta] = useState({ current_page: 1, per_page: 20, total: 0 });
     const [bookLoading, setBookLoading] = useState(false);
+    const [entryErrors, setEntryErrors] = useState({});
     const [customers, setCustomers] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [form] = Form.useForm();
@@ -62,9 +64,12 @@ export function AccountingPage() {
             notification.success({ message: 'Voucher posted' });
             form.resetFields();
             setEntries([{ ...emptyEntry }, { account_type: 'sales', entry_type: 'credit', amount: 0 }]);
+            setEntryErrors({});
             loadBook(1);
         } catch (error) {
-            form.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name: name.split('.'), errors })));
+            const errors = validationErrors(error);
+            setEntryErrors(validationErrorsByLine(errors, 'entries'));
+            form.setFields(Object.entries(errors).map(([name, messages]) => ({ name: name.split('.'), errors: messages })));
             notification.error({ message: 'Voucher failed', description: error?.response?.data?.message || error.message });
         }
     }
@@ -92,10 +97,11 @@ export function AccountingPage() {
     const debit = useMemo(() => entries.filter((entry) => entry.entry_type === 'debit').reduce((sum, entry) => sum + Number(entry.amount || 0), 0), [entries]);
     const credit = useMemo(() => entries.filter((entry) => entry.entry_type === 'credit').reduce((sum, entry) => sum + Number(entry.amount || 0), 0), [entries]);
 
-    const columns = [
+    const voucherColumns = [
         {
+            key: 'account',
             title: 'Account',
-            render: (_, row, index) => (
+            render: (row, index) => (
                 <Select
                     value={row.account_type}
                     onChange={(account_type) => updateEntry(index, { account_type })}
@@ -107,10 +113,11 @@ export function AccountingPage() {
             ),
             width: 220,
         },
-        { title: 'Type', render: (_, row, index) => <Select value={row.entry_type} onChange={(entry_type) => updateEntry(index, { entry_type })} options={[{ value: 'debit', label: 'Debit' }, { value: 'credit', label: 'Credit' }]} />, width: 120 },
+        { key: 'type', title: 'Type', render: (row, index) => <Select value={row.entry_type} onChange={(entry_type) => updateEntry(index, { entry_type })} options={[{ value: 'debit', label: 'Debit' }, { value: 'credit', label: 'Credit' }]} />, width: 120 },
         {
+            key: 'party_type',
             title: 'Party Type',
-            render: (_, row, index) => (
+            render: (row, index) => (
                 <Select
                     allowClear
                     value={row.party_type}
@@ -121,8 +128,9 @@ export function AccountingPage() {
             width: 140,
         },
         {
+            key: 'party',
             title: 'Party',
-            render: (_, row, index) => (
+            render: (row, index) => (
                 row.party_type === 'customer' ? (
                     <Select
                         allowClear
@@ -143,9 +151,8 @@ export function AccountingPage() {
             ),
             width: 180,
         },
-        { title: 'Amount', render: (_, row, index) => <InputNumber min={0} value={row.amount} onChange={(amount) => updateEntry(index, { amount })} className="full-width" />, width: 140 },
-        { title: 'Notes', render: (_, row, index) => <Input value={row.notes} onChange={(event) => updateEntry(index, { notes: event.target.value })} />, width: 220 },
-        { title: '', render: (_, row, index) => <Button danger icon={<DeleteOutlined />} onClick={() => setEntries(entries.filter((_, rowIndex) => rowIndex !== index))} />, width: 70 },
+        { key: 'amount', title: 'Amount', render: (row, index) => <InputNumber min={0} value={row.amount} onChange={(amount) => updateEntry(index, { amount })} className="full-width" />, width: 140 },
+        { key: 'notes', title: 'Notes', render: (row, index) => <Input value={row.notes} onChange={(event) => updateEntry(index, { notes: event.target.value })} />, width: 220 },
     ];
     const bookColumns = Object.keys(bookRows[0] || {}).map((key) => ({
         title: key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
@@ -170,15 +177,21 @@ export function AccountingPage() {
                                     </Form.Item>
                                 </div>
                                 <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
-                                <Table rowKey={(_, index) => index} columns={columns} dataSource={entries} pagination={false} scroll={{ x: 1080 }} />
-                                <div className="transaction-footer">
-                                    <Button icon={<PlusOutlined />} onClick={() => setEntries([...entries, { ...emptyEntry }])}>Add Entry</Button>
-                                    <Space>
-                                        <span>Debit <strong><Money value={debit} /></strong></span>
-                                        <span>Credit <strong><Money value={credit} /></strong></span>
-                                        <Button type="primary" htmlType="submit" disabled={debit !== credit || debit <= 0}>Post Voucher</Button>
-                                    </Space>
-                                </div>
+                                <TransactionLineItems
+                                    rows={entries}
+                                    columns={voucherColumns}
+                                    errors={entryErrors}
+                                    addLabel="Add Entry"
+                                    minRows={2}
+                                    onAdd={() => setEntries([...entries, { ...emptyEntry }])}
+                                    onRemove={(index) => setEntries(entries.filter((_, rowIndex) => rowIndex !== index))}
+                                    summary={[
+                                        { label: 'Debit', value: <Money value={debit} /> },
+                                        { label: 'Credit', value: <Money value={credit} /> },
+                                        { label: 'Difference', value: <Money value={Math.abs(debit - credit)} />, strong: true },
+                                    ]}
+                                    actions={<Button type="primary" htmlType="submit" disabled={debit !== credit || debit <= 0}>Post Voucher</Button>}
+                                />
                             </Form>
                         </Card>
                     ),
@@ -214,6 +227,7 @@ export function AccountingPage() {
                                     )}
                                 </div>
                                 <Table
+                                    className="server-table"
                                     loading={bookLoading}
                                     rowKey={(_, index) => index}
                                     columns={bookColumns}
@@ -224,7 +238,7 @@ export function AccountingPage() {
                                         total: bookMeta.total,
                                         onChange: loadBook,
                                     }}
-                                    scroll={{ x: true }}
+                                    scroll={{ x: 'max-content' }}
                                 />
                             </Card>
                         </div>

@@ -339,6 +339,10 @@ export function AppShell() {
         return items;
     }, [alerts]);
 
+    const horizontalMenuItems = useMemo(() => (
+        menuItems.filter((item) => item.className !== 'menu-category')
+    ), [menuItems]);
+
     function goTo(route) {
         if (!route || route === pathname) {
             return;
@@ -407,7 +411,8 @@ export function AppShell() {
                         {layout === 'horizontal' && (
                             <>
                                 {logo ? <img src={logo} alt={appName} className="brand-logo brand-logo-topbar" /> : <SafetyCertificateOutlined />}
-                                <Menu mode="horizontal" selectedKeys={[selectedMenuKey]} items={menuItems} onClick={navigate} className="topbar-menu" />
+                                <Typography.Text strong className="topbar-brand-name">{appName}</Typography.Text>
+                                <Menu mode="horizontal" selectedKeys={[selectedMenuKey]} items={horizontalMenuItems} onClick={navigate} className="topbar-menu" />
                             </>
                         )}
                     </Space>

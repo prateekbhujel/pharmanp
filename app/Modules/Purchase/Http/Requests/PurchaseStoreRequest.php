@@ -29,6 +29,7 @@ class PurchaseStoreRequest extends FormRequest
             'items.*.free_quantity' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'items.*.purchase_price' => ['required', 'numeric', 'min:0', 'max:999999999'],
             'items.*.mrp' => ['required', 'numeric', 'min:0', 'max:999999999'],
+            'items.*.cc_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }
