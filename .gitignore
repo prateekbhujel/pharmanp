@@ -42,4 +42,6 @@ Homestead.yaml
 
 # Deployment archives (local)
 release.tar.gz
+run-push.sh
+
 
