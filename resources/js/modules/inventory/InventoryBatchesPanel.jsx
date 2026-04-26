@@ -3,6 +3,7 @@ import { App, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space,
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
+import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { Money } from '../../core/components/Money';
 import { ServerTable } from '../../core/components/ServerTable';
@@ -59,7 +60,8 @@ export function InventoryBatchesPanel() {
         form.resetFields();
         form.setFieldsValue({
             expires_at: dayjs().add(1, 'year'),
-            quantity_received: 0,
+            quantity_received: 1,
+            quantity_available: 1,
             purchase_price: 0,
             mrp: 0,
             is_active: true,
@@ -122,6 +124,7 @@ export function InventoryBatchesPanel() {
         { title: 'Product', dataIndex: ['product', 'name'], width: 260 },
         { title: 'Supplier', dataIndex: ['supplier', 'name'], width: 180 },
         { title: 'Expiry', dataIndex: 'expires_at', field: 'expires_at', sorter: true, width: 130 },
+        { title: 'Storage', dataIndex: 'storage_location', width: 140, render: (value) => value || '-' },
         { title: 'Available', dataIndex: 'quantity_available', field: 'quantity_available', sorter: true, align: 'right', width: 120 },
         { title: 'Received', dataIndex: 'quantity_received', align: 'right', width: 120 },
         { title: 'Purchase', dataIndex: 'purchase_price', field: 'purchase_price', sorter: true, align: 'right', width: 120, render: (value) => <Money value={value} /> },
@@ -152,7 +155,12 @@ export function InventoryBatchesPanel() {
             </div>
             <Card
                 title="Batch List"
-                extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Batch</Button>}
+                extra={(
+                    <Space wrap>
+                        <ExportButtons basePath={endpoints.inventoryBatchesExport} params={{ search: table.search, ...table.filters }} />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Batch</Button>
+                    </Space>
+                )}
             >
                 <div className="table-toolbar table-toolbar-wide">
                     <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search batch, product or supplier" allowClear />
@@ -193,7 +201,7 @@ export function InventoryBatchesPanel() {
                         <Form.Item name="product_id" label="Product" rules={[{ required: true }]}>
                             <Select showSearch filterOption={false} onSearch={searchProducts} options={productOptions()} />
                         </Form.Item>
-                        <Form.Item name="supplier_id" label="Supplier">
+                        <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
                             <Select allowClear showSearch optionFilterProp="label" options={suppliers.map((item) => ({ value: item.id, label: item.name }))} />
                         </Form.Item>
                     </div>
@@ -201,6 +209,7 @@ export function InventoryBatchesPanel() {
                         <Form.Item name="batch_no" label="Batch No" rules={[{ required: true }]}><Input /></Form.Item>
                         <Form.Item name="barcode" label="Barcode"><Input /></Form.Item>
                     </div>
+                    <Form.Item name="storage_location" label="Storage"><Input placeholder="Rack A-1" /></Form.Item>
                     <div className="form-grid">
                         <Form.Item name="manufactured_at" label="Manufactured"><DatePicker className="full-width" /></Form.Item>
                         <Form.Item name="expires_at" label="Expiry" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>

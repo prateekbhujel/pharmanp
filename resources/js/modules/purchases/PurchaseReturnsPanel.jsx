@@ -244,7 +244,7 @@ export function PurchaseReturnsPanel() {
         form.setFieldsValue({
             supplier_id: record.supplier_id,
             purchase_id: record.purchase_id,
-            return_mode: record.purchase_id ? 'bill' : 'manual',
+            return_mode: record.purchase_id ? 'bill' : 'product',
             return_date: dayjs(record.return_date),
             notes: record.notes,
         });
@@ -382,7 +382,7 @@ export function PurchaseReturnsPanel() {
                         <Form.Item name="return_mode" label="Return Mode" rules={[{ required: true }]}>
                             <Radio.Group optionType="button" buttonStyle="solid" options={[
                                 { value: 'bill', label: 'By Purchase Bill' },
-                                { value: 'manual', label: 'By Product / Batch' },
+                                { value: 'product', label: 'By Product / Batch' },
                             ]} />
                         </Form.Item>
                         <Form.Item name="return_date" label="Return Date" rules={[{ required: true }]}>
@@ -436,7 +436,7 @@ export function PurchaseReturnsPanel() {
                         placeholder="Mode"
                         options={[
                             { value: 'bill', label: 'Bill' },
-                            { value: 'manual', label: 'Manual' },
+                            { value: 'product', label: 'By Product & Batch' },
                         ]}
                         onChange={(return_mode) => table.setFilters((filters) => ({ ...filters, return_mode }))}
                     />

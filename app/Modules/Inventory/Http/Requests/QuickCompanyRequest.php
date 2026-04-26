@@ -26,7 +26,7 @@ class QuickCompanyRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:180'],
             'address' => ['nullable', 'string', 'max:255'],
             'pan_number' => ['nullable', 'string', 'max:60'],
-            'company_type' => ['nullable', 'in:pharmacy,distributor,manufacturer,supplier'],
+            'company_type' => ['nullable', 'in:domestic,foreign,pharmacy,distributor,manufacturer,supplier'],
             'default_cc_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }

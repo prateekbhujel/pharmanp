@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space, Tag } from 'antd';
-import { DeleteOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons';
+import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { ServerTable } from '../../core/components/ServerTable';
@@ -22,6 +22,7 @@ export function StockAdjustmentsPanel() {
     const [products, setProducts] = useState([]);
     const [batches, setBatches] = useState([]);
     const [editing, setEditing] = useState(null);
+    const [modalOpen, setModalOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const table = useServerTable({ endpoint: endpoints.stockAdjustments });
     const productId = Form.useWatch('product_id', form);
@@ -78,6 +79,7 @@ export function StockAdjustmentsPanel() {
             form.resetFields();
             form.setFieldsValue({ adjustment_date: dayjs(), adjustment_type: 'add' });
             setEditing(null);
+            setModalOpen(false);
             table.reload();
             loadBatches(productId);
         } catch (error) {
@@ -100,6 +102,14 @@ export function StockAdjustmentsPanel() {
             ...record,
             adjustment_date: record.adjustment_date ? dayjs(record.adjustment_date) : dayjs(),
         });
+        setModalOpen(true);
+    }
+
+    function openCreate() {
+        setEditing(null);
+        form.resetFields();
+        form.setFieldsValue({ adjustment_date: dayjs(), adjustment_type: 'add', quantity: 1 });
+        setModalOpen(true);
     }
 
     function remove(record) {
@@ -138,35 +148,10 @@ export function StockAdjustmentsPanel() {
 
     return (
         <div className="page-stack">
-            <Card title={editing ? 'Edit Stock Adjustment' : 'Post Stock Adjustment'}>
-                <Form form={form} layout="vertical" onFinish={submit}>
-                    <div className="form-grid form-grid-4">
-                        <Form.Item name="product_id" label="Product" rules={[{ required: true }]}>
-                            <Select showSearch filterOption={false} onSearch={searchProducts} options={productOptions()} />
-                        </Form.Item>
-                        <Form.Item name="batch_id" label="Batch" rules={[{ required: true }]}>
-                            <Select showSearch optionFilterProp="label" options={batchOptions()} />
-                        </Form.Item>
-                        <Form.Item name="adjustment_type" label="Type" rules={[{ required: true }]}>
-                            <Select options={adjustmentTypes} />
-                        </Form.Item>
-                        <Form.Item name="adjustment_date" label="Date" rules={[{ required: true }]}>
-                            <DatePicker className="full-width" />
-                        </Form.Item>
-                    </div>
-                    <div className="form-grid">
-                        <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>
-                            <InputNumber min={0.001} className="full-width" />
-                        </Form.Item>
-                        <Form.Item name="reason" label="Reason"><Input /></Form.Item>
-                    </div>
-                    <Space>
-                        <Button type="primary" htmlType="submit" loading={saving}>{editing ? 'Update Adjustment' : 'Post Adjustment'}</Button>
-                        {editing && <Button onClick={() => { setEditing(null); form.resetFields(); form.setFieldsValue({ adjustment_date: dayjs(), adjustment_type: 'add' }); }}>Cancel Edit</Button>}
-                    </Space>
-                </Form>
-            </Card>
-            <Card title="Adjustment History">
+            <Card
+                title="Recent Adjustments"
+                extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Adjustment</Button>}
+            >
                 <div className="table-toolbar">
                     <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search product, batch, type or reason" allowClear />
                     <Select
@@ -179,6 +164,39 @@ export function StockAdjustmentsPanel() {
                 </div>
                 <ServerTable table={table} columns={columns} />
             </Card>
+            <Modal
+                title={editing ? 'Edit Stock Adjustment' : 'Adjustment Form'}
+                open={modalOpen}
+                onCancel={() => setModalOpen(false)}
+                onOk={() => form.submit()}
+                confirmLoading={saving}
+                okText={editing ? 'Update Adjustment' : 'Save Adjustment'}
+                destroyOnHidden
+                width={760}
+            >
+                <Form form={form} layout="vertical" onFinish={submit}>
+                    <div className="form-grid">
+                        <Form.Item name="product_id" label="Product" rules={[{ required: true }]}>
+                            <Select showSearch filterOption={false} onSearch={searchProducts} options={productOptions()} />
+                        </Form.Item>
+                        <Form.Item name="batch_id" label="Batch" rules={[{ required: true }]}>
+                            <Select showSearch optionFilterProp="label" options={batchOptions()} />
+                        </Form.Item>
+                    </div>
+                    <div className="form-grid form-grid-3">
+                        <Form.Item name="adjustment_type" label="Adjustment Type" rules={[{ required: true }]}>
+                            <Select options={adjustmentTypes} />
+                        </Form.Item>
+                        <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>
+                            <InputNumber min={0.001} className="full-width" />
+                        </Form.Item>
+                        <Form.Item name="adjustment_date" label="Date" rules={[{ required: true }]}>
+                            <DatePicker className="full-width" />
+                        </Form.Item>
+                    </div>
+                    <Form.Item name="reason" label="Reason"><Input placeholder="Write short reason" /></Form.Item>
+                </Form>
+            </Modal>
         </div>
     );
 }

@@ -35,6 +35,7 @@ class InventoryMasterRequest extends FormRequest
                 'code' => ['nullable', 'string', 'max:40'],
                 'type' => ['required', Rule::in(['purchase', 'sale', 'both'])],
                 'factor' => ['nullable', 'numeric', 'min:0.0001', 'max:999999'],
+                'description' => ['nullable', 'string', 'max:1000'],
                 'company_id' => ['nullable', 'integer', 'exists:companies,id'],
                 'is_active' => ['sometimes', 'boolean'],
             ],

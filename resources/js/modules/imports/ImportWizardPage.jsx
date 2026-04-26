@@ -8,7 +8,7 @@ import { http } from '../../core/api/http';
 export function ImportWizardPage() {
     const { notification } = App.useApp();
     const [targets, setTargets] = useState([]);
-    const [target, setTarget] = useState('products');
+    const [target, setTarget] = useState(new URLSearchParams(window.location.search).get('target') || 'products');
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState(null);
     const [mapping, setMapping] = useState({});

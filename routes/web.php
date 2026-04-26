@@ -6,6 +6,7 @@ use App\Http\Controllers\SpaController;
 use App\Modules\Accounting\Http\Controllers\VoucherController;
 use App\Modules\Core\Http\Controllers\DashboardController;
 use App\Modules\Core\Http\Controllers\SystemUpdateController;
+use App\Modules\ImportExport\Http\Controllers\ExportController;
 use App\Modules\ImportExport\Http\Controllers\ImportWizardController;
 use App\Modules\Inventory\Http\Controllers\InventoryMasterController;
 use App\Modules\Inventory\Http\Controllers\BatchController;
@@ -90,6 +91,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::post('/inventory/masters/{master}', [InventoryMasterController::class, 'store'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.store');
         Route::put('/inventory/masters/{master}/{id}', [InventoryMasterController::class, 'update'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.update');
         Route::delete('/inventory/masters/{master}/{id}', [InventoryMasterController::class, 'destroy'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.destroy');
+        Route::post('/inventory/masters/{master}/{id}/restore', [InventoryMasterController::class, 'restore'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.restore');
         Route::apiResource('inventory/products', ProductController::class)->only(['index', 'store', 'update', 'destroy']);
 
         Route::get('/suppliers/options', [SupplierController::class, 'options'])->name('suppliers.options');
@@ -120,6 +122,17 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::post('/imports/preview', [ImportWizardController::class, 'preview'])->name('imports.preview');
         Route::post('/imports/confirm', [ImportWizardController::class, 'confirm'])->name('imports.confirm');
         Route::get('/imports/{job}/rejected.csv', [ImportWizardController::class, 'rejected'])->name('imports.rejected');
+
+        Route::get('/exports/inventory/masters/{master}/{format}', [ExportController::class, 'inventoryMaster'])
+            ->whereIn('master', ['companies', 'units', 'categories'])
+            ->whereIn('format', ['xlsx', 'pdf'])
+            ->name('exports.inventory.masters');
+        Route::get('/exports/inventory/products/{format}', [ExportController::class, 'inventoryProducts'])
+            ->whereIn('format', ['xlsx', 'pdf'])
+            ->name('exports.inventory.products');
+        Route::get('/exports/inventory/batches/{format}', [ExportController::class, 'inventoryBatches'])
+            ->whereIn('format', ['xlsx', 'pdf'])
+            ->name('exports.inventory.batches');
     });
 
     Route::get('/purchases/{purchase}/print', [PurchaseController::class, 'print'])->name('purchases.print');

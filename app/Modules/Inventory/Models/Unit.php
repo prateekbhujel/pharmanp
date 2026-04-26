@@ -16,6 +16,7 @@ class Unit extends Model
         'code',
         'type',
         'factor',
+        'description',
         'is_active',
         'created_by',
         'updated_by',

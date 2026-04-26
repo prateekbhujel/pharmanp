@@ -20,6 +20,7 @@ class Batch extends Model
         'purchase_id',
         'batch_no',
         'barcode',
+        'storage_location',
         'manufactured_at',
         'expires_at',
         'quantity_received',

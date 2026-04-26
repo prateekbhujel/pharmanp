@@ -28,6 +28,7 @@ class QuickUnitRequest extends FormRequest
             'code' => ['nullable', 'string', 'max:30'],
             'type' => ['nullable', 'in:purchase,sale,both'],
             'factor' => ['nullable', 'numeric', 'min:0.0001', 'max:999999'],
+            'description' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }

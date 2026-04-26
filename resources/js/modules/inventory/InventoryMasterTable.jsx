@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Switch } from 'antd';
-import { CopyOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { CopyOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UndoOutlined } from '@ant-design/icons';
+import { ExportButtons, ImportButton } from '../../core/components/ListToolbarActions';
 import { ServerTable } from '../../core/components/ServerTable';
 import { StatusTag } from '../../core/components/StatusTag';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
@@ -12,25 +13,25 @@ const configs = {
     companies: {
         title: 'Companies / Manufacturers',
         createLabel: 'New Company',
-        fields: ['name', 'legal_name', 'pan_number', 'phone', 'email', 'address', 'company_type', 'default_cc_rate'],
+        fields: ['name', 'company_type', 'default_cc_rate'],
+        defaults: { company_type: 'domestic', default_cc_rate: 0, is_active: true },
         columns: [
-            { title: 'Name', dataIndex: 'name', field: 'name', sorter: true },
-            { title: 'PAN', dataIndex: 'pan_number', width: 130 },
-            { title: 'Phone', dataIndex: 'phone', width: 140 },
-            { title: 'Type', dataIndex: 'company_type', width: 130 },
-            { title: 'CC %', dataIndex: 'default_cc_rate', align: 'right', width: 100 },
+            { title: 'Company Name', dataIndex: 'name', field: 'name', sorter: true, width: 260 },
+            { title: 'Type', dataIndex: 'company_type', width: 140, render: (value) => labelFor(companyTypeOptions, value) },
+            { title: 'Default CC Rate', dataIndex: 'default_cc_rate', align: 'right', width: 150, render: (value) => `${Number(value || 0).toFixed(2)}%` },
+            { title: 'Added At', dataIndex: 'created_at', width: 130 },
         ],
     },
     units: {
         title: 'Units',
         createLabel: 'New Unit',
-        fields: ['name', 'code', 'type', 'factor'],
+        fields: ['name', 'type', 'description'],
         defaults: { type: 'both', factor: 1, is_active: true },
         columns: [
-            { title: 'Name', dataIndex: 'name', field: 'name', sorter: true },
-            { title: 'Code', dataIndex: 'code', width: 120 },
-            { title: 'Type', dataIndex: 'type', width: 140 },
-            { title: 'Factor', dataIndex: 'factor', align: 'right', width: 120 },
+            { title: 'Unit Name', dataIndex: 'name', field: 'name', sorter: true, width: 220 },
+            { title: 'Usage Type', dataIndex: 'type', width: 140, render: (value) => labelFor(unitTypeOptions, value) },
+            { title: 'Description', dataIndex: 'description', width: 320, render: (value) => value || '-' },
+            { title: 'Added At', dataIndex: 'created_at', width: 130 },
         ],
     },
     categories: {
@@ -40,9 +41,25 @@ const configs = {
         columns: [
             { title: 'Name', dataIndex: 'name', field: 'name', sorter: true },
             { title: 'Code', dataIndex: 'code', width: 160 },
+            { title: 'Added At', dataIndex: 'created_at', width: 130 },
         ],
     },
 };
+
+const companyTypeOptions = [
+    { value: 'domestic', label: 'Domestic' },
+    { value: 'foreign', label: 'Foreign' },
+];
+
+const unitTypeOptions = [
+    { value: 'both', label: 'Purchase and sale' },
+    { value: 'purchase', label: 'Purchase only' },
+    { value: 'sale', label: 'Sale only' },
+];
+
+function labelFor(options, value) {
+    return options.find((item) => item.value === value)?.label || value || '-';
+}
 
 export function InventoryMasterTable({ master }) {
     const { notification } = App.useApp();
@@ -52,24 +69,29 @@ export function InventoryMasterTable({ master }) {
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
     const [form] = Form.useForm();
+    const deletedMode = Boolean(table.filters.deleted);
 
     const columns = useMemo(() => [
         ...config.columns,
-        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value) => <StatusTag active={value} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value, record) => record.deleted_at ? <StatusTag active={false} falseText="Deleted" /> : <StatusTag active={value} /> },
         {
-            title: '',
+            title: 'Action',
             key: 'actions',
             fixed: 'right',
-            width: 112,
+            width: deletedMode ? 100 : 150,
             render: (_, record) => (
-                <Space>
-                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-                    <Button aria-label="Copy" icon={<CopyOutlined />} onClick={() => openCopy(record)} />
-                    <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
-                </Space>
+                record.deleted_at ? (
+                    <Button aria-label="Restore" icon={<UndoOutlined />} onClick={() => restore(record)}>Restore</Button>
+                ) : (
+                    <Space>
+                        <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+                        <Button aria-label="Copy" icon={<CopyOutlined />} onClick={() => openCopy(record)} />
+                        <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
+                    </Space>
+                )
             ),
         },
-    ], [config]);
+    ], [config, deletedMode]);
 
     function openCreate() {
         setEditing(null);
@@ -127,12 +149,37 @@ export function InventoryMasterTable({ master }) {
         });
     }
 
+    function restore(record) {
+        confirmDelete({
+            title: `Restore ${record.name}?`,
+            content: 'This record will return to the active master list.',
+            okText: 'Restore',
+            danger: false,
+            onOk: async () => {
+                await http.post(endpoints.inventoryMasterRestore(master, record.id));
+                notification.success({ message: 'Master restored' });
+                table.reload();
+            },
+        });
+    }
+
     return (
         <Card>
-            <div className="table-toolbar">
-                <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder={`Search ${config.title.toLowerCase()}`} allowClear />
-                <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
+            <div className="legacy-list-actions">
+                <ExportButtons basePath={endpoints.inventoryMasterExport(master)} params={{ search: table.search, deleted: table.filters.deleted }} />
+                {['companies', 'units'].includes(master) && <ImportButton target={master} />}
                 <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{config.createLabel}</Button>
+            </div>
+            <div className="table-toolbar table-toolbar-legacy">
+                <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder={`Search ${config.title.toLowerCase()}`} allowClear />
+                <div className="table-switch">
+                    <Switch
+                        checked={deletedMode}
+                        onChange={(deleted) => table.setFilters((filters) => ({ ...filters, deleted: deleted ? 1 : undefined }))}
+                    />
+                    <span>View Deleted</span>
+                </div>
+                <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
             </div>
             <ServerTable table={table} columns={columns} />
 
@@ -143,6 +190,7 @@ export function InventoryMasterTable({ master }) {
                 onOk={() => form.submit()}
                 confirmLoading={saving}
                 destroyOnHidden
+                width={720}
             >
                 <Form form={form} layout="vertical" onFinish={submit}>
                     <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input autoFocus /></Form.Item>
@@ -152,18 +200,19 @@ export function InventoryMasterTable({ master }) {
                     {config.fields.includes('phone') && <Form.Item name="phone" label="Phone"><Input /></Form.Item>}
                     {config.fields.includes('email') && <Form.Item name="email" label="Email"><Input /></Form.Item>}
                     {config.fields.includes('address') && <Form.Item name="address" label="Address"><Input.TextArea rows={2} /></Form.Item>}
-                    {config.fields.includes('company_type') && <Form.Item name="company_type" label="Type" initialValue="manufacturer"><Input /></Form.Item>}
+                    {config.fields.includes('company_type') && (
+                        <Form.Item name="company_type" label="Company Type" rules={[{ required: true }]}>
+                            <Select options={companyTypeOptions} />
+                        </Form.Item>
+                    )}
                     {config.fields.includes('default_cc_rate') && <Form.Item name="default_cc_rate" label="Default CC %"><InputNumber min={0} max={100} className="full-width" /></Form.Item>}
                     {config.fields.includes('type') && (
                         <Form.Item name="type" label="Type" rules={[{ required: true }]}>
-                            <Select options={[
-                                { value: 'both', label: 'Purchase and sale' },
-                                { value: 'purchase', label: 'Purchase only' },
-                                { value: 'sale', label: 'Sale only' },
-                            ]} />
+                            <Select options={unitTypeOptions} />
                         </Form.Item>
                     )}
                     {config.fields.includes('factor') && <Form.Item name="factor" label="Factor"><InputNumber min={0.0001} className="full-width" /></Form.Item>}
+                    {config.fields.includes('description') && <Form.Item name="description" label="Description"><Input.TextArea rows={3} /></Form.Item>}
                     <Form.Item name="is_active" label="Active" valuePropName="checked"><Switch /></Form.Item>
                 </Form>
             </Modal>

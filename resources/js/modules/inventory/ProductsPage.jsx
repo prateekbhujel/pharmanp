@@ -3,6 +3,7 @@ import { App, Button, Card, Divider, Form, Input, InputNumber, Modal, Select, Sp
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
 import { FormDrawer } from '../../core/components/FormDrawer';
+import { ExportButtons, ImportButton } from '../../core/components/ListToolbarActions';
 import { Money } from '../../core/components/Money';
 import { PageHeader } from '../../core/components/PageHeader';
 import { ServerTable } from '../../core/components/ServerTable';
@@ -292,7 +293,13 @@ export function ProductsPage() {
             <PageHeader
                 title={sectionConfig.title}
                 description={sectionConfig.description}
-                actions={section === 'products' ? <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Product</Button> : null}
+                actions={section === 'products' ? (
+                    <Space wrap>
+                        <ExportButtons basePath={endpoints.inventoryProductsExport} params={{ search: table.search, ...table.filters }} />
+                        <ImportButton target="products" />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Product</Button>
+                    </Space>
+                ) : null}
             />
 
             {sectionBody()}

@@ -15,6 +15,7 @@ class BatchResource extends JsonResource
             'supplier_id' => $this->supplier_id,
             'batch_no' => $this->batch_no,
             'barcode' => $this->barcode,
+            'storage_location' => $this->storage_location,
             'manufactured_at' => $this->manufactured_at?->toDateString(),
             'expires_at' => $this->expires_at?->toDateString(),
             'quantity_received' => (float) $this->quantity_received,

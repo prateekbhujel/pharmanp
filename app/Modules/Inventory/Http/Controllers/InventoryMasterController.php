@@ -31,6 +31,7 @@ class InventoryMasterController extends Controller
         $sortOrder = $request->query('sort_order') === 'desc' ? 'desc' : 'asc';
 
         $rows = $model::query()
+            ->when($request->boolean('deleted'), fn ($query) => $query->onlyTrashed())
             ->when($search !== '', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
             ->orderBy($sortField, $sortOrder)
             ->paginate(min(100, max(5, $request->integer('per_page', 15))));
@@ -95,6 +96,25 @@ class InventoryMasterController extends Controller
         return response()->json(['message' => 'Inventory master deleted.']);
     }
 
+    public function restore(Request $request, string $master, int $id): JsonResponse
+    {
+        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.products.update'), 403);
+
+        $row = DB::transaction(function () use ($request, $master, $id) {
+            $model = $this->modelFor($master);
+            $row = $model::query()->onlyTrashed()->findOrFail($id);
+            $row->restore();
+            $row->forceFill([
+                'is_active' => true,
+                'updated_by' => $request->user()?->id,
+            ])->save();
+
+            return $row->refresh();
+        });
+
+        return response()->json(['message' => 'Inventory master restored.', 'data' => $this->shape($master, $row)]);
+    }
+
     public function company(QuickCompanyRequest $request): JsonResponse
     {
         $this->authorize('create', Product::class);
@@ -102,7 +122,7 @@ class InventoryMasterController extends Controller
         $company = DB::transaction(fn () => Company::query()->create([
             ...$request->validated(),
             'tenant_id' => $request->user()?->tenant_id,
-            'company_type' => $request->validated('company_type', 'manufacturer'),
+            'company_type' => $request->validated('company_type', 'domestic'),
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
         ]));
@@ -122,6 +142,7 @@ class InventoryMasterController extends Controller
             'code' => $data['code'] ?? null,
             'type' => $data['type'] ?? 'both',
             'factor' => $data['factor'] ?? 1,
+            'description' => $data['description'] ?? null,
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
         ]));
@@ -172,7 +193,7 @@ class InventoryMasterController extends Controller
                 'phone' => $data['phone'] ?? null,
                 'email' => $data['email'] ?? null,
                 'address' => $data['address'] ?? null,
-                'company_type' => $data['company_type'] ?? 'manufacturer',
+                'company_type' => $data['company_type'] ?? 'domestic',
                 'default_cc_rate' => $data['default_cc_rate'] ?? 0,
             ],
             'units' => [
@@ -182,6 +203,7 @@ class InventoryMasterController extends Controller
                 'code' => $data['code'] ?? null,
                 'type' => $data['type'] ?? 'both',
                 'factor' => $data['factor'] ?? 1,
+                'description' => $data['description'] ?? null,
             ],
             'categories' => [
                 ...$base,
@@ -195,9 +217,21 @@ class InventoryMasterController extends Controller
     private function shape(string $master, Model $row): array
     {
         return match ($master) {
-            'companies' => $row->only(['id', 'name', 'legal_name', 'pan_number', 'phone', 'email', 'address', 'company_type', 'default_cc_rate', 'is_active']),
-            'units' => $row->only(['id', 'company_id', 'name', 'code', 'type', 'factor', 'is_active']),
-            'categories' => $row->only(['id', 'company_id', 'name', 'code', 'is_active']),
+            'companies' => [
+                ...$row->only(['id', 'name', 'legal_name', 'pan_number', 'phone', 'email', 'address', 'company_type', 'default_cc_rate', 'is_active']),
+                'deleted_at' => $row->deleted_at?->toISOString(),
+                'created_at' => $row->created_at?->toDateString(),
+            ],
+            'units' => [
+                ...$row->only(['id', 'company_id', 'name', 'code', 'type', 'factor', 'description', 'is_active']),
+                'deleted_at' => $row->deleted_at?->toISOString(),
+                'created_at' => $row->created_at?->toDateString(),
+            ],
+            'categories' => [
+                ...$row->only(['id', 'company_id', 'name', 'code', 'is_active']),
+                'deleted_at' => $row->deleted_at?->toISOString(),
+                'created_at' => $row->created_at?->toDateString(),
+            ],
         };
     }
 }

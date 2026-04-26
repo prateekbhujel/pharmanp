@@ -26,6 +26,7 @@ class BatchRequest extends FormRequest
                     ->ignore($this->route('batch')),
             ],
             'barcode' => ['nullable', 'string', 'max:120'],
+            'storage_location' => ['nullable', 'string', 'max:120'],
             'manufactured_at' => ['nullable', 'date'],
             'expires_at' => ['required', 'date'],
             'quantity_received' => ['required', 'numeric', 'min:0'],

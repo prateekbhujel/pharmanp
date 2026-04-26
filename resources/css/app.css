@@ -35,6 +35,21 @@ body {
     min-height: 100vh;
 }
 
+.app-shell > .ant-layout,
+.app-shell .ant-layout,
+.app-content,
+.page-stack,
+.ant-card,
+.ant-card-body {
+    min-width: 0;
+}
+
+.ant-tabs,
+.ant-tabs-content,
+.ant-tabs-tabpane {
+    min-width: 0;
+}
+
 .app-sidebar {
     background:
         linear-gradient(180deg, rgb(255 255 255 / 98%) 0%, rgb(247 250 252 / 98%) 100%),
@@ -286,6 +301,7 @@ body {
 }
 
 .app-content {
+    overflow-x: hidden;
     padding: 24px 28px;
 }
 
@@ -320,6 +336,7 @@ body {
 .ant-card {
     border-color: #e5e7eb;
     border-radius: 8px;
+    max-width: 100%;
 }
 
 .ant-card-head {
@@ -346,6 +363,17 @@ body {
 
 .server-table .ant-table {
     table-layout: auto !important;
+}
+
+.server-table {
+    max-width: 100%;
+    width: 100%;
+}
+
+.server-table .ant-table-container,
+.server-table .ant-table-content {
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .server-table .ant-table-cell {
@@ -396,6 +424,28 @@ body {
     margin-bottom: 16px;
 }
 
+.legacy-list-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-bottom: 14px;
+}
+
+.table-toolbar-legacy {
+    grid-template-columns: minmax(260px, 1fr) 180px auto;
+}
+
+.table-switch {
+    align-items: center;
+    color: #475569;
+    display: flex;
+    font-size: 13px;
+    gap: 8px;
+    white-space: nowrap;
+}
+
 .table-toolbar-wide {
     grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(150px, 220px)) auto;
 }
@@ -442,6 +492,7 @@ body {
 .transaction-lines-scroll {
     border: 1px solid #e2e8f0;
     border-radius: 8px;
+    max-width: 100%;
     overflow-x: auto;
 }
 

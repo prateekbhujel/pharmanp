@@ -32,6 +32,7 @@ class BatchController extends Controller
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('batch_no', 'like', '%'.$search.'%')
                         ->orWhere('barcode', 'like', '%'.$search.'%')
+                        ->orWhere('storage_location', 'like', '%'.$search.'%')
                         ->orWhereHas('product', fn (Builder $product) => $product
                             ->where('name', 'like', '%'.$search.'%')
                             ->orWhere('generic_name', 'like', '%'.$search.'%')

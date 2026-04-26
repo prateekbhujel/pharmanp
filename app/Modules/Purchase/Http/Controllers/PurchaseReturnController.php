@@ -46,7 +46,7 @@ class PurchaseReturnController extends Controller
             })
             ->when(request()->filled('supplier_id'), fn (Builder $builder) => $builder->where('supplier_id', request()->integer('supplier_id')))
             ->when(request('return_mode') === 'bill', fn (Builder $builder) => $builder->whereNotNull('purchase_id'))
-            ->when(request('return_mode') === 'manual', fn (Builder $builder) => $builder->whereNull('purchase_id'))
+            ->when(in_array(request('return_mode'), ['manual', 'product'], true), fn (Builder $builder) => $builder->whereNull('purchase_id'))
             ->when(request()->filled('from'), fn (Builder $builder) => $builder->whereDate('return_date', '>=', request('from')))
             ->when(request()->filled('to'), fn (Builder $builder) => $builder->whereDate('return_date', '<=', request('to')))
             ->orderBy($sortField, $sortOrder)

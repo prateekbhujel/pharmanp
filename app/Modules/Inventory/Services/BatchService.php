@@ -25,6 +25,7 @@ class BatchService
                 'supplier_id' => $data['supplier_id'] ?? null,
                 'batch_no' => $data['batch_no'],
                 'barcode' => $data['barcode'] ?? null,
+                'storage_location' => $data['storage_location'] ?? null,
                 'manufactured_at' => $data['manufactured_at'] ?? null,
                 'expires_at' => $data['expires_at'],
                 'quantity_received' => $data['quantity_received'],
