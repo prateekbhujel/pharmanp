@@ -283,12 +283,28 @@ export function MrTrackingPage() {
         } : null,
     ].filter(Boolean);
 
+    const branchSalesRows = salesData?.rows || [];
+    const maxSalesVal     = Math.max(...branchSalesRows.map((r) => r.total_value || 0), 1);
+
     const branchSalesColumns = [
-        { title: 'Branch', dataIndex: 'branch_name' },
-        { title: 'MR', dataIndex: 'mr_name' },
+        { title: 'Branch', dataIndex: 'branch_name', width: 140 },
+        { title: 'MR', dataIndex: 'mr_name', width: 130 },
         { title: 'Product', dataIndex: 'product_name' },
-        { title: 'Qty', dataIndex: 'total_qty', align: 'right', width: 90, render: (v) => (+v).toFixed(2) },
-        { title: 'Value', dataIndex: 'total_value', align: 'right', width: 130, render: (v) => <Money value={v} /> },
+        { title: 'Qty', dataIndex: 'total_qty', align: 'right', width: 80, render: (v) => (+v).toFixed(0) },
+        { 
+            title: 'Value', 
+            dataIndex: 'total_value', 
+            align: 'right', 
+            width: 260, 
+            render: (v) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ minWidth: 90, textAlign: 'right' }}><Money value={v} /></span>
+                    <div style={{ flex: 1 }}>
+                        <MiniBar value={v} max={maxSalesVal} color="#10b981" />
+                    </div>
+                </div>
+            )
+        },
     ];
 
     const totals = perfData?.totals || {};
@@ -327,23 +343,23 @@ export function MrTrackingPage() {
             {/* ── KPI cards ─────────────────────────────────────────────────── */}
             <Row gutter={[16, 16]}>
                 <Col xs={12} md={6}>
-                    <Card loading={perfLoading}>
-                        <Statistic title="Active MRs" value={totals.active_mrs ?? '—'} />
+                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #2563eb' }}>
+                        <Statistic title={<span style={{ fontWeight: 600 }}>Active MRs</span>} value={totals.active_mrs ?? '—'} />
                     </Card>
                 </Col>
                 <Col xs={12} md={6}>
-                    <Card loading={perfLoading}>
-                        <Statistic title="Visits" value={totals.visits ?? '—'} />
+                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #0891b2' }}>
+                        <Statistic title={<span style={{ fontWeight: 600 }}>Visits</span>} value={totals.visits ?? '—'} />
                     </Card>
                 </Col>
                 <Col xs={12} md={6}>
-                    <Card loading={perfLoading}>
-                        <Statistic title="Total Sales" value={totals.invoiced_value ?? 0} prefix="NPR" precision={2} />
+                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #7c3aed' }}>
+                        <Statistic title={<span style={{ fontWeight: 600 }}>Total Sales</span>} value={totals.invoiced_value ?? 0} prefix="NPR" precision={2} />
                     </Card>
                 </Col>
                 <Col xs={12} md={6}>
-                    <Card loading={salesLoading}>
-                        <Statistic title="Grand Total (Products)" value={salesData?.grand_total ?? 0} prefix="NPR" precision={2} />
+                    <Card className="metric-card metric-card-glow glass-card" loading={salesLoading} style={{ borderTop: '4px solid #10b981' }}>
+                        <Statistic title={<span style={{ fontWeight: 600 }}>Grand Total (Products)</span>} value={salesData?.grand_total ?? 0} prefix="NPR" precision={2} />
                     </Card>
                 </Col>
             </Row>

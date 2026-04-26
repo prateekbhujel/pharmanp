@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
-import { PlusOutlined, PrinterOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined, PrinterOutlined, QrcodeOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
 import { PageHeader } from '../../core/components/PageHeader';
@@ -47,6 +47,7 @@ export function SalesPage() {
     const [lastPrintUrl, setLastPrintUrl] = useState(null);
     const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
     const [quickProductOpen, setQuickProductOpen] = useState(false);
+    const [qrVisible, setQrVisible] = useState(false);
     const [customerForm] = Form.useForm();
     const invoiceTable = useServerTable({
         endpoint: endpoints.salesInvoices,
@@ -300,7 +301,18 @@ export function SalesPage() {
                             { label: 'Free Goods Value', value: <Money value={invoiceSummary.freeGoods} /> },
                             { label: 'Grand Total', value: <Money value={invoiceSummary.grandTotal} />, strong: true },
                         ]}
-                        actions={<Button type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice</Button>}
+                        actions={(
+                            <Space>
+                                <Button 
+                                    icon={<QrcodeOutlined />} 
+                                    disabled={!items.length} 
+                                    onClick={() => setQrVisible(true)}
+                                >
+                                    Payment QR
+                                </Button>
+                                <Button type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice</Button>
+                            </Space>
+                        )}
                     />
                 </Card>
             )}
@@ -350,7 +362,7 @@ export function SalesPage() {
                 open={quickCustomerOpen}
                 onCancel={() => setQuickCustomerOpen(false)}
                 onOk={() => customerForm.submit()}
-                destroyOnHidden
+                destroyOnClose
             >
                 <Form form={customerForm} layout="vertical" onFinish={submitCustomer}>
                     <Form.Item name="name" label="Customer Name" rules={[{ required: true }]}><Input autoFocus /></Form.Item>
@@ -360,6 +372,27 @@ export function SalesPage() {
                     </div>
                     <Form.Item name="address" label="Address"><Input /></Form.Item>
                 </Form>
+            </Modal>
+
+            <Modal
+                title="Payment QR Code"
+                open={qrVisible}
+                onCancel={() => setQrVisible(false)}
+                footer={[<Button key="close" onClick={() => setQrVisible(false)}>Close</Button>]}
+                centered
+                width={320}
+            >
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                    <p style={{ marginBottom: 16, fontSize: 16 }}>Scan to pay <strong><Money value={invoiceSummary.grandTotal} /></strong></p>
+                    <div style={{ background: '#fff', padding: 12, borderRadius: 12, display: 'inline-block', border: '1px solid #eee' }}>
+                        <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`Payment for Invoice: ${invoiceSummary.grandTotal} NPR`)}`} 
+                            alt="QR Code" 
+                            style={{ width: 200, height: 200 }}
+                        />
+                    </div>
+                    <p style={{ marginTop: 16, color: '#64748b', fontSize: 12 }}>Accepts all major fonepay/QR apps</p>
+                </div>
             </Modal>
         </div>
     );

@@ -39,9 +39,3 @@ Homestead.yaml
 *.sqlite-shm
 *.sqlite-wal
 /database/*.sqlite
-
-# Deployment archives (local)
-release.tar.gz
-run-push.sh
-
-

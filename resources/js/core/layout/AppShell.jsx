@@ -24,6 +24,8 @@ import { endpoints } from '../api/endpoints';
 import { useAuth } from '../auth/AuthProvider';
 import { can } from '../utils/permissions';
 import { appUrl } from '../utils/url';
+import { useTheme } from '../theme/ThemeContext';
+import { ColorPicker } from 'antd';
 
 const { Header, Sider, Content } = Layout;
 
@@ -95,6 +97,7 @@ export function AppShell() {
     const layout = branding?.layout || 'vertical';
     const appName = branding?.app_name || 'PharmaNP';
     const logo = branding?.sidebar_logo_url || branding?.logo_url || branding?.app_icon_url;
+    const { colorPrimary, setColorPrimary } = useTheme();
 
     const { items: menuItems, routesByKey, selectedMenuKey, openKeys } = useMemo(() => {
         const canInventory = can(user, 'inventory.products.view') || can(user, 'inventory.masters.manage');
@@ -114,15 +117,23 @@ export function AppShell() {
             { key: 'category-main', label: 'Main Menu', disabled: true, className: 'menu-category' },
             { key: register('dashboard', appUrl('/app')), icon: <DashboardOutlined />, label: 'Dashboard', show: can(user, 'dashboard.view') },
             {
+                key: 'masters',
+                icon: <SafetyCertificateOutlined />,
+                label: 'Masters',
+                show: canInventory,
+                children: [
+                    child('inventory-company', 'Company', appUrl('/app/inventory/companies')),
+                    child('inventory-unit', 'Unit', appUrl('/app/inventory/units')),
+                    child('inventory-categories', 'Categories', appUrl('/app/inventory/categories')),
+                ],
+            },
+            {
                 key: 'inventory',
                 icon: <MedicineBoxOutlined />,
                 label: 'Inventory',
                 show: canInventory,
                 children: [
-                    child('inventory-company', 'Company', appUrl('/app/inventory/companies')),
-                    child('inventory-unit', 'Unit', appUrl('/app/inventory/units')),
                     child('inventory-product', 'Product', appUrl('/app/inventory/products')),
-                    child('inventory-categories', 'Categories', appUrl('/app/inventory/categories')),
                     child('inventory-batches', 'Batches', appUrl('/app/inventory/batches')),
                     child('inventory-adjustment', 'Stock Adjustment', appUrl('/app/inventory/stock-adjustment')),
                     child('inventory-movement', 'Case Movement', appUrl('/app/inventory/case-movement')),
@@ -134,7 +145,6 @@ export function AppShell() {
                 label: 'Purchase',
                 show: canPurchase,
                 children: [
-                    child('purchase-supplier', 'Supplier', appUrl('/app/parties')),
                     child('purchase-bills', 'Purchase Bills', appUrl('/app/purchases/bills')),
                     child('purchase-entry', 'Purchase Entry', appUrl('/app/purchases/entry')),
                     child('purchase-orders', 'Purchase Orders', appUrl('/app/purchases/orders')),
@@ -378,13 +388,37 @@ export function AppShell() {
         { key: 'logout', label: 'Sign Out', onClick: logout },
     ];
 
+    const THEME_PRESETS = [
+        { color: '#0891b2', name: 'Medical Cyan' },
+        { color: '#3b82f6', name: 'Royal Blue' },
+        { color: '#6366f1', name: 'Indigo' },
+        { color: '#8b5cf6', name: 'Amethyst' },
+        { color: '#10b981', name: 'Emerald' },
+        { color: '#f59e0b', name: 'Amber' },
+        { color: '#ef4444', name: 'Rose' },
+        { color: '#0f172a', name: 'Slate' },
+    ];
+
+    const themeMenu = {
+        items: THEME_PRESETS.map((p) => ({
+            key: p.color,
+            label: (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: p.color }} />
+                    <span style={{ fontWeight: 500 }}>{p.name}</span>
+                </div>
+            )
+        })),
+        onClick: ({ key }) => setColorPrimary(key)
+    };
+
     return (
         <Layout className={`app-shell app-shell-${layout}`}>
             {layout === 'vertical' && (
             <Sider width={250} collapsed={collapsed} className="app-sidebar" breakpoint="lg" collapsedWidth={72} trigger={null}>
                 <div className="main-sidebar-header">
                     <a href={appUrl('/app')} className="header-logo">
-                        {logo ? <img src={logo} alt={appName} className="brand-logo" /> : <div className="brand-mark"><SafetyCertificateOutlined /></div>}
+                        {logo ? <img src={logo} alt={appName} className="brand-logo" /> : <div className="brand-mark" style={{ background: `linear-gradient(135deg, ${colorPrimary}, var(--primary-color-dark, #0369a1))` }}><SafetyCertificateOutlined /></div>}
                         {!collapsed && <strong>{appName}</strong>}
                     </a>
                 </div>
@@ -411,7 +445,7 @@ export function AppShell() {
                         )}
                         {layout === 'horizontal' && (
                             <>
-                                {logo ? <img src={logo} alt={appName} className="brand-logo brand-logo-topbar" /> : <SafetyCertificateOutlined />}
+                                {logo ? <img src={logo} alt={appName} className="brand-logo brand-logo-topbar" /> : <SafetyCertificateOutlined style={{ color: colorPrimary, fontSize: 20 }} />}
                                 <Typography.Text strong className="topbar-brand-name">{appName}</Typography.Text>
                                 <Menu mode="horizontal" selectedKeys={[selectedMenuKey]} items={horizontalMenuItems} onClick={navigate} className="topbar-menu" />
                             </>
