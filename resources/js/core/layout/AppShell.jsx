@@ -33,7 +33,7 @@ const SalesPage = React.lazy(() => import('../../modules/sales/SalesPage').then(
 const ImportWizardPage = React.lazy(() => import('../../modules/imports/ImportWizardPage').then((module) => ({ default: module.ImportWizardPage })));
 const SystemUpdatePage = React.lazy(() => import('../../modules/system/SystemUpdatePage').then((module) => ({ default: module.SystemUpdatePage })));
 const OnboardingPage = React.lazy(() => import('../../modules/onboarding/OnboardingPage').then((module) => ({ default: module.OnboardingPage })));
-const MrPerformancePage = React.lazy(() => import('../../modules/mr/MrPerformancePage').then((module) => ({ default: module.MrPerformancePage })));
+const MrTrackingPage = React.lazy(() => import('../../modules/mr/MrTrackingPage').then((module) => ({ default: module.MrTrackingPage })));
 const SettingsPage = React.lazy(() => import('../../modules/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const PurchasesPage = React.lazy(() => import('../../modules/purchases/PurchasesPage').then((module) => ({ default: module.PurchasesPage })));
 const AccountingPage = React.lazy(() => import('../../modules/accounting/AccountingPage').then((module) => ({ default: module.AccountingPage })));
@@ -68,7 +68,8 @@ const routes = {
     [appUrl('/app/accounting/bank-book')]: AccountingPage,
     [appUrl('/app/accounting/payments')]: AccountingPage,
     [appUrl('/app/accounting/expenses')]: AccountingPage,
-    [appUrl('/app/mr/performance')]: MrPerformancePage,
+    [appUrl('/app/mr/performance')]: MrTrackingPage,
+    [appUrl('/app/mr/tracking')]: MrTrackingPage,
     [appUrl('/app/imports')]: ImportWizardPage,
     [appUrl('/app/reports')]: ReportsPage,
     [appUrl('/app/reports/low-stock')]: ReportsPage,

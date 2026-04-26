@@ -1,8 +1,15 @@
+# Logs
 *.log
 .DS_Store
+Thumbs.db
+
+# Environment
 .env
 .env.backup
 .env.production
+.env.production.example
+
+# IDE / editor
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -11,15 +18,28 @@
 /.phpunit.cache
 /.vscode
 /.zed
+
+# Build artifacts
 /.vite
-/auth.json
 /node_modules
 /public/build
 /public/hot
 /public/storage
+/vendor
+
+# Laravel internals
+/auth.json
 /storage/*.key
 /storage/pail
-/vendor
 Homestead.json
 Homestead.yaml
-Thumbs.db
+
+# Database files (local SQLite — never commit)
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+/database/*.sqlite
+
+# Deployment archives (local)
+release.tar.gz
+

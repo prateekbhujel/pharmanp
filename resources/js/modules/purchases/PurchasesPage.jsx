@@ -14,6 +14,7 @@ import { itemFreeGoodsValue, itemGross, itemNet, summarizeItems, validationError
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl } from '../../core/utils/url';
 import { PurchaseReturnsPanel } from './PurchaseReturnsPanel';
+import { PurchaseOrdersPanel } from './PurchaseOrdersPanel';
 
 const emptyPurchaseItem = {
     product_id: null,
@@ -326,42 +327,7 @@ export function PurchasesPage() {
             )}
 
             {section === 'orders' && (
-                <Card>
-                    <Form form={orderForm} layout="vertical" onFinish={submitOrder} initialValues={{ order_date: dayjs() }}>
-                        <div className="form-grid">
-                            <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
-                                <Select
-                                    showSearch
-                                    optionFilterProp="label"
-                                    options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
-                                    dropdownRender={(menu) => (
-                                        <>
-                                            {menu}
-                                            <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
-                                        </>
-                                    )}
-                                />
-                            </Form.Item>
-                            <Form.Item name="order_date" label="Order Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
-                            <Form.Item name="expected_date" label="Expected Date"><DatePicker className="full-width" /></Form.Item>
-                        </div>
-                        <TransactionLineItems
-                            rows={orderItems}
-                            columns={orderColumns}
-                            errors={orderLineErrors}
-                            addLabel="Add Item"
-                            onAdd={() => setOrderItems([...orderItems, { ...emptyOrderItem }])}
-                            onRemove={(index) => removeRow(orderItems, setOrderItems, index, emptyOrderItem)}
-                            summary={[
-                                { label: 'Subtotal', value: <Money value={orderSummary.subtotal} /> },
-                                { label: 'Discount', value: <Money value={orderSummary.discount} /> },
-                                { label: 'Tax', value: <Money value={orderSummary.tax} /> },
-                                { label: 'Grand Total', value: <Money value={orderSummary.grandTotal} />, strong: true },
-                            ]}
-                            actions={<Button type="primary" htmlType="submit">Create Order</Button>}
-                        />
-                    </Form>
-                </Card>
+                <PurchaseOrdersPanel />
             )}
 
             {section === 'returns' && (

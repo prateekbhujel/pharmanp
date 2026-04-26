@@ -18,6 +18,9 @@ class RepresentativeVisit extends Model
         'status',
         'order_value',
         'notes',
+        'latitude',
+        'longitude',
+        'location_name',
         'created_by',
         'updated_by',
     ];
@@ -25,8 +28,10 @@ class RepresentativeVisit extends Model
     protected function casts(): array
     {
         return [
-            'visit_date' => 'date',
+            'visit_date'  => 'date',
             'order_value' => 'decimal:2',
+            'latitude'    => 'decimal:7',
+            'longitude'   => 'decimal:7',
         ];
     }
 

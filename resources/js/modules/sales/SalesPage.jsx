@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Empty, Form, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
+import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
 import { PlusOutlined, PrinterOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
@@ -14,6 +14,7 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 import { itemFreeGoodsValue, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl } from '../../core/utils/url';
+import { SalesReturnsPanel } from './SalesReturnsPanel';
 
 function salesSection() {
     const section = window.location.pathname.split('/').filter(Boolean).pop();
@@ -337,9 +338,7 @@ export function SalesPage() {
             )}
 
             {section === 'returns' && (
-                <Card title="Sales Return">
-                    <Empty description="Sales return will reuse invoice lookup and stock reversal posting." />
-                </Card>
+                <SalesReturnsPanel />
             )}
             <QuickProductModal
                 open={quickProductOpen}

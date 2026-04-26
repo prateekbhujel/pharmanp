@@ -23,6 +23,9 @@ export const endpoints = {
     customers: appUrl('/api/v1/customers'),
     customerOptions: appUrl('/api/v1/customers/options'),
     purchaseOrders: appUrl('/api/v1/purchase/orders'),
+    purchaseOrderApprove: (orderId) => appUrl(`/api/v1/purchase/orders/${orderId}/approve`),
+    purchaseOrderReceive: (orderId) => appUrl(`/api/v1/purchase/orders/${orderId}/receive`),
+    purchaseOrderPay: (orderId) => appUrl(`/api/v1/purchase/orders/${orderId}/pay`),
     purchases: appUrl('/api/v1/purchases'),
     purchaseReturns: appUrl('/api/v1/purchase/returns'),
     purchaseReturnPurchases: appUrl('/api/v1/purchase/returns/purchases'),
@@ -34,6 +37,9 @@ export const endpoints = {
     mrRepresentatives: appUrl('/api/v1/mr/representatives'),
     mrVisits: appUrl('/api/v1/mr/visits'),
     mrPerformance: appUrl('/api/v1/mr/performance'),
+    mrBranches: appUrl('/api/v1/mr/branches'),
+    mrBranchOptions: appUrl('/api/v1/mr/branches/options'),
+    mrBranchSales: appUrl('/api/v1/mr/branch-sales'),
     vouchers: appUrl('/api/v1/accounting/vouchers'),
     reports: appUrl('/api/v1/reports'),
     importTargets: appUrl('/api/v1/imports/targets'),
@@ -46,4 +52,32 @@ export const endpoints = {
     setupStatus: appUrl('/setup/status'),
     setupComplete: appUrl('/setup/complete'),
     updateCheck: appUrl('/api/v1/system/update-check'),
+
+    // Accounting — Expenses
+    expenses: appUrl('/api/v1/accounting/expenses'),
+
+    // Accounting — Payments
+    payments: appUrl('/api/v1/accounting/payments'),
+    paymentOutstandingBills: appUrl('/api/v1/accounting/payments/outstanding-bills'),
+
+    // Sales — Returns
+    salesReturns: appUrl('/api/v1/sales/returns'),
+    salesReturnInvoiceOptions: appUrl('/api/v1/sales/returns/invoice-options'),
+    salesReturnInvoiceItems: (invoiceId) => appUrl(`/api/v1/sales/returns/invoices/${invoiceId}/items`),
+
+    // Customer Ledger
+    customerLedger: (customerId) => appUrl(`/api/v1/customers/${customerId}/ledger`),
+
+    // Settings — Dropdown Options
+    dropdownOptions: appUrl('/api/v1/settings/dropdown-options'),
+
+    // Settings — Admin
+    settingsAdmin: appUrl('/api/v1/settings/admin'),
+    settingsTestMail: appUrl('/api/v1/settings/admin/test-mail'),
+
+    // Settings — Party Types
+    partyTypes: appUrl('/api/v1/settings/party-types'),
+
+    // Settings — Supplier Types
+    supplierTypes: appUrl('/api/v1/settings/supplier-types'),
 };

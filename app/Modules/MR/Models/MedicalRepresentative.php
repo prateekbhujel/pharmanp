@@ -3,6 +3,7 @@
 namespace App\Modules\MR\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -13,6 +14,7 @@ class MedicalRepresentative extends Model
     protected $fillable = [
         'tenant_id',
         'company_id',
+        'branch_id',
         'name',
         'employee_code',
         'phone',
@@ -35,5 +37,10 @@ class MedicalRepresentative extends Model
     public function visits(): HasMany
     {
         return $this->hasMany(RepresentativeVisit::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 }

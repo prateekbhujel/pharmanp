@@ -30,6 +30,7 @@ class MrManagementService
     public function representatives(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
         $query = MedicalRepresentative::query()
+            ->with(['branch:id,name,type'])
             ->when($user && $this->isRepresentativeUser($user), fn (Builder $builder) => $builder->whereKey($user->medical_representative_id))
             ->when($table->search, function (Builder $builder, string $search) {
                 $builder->where(function (Builder $inner) use ($search) {
@@ -39,7 +40,8 @@ class MrManagementService
                         ->orWhere('phone', 'like', '%'.$search.'%');
                 });
             })
-            ->when(array_key_exists('is_active', $table->filters), fn (Builder $builder) => $builder->where('is_active', (bool) $table->filters['is_active']));
+            ->when(array_key_exists('is_active', $table->filters), fn (Builder $builder) => $builder->where('is_active', (bool) $table->filters['is_active']))
+            ->when(array_key_exists('branch_id', $table->filters) && $table->filters['branch_id'], fn (Builder $builder) => $builder->where('branch_id', $table->filters['branch_id']));
 
         return $query->orderBy(self::REPRESENTATIVE_SORTS[$table->sortField] ?? 'name', $table->sortOrder)
             ->paginate($table->perPage, ['*'], 'page', $table->page);
@@ -70,17 +72,18 @@ class MrManagementService
     {
         return DB::transaction(function () use ($data, $user) {
             return MedicalRepresentative::query()->create([
-                'tenant_id' => $user->tenant_id,
-                'company_id' => $user->company_id,
-                'name' => $data['name'],
+                'tenant_id'     => $user->tenant_id,
+                'company_id'    => $user->company_id,
+                'branch_id'     => $data['branch_id'] ?? null,
+                'name'          => $data['name'],
                 'employee_code' => $data['employee_code'] ?? null,
-                'phone' => $data['phone'] ?? null,
-                'email' => $data['email'] ?? null,
-                'territory' => $data['territory'] ?? null,
-                'monthly_target' => $data['monthly_target'] ?? 0,
-                'is_active' => $data['is_active'] ?? true,
-                'created_by' => $user->id,
-                'updated_by' => $user->id,
+                'phone'         => $data['phone'] ?? null,
+                'email'         => $data['email'] ?? null,
+                'territory'     => $data['territory'] ?? null,
+                'monthly_target'=> $data['monthly_target'] ?? 0,
+                'is_active'     => $data['is_active'] ?? true,
+                'created_by'    => $user->id,
+                'updated_by'    => $user->id,
             ]);
         });
     }
@@ -89,17 +92,18 @@ class MrManagementService
     {
         return DB::transaction(function () use ($representative, $data, $user) {
             $representative->update([
-                'name' => $data['name'],
+                'branch_id'     => $data['branch_id'] ?? $representative->branch_id,
+                'name'          => $data['name'],
                 'employee_code' => $data['employee_code'] ?? null,
-                'phone' => $data['phone'] ?? null,
-                'email' => $data['email'] ?? null,
-                'territory' => $data['territory'] ?? null,
-                'monthly_target' => $data['monthly_target'] ?? 0,
-                'is_active' => $data['is_active'] ?? $representative->is_active,
-                'updated_by' => $user->id,
+                'phone'         => $data['phone'] ?? null,
+                'email'         => $data['email'] ?? null,
+                'territory'     => $data['territory'] ?? null,
+                'monthly_target'=> $data['monthly_target'] ?? 0,
+                'is_active'     => $data['is_active'] ?? $representative->is_active,
+                'updated_by'    => $user->id,
             ]);
 
-            return $representative->fresh();
+            return $representative->fresh(['branch:id,name']);
         });
     }
 
@@ -119,13 +123,16 @@ class MrManagementService
         return DB::transaction(function () use ($data, $user) {
             return RepresentativeVisit::query()->create([
                 'medical_representative_id' => $this->resolveRepresentativeId($data, $user),
-                'customer_id' => $data['customer_id'] ?? null,
-                'visit_date' => $data['visit_date'],
-                'status' => $data['status'],
-                'order_value' => $data['order_value'] ?? 0,
-                'notes' => $data['notes'] ?? null,
-                'created_by' => $user->id,
-                'updated_by' => $user->id,
+                'customer_id'   => $data['customer_id'] ?? null,
+                'visit_date'    => $data['visit_date'],
+                'status'        => $data['status'],
+                'order_value'   => $data['order_value'] ?? 0,
+                'notes'         => $data['notes'] ?? null,
+                'latitude'      => $data['latitude'] ?? null,
+                'longitude'     => $data['longitude'] ?? null,
+                'location_name' => $data['location_name'] ?? null,
+                'created_by'    => $user->id,
+                'updated_by'    => $user->id,
             ])->load(['medicalRepresentative:id,name', 'customer:id,name']);
         });
     }
@@ -135,12 +142,15 @@ class MrManagementService
         return DB::transaction(function () use ($visit, $data, $user) {
             $visit->update([
                 'medical_representative_id' => $this->resolveRepresentativeId($data, $user),
-                'customer_id' => $data['customer_id'] ?? null,
-                'visit_date' => $data['visit_date'],
-                'status' => $data['status'],
-                'order_value' => $data['order_value'] ?? 0,
-                'notes' => $data['notes'] ?? null,
-                'updated_by' => $user->id,
+                'customer_id'   => $data['customer_id'] ?? null,
+                'visit_date'    => $data['visit_date'],
+                'status'        => $data['status'],
+                'order_value'   => $data['order_value'] ?? 0,
+                'notes'         => $data['notes'] ?? null,
+                'latitude'      => $data['latitude'] ?? null,
+                'longitude'     => $data['longitude'] ?? null,
+                'location_name' => $data['location_name'] ?? null,
+                'updated_by'    => $user->id,
             ]);
 
             return $visit->fresh(['medicalRepresentative:id,name', 'customer:id,name']);

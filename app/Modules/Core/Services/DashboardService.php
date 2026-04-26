@@ -49,6 +49,11 @@ class DashboardService
             'low_stock_rows' => $this->lowStockRows(),
             'expiry_rows' => $this->expiryRows(),
             'top_representatives' => $this->topRepresentatives($from->toDateString(), $to->toDateString()),
+            'chart_data' => [
+                'monthly_trend'      => $this->monthlySalesTrend(),
+                'payment_breakdown'  => $this->paymentModeBreakdown($from->toDateString(), $to->toDateString()),
+                'top_products_chart' => $this->topProducts($from->toDateString(), $to->toDateString(), $representativeId),
+            ],
             'recent_sales' => DB::table('sales_invoices')
                 ->leftJoin('customers', 'customers.id', '=', 'sales_invoices.customer_id')
                 ->leftJoin('medical_representatives', 'medical_representatives.id', '=', 'sales_invoices.medical_representative_id')
@@ -260,12 +265,63 @@ class DashboardService
             ->selectRaw('medical_representatives.id, medical_representatives.name, medical_representatives.territory, COUNT(sales_invoices.id) as invoices, COALESCE(SUM(sales_invoices.grand_total), 0) as amount')
             ->get()
             ->map(fn ($row) => [
-                'id' => $row->id,
-                'name' => $row->name,
+                'id'        => $row->id,
+                'name'      => $row->name,
                 'territory' => $row->territory,
-                'invoices' => (int) $row->invoices,
-                'amount' => (float) $row->amount,
+                'invoices'  => (int) $row->invoices,
+                'amount'    => (float) $row->amount,
             ])
             ->all();
     }
+
+    /** Last 6 calendar months — sales total per month. */
+    private function monthlySalesTrend(): array
+    {
+        $months = collect(range(5, 0))->map(function (int $offset) {
+            $month = CarbonImmutable::today()->startOfMonth()->subMonths($offset);
+            return [
+                'month' => $month->format('M y'),
+                'from'  => $month->toDateString(),
+                'to'    => $month->endOfMonth()->toDateString(),
+            ];
+        });
+
+        return $months->map(function (array $m) {
+            $sales = (float) DB::table('sales_invoices')
+                ->whereNull('deleted_at')
+                ->whereBetween('invoice_date', [$m['from'], $m['to']])
+                ->sum('grand_total');
+
+            $purchases = (float) DB::table('purchases')
+                ->whereNull('deleted_at')
+                ->whereBetween('purchase_date', [$m['from'], $m['to']])
+                ->sum('grand_total');
+
+            return [
+                'month'     => $m['month'],
+                'sales'     => $sales,
+                'purchases' => $purchases,
+            ];
+        })->values()->all();
+    }
+
+    /** Payment mode split for period (cash / bank / credit). */
+    private function paymentModeBreakdown(string $from, string $to): array
+    {
+        return DB::table('sales_invoices')
+            ->whereNull('deleted_at')
+            ->whereBetween('invoice_date', [$from, $to])
+            ->selectRaw('payment_status, COUNT(*) as count, COALESCE(SUM(grand_total), 0) as total')
+            ->groupBy('payment_status')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($row) => [
+                'label' => ucfirst($row->payment_status ?? 'unknown'),
+                'count' => (int) $row->count,
+                'value' => (float) $row->total,
+            ])
+            ->values()
+            ->all();
+    }
 }
+

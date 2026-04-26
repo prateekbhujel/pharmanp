@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Checkbox, Form, Input, Modal, Select, Space, Switch, Table, Tabs, Tag, Upload } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, UploadOutlined, UserOutlined } from '@ant-design/icons';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { App, Badge, Button, Card, Checkbox, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tabs, Tag, Upload } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined, SendOutlined, UploadOutlined, UserOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
@@ -60,6 +60,25 @@ export function SettingsPage() {
     const [userDrawerOpen, setUserDrawerOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
 
+    // --- Phase 2 state ---
+    const [adminSettings, setAdminSettings] = useState({});
+    const [adminSettingsLoading, setAdminSettingsLoading] = useState(false);
+    const [adminForm] = Form.useForm();
+    const [dropdownOptions, setDropdownOptions] = useState([]);
+    const [dropdownAliases, setDropdownAliases] = useState({});
+    const [dropdownAlias, setDropdownAlias] = useState('payment_mode');
+    const [dropdownForm] = Form.useForm();
+    const [dropdownModalOpen, setDropdownModalOpen] = useState(false);
+    const [editingOption, setEditingOption] = useState(null);
+    const [partyTypes, setPartyTypes] = useState([]);
+    const [partyTypeForm] = Form.useForm();
+    const [partyTypeModalOpen, setPartyTypeModalOpen] = useState(false);
+    const [editingPartyType, setEditingPartyType] = useState(null);
+    const [supplierTypes, setSupplierTypes] = useState([]);
+    const [supplierTypeForm] = Form.useForm();
+    const [supplierTypeModalOpen, setSupplierTypeModalOpen] = useState(false);
+    const [editingSupplierType, setEditingSupplierType] = useState(null);
+
     useEffect(() => {
         if (branding) {
             brandingForm.setFieldsValue(branding);
@@ -75,6 +94,159 @@ export function SettingsPage() {
             });
         }
     }, [profile, profileForm]);
+
+    useEffect(() => { loadAdminSettings(); loadDropdownOptions(); loadPartyTypes(); loadSupplierTypes(); }, []);
+
+    async function loadAdminSettings() {
+        setAdminSettingsLoading(true);
+        try {
+            const { data } = await http.get(endpoints.settingsAdmin);
+            setAdminSettings(data.data || {});
+            adminForm.setFieldsValue(data.data || {});
+        } finally {
+            setAdminSettingsLoading(false);
+        }
+    }
+
+    async function saveAdminSettings(values) {
+        try {
+            await http.put(endpoints.settingsAdmin, values);
+            notification.success({ message: 'Settings saved' });
+            loadAdminSettings();
+        } catch (error) {
+            adminForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
+            notification.error({ message: 'Save failed', description: error?.response?.data?.message || error.message });
+        }
+    }
+
+    async function sendTestMail() {
+        try {
+            const { data } = await http.post(endpoints.settingsTestMail, { email: adminForm.getFieldValue('notification_email') || adminForm.getFieldValue('mail_from_address') });
+            notification.success({ message: data.message });
+        } catch (error) {
+            notification.error({ message: error?.response?.data?.message || 'Test mail failed' });
+        }
+    }
+
+    async function loadDropdownOptions() {
+        const { data } = await http.get(endpoints.dropdownOptions);
+        setDropdownOptions(data.data || []);
+        setDropdownAliases(data.aliases || {});
+    }
+
+    function openDropdownOption(option = null) {
+        setEditingOption(option);
+        dropdownForm.resetFields();
+        dropdownForm.setFieldsValue(option || { alias: dropdownAlias, status: true });
+        setDropdownModalOpen(true);
+    }
+
+    async function saveDropdownOption(values) {
+        try {
+            if (editingOption) {
+                await http.put(`${endpoints.dropdownOptions}/${editingOption.id}`, { ...values, status: values.status ? 1 : 0 });
+                notification.success({ message: 'Option updated' });
+            } else {
+                await http.post(endpoints.dropdownOptions, { ...values, status: values.status ? 1 : 0 });
+                notification.success({ message: 'Option added' });
+            }
+            setDropdownModalOpen(false);
+            loadDropdownOptions();
+        } catch (error) {
+            dropdownForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
+            notification.error({ message: 'Save failed', description: error?.response?.data?.message || error.message });
+        }
+    }
+
+    async function deleteDropdownOption(option) {
+        try {
+            await http.delete(`${endpoints.dropdownOptions}/${option.id}`);
+            notification.success({ message: 'Option deleted' });
+            loadDropdownOptions();
+        } catch (error) {
+            notification.error({ message: error?.response?.data?.message || 'Delete failed' });
+        }
+    }
+
+    async function loadPartyTypes() {
+        const { data } = await http.get(endpoints.partyTypes);
+        setPartyTypes(data.data || []);
+    }
+
+    function openPartyType(pt = null) {
+        setEditingPartyType(pt);
+        partyTypeForm.resetFields();
+        partyTypeForm.setFieldsValue(pt || {});
+        setPartyTypeModalOpen(true);
+    }
+
+    async function savePartyType(values) {
+        try {
+            if (editingPartyType) {
+                await http.put(`${endpoints.partyTypes}/${editingPartyType.id}`, values);
+                notification.success({ message: 'Party type updated' });
+            } else {
+                await http.post(endpoints.partyTypes, values);
+                notification.success({ message: 'Party type created' });
+            }
+            setPartyTypeModalOpen(false);
+            loadPartyTypes();
+        } catch (error) {
+            partyTypeForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
+            notification.error({ message: 'Save failed' });
+        }
+    }
+
+    async function deletePartyType(pt) {
+        try {
+            await http.delete(`${endpoints.partyTypes}/${pt.id}`);
+            notification.success({ message: 'Party type deleted' });
+            loadPartyTypes();
+        } catch (error) {
+            notification.error({ message: error?.response?.data?.message || 'Delete failed' });
+        }
+    }
+
+    async function loadSupplierTypes() {
+        const { data } = await http.get(endpoints.supplierTypes);
+        setSupplierTypes(data.data || []);
+    }
+
+    function openSupplierType(st = null) {
+        setEditingSupplierType(st);
+        supplierTypeForm.resetFields();
+        supplierTypeForm.setFieldsValue(st || {});
+        setSupplierTypeModalOpen(true);
+    }
+
+    async function saveSupplierType(values) {
+        try {
+            if (editingSupplierType) {
+                await http.put(`${endpoints.supplierTypes}/${editingSupplierType.id}`, values);
+                notification.success({ message: 'Supplier type updated' });
+            } else {
+                await http.post(endpoints.supplierTypes, values);
+                notification.success({ message: 'Supplier type created' });
+            }
+            setSupplierTypeModalOpen(false);
+            loadSupplierTypes();
+        } catch (error) {
+            supplierTypeForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
+            notification.error({ message: 'Save failed' });
+        }
+    }
+
+    async function deleteSupplierType(st) {
+        try {
+            await http.delete(`${endpoints.supplierTypes}/${st.id}`);
+            notification.success({ message: 'Supplier type deleted' });
+            loadSupplierTypes();
+        } catch (error) {
+            notification.error({ message: error?.response?.data?.message || 'Delete failed' });
+        }
+    }
+
+    const filteredOptions = useMemo(() => dropdownOptions.filter((o) => o.alias === dropdownAlias), [dropdownOptions, dropdownAlias]);
 
     function openRole(role = null) {
         setEditingRole(role);
@@ -367,6 +539,139 @@ export function SettingsPage() {
             });
         }
 
+        // --- General Settings tab ---
+        items.push({
+            key: 'general',
+            label: 'General Settings',
+            children: (
+                <Card title="Company & SMTP Configuration" loading={adminSettingsLoading}>
+                    <Form form={adminForm} layout="vertical" onFinish={saveAdminSettings}>
+                        <div className="form-grid">
+                            <Form.Item name="company_email" label="Company Email"><Input /></Form.Item>
+                            <Form.Item name="company_phone" label="Company Phone"><Input /></Form.Item>
+                        </div>
+                        <Form.Item name="company_address" label="Company Address"><Input.TextArea rows={2} /></Form.Item>
+                        <div className="form-grid">
+                            <Form.Item name="currency_symbol" label="Currency Symbol"><Input /></Form.Item>
+                            <Form.Item name="low_stock_threshold" label="Low Stock Threshold"><InputNumber min={1} className="full-width" /></Form.Item>
+                        </div>
+                        <Card size="small" title="SMTP / Mail Settings" style={{ marginBottom: 16 }}>
+                            <div className="form-grid">
+                                <Form.Item name="smtp_host" label="SMTP Host"><Input /></Form.Item>
+                                <Form.Item name="smtp_port" label="SMTP Port"><Input /></Form.Item>
+                            </div>
+                            <div className="form-grid">
+                                <Form.Item name="smtp_username" label="Username"><Input /></Form.Item>
+                                <Form.Item name="smtp_password" label="Password"><Input.Password /></Form.Item>
+                            </div>
+                            <div className="form-grid">
+                                <Form.Item name="smtp_encryption" label="Encryption"><Select allowClear options={[{ value: 'tls', label: 'TLS' }, { value: 'ssl', label: 'SSL' }]} /></Form.Item>
+                                <Form.Item name="mail_from_address" label="From Address"><Input /></Form.Item>
+                            </div>
+                            <div className="form-grid">
+                                <Form.Item name="mail_from_name" label="From Name"><Input /></Form.Item>
+                                <Form.Item name="notification_email" label="Notification Email"><Input /></Form.Item>
+                            </div>
+                            <Button icon={<SendOutlined />} onClick={sendTestMail}>Send Test Mail</Button>
+                        </Card>
+                        <Button type="primary" htmlType="submit">Save Settings</Button>
+                    </Form>
+                </Card>
+            ),
+        });
+
+        // --- Dropdown Options tab ---
+        items.push({
+            key: 'dropdown-options',
+            label: 'Dropdown Options',
+            children: (
+                <div className="page-stack">
+                    <Card
+                        title="Shared Dropdown Options"
+                        extra={
+                            <Space>
+                                <Select value={dropdownAlias} onChange={setDropdownAlias} style={{ width: 200 }} options={Object.entries(dropdownAliases).map(([key, meta]) => ({ value: key, label: meta.label }))} />
+                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openDropdownOption()}>Add Option</Button>
+                            </Space>
+                        }
+                    >
+                        <Table
+                            rowKey="id"
+                            dataSource={filteredOptions}
+                            pagination={false}
+                            columns={[
+                                { title: 'Name', dataIndex: 'name' },
+                                { title: 'Data', dataIndex: 'data', render: (v) => v || '-' },
+                                { title: 'Status', dataIndex: 'is_active', width: 100, render: (v) => <Badge status={v ? 'success' : 'default'} text={v ? 'Active' : 'Inactive'} /> },
+                                {
+                                    title: '', width: 112, render: (_, record) => (
+                                        <Space>
+                                            <Button icon={<EditOutlined />} onClick={() => openDropdownOption(record)} />
+                                            <Popconfirm title="Delete this option?" onConfirm={() => deleteDropdownOption(record)} okText="Delete" okType="danger"><Button danger icon={<DeleteOutlined />} /></Popconfirm>
+                                        </Space>
+                                    ),
+                                },
+                            ]}
+                        />
+                    </Card>
+                </div>
+            ),
+        });
+
+        // --- Party Types tab ---
+        items.push({
+            key: 'party-types',
+            label: 'Party Types',
+            children: (
+                <Card title="Party Types" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => openPartyType()}>New Party Type</Button>}>
+                    <Table
+                        rowKey="id"
+                        dataSource={partyTypes}
+                        pagination={false}
+                        columns={[
+                            { title: 'Name', dataIndex: 'name' },
+                            { title: 'Code', dataIndex: 'code', render: (v) => v || '-' },
+                            {
+                                title: '', width: 112, render: (_, record) => (
+                                    <Space>
+                                        <Button icon={<EditOutlined />} onClick={() => openPartyType(record)} />
+                                        <Popconfirm title="Delete?" onConfirm={() => deletePartyType(record)} okText="Delete" okType="danger"><Button danger icon={<DeleteOutlined />} /></Popconfirm>
+                                    </Space>
+                                ),
+                            },
+                        ]}
+                    />
+                </Card>
+            ),
+        });
+
+        // --- Supplier Types tab ---
+        items.push({
+            key: 'supplier-types',
+            label: 'Supplier Types',
+            children: (
+                <Card title="Supplier Types" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => openSupplierType()}>New Supplier Type</Button>}>
+                    <Table
+                        rowKey="id"
+                        dataSource={supplierTypes}
+                        pagination={false}
+                        columns={[
+                            { title: 'Name', dataIndex: 'name' },
+                            { title: 'Code', dataIndex: 'code', render: (v) => v || '-' },
+                            {
+                                title: '', width: 112, render: (_, record) => (
+                                    <Space>
+                                        <Button icon={<EditOutlined />} onClick={() => openSupplierType(record)} />
+                                        <Popconfirm title="Delete?" onConfirm={() => deleteSupplierType(record)} okText="Delete" okType="danger"><Button danger icon={<DeleteOutlined />} /></Popconfirm>
+                                    </Space>
+                                ),
+                            },
+                        ]}
+                    />
+                </Card>
+            ),
+        });
+
         items.push({
             key: 'features',
             label: 'Feature Checklist',
@@ -388,7 +693,7 @@ export function SettingsPage() {
         });
 
         return items;
-    }, [branding, brandingForm, featureRows, profileForm, roleData, user, userLookups, userTable]);
+    }, [branding, brandingForm, featureRows, profileForm, roleData, user, userLookups, userTable, adminSettings, adminSettingsLoading, dropdownOptions, dropdownAliases, dropdownAlias, filteredOptions, partyTypes, supplierTypes]);
 
     return (
         <div className="page-stack">
@@ -445,6 +750,49 @@ export function SettingsPage() {
                     </div>
                 </Form>
             </FormDrawer>
+
+            <Modal
+                title={editingOption ? 'Edit Option' : 'New Option'}
+                open={dropdownModalOpen}
+                onCancel={() => setDropdownModalOpen(false)}
+                onOk={() => dropdownForm.submit()}
+                destroyOnHidden
+            >
+                <Form form={dropdownForm} layout="vertical" onFinish={saveDropdownOption}>
+                    <Form.Item name="alias" label="Alias" rules={[{ required: true }]}>
+                        <Select options={Object.entries(dropdownAliases).map(([key, meta]) => ({ value: key, label: meta.label }))} />
+                    </Form.Item>
+                    <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="data" label="Data (optional)"><Input /></Form.Item>
+                    <Form.Item name="status" valuePropName="checked" label="Active"><Switch /></Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={editingPartyType ? 'Edit Party Type' : 'New Party Type'}
+                open={partyTypeModalOpen}
+                onCancel={() => setPartyTypeModalOpen(false)}
+                onOk={() => partyTypeForm.submit()}
+                destroyOnHidden
+            >
+                <Form form={partyTypeForm} layout="vertical" onFinish={savePartyType}>
+                    <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="code" label="Code"><Input /></Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={editingSupplierType ? 'Edit Supplier Type' : 'New Supplier Type'}
+                open={supplierTypeModalOpen}
+                onCancel={() => setSupplierTypeModalOpen(false)}
+                onOk={() => supplierTypeForm.submit()}
+                destroyOnHidden
+            >
+                <Form form={supplierTypeForm} layout="vertical" onFinish={saveSupplierType}>
+                    <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="code" label="Code"><Input /></Form.Item>
+                </Form>
+            </Modal>
         </div>
     );
 }

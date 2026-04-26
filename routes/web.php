@@ -3,6 +3,8 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CurrentUserController;
 use App\Http\Controllers\SpaController;
+use App\Modules\Accounting\Http\Controllers\ExpenseController;
+use App\Modules\Accounting\Http\Controllers\PaymentController;
 use App\Modules\Accounting\Http\Controllers\VoucherController;
 use App\Modules\Core\Http\Controllers\DashboardController;
 use App\Modules\Core\Http\Controllers\SystemUpdateController;
@@ -14,21 +16,29 @@ use App\Modules\Inventory\Http\Controllers\ProductController;
 use App\Modules\Inventory\Http\Controllers\StockAdjustmentController;
 use App\Modules\Inventory\Http\Controllers\StockMovementController;
 use App\Modules\MR\Http\Controllers\MedicalRepresentativeController;
+use App\Modules\MR\Http\Controllers\MrBranchSalesController;
 use App\Modules\MR\Http\Controllers\MrPerformanceController;
+use App\Modules\MR\Http\Controllers\BranchController;
 use App\Modules\MR\Http\Controllers\RepresentativeVisitController;
 use App\Modules\Party\Http\Controllers\CustomerController;
 use App\Modules\Party\Http\Controllers\SupplierController;
 use App\Modules\Purchase\Http\Controllers\PurchaseController;
 use App\Modules\Purchase\Http\Controllers\PurchaseOrderController;
 use App\Modules\Purchase\Http\Controllers\PurchaseReturnController;
+use App\Modules\Party\Http\Controllers\CustomerLedgerController;
 use App\Modules\Reports\Http\Controllers\ReportController;
 use App\Modules\Sales\Http\Controllers\SalesInvoiceController;
+use App\Modules\Sales\Http\Controllers\SalesReturnController;
 use App\Modules\Sales\Http\Controllers\ProductLookupController;
 use App\Modules\Setup\Http\Controllers\BrandingController;
+use App\Modules\Setup\Http\Controllers\DropdownOptionController;
 use App\Modules\Setup\Http\Controllers\FeatureCatalogController;
+use App\Modules\Setup\Http\Controllers\PartyTypeController;
 use App\Modules\Setup\Http\Controllers\ProfileController;
 use App\Modules\Setup\Http\Controllers\RolePermissionController;
 use App\Modules\Setup\Http\Controllers\SetupController;
+use App\Modules\Setup\Http\Controllers\SettingsAdminController;
+use App\Modules\Setup\Http\Controllers\SupplierTypeController;
 use App\Modules\Setup\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -99,7 +109,10 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/customers/options', [CustomerController::class, 'options'])->name('customers.options');
         Route::apiResource('customers', CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
 
-        Route::apiResource('purchase/orders', PurchaseOrderController::class)->only(['index', 'store']);
+        Route::apiResource('purchase/orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
+        Route::post('purchase/orders/{order}/approve', [PurchaseOrderController::class, 'approve'])->name('purchase.orders.approve');
+        Route::post('purchase/orders/{order}/receive', [PurchaseOrderController::class, 'receive'])->name('purchase.orders.receive');
+        Route::post('purchase/orders/{order}/pay', [PurchaseOrderController::class, 'pay'])->name('purchase.orders.pay');
         Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store']);
         Route::get('/purchase/returns/purchases', [PurchaseReturnController::class, 'purchases'])->name('purchase.returns.purchases');
         Route::get('/purchase/returns/purchases/{purchase}/items', [PurchaseReturnController::class, 'items'])->name('purchase.returns.purchase-items');
@@ -114,7 +127,49 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/mr/options', [MedicalRepresentativeController::class, 'options'])->name('mr.options');
         Route::apiResource('mr/representatives', MedicalRepresentativeController::class)->only(['index', 'store', 'update', 'destroy'])->parameter('representatives', 'representative');
         Route::apiResource('mr/visits', RepresentativeVisitController::class)->only(['index', 'store', 'update', 'destroy'])->parameter('visits', 'visit');
+
+        // Branches
+        Route::get('/mr/branches/options', [BranchController::class, 'options'])->name('mr.branches.options');
+        Route::apiResource('mr/branches', BranchController::class)->only(['index', 'store', 'update', 'destroy'])->parameter('branches', 'branch');
+
+        // MR branch-level product sales breakdown
+        Route::get('/mr/branch-sales', MrBranchSalesController::class)->name('mr.branch-sales');
         Route::apiResource('accounting/vouchers', VoucherController::class)->only(['index', 'store']);
+
+        Route::get('/accounting/expenses', [ExpenseController::class, 'index'])->name('accounting.expenses.index');
+        Route::post('/accounting/expenses', [ExpenseController::class, 'store'])->name('accounting.expenses.store');
+        Route::delete('/accounting/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('accounting.expenses.destroy');
+
+        Route::get('/accounting/payments', [PaymentController::class, 'index'])->name('accounting.payments.index');
+        Route::post('/accounting/payments', [PaymentController::class, 'store'])->name('accounting.payments.store');
+        Route::get('/accounting/payments/outstanding-bills', [PaymentController::class, 'outstandingBills'])->name('accounting.payments.outstanding-bills');
+
+        Route::get('/sales/returns', [SalesReturnController::class, 'index'])->name('sales.returns.index');
+        Route::post('/sales/returns', [SalesReturnController::class, 'store'])->name('sales.returns.store');
+        Route::delete('/sales/returns/{salesReturn}', [SalesReturnController::class, 'destroy'])->name('sales.returns.destroy');
+        Route::get('/sales/returns/invoice-options', [SalesReturnController::class, 'invoiceOptions'])->name('sales.returns.invoice-options');
+        Route::get('/sales/returns/invoices/{invoice}/items', [SalesReturnController::class, 'invoiceItems'])->name('sales.returns.invoice-items');
+
+        Route::get('/customers/{customer}/ledger', [CustomerLedgerController::class, 'show'])->name('customers.ledger');
+
+        Route::get('/settings/dropdown-options', [DropdownOptionController::class, 'index'])->name('settings.dropdown-options.index');
+        Route::post('/settings/dropdown-options', [DropdownOptionController::class, 'store'])->name('settings.dropdown-options.store');
+        Route::put('/settings/dropdown-options/{dropdownOption}', [DropdownOptionController::class, 'update'])->name('settings.dropdown-options.update');
+        Route::delete('/settings/dropdown-options/{dropdownOption}', [DropdownOptionController::class, 'destroy'])->name('settings.dropdown-options.destroy');
+
+        Route::get('/settings/admin', [SettingsAdminController::class, 'show'])->name('settings.admin.show');
+        Route::put('/settings/admin', [SettingsAdminController::class, 'update'])->name('settings.admin.update');
+        Route::post('/settings/admin/test-mail', [SettingsAdminController::class, 'testMail'])->name('settings.admin.test-mail');
+
+        Route::get('/settings/party-types', [PartyTypeController::class, 'index'])->name('settings.party-types.index');
+        Route::post('/settings/party-types', [PartyTypeController::class, 'store'])->name('settings.party-types.store');
+        Route::put('/settings/party-types/{partyType}', [PartyTypeController::class, 'update'])->name('settings.party-types.update');
+        Route::delete('/settings/party-types/{partyType}', [PartyTypeController::class, 'destroy'])->name('settings.party-types.destroy');
+
+        Route::get('/settings/supplier-types', [SupplierTypeController::class, 'index'])->name('settings.supplier-types.index');
+        Route::post('/settings/supplier-types', [SupplierTypeController::class, 'store'])->name('settings.supplier-types.store');
+        Route::put('/settings/supplier-types/{supplierType}', [SupplierTypeController::class, 'update'])->name('settings.supplier-types.update');
+        Route::delete('/settings/supplier-types/{supplierType}', [SupplierTypeController::class, 'destroy'])->name('settings.supplier-types.destroy');
 
         Route::get('/reports/{report}', ReportController::class)->name('reports.show');
 

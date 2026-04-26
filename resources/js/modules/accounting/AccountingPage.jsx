@@ -8,6 +8,8 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { accountCatalog, voucherTypeOptions } from '../../core/utils/accountCatalog';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
+import { ExpensesPanel } from './ExpensesPanel';
+import { PaymentsPanel } from './PaymentsPanel';
 
 const emptyEntry = { account_type: 'cash', entry_type: 'debit', amount: 0 };
 const bookOptions = [
@@ -243,6 +245,16 @@ export function AccountingPage() {
                             </Card>
                         </div>
                     ),
+                },
+                {
+                    key: 'expenses',
+                    label: 'Expenses',
+                    children: <ExpensesPanel />,
+                },
+                {
+                    key: 'payments',
+                    label: 'Payments',
+                    children: <PaymentsPanel />,
                 },
             ]} />
         </div>
