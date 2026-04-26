@@ -25,6 +25,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { can } from '../utils/permissions';
 import { appUrl } from '../utils/url';
 import { useTheme } from '../theme/ThemeContext';
+import { useApi } from '../hooks/useApi';
 import { ColorPicker } from 'antd';
 
 const { Header, Sider, Content } = Layout;
@@ -41,6 +42,10 @@ const PurchasesPage = React.lazy(() => import('../../modules/purchases/Purchases
 const AccountingPage = React.lazy(() => import('../../modules/accounting/AccountingPage').then((module) => ({ default: module.AccountingPage })));
 const PartiesPage = React.lazy(() => import('../../modules/party/PartiesPage').then((module) => ({ default: module.PartiesPage })));
 const ReportsPage = React.lazy(() => import('../../modules/reports/ReportsPage').then((module) => ({ default: module.ReportsPage })));
+
+const UsersPage = React.lazy(() => import('../../modules/settings/UsersPage').then((module) => ({ default: module.UsersPage })));
+const RolesPage = React.lazy(() => import('../../modules/settings/RolesPage').then((module) => ({ default: module.RolesPage })));
+const DataLookupPage = React.lazy(() => import('../../modules/settings/DataLookupPage').then((module) => ({ default: module.DataLookupPage })));
 
 const routes = {
     [appUrl('/app')]: DashboardPage,
@@ -60,25 +65,22 @@ const routes = {
     [appUrl('/app/sales/pos')]: SalesPage,
     [appUrl('/app/sales/invoices')]: SalesPage,
     [appUrl('/app/sales/returns')]: SalesPage,
-    [appUrl('/app/parties')]: PartiesPage,
+    [appUrl('/app/sales/ocr')]: SalesPage,
+    [appUrl('/app/mr-tracking')]: MrTrackingPage,
     [appUrl('/app/accounting')]: AccountingPage,
-    [appUrl('/app/accounting/ledger')]: AccountingPage,
-    [appUrl('/app/accounting/day-book')]: AccountingPage,
-    [appUrl('/app/accounting/account-tree')]: AccountingPage,
+    [appUrl('/app/accounting/vouchers')]: AccountingPage,
+    [appUrl('/app/accounting/ledgers')]: AccountingPage,
     [appUrl('/app/accounting/trial-balance')]: AccountingPage,
-    [appUrl('/app/accounting/cash-book')]: AccountingPage,
-    [appUrl('/app/accounting/bank-book')]: AccountingPage,
-    [appUrl('/app/accounting/payments')]: AccountingPage,
-    [appUrl('/app/accounting/expenses')]: AccountingPage,
-    [appUrl('/app/mr/performance')]: MrTrackingPage,
-    [appUrl('/app/mr/tracking')]: MrTrackingPage,
-    [appUrl('/app/imports')]: ImportWizardPage,
+    [appUrl('/app/party/management')]: PartiesPage,
+    [appUrl('/app/party/suppliers')]: PartiesPage,
+    [appUrl('/app/party/customers')]: PartiesPage,
     [appUrl('/app/reports')]: ReportsPage,
-    [appUrl('/app/reports/low-stock')]: ReportsPage,
-    [appUrl('/app/reports/expiry')]: ReportsPage,
-    [appUrl('/app/reports/purchases')]: ReportsPage,
+    [appUrl('/app/reports/inventory')]: ReportsPage,
     [appUrl('/app/reports/sales')]: ReportsPage,
     [appUrl('/app/reports/supplier-performance')]: ReportsPage,
+    [appUrl('/app/administration/users')]: UsersPage,
+    [appUrl('/app/administration/roles')]: RolesPage,
+    [appUrl('/app/administration/data-lookup')]: DataLookupPage,
     [appUrl('/app/settings')]: SettingsPage,
     [appUrl('/app/system/update-check')]: SystemUpdatePage,
 };
@@ -88,16 +90,32 @@ function currentAppPath() {
 }
 
 export function AppShell() {
-    const { user, branding } = useAuth();
-    const [collapsed, setCollapsed] = useState(Boolean(branding?.sidebar_default_collapsed));
+    const { user: authUser } = useAuth();
+    const { data: brandingData, loading: brandingLoading } = useApi(endpoints.branding);
+    const { colorPrimary, setColorPrimary } = useTheme();
+    
+    const [collapsed, setCollapsed] = useState(false);
     const [pathname, setPathname] = useState(currentAppPath);
     const [alerts, setAlerts] = useState({ loading: true, lowStockRows: [], expiryRows: [], count: 0 });
+
+    useEffect(() => {
+        if (brandingData?.sidebar_default_collapsed !== undefined) {
+            setCollapsed(Boolean(brandingData.sidebar_default_collapsed));
+        }
+    }, [brandingData]);
+
+    useEffect(() => {
+        if (brandingData?.accent_color && brandingData.accent_color !== colorPrimary) {
+            setColorPrimary(brandingData.accent_color);
+        }
+    }, [brandingData, colorPrimary, setColorPrimary]);
+
+    const layout = brandingData?.layout || 'vertical';
+    const appName = brandingData?.app_name || 'PharmaNP';
+    const logo = brandingData?.sidebar_logo_url || brandingData?.logo_url || brandingData?.app_icon_url;
+    const user = authUser;
     const activeKey = routes[pathname] ? pathname : appUrl('/app');
     const ActivePage = routes[activeKey] || DashboardPage;
-    const layout = branding?.layout || 'vertical';
-    const appName = branding?.app_name || 'PharmaNP';
-    const logo = branding?.sidebar_logo_url || branding?.logo_url || branding?.app_icon_url;
-    const { colorPrimary, setColorPrimary } = useTheme();
 
     const { items: menuItems, routesByKey, selectedMenuKey, openKeys } = useMemo(() => {
         const canInventory = can(user, 'inventory.products.view') || can(user, 'inventory.masters.manage');
@@ -151,111 +169,82 @@ export function AppShell() {
                     child('purchase-returns', 'Purchase Returns', appUrl('/app/purchases/returns')),
                 ],
             },
-            { key: register('parties', appUrl('/app/parties')), icon: <TeamOutlined />, label: 'Party Management', show: canParties },
+            { key: register('party-management', appUrl('/app/party/management')), icon: <TeamOutlined />, label: 'Party Management', show: canParties },
             {
                 key: 'sales',
-                icon: <ShoppingCartOutlined />,
+                icon: <DollarOutlined />,
                 label: 'Sales / POS',
                 show: canSales,
                 children: [
-                    child('sales-pos', 'POS', appUrl('/app/sales/pos')),
+                    child('sales-pos', 'POS Terminal', appUrl('/app/sales/pos')),
                     child('sales-invoices', 'Sales Invoices', appUrl('/app/sales/invoices')),
-                    child('sales-returns', 'Sales Return', appUrl('/app/sales/returns')),
+                    child('sales-returns', 'Sales Returns', appUrl('/app/sales/returns')),
                 ],
             },
-            { key: register('ocr', appUrl('/app/imports')), icon: <CloudUploadOutlined />, label: 'OCR', show: can(user, 'purchase.entries.create') },
+            { key: register('sales-ocr', appUrl('/app/sales/ocr')), icon: <CloudUploadOutlined />, label: 'OCR', show: can(user, 'sales.ocr') },
             {
                 key: 'accounting',
-                icon: <DollarOutlined />,
+                icon: <BarChartOutlined />,
                 label: 'Accounting & Finance',
                 show: canAccounting,
                 children: [
-                    child('ledger', 'Ledger', appUrl('/app/accounting/ledger')),
-                    child('day-book', 'Day Book', appUrl('/app/accounting/day-book')),
-                    child('account-tree', 'Account Tree', appUrl('/app/accounting/account-tree')),
-                    child('trial-balance', 'Trial Balance', appUrl('/app/accounting/trial-balance')),
-                    child('cash-book', 'Cash Book', appUrl('/app/accounting/cash-book')),
-                    child('bank-book', 'Bank Book', appUrl('/app/accounting/bank-book')),
-                    child('payments', 'Payments', appUrl('/app/accounting/payments')),
-                    child('expenses', 'Expenses', appUrl('/app/accounting/expenses')),
+                    child('accounting-vouchers', 'Vouchers', appUrl('/app/accounting/vouchers')),
+                    child('accounting-ledgers', 'Ledgers', appUrl('/app/accounting/ledgers')),
+                    child('accounting-trial', 'Trial Balance', appUrl('/app/accounting/trial-balance')),
                 ],
             },
-            { key: register('mr', appUrl('/app/mr/performance')), icon: <UserSwitchOutlined />, label: 'MR Tracking', show: can(user, 'mr.view') || can(user, 'mr.visits.manage') },
+            { key: register('mr-tracking', appUrl('/app/mr-tracking')), icon: <UserSwitchOutlined />, label: 'MR Tracking', show: can(user, 'mr.view') },
             {
                 key: 'reports',
                 icon: <BarChartOutlined />,
                 label: 'Reports',
                 show: canReports,
                 children: [
-                    child('report-low-stock', 'Low Stock', appUrl('/app/reports/low-stock')),
-                    child('report-expiry', 'Expiry Alert', appUrl('/app/reports/expiry')),
-                    child('report-purchase', 'Purchase History', appUrl('/app/reports/purchases')),
-                    child('report-sales', 'Sales Report', appUrl('/app/reports/sales')),
-                    child('report-supplier', 'Supplier Performance', appUrl('/app/reports/supplier-performance')),
+                    child('reports-inventory', 'Inventory Reports', appUrl('/app/reports/inventory')),
+                    child('reports-sales', 'Sales Reports', appUrl('/app/reports/sales')),
+                    child('reports-performance', 'Supplier Performance', appUrl('/app/reports/supplier-performance')),
                 ],
             },
             { key: 'category-admin', label: 'Administration', disabled: true, className: 'menu-category' },
-            { key: register('users', appUrl('/app/settings')), icon: <TeamOutlined />, label: 'Users', show: canSetup },
-            { key: register('roles', appUrl('/app/settings')), icon: <SafetyCertificateOutlined />, label: 'Role Access', show: canSetup },
+            { key: register('admin-users', appUrl('/app/administration/users')), icon: <TeamOutlined />, label: 'Users', show: can(user, 'users.manage') },
+            { key: register('admin-roles', appUrl('/app/administration/roles')), icon: <SafetyCertificateOutlined />, label: 'Role Access', show: can(user, 'roles.manage') },
+            { key: register('admin-data', appUrl('/app/administration/data-lookup')), icon: <SyncOutlined />, label: 'Data Lookup', show: canSetup },
             { key: register('settings', appUrl('/app/settings')), icon: <SettingOutlined />, label: 'Settings', show: canSetup },
-            { key: register('onboarding', appUrl('/app/onboarding')), icon: <SafetyCertificateOutlined />, label: 'First Run Guide', show: user?.is_owner || can(user, 'setup.manage') },
-            { key: register('system', appUrl('/app/system/update-check')), icon: <SyncOutlined />, label: 'System', show: can(user, 'system.update.view') || user?.is_owner },
-        ]
-            .filter((item) => item.className === 'menu-category' || item.show)
-            .map(({ show, ...item }) => item);
+            { key: register('onboarding', appUrl('/app/onboarding')), icon: <ShoppingCartOutlined />, label: 'First Run Guide', show: canSetup },
+            {
+                key: 'system',
+                icon: <SyncOutlined />,
+                label: 'System',
+                show: user?.is_owner,
+                children: [
+                    child('system-update', 'Update Check', appUrl('/app/system/update-check')),
+                ],
+            },
+        ];
 
-        const selectedByRoute = {
-            [appUrl('/app')]: 'dashboard',
-            [appUrl('/app/onboarding')]: 'onboarding',
-            [appUrl('/app/inventory/products')]: 'inventory-product',
-            [appUrl('/app/inventory/companies')]: 'inventory-company',
-            [appUrl('/app/inventory/units')]: 'inventory-unit',
-            [appUrl('/app/inventory/categories')]: 'inventory-categories',
-            [appUrl('/app/inventory/batches')]: 'inventory-batches',
-            [appUrl('/app/inventory/stock-adjustment')]: 'inventory-adjustment',
-            [appUrl('/app/inventory/case-movement')]: 'inventory-movement',
-            [appUrl('/app/purchases')]: 'purchase-bills',
-            [appUrl('/app/purchases/bills')]: 'purchase-bills',
-            [appUrl('/app/purchases/entry')]: 'purchase-entry',
-            [appUrl('/app/purchases/orders')]: 'purchase-orders',
-            [appUrl('/app/purchases/returns')]: 'purchase-returns',
-            [appUrl('/app/sales/pos')]: 'sales-pos',
-            [appUrl('/app/sales/invoices')]: 'sales-invoices',
-            [appUrl('/app/sales/returns')]: 'sales-returns',
-            [appUrl('/app/parties')]: 'parties',
-            [appUrl('/app/accounting')]: 'ledger',
-            [appUrl('/app/accounting/ledger')]: 'ledger',
-            [appUrl('/app/accounting/day-book')]: 'day-book',
-            [appUrl('/app/accounting/account-tree')]: 'account-tree',
-            [appUrl('/app/accounting/trial-balance')]: 'trial-balance',
-            [appUrl('/app/accounting/cash-book')]: 'cash-book',
-            [appUrl('/app/accounting/bank-book')]: 'bank-book',
-            [appUrl('/app/accounting/payments')]: 'payments',
-            [appUrl('/app/accounting/expenses')]: 'expenses',
-            [appUrl('/app/mr/performance')]: 'mr',
-            [appUrl('/app/imports')]: 'ocr',
-            [appUrl('/app/reports')]: 'report-sales',
-            [appUrl('/app/reports/low-stock')]: 'report-low-stock',
-            [appUrl('/app/reports/expiry')]: 'report-expiry',
-            [appUrl('/app/reports/purchases')]: 'report-purchase',
-            [appUrl('/app/reports/sales')]: 'report-sales',
-            [appUrl('/app/reports/supplier-performance')]: 'report-supplier',
-            [appUrl('/app/settings')]: 'settings',
-            [appUrl('/app/system/update-check')]: 'system',
-        };
+        const flatItems = items.filter(i => i.show !== false).map(i => {
+            if (i.children) {
+                i.children = i.children.filter(c => c.show !== false);
+            }
+            return i;
+        });
 
-        const selected = selectedByRoute[activeKey] || Object.entries(routeMap)
-            .find(([, route]) => route === activeKey)?.[0] || 'dashboard';
+        const activeKey = pathname;
+        let selectedKey = null;
+        let openKey = null;
 
-        const parent = items.find((item) => item.children?.some((nested) => nested.key === selected));
+        Object.entries(routeMap).forEach(([key, route]) => {
+            if (pathname.startsWith(route)) {
+                selectedKey = key;
+                // Find parent for openKeys
+                const parent = flatItems.find(p => p.children?.some(c => c.key === key));
+                if (parent) openKey = parent.key;
+            }
+        });
 
-        return {
-            items,
-            routesByKey: routeMap,
-            selectedMenuKey: selected,
-            openKeys: parent ? [parent.key] : [],
-        };
-    }, [activeKey, user]);
+        return { items: flatItems, routesByKey: routeMap, selectedMenuKey: selectedKey, openKeys: openKey ? [openKey] : [] };
+    }, [pathname, user]);
+
 
     useEffect(() => {
         function syncPath() {
@@ -452,6 +441,11 @@ export function AppShell() {
                         )}
                     </Space>
                     <Space className="header-content-right" size={18}>
+                        <ColorPicker 
+                            value={colorPrimary} 
+                            onChange={(color) => setColorPrimary(color.toHexString())} 
+                            size="small" 
+                        />
                         <Dropdown
                             menu={{ items: notificationItems, onClick: handleNotificationClick }}
                             placement="bottomRight"
