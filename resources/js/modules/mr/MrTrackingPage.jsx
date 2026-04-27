@@ -19,6 +19,20 @@ function StatusBadge({ active }) {
     return <Badge status={active ? 'success' : 'default'} text={active ? 'Active' : 'Inactive'} />;
 }
 
+// ─── section routing ─────────────────────────────────────────────────────────
+const fieldForceSections = {
+    dashboard: { title: 'Dashboard', description: 'Branch hierarchy, visit tracking, product sales per MR and per branch' },
+    performance: { title: 'Performance', description: 'MR Performance summary and KPI tracking' },
+    representatives: { title: 'Representatives', description: 'Field force directory and targets' },
+    visits: { title: 'Visits', description: 'Visit logs and customer check-ins' },
+    branches: { title: 'Branches', description: 'Branch and HQ hierarchy management' },
+};
+
+function currentSection() {
+    const section = window.location.pathname.split('/').filter(Boolean).pop();
+    return fieldForceSections[section] ? section : 'dashboard';
+}
+
 export function MrTrackingPage() {
     const { notification } = App.useApp();
     const { user } = useAuth();
@@ -41,6 +55,12 @@ export function MrTrackingPage() {
     const [salesData, setSalesData]   = useState(null);
     const [salesLoading, setSalesLoading] = useState(false);
 
+    // ── branch table ──────────────────────────────────────────────────────────
+    const branchTable = useServerTable({
+        endpoint: endpoints.mrBranches,
+        defaultSort: { field: 'name', order: 'asc' },
+    });
+
     // ── visits table ──────────────────────────────────────────────────────────
     const visitTable = useServerTable({
         endpoint: endpoints.mrVisits,
@@ -54,8 +74,7 @@ export function MrTrackingPage() {
     });
 
     // ── form state ────────────────────────────────────────────────────────────
-    const [mrDrawerOpen, setMrDrawerOpen]     = useState(false);
-    const [visitDrawerOpen, setVisitDrawerOpen] = useState(false);
+    const [view, setView] = useState('list');
     const [branchDrawerOpen, setBranchDrawerOpen] = useState(false);
     const [editingMr, setEditingMr]           = useState(null);
     const [editingVisit, setEditingVisit]     = useState(null);
@@ -68,6 +87,9 @@ export function MrTrackingPage() {
 
     const canManage = user?.is_owner || can(user, 'mr.manage');
     const canVisits = canManage || can(user, 'mr.visits.manage');
+
+    const section = currentSection();
+    const sectionConfig = fieldForceSections[section];
 
     const fromDate = dateRange?.[0]?.format('YYYY-MM-DD');
     const toDate   = dateRange?.[1]?.format('YYYY-MM-DD');
@@ -118,10 +140,10 @@ export function MrTrackingPage() {
 
     // ── MR CRUD ───────────────────────────────────────────────────────────────
     function openMr(record = null) {
+        setView('mr');
         setEditingMr(record);
         mrForm.resetFields();
         mrForm.setFieldsValue(record || { is_active: true, monthly_target: 0 });
-        setMrDrawerOpen(true);
     }
 
     async function saveMr(values) {
@@ -133,7 +155,7 @@ export function MrTrackingPage() {
                 await http.post(endpoints.mrRepresentatives, values);
                 notification.success({ message: 'MR created' });
             }
-            setMrDrawerOpen(false);
+            setView('list');
             mrTable.reload();
             loadLookups();
             loadPerformance();
@@ -165,7 +187,7 @@ export function MrTrackingPage() {
             customer_id: record.customer_id ?? record.customer?.id,
             visit_date: record.visit_date ? dayjs(record.visit_date) : dayjs(),
         } : { visit_date: dayjs(), status: 'planned', order_value: 0 });
-        setVisitDrawerOpen(true);
+        setView('visit');
     }
 
     async function saveVisit(values) {
@@ -178,7 +200,7 @@ export function MrTrackingPage() {
                 await http.post(endpoints.mrVisits, payload);
                 notification.success({ message: 'Visit created' });
             }
-            setVisitDrawerOpen(false);
+            setView('list');
             visitTable.reload();
             loadPerformance();
         } catch (e) {
@@ -216,11 +238,24 @@ export function MrTrackingPage() {
                 notification.success({ message: 'Branch created' });
             }
             setBranchDrawerOpen(false);
+            branchTable.reload();
             loadLookups();
         } catch (e) {
             branchForm.setFields(Object.entries(validationErrors(e)).map(([name, errors]) => ({ name, errors })));
             notification.error({ message: 'Save failed' });
         }
+    }
+
+    function deleteBranch(record) {
+        confirmDelete({
+            title: `Delete ${record.name}?`,
+            onOk: async () => {
+                await http.delete(`${endpoints.mrBranches}/${record.id}`);
+                notification.success({ message: 'Branch deleted' });
+                branchTable.reload();
+                loadLookups();
+            },
+        });
     }
 
     // ── get GPS from browser ──────────────────────────────────────────────────
@@ -236,6 +271,24 @@ export function MrTrackingPage() {
     }
 
     // ── column definitions ────────────────────────────────────────────────────
+    const branchColumns = [
+        { title: 'Name', dataIndex: 'name', sorter: true, field: 'name' },
+        { title: 'Code', dataIndex: 'code', width: 110 },
+        { title: 'Type', dataIndex: 'type', width: 110, render: (v) => <Tag color={v === 'hq' ? 'blue' : 'default'}>{v?.toUpperCase()}</Tag> },
+        { title: 'Parent HQ', dataIndex: ['parent', 'name'], render: (v) => v || '—' },
+        { title: 'Address', dataIndex: 'address' },
+        { title: 'Status', dataIndex: 'is_active', width: 100, render: (v) => <StatusBadge active={v} /> },
+        canManage ? {
+            title: '', width: 96,
+            render: (_, r) => (
+                <Space>
+                    <Button size="small" icon={<EditOutlined />} onClick={() => openBranch(r)} />
+                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => deleteBranch(r)} />
+                </Space>
+            ),
+        } : null,
+    ].filter(Boolean);
+
     const mrColumns = [
         { title: 'Name', dataIndex: 'name', sorter: true, field: 'name' },
         { title: 'Code', dataIndex: 'employee_code', width: 110 },
@@ -312,36 +365,41 @@ export function MrTrackingPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title="MR Tracking"
-                description="Branch hierarchy, visit tracking, product sales per MR and per branch"
+                title={sectionConfig.title}
+                description={sectionConfig.description}
                 actions={
                     <Space wrap>
-                        {canManage && <Button onClick={() => openBranch()}>+ Branch</Button>}
-                        {canManage && <Button icon={<PlusOutlined />} onClick={() => openMr()}>New MR</Button>}
-                        {canVisits && <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit()}>New Visit</Button>}
+                        {section === 'branches' && canManage && <Button onClick={() => openBranch()}>+ Branch</Button>}
+                        {section === 'representatives' && canManage && <Button icon={<PlusOutlined />} onClick={() => openMr()}>New MR</Button>}
+                        {section === 'visits' && canVisits && <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit()}>New Visit</Button>}
                     </Space>
                 }
             />
 
-            {/* ── Global filter bar ─────────────────────────────────────────── */}
-            <Card size="small">
-                <Space wrap>
-                    <DatePicker.RangePicker value={dateRange} onChange={setDateRange} />
-                    <Select
-                        allowClear placeholder="All Branches" value={branchId}
-                        onChange={setBranchId} style={{ minWidth: 180 }}
-                        options={branchOptions.map((b) => ({ value: b.id, label: b.name }))}
-                    />
-                    <Select
-                        allowClear placeholder="All MRs" value={mrId}
-                        onChange={setMrId} style={{ minWidth: 160 }}
-                        options={mrOptions.map((m) => ({ value: m.id, label: m.name }))}
-                    />
-                </Space>
-            </Card>
+            {(section === 'dashboard' || section === 'performance') && (
+                <Card size="small" style={{ marginBottom: 16 }}>
+                    <Space wrap>
+                        <DatePicker.RangePicker value={dateRange} onChange={setDateRange} />
+                        <Select
+                            allowClear placeholder="All Branches" value={branchId}
+                            onChange={setBranchId} style={{ minWidth: 180 }}
+                            options={branchOptions.map((b) => ({ value: b.id, label: b.name }))}
+                        />
+                        <Select
+                            allowClear placeholder="All MRs" value={mrId}
+                            onChange={setMrId} style={{ minWidth: 160 }}
+                            options={mrOptions.map((m) => ({ value: m.id, label: m.name }))}
+                        />
+                    </Space>
+                </Card>
+            )}
 
-            {/* ── KPI cards ─────────────────────────────────────────────────── */}
-            <Row gutter={[16, 16]}>
+            {view === 'list' ? (
+                <>
+                    {section === 'dashboard' && (
+                        <>
+                            {/* ── KPI cards ─────────────────────────────────────────────────── */}
+                    <Row gutter={[16, 16]}>
                 <Col xs={12} md={6}>
                     <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #2563eb' }}>
                         <Statistic title={<span style={{ fontWeight: 600 }}>Active MRs</span>} value={totals.active_mrs ?? '—'} />
@@ -379,8 +437,11 @@ export function MrTrackingPage() {
                     size="small"
                 />
             </Card>
+                        </>
+                    )}
 
             {/* ── MR Performance table ──────────────────────────────────────── */}
+            {section === 'performance' && (
             <Card title="MR Performance" loading={perfLoading}>
                 <Table
                     rowKey="id"
@@ -406,9 +467,10 @@ export function MrTrackingPage() {
                     size="small"
                 />
             </Card>
+            )}
 
             {/* ── MR Master list ────────────────────────────────────────────── */}
-            {canManage && (
+            {section === 'representatives' && canManage && (
                 <Card title="MR Directory">
                     <div className="table-toolbar table-toolbar-wide">
                         <Input.Search
@@ -430,13 +492,14 @@ export function MrTrackingPage() {
                             onChange={(v) => mrTable.setFilters((c) => ({ ...c, is_active: v }))}
                             options={[{ value: true, label: 'Active' }, { value: false, label: 'Inactive' }]}
                         />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openMr(null)}>Add MR</Button>
                     </div>
                     <ServerTable table={mrTable} columns={mrColumns} />
                 </Card>
             )}
 
             {/* ── Visits list ───────────────────────────────────────────────── */}
-            {canVisits && (
+            {section === 'visits' && canVisits && (
                 <Card title="Visit Log">
                     <div className="table-toolbar table-toolbar-wide">
                         <Input.Search
@@ -458,19 +521,39 @@ export function MrTrackingPage() {
                             onChange={(v) => visitTable.setFilters((c) => ({ ...c, status: v }))}
                             options={mrVisitStatusOptions}
                         />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit(null)}>Add Visit</Button>
                     </div>
                     <ServerTable table={visitTable} columns={visitColumns} />
                 </Card>
             )}
 
-            {/* ══ Drawers & Modals ════════════════════════════════════════════ */}
-
-            {/* MR form */}
-            <FormDrawer
+            {/* ── Branches list ──────────────────────────────────────────────── */}
+            {section === 'branches' && canManage && (
+                <Card title="Branch Management">
+                    <div className="table-toolbar table-toolbar-wide">
+                        <Input.Search
+                            value={branchTable.search}
+                            onChange={(e) => branchTable.setSearch(e.target.value)}
+                            placeholder="Search branch name or code"
+                            allowClear
+                        />
+                        <Select
+                            allowClear placeholder="Type"
+                            value={branchTable.filters.type}
+                            onChange={(v) => branchTable.setFilters((c) => ({ ...c, type: v }))}
+                            options={[{ value: 'hq', label: 'HQ' }, { value: 'branch', label: 'Branch' }]}
+                            style={{ minWidth: 120 }}
+                        />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openBranch(null)}>Add Branch</Button>
+                    </div>
+                    <ServerTable table={branchTable} columns={branchColumns} />
+                </Card>
+            )}
+            </>
+            ) : view === 'mr' ? (
+            <Card 
                 title={editingMr ? `Edit MR: ${editingMr.name}` : 'New Medical Representative'}
-                open={mrDrawerOpen}
-                onClose={() => setMrDrawerOpen(false)}
-                footer={<Button type="primary" block onClick={() => mrForm.submit()}>Save MR</Button>}
+                extra={<Button onClick={() => setView('list')}>Cancel</Button>}
             >
                 <Form form={mrForm} layout="vertical" onFinish={saveMr}>
                     <Form.Item name="name" label="Full Name" rules={[{ required: true }]}><Input /></Form.Item>
@@ -489,15 +572,13 @@ export function MrTrackingPage() {
                         <InputNumber min={0} className="full-width" />
                     </Form.Item>
                     <Form.Item name="is_active" label="Active" valuePropName="checked"><Switch /></Form.Item>
+                    <Button type="primary" htmlType="submit">Save MR</Button>
                 </Form>
-            </FormDrawer>
-
-            {/* Visit form */}
-            <FormDrawer
+            </Card>
+            ) : view === 'visit' ? (
+            <Card 
                 title={editingVisit ? 'Edit Visit' : 'New Visit'}
-                open={visitDrawerOpen}
-                onClose={() => setVisitDrawerOpen(false)}
-                footer={<Button type="primary" block onClick={() => visitForm.submit()}>Save Visit</Button>}
+                extra={<Button onClick={() => setView('list')}>Cancel</Button>}
             >
                 <Form form={visitForm} layout="vertical" onFinish={saveVisit}>
                     <Form.Item name="medical_representative_id" label="MR" rules={[{ required: true }]}>
@@ -530,15 +611,16 @@ export function MrTrackingPage() {
                         </div>
                         <Form.Item name="location_name" label="Location Name (optional)"><Input /></Form.Item>
                     </Card>
+                    <Button type="primary" htmlType="submit">Save Visit</Button>
                 </Form>
-            </FormDrawer>
+            </Card>
+            ) : null}
 
-            {/* Branch form */}
+            {/* Branch form drawer */}
             <FormDrawer
                 title={editingBranch ? `Edit Branch: ${editingBranch.name}` : 'New Branch'}
                 open={branchDrawerOpen}
                 onClose={() => setBranchDrawerOpen(false)}
-                footer={<Button type="primary" block onClick={() => branchForm.submit()}>Save Branch</Button>}
             >
                 <Form form={branchForm} layout="vertical" onFinish={saveBranch}>
                     <Form.Item name="name" label="Branch Name" rules={[{ required: true }]}><Input /></Form.Item>
@@ -557,6 +639,7 @@ export function MrTrackingPage() {
                     <Form.Item name="address" label="Address"><Input.TextArea rows={2} /></Form.Item>
                     <Form.Item name="phone" label="Phone"><Input /></Form.Item>
                     <Form.Item name="is_active" label="Active" valuePropName="checked"><Switch /></Form.Item>
+                    <Button type="primary" htmlType="submit">Save Branch</Button>
                 </Form>
             </FormDrawer>
 

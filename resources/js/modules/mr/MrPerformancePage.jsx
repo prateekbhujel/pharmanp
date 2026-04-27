@@ -21,8 +21,7 @@ export function MrPerformancePage() {
     const [summary, setSummary] = useState({ loading: true, data: null });
     const [mrOptions, setMrOptions] = useState([]);
     const [customers, setCustomers] = useState([]);
-    const [representativeDrawerOpen, setRepresentativeDrawerOpen] = useState(false);
-    const [visitDrawerOpen, setVisitDrawerOpen] = useState(false);
+    const [view, setView] = useState('list');
     const [editingRepresentative, setEditingRepresentative] = useState(null);
     const [editingVisit, setEditingVisit] = useState(null);
     const [representativeForm] = Form.useForm();
@@ -79,7 +78,7 @@ export function MrPerformancePage() {
         setEditingRepresentative(record);
         representativeForm.resetFields();
         representativeForm.setFieldsValue(record || { is_active: true, monthly_target: 0 });
-        setRepresentativeDrawerOpen(true);
+        setView('mr');
     }
 
     function openVisit(record = null) {
@@ -95,7 +94,7 @@ export function MrPerformancePage() {
             status: 'planned',
             order_value: 0,
         });
-        setVisitDrawerOpen(true);
+        setView('visit');
     }
 
     async function saveRepresentative(values) {
@@ -107,7 +106,7 @@ export function MrPerformancePage() {
                 await http.post(endpoints.mrRepresentatives, values);
                 notification.success({ message: 'MR created' });
             }
-            setRepresentativeDrawerOpen(false);
+            setView('list');
             representativeTable.reload();
             loadLookups();
             loadSummary();
@@ -131,7 +130,7 @@ export function MrPerformancePage() {
                 await http.post(endpoints.mrVisits, payload);
                 notification.success({ message: 'Visit created' });
             }
-            setVisitDrawerOpen(false);
+            setView('list');
             visitTable.reload();
             loadSummary();
         } catch (error) {
@@ -220,6 +219,8 @@ export function MrPerformancePage() {
                 )}
             />
 
+            {view === 'list' ? (
+            <>
             <Row gutter={[16, 16]}>
                 <Col xs={24} md={6}><Card loading={summary.loading}><Statistic title="Active MRs" value={totals.active_mrs || 0} /></Card></Col>
                 <Col xs={24} md={6}><Card loading={summary.loading}><Statistic title="Visits" value={totals.visits || 0} /></Card></Col>
@@ -304,12 +305,11 @@ export function MrPerformancePage() {
                     ),
                 } : null,
             ].filter(Boolean)} />
-
-            <FormDrawer
+            </>
+            ) : view === 'mr' ? (
+            <Card 
                 title={editingRepresentative ? `Edit MR: ${editingRepresentative.name}` : 'New Medical Representative'}
-                open={representativeDrawerOpen}
-                onClose={() => setRepresentativeDrawerOpen(false)}
-                footer={<Button type="primary" onClick={() => representativeForm.submit()} block>Save MR</Button>}
+                extra={<Button onClick={() => setView('list')}>Cancel</Button>}
             >
                 <Form form={representativeForm} layout="vertical" onFinish={saveRepresentative}>
                     <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
@@ -323,14 +323,13 @@ export function MrPerformancePage() {
                     </div>
                     <Form.Item name="monthly_target" label="Monthly Target"><InputNumber min={0} className="full-width" /></Form.Item>
                     <Form.Item name="is_active" label="Active" valuePropName="checked"><Switch /></Form.Item>
+                    <Button type="primary" htmlType="submit">Save MR</Button>
                 </Form>
-            </FormDrawer>
-
-            <FormDrawer
+            </Card>
+            ) : view === 'visit' ? (
+            <Card 
                 title={editingVisit ? 'Edit Visit' : 'New Visit'}
-                open={visitDrawerOpen}
-                onClose={() => setVisitDrawerOpen(false)}
-                footer={<Button type="primary" onClick={() => visitForm.submit()} block>Save Visit</Button>}
+                extra={<Button onClick={() => setView('list')}>Cancel</Button>}
             >
                 <Form form={visitForm} layout="vertical" onFinish={saveVisit}>
                     <Form.Item name="medical_representative_id" label="MR" rules={[{ required: true }]}>
@@ -345,8 +344,10 @@ export function MrPerformancePage() {
                     </div>
                     <Form.Item name="order_value" label="Order Value"><InputNumber min={0} className="full-width" /></Form.Item>
                     <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
+                    <Button type="primary" htmlType="submit">Save Visit</Button>
                 </Form>
-            </FormDrawer>
+            </Card>
+            ) : null}
         </div>
     );
 }

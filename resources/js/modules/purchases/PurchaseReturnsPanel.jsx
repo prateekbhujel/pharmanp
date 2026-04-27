@@ -69,6 +69,7 @@ export function PurchaseReturnsPanel() {
     const [lineErrors, setLineErrors] = useState({});
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [view, setView] = useState('list');
     const [quickSupplierOpen, setQuickSupplierOpen] = useState(false);
     const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
     const table = useServerTable({
@@ -223,6 +224,7 @@ export function PurchaseReturnsPanel() {
             setLineErrors({});
             form.resetFields();
             form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill' });
+            setView('list');
             table.reload();
             if (data?.print_url) {
                 window.open(data.print_url, '_blank');
@@ -238,6 +240,7 @@ export function PurchaseReturnsPanel() {
     }
 
     async function editReturn(row) {
+        setView('form');
         const { data } = await http.get(`${endpoints.purchaseReturns}/${row.id}`);
         const record = data.data;
         setEditing(record);
@@ -363,88 +366,90 @@ export function PurchaseReturnsPanel() {
 
     return (
         <div className="page-stack">
-            <Card title={editing ? `Edit ${editing.return_no}` : 'Purchase Return Entry'}>
-                <Form form={form} layout="vertical" onFinish={submit}>
-                    <div className="form-grid form-grid-4">
-                        <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
-                            <Select
-                                showSearch
-                                optionFilterProp="label"
-                                options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
-                                dropdownRender={(menu) => (
-                                    <>
-                                        {menu}
-                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
-                                    </>
-                                )}
-                            />
-                        </Form.Item>
-                        <Form.Item name="return_mode" label="Return Mode" rules={[{ required: true }]}>
-                            <Radio.Group optionType="button" buttonStyle="solid" options={[
-                                { value: 'bill', label: 'By Purchase Bill' },
-                                { value: 'product', label: 'By Product / Batch' },
-                            ]} />
-                        </Form.Item>
-                        <Form.Item name="return_date" label="Return Date" rules={[{ required: true }]}>
-                            <DatePicker className="full-width" />
-                        </Form.Item>
-                        <Form.Item name="notes" label="Notes"><Input /></Form.Item>
-                    </div>
-                    {returnMode === 'bill' && (
-                        <div className="form-grid">
-                            <Form.Item name="purchase_id" label="Purchase Bill" rules={[{ required: returnMode === 'bill' }]}>
-                                <Select options={purchases.map((item) => ({ value: item.id, label: item.label }))} />
+            {view === 'form' ? (
+                <Card title={editing ? `Edit ${editing.return_no}` : 'Purchase Return Entry'}>
+                    <Form form={form} layout="vertical" onFinish={submit}>
+                        <div className="form-grid form-grid-4">
+                            <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
+                                <Select
+                                    showSearch
+                                    optionFilterProp="label"
+                                    options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                                    dropdownRender={(menu) => (
+                                        <>
+                                            {menu}
+                                            <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
+                                        </>
+                                    )}
+                                />
                             </Form.Item>
-                            <Form.Item label=" "><Button icon={<ReloadOutlined />} onClick={loadBillItems}>Load Bill Items</Button></Form.Item>
+                            <Form.Item name="return_mode" label="Return Mode" rules={[{ required: true }]}>
+                                <Radio.Group optionType="button" buttonStyle="solid" options={[
+                                    { value: 'bill', label: 'By Purchase Bill' },
+                                    { value: 'product', label: 'By Product / Batch' },
+                                ]} />
+                            </Form.Item>
+                            <Form.Item name="return_date" label="Return Date" rules={[{ required: true }]}>
+                                <DatePicker className="full-width" />
+                            </Form.Item>
+                            <Form.Item name="notes" label="Notes"><Input /></Form.Item>
                         </div>
-                    )}
-                    <TransactionLineItems
-                        rows={items}
-                        columns={lineColumns}
-                        errors={lineErrors}
-                        addLabel="Add Manual Item"
-                        onAdd={addManualRow}
-                        onRemove={removeRow}
-                        minRows={0}
-                        summary={[
-                            { label: 'Total Qty', value: Number(summary.qty || 0).toFixed(3) },
-                            { label: 'Gross Return', value: <Money value={summary.subtotal} /> },
-                            { label: 'Discount', value: <Money value={summary.discount} /> },
-                            { label: 'Net Return', value: <Money value={summary.total} />, strong: true },
-                        ]}
-                        actions={(
-                            <Space>
-                                {editing && <Button onClick={() => { setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill' }); }}>Cancel Edit</Button>}
-                                <Button type="primary" htmlType="submit" loading={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
-                            </Space>
+                        {returnMode === 'bill' && (
+                            <div className="form-grid">
+                                <Form.Item name="purchase_id" label="Purchase Bill" rules={[{ required: returnMode === 'bill' }]}>
+                                    <Select options={purchases.map((item) => ({ value: item.id, label: item.label }))} />
+                                </Form.Item>
+                                <Form.Item label=" "><Button icon={<ReloadOutlined />} onClick={loadBillItems}>Load Bill Items</Button></Form.Item>
+                            </div>
                         )}
-                    />
-                </Form>
-            </Card>
-
-            <Card title="Purchase Return List">
-                <div className="table-toolbar table-toolbar-wide">
-                    <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search return, supplier or purchase" allowClear />
-                    <Select
-                        allowClear
-                        placeholder="Supplier"
-                        options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
-                        onChange={(supplier_id) => table.setFilters((filters) => ({ ...filters, supplier_id }))}
-                    />
-                    <Select
-                        allowClear
-                        placeholder="Mode"
-                        options={[
-                            { value: 'bill', label: 'Bill' },
-                            { value: 'product', label: 'By Product & Batch' },
-                        ]}
-                        onChange={(return_mode) => table.setFilters((filters) => ({ ...filters, return_mode }))}
-                    />
-                    <DatePicker.RangePicker value={range} onChange={setRange} />
-                    <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
-                </div>
-                <ServerTable table={table} columns={listColumns} />
-            </Card>
+                        <TransactionLineItems
+                            rows={items}
+                            columns={lineColumns}
+                            errors={lineErrors}
+                            addLabel="Add Manual Item"
+                            onAdd={addManualRow}
+                            onRemove={removeRow}
+                            minRows={0}
+                            summary={[
+                                { label: 'Total Qty', value: Number(summary.qty || 0).toFixed(3) },
+                                { label: 'Gross Return', value: <Money value={summary.subtotal} /> },
+                                { label: 'Discount', value: <Money value={summary.discount} /> },
+                                { label: 'Net Return', value: <Money value={summary.total} />, strong: true },
+                            ]}
+                            actions={(
+                                <Space>
+                                    <Button onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill' }); }}>Cancel</Button>
+                                    <Button type="primary" htmlType="submit" loading={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
+                                </Space>
+                            )}
+                        />
+                    </Form>
+                </Card>
+            ) : (
+                <Card title="Purchase Return List" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill' }); setView('form'); }}>New Return</Button>}>
+                    <div className="table-toolbar table-toolbar-wide">
+                        <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search return, supplier or purchase" allowClear />
+                        <Select
+                            allowClear
+                            placeholder="Supplier"
+                            options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                            onChange={(supplier_id) => table.setFilters((filters) => ({ ...filters, supplier_id }))}
+                        />
+                        <Select
+                            allowClear
+                            placeholder="Mode"
+                            options={[
+                                { value: 'bill', label: 'Bill' },
+                                { value: 'product', label: 'By Product & Batch' },
+                            ]}
+                            onChange={(return_mode) => table.setFilters((filters) => ({ ...filters, return_mode }))}
+                        />
+                        <DatePicker.RangePicker value={range} onChange={setRange} />
+                        <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
+                    </div>
+                    <ServerTable table={table} columns={listColumns} />
+                </Card>
+            )}
 
             <Modal
                 title="Quick Add Supplier"
