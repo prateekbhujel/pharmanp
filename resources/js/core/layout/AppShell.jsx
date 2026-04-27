@@ -142,22 +142,14 @@ export function AppShell() {
             { key: 'category-main', label: 'Main Menu', disabled: true, className: 'menu-category' },
             { key: register('dashboard', appUrl('/app')), icon: <DashboardOutlined />, label: 'Dashboard', show: can(user, 'dashboard.view') },
             {
-                key: 'masters',
-                icon: <SafetyCertificateOutlined />,
-                label: 'Masters',
-                show: canInventory,
-                children: [
-                    child('inventory-company', 'Company', appUrl('/app/inventory/companies')),
-                    child('inventory-unit', 'Unit', appUrl('/app/inventory/units')),
-                    child('inventory-categories', 'Categories', appUrl('/app/inventory/categories')),
-                ],
-            },
-            {
                 key: 'inventory',
                 icon: <MedicineBoxOutlined />,
                 label: 'Inventory',
                 show: canInventory,
                 children: [
+                    child('inventory-company', 'Company (Manufacturer)', appUrl('/app/inventory/companies')),
+                    child('inventory-unit', 'Unit', appUrl('/app/inventory/units')),
+                    child('inventory-categories', 'Categories', appUrl('/app/inventory/categories')),
                     child('inventory-product', 'Product', appUrl('/app/inventory/products')),
                     child('inventory-batches', 'Batches', appUrl('/app/inventory/batches')),
                     child('inventory-adjustment', 'Stock Adjustment', appUrl('/app/inventory/stock-adjustment')),

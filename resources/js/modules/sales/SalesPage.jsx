@@ -3,6 +3,7 @@ import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select,
 import { PlusOutlined, PrinterOutlined, QrcodeOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
+import { DualDatePicker } from '../../core/components/DualDatePicker';
 import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
 import { QuickProductModal } from '../../core/components/QuickProductModal';
@@ -61,7 +62,36 @@ export function SalesPage() {
     useEffect(() => {
         loadCustomers();
         loadMedicalRepresentatives();
-    }, []);
+
+        function handleKeyDown(event) {
+            if (section !== 'pos') return;
+            switch (event.key) {
+                case 'F2':
+                    event.preventDefault();
+                    document.getElementById('pos-barcode-input')?.focus();
+                    break;
+                case 'F3':
+                    event.preventDefault();
+                    document.querySelector('.pos-product-search input')?.focus();
+                    break;
+                case 'F4':
+                    event.preventDefault();
+                    document.getElementById('pos-paid-amount')?.focus();
+                    break;
+                case 'F8':
+                    event.preventDefault();
+                    document.getElementById('pos-submit-btn')?.click();
+                    break;
+                case 'F9':
+                    event.preventDefault();
+                    setQuickProductOpen(true);
+                    break;
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [section]);
 
     useEffect(() => {
         invoiceTable.setFilters((current) => ({
@@ -237,7 +267,7 @@ export function SalesPage() {
             {section === 'pos' && (
                 <Card>
                     <div className="pos-toolbar pos-toolbar-wide">
-                        <BarcodeInput value={barcode} onChange={setBarcode} onScan={scan} />
+                        <BarcodeInput id="pos-barcode-input" value={barcode} onChange={setBarcode} onScan={scan} />
                         <Select
                             allowClear
                             placeholder="Walk-in Customer"
@@ -258,8 +288,8 @@ export function SalesPage() {
                             onChange={setMedicalRepresentativeId}
                             options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
                         />
-                        <DatePicker value={invoiceDate} onChange={setInvoiceDate} />
-                        <InputNumber min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
+                        <DualDatePicker value={invoiceDate} onChange={setInvoiceDate} />
+                        <InputNumber id="pos-paid-amount" min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
                     </div>
                     <div className="pos-walkin-strip">
                         <Tag color={customerId ? 'blue' : 'default'} icon={<UserOutlined />}>{customerId ? `Customer #${customerId}` : 'Walk-in customer'}</Tag>
@@ -310,7 +340,7 @@ export function SalesPage() {
                                 >
                                     Payment QR
                                 </Button>
-                                <Button type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice</Button>
+                                <Button id="pos-submit-btn" type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice (F8)</Button>
                             </Space>
                         )}
                     />

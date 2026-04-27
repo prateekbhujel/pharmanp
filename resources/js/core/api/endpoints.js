@@ -80,4 +80,7 @@ export const endpoints = {
 
     // Settings — Supplier Types
     supplierTypes: appUrl('/api/v1/settings/supplier-types'),
+    
+    // Settings - Fiscal Years
+    fiscalYears: appUrl('/api/v1/settings/fiscal-years'),
 };

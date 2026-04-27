@@ -6,6 +6,7 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
 import { useAuth } from '../../core/auth/AuthProvider';
+import { FiscalYearPanel } from './FiscalYearPanel';
 
 function normalizeFile(event) {
     return Array.isArray(event) ? event : event?.fileList;
@@ -218,6 +219,11 @@ export function SettingsPage() {
                             </Form>
                         </Card>
                     )
+                },
+                {
+                    key: 'fiscal-years',
+                    label: 'Fiscal Years',
+                    children: <FiscalYearPanel />
                 },
                 {
                     key: 'features',
