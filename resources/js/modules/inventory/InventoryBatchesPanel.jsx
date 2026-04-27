@@ -146,13 +146,7 @@ export function InventoryBatchesPanel() {
     const summary = table.extra.summary || {};
 
     return (
-        <div className="page-stack">
-            <div className="metric-grid">
-                <Card><Statistic title="Total Batches" value={summary.total_batches || 0} /></Card>
-                <Card><Statistic title="Available Stock" value={summary.total_stock || 0} precision={3} /></Card>
-                <Card><Statistic title="Expired" value={summary.expired_batches || 0} /></Card>
-                <Card><Statistic title="Expiring 30 Days" value={summary.expiring_30 || 0} /></Card>
-            </div>
+        <div className="page-stack">s
             <Card
                 title="Batch List"
                 extra={(

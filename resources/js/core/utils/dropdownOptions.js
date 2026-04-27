@@ -11,6 +11,7 @@ export const fallbackDropdownAliases = {
     formulation: { label: 'Formulation', supports_data: false },
     sales_type: { label: 'Sales Type', supports_data: false },
     payment_mode: { label: 'Payment Mode', supports_data: true },
+    payment_type: { label: 'Payment Type', supports_data: false },
     expense_category: { label: 'Expense Category', supports_data: true },
 };
 

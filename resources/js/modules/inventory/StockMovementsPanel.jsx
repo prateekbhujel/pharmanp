@@ -61,12 +61,6 @@ export function StockMovementsPanel() {
 
     return (
         <div className="page-stack">
-            <div className="metric-grid">
-                <Card><Statistic title="Rows" value={summary.total_rows || 0} /></Card>
-                <Card><Statistic title="Stock In" value={summary.total_in || 0} precision={3} /></Card>
-                <Card><Statistic title="Stock Out" value={summary.total_out || 0} precision={3} /></Card>
-                <Card><Statistic title="Net" value={summary.net || 0} precision={3} /></Card>
-            </div>
             <Card title="Stock Movement Ledger">
                 <div className="table-toolbar table-toolbar-wide">
                     <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search movement, product, batch or note" allowClear />

@@ -58,17 +58,16 @@ export function UsersPage() {
         <div className="page-stack">
             <PageHeader
                 title="Users"
-                description="Manage system users and their access levels"
                 actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => openUser()}>New User</Button>}
             />
 
             <Card>
                 <div className="table-toolbar table-toolbar-wide">
-                    <Input.Search 
-                        value={userTable.search} 
-                        onChange={(event) => userTable.setSearch(event.target.value)} 
-                        placeholder="Search user, email or role" 
-                        allowClear 
+                    <Input.Search
+                        value={userTable.search}
+                        onChange={(event) => userTable.setSearch(event.target.value)}
+                        placeholder="Search user, email or role"
+                        allowClear
                     />
                     <Select
                         allowClear

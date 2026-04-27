@@ -78,17 +78,19 @@ function PartyTab({ type, onViewLedger }) {
         { title: 'PAN', dataIndex: 'pan_number', width: 120 },
         { title: 'Balance', dataIndex: 'current_balance', sorter: true, field: 'current_balance', align: 'right', width: 130, render: (value) => <Money value={value} /> },
         { title: 'Status', dataIndex: 'is_active', width: 110, render: (value, record) => record.deleted_at ? <StatusTag active={false} falseText="Deleted" /> : <StatusToggle value={value} id={record.id} endpoint={endpoint} /> },
-        { title: '', width: type === 'customers' ? 160 : 112, render: (_, record) => (
-            record.deleted_at ? (
-                <Button icon={<UndoOutlined />} onClick={() => restore(record)}>Restore</Button>
-            ) : (
-                <Space>
-                    {type === 'customers' && <Button icon={<BookOutlined />} onClick={() => onViewLedger?.(record)}>Ledger</Button>}
-                    <Button icon={<EditOutlined />} onClick={() => open(record)} />
-                    <Button danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
-                </Space>
+        {
+            title: '', width: type === 'customers' ? 160 : 112, render: (_, record) => (
+                record.deleted_at ? (
+                    <Button icon={<UndoOutlined />} onClick={() => restore(record)}>Restore</Button>
+                ) : (
+                    <Space>
+                        {type === 'customers' && <Button icon={<BookOutlined />} onClick={() => onViewLedger?.(record)}>Ledger</Button>}
+                        <Button icon={<EditOutlined />} onClick={() => open(record)} />
+                        <Button danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
+                    </Space>
+                )
             )
-        ) },
+        },
     ];
 
     return (
@@ -151,7 +153,7 @@ export function PartiesPage() {
 
     return (
         <div className="page-stack">
-            <PageHeader title="Parties" description="Supplier and customer masters with server-side tables and quick drawer entry" />
+            <PageHeader title="Parties" />
             <Tabs items={[
                 { key: 'suppliers', label: 'Suppliers', children: <PartyTab type="suppliers" /> },
                 { key: 'customers', label: 'Customers', children: <PartyTab type="customers" onViewLedger={viewLedger} /> },
@@ -167,31 +169,37 @@ export function PartiesPage() {
                             <Col span={6}><Statistic title="Balance" value={ledgerData.summary?.balance} prefix="NPR" /></Col>
                         </Row>
                         <Tabs size="small" items={[
-                            { key: 'invoices', label: `Invoices (${ledgerData.invoices?.length || 0})`, children: (
-                                <Table rowKey="id" dataSource={ledgerData.invoices} pagination={false} size="small" columns={[
-                                    { title: 'Invoice', dataIndex: 'invoice_no' },
-                                    { title: 'Date', dataIndex: 'date' },
-                                    { title: 'Total', dataIndex: 'grand_total', align: 'right', render: (v) => <Money value={v} /> },
-                                    { title: 'Paid', dataIndex: 'paid_amount', align: 'right', render: (v) => <Money value={v} /> },
-                                    { title: 'Due', dataIndex: 'due', align: 'right', render: (v) => <Money value={v} /> },
-                                ]} />
-                            ) },
-                            { key: 'returns', label: `Returns (${ledgerData.returns?.length || 0})`, children: (
-                                <Table rowKey="id" dataSource={ledgerData.returns} pagination={false} size="small" columns={[
-                                    { title: 'Return', dataIndex: 'return_no' },
-                                    { title: 'Date', dataIndex: 'date' },
-                                    { title: 'Invoice', dataIndex: 'invoice_no' },
-                                    { title: 'Amount', dataIndex: 'total_amount', align: 'right', render: (v) => <Money value={v} /> },
-                                ]} />
-                            ) },
-                            { key: 'payments', label: `Payments (${ledgerData.payments?.length || 0})`, children: (
-                                <Table rowKey="id" dataSource={ledgerData.payments} pagination={false} size="small" columns={[
-                                    { title: 'Payment', dataIndex: 'payment_no' },
-                                    { title: 'Date', dataIndex: 'date' },
-                                    { title: 'Mode', dataIndex: 'payment_mode' },
-                                    { title: 'Amount', dataIndex: 'amount', align: 'right', render: (v) => <Money value={v} /> },
-                                ]} />
-                            ) },
+                            {
+                                key: 'invoices', label: `Invoices (${ledgerData.invoices?.length || 0})`, children: (
+                                    <Table rowKey="id" dataSource={ledgerData.invoices} pagination={false} size="small" columns={[
+                                        { title: 'Invoice', dataIndex: 'invoice_no' },
+                                        { title: 'Date', dataIndex: 'date' },
+                                        { title: 'Total', dataIndex: 'grand_total', align: 'right', render: (v) => <Money value={v} /> },
+                                        { title: 'Paid', dataIndex: 'paid_amount', align: 'right', render: (v) => <Money value={v} /> },
+                                        { title: 'Due', dataIndex: 'due', align: 'right', render: (v) => <Money value={v} /> },
+                                    ]} />
+                                )
+                            },
+                            {
+                                key: 'returns', label: `Returns (${ledgerData.returns?.length || 0})`, children: (
+                                    <Table rowKey="id" dataSource={ledgerData.returns} pagination={false} size="small" columns={[
+                                        { title: 'Return', dataIndex: 'return_no' },
+                                        { title: 'Date', dataIndex: 'date' },
+                                        { title: 'Invoice', dataIndex: 'invoice_no' },
+                                        { title: 'Amount', dataIndex: 'total_amount', align: 'right', render: (v) => <Money value={v} /> },
+                                    ]} />
+                                )
+                            },
+                            {
+                                key: 'payments', label: `Payments (${ledgerData.payments?.length || 0})`, children: (
+                                    <Table rowKey="id" dataSource={ledgerData.payments} pagination={false} size="small" columns={[
+                                        { title: 'Payment', dataIndex: 'payment_no' },
+                                        { title: 'Date', dataIndex: 'date' },
+                                        { title: 'Mode', dataIndex: 'payment_mode' },
+                                        { title: 'Amount', dataIndex: 'amount', align: 'right', render: (v) => <Money value={v} /> },
+                                    ]} />
+                                )
+                            },
                         ]} />
                     </div>
                 )}

@@ -10,6 +10,7 @@ const ICON_MAP = {
     'Inventory': <ShoppingCartOutlined />,
     'Product': <ShoppingCartOutlined />,
     'Sales': <FileTextOutlined />,
+    'Purchase': <ShopOutlined />,
     'Admin': <SettingOutlined />,
     'Customer': <TeamOutlined />,
     'Supplier': <ShopOutlined />,
@@ -31,7 +32,10 @@ export function GlobalSearch({ visible, onCancel, onNavigate }) {
                 { key: 'dashboard', label: 'Dashboard', type: 'Page', description: 'Overview of your business metrics', route: '/app' },
                 { key: 'products', label: 'Products', type: 'Inventory', description: 'Manage medicine inventory and stock', route: '/app/inventory/products' },
                 { key: 'sales', label: 'Sales Invoices', type: 'Sales', description: 'View and create customer invoices', route: '/app/sales/invoices' },
-                { key: 'users', label: 'Users', type: 'Admin', description: 'Staff accounts and access control', route: '/app/settings' },
+                { key: 'purchases', label: 'Purchase Bills', type: 'Purchase', description: 'Supplier purchase bills and receiving', route: '/app/purchases/bills' },
+                { key: 'users', label: 'Users', type: 'Admin', description: 'Staff accounts and access control', route: '/app/administration/users' },
+                { key: 'roles', label: 'Roles & Permissions', type: 'Admin', description: 'Readable access control matrix', route: '/app/administration/roles' },
+                { key: 'dropdowns', label: 'Dropdown Masters', type: 'Admin', description: 'Payment modes, types and reusable dropdowns', route: '/app/administration/data-lookup' },
                 { key: 'settings', label: 'Settings', type: 'Admin', description: 'System configuration and branding', route: '/app/settings' },
             ]);
             return;
@@ -134,4 +138,3 @@ export function GlobalSearch({ visible, onCancel, onNavigate }) {
         </Modal>
     );
 }
-

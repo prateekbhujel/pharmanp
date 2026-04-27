@@ -1,0 +1,102 @@
+name: Deploy shared hosting
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: pharmanp-shared-hosting
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Test, build and deploy
+    runs-on: ubuntu-latest
+    if: github.repository == 'prateekbhujel/pharmanp'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: bcmath, ctype, dom, fileinfo, json, mbstring, openssl, pdo, pdo_sqlite, tokenizer, xml
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run backend tests
+        run: php artisan test
+
+      - name: Optimize Composer autoloader for production
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_HOST"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync files
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          test -n "$SSH_USER"
+          test -n "$SSH_HOST"
+          test -n "$DEPLOY_PATH"
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -p ${SSH_PORT}" \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.env' \
+            --exclude='database/*.sqlite' \
+            --exclude='node_modules/' \
+            --exclude='public/hot' \
+            --exclude='storage/app/' \
+            --exclude='storage/framework/' \
+            --exclude='storage/logs/' \
+            ./ "${SSH_USER}@${SSH_HOST}:${DEPLOY_PATH}/"
+
+      - name: Finalize remote Laravel app
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "cd '${DEPLOY_PATH}' && \
+            mkdir -p storage/app/public storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache database && \
+            touch database/database.sqlite && \
+            rm -f public/hot && \
+            php artisan migrate --force && \
+            php artisan storage:link || true && \
+            php artisan config:cache && \
+            php artisan route:cache && \
+            php artisan view:cache"

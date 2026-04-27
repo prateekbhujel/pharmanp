@@ -16,20 +16,18 @@ function StatCard({ title, value, suffix, tone, loading, icon }) {
             className="metric-card metric-card-glow glass-card" 
             loading={loading} 
             size="small"
-            style={{ borderTop: `4px solid ${tone}` }}
-            styles={{ body: { padding: 14 } }}
+            styles={{ body: { padding: '12px 16px' } }}
         >
-            <Statistic
-                title={
-                    <span style={{ color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {icon && <span style={{ color: tone }}>{icon}</span>}
-                        {title}
-                    </span>
-                }
-                value={value ?? 0}
-                suffix={suffix}
-                styles={{ content: { color: tone, fontSize: 20, fontWeight: 800, marginTop: 4 } }}
-            />
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div>
+                    <div style={{ color: '#64748b', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{title}</div>
+                    <div style={{ color: tone, fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>
+                        {value ?? 0}
+                        {suffix && <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.8 }}>{suffix}</span>}
+                    </div>
+                </div>
+                {icon && <div style={{ color: tone, fontSize: 20, opacity: 0.8, marginTop: 2 }}>{icon}</div>}
+            </div>
         </Card>
     );
 }

@@ -21,11 +21,11 @@ function StatusBadge({ active }) {
 
 // ─── section routing ─────────────────────────────────────────────────────────
 const fieldForceSections = {
-    dashboard: { title: 'Dashboard', description: 'Branch hierarchy, visit tracking, product sales per MR and per branch' },
-    performance: { title: 'Performance', description: 'MR Performance summary and KPI tracking' },
-    representatives: { title: 'Representatives', description: 'Field force directory and targets' },
-    visits: { title: 'Visits', description: 'Visit logs and customer check-ins' },
-    branches: { title: 'Branches', description: 'Branch and HQ hierarchy management' },
+    dashboard: { title: 'Dashboard' },
+    performance: { title: 'Performance' },
+    representatives: { title: 'Representatives' },
+    visits: { title: 'Visits' },
+    branches: { title: 'Branches' },
 };
 
 function currentSection() {
@@ -38,21 +38,21 @@ export function MrTrackingPage() {
     const { user } = useAuth();
 
     // ── lookups ───────────────────────────────────────────────────────────────
-    const [branchOptions, setBranchOptions]   = useState([]);
-    const [mrOptions, setMrOptions]           = useState([]);
-    const [customers, setCustomers]           = useState([]);
+    const [branchOptions, setBranchOptions] = useState([]);
+    const [mrOptions, setMrOptions] = useState([]);
+    const [customers, setCustomers] = useState([]);
 
     // ── filter bar state ─────────────────────────────────────────────────────
-    const [dateRange, setDateRange]   = useState([dayjs().startOf('month'), dayjs()]);
-    const [branchId, setBranchId]     = useState(undefined);
-    const [mrId, setMrId]             = useState(undefined);
+    const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [branchId, setBranchId] = useState(undefined);
+    const [mrId, setMrId] = useState(undefined);
 
     // ── performance summary ───────────────────────────────────────────────────
-    const [perfData, setPerfData]     = useState(null);
+    const [perfData, setPerfData] = useState(null);
     const [perfLoading, setPerfLoading] = useState(false);
 
     // ── branch-sales breakdown ────────────────────────────────────────────────
-    const [salesData, setSalesData]   = useState(null);
+    const [salesData, setSalesData] = useState(null);
     const [salesLoading, setSalesLoading] = useState(false);
 
     // ── branch table ──────────────────────────────────────────────────────────
@@ -76,13 +76,13 @@ export function MrTrackingPage() {
     // ── form state ────────────────────────────────────────────────────────────
     const [view, setView] = useState('list');
     const [branchDrawerOpen, setBranchDrawerOpen] = useState(false);
-    const [editingMr, setEditingMr]           = useState(null);
-    const [editingVisit, setEditingVisit]     = useState(null);
-    const [editingBranch, setEditingBranch]   = useState(null);
-    const [mapVisit, setMapVisit]             = useState(null);
+    const [editingMr, setEditingMr] = useState(null);
+    const [editingVisit, setEditingVisit] = useState(null);
+    const [editingBranch, setEditingBranch] = useState(null);
+    const [mapVisit, setMapVisit] = useState(null);
 
-    const [mrForm]     = Form.useForm();
-    const [visitForm]  = Form.useForm();
+    const [mrForm] = Form.useForm();
+    const [visitForm] = Form.useForm();
     const [branchForm] = Form.useForm();
 
     const canManage = user?.is_owner || can(user, 'mr.manage');
@@ -92,7 +92,7 @@ export function MrTrackingPage() {
     const sectionConfig = fieldForceSections[section];
 
     const fromDate = dateRange?.[0]?.format('YYYY-MM-DD');
-    const toDate   = dateRange?.[1]?.format('YYYY-MM-DD');
+    const toDate = dateRange?.[1]?.format('YYYY-MM-DD');
 
     // ── load lookups once ─────────────────────────────────────────────────────
     useEffect(() => {
@@ -337,18 +337,18 @@ export function MrTrackingPage() {
     ].filter(Boolean);
 
     const branchSalesRows = salesData?.rows || [];
-    const maxSalesVal     = Math.max(...branchSalesRows.map((r) => r.total_value || 0), 1);
+    const maxSalesVal = Math.max(...branchSalesRows.map((r) => r.total_value || 0), 1);
 
     const branchSalesColumns = [
         { title: 'Branch', dataIndex: 'branch_name', width: 140 },
         { title: 'MR', dataIndex: 'mr_name', width: 130 },
         { title: 'Product', dataIndex: 'product_name' },
         { title: 'Qty', dataIndex: 'total_qty', align: 'right', width: 80, render: (v) => (+v).toFixed(0) },
-        { 
-            title: 'Value', 
-            dataIndex: 'total_value', 
-            align: 'right', 
-            width: 260, 
+        {
+            title: 'Value',
+            dataIndex: 'total_value',
+            align: 'right',
+            width: 260,
             render: (v) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ minWidth: 90, textAlign: 'right' }}><Money value={v} /></span>
@@ -399,221 +399,221 @@ export function MrTrackingPage() {
                     {section === 'dashboard' && (
                         <>
                             {/* ── KPI cards ─────────────────────────────────────────────────── */}
-                    <Row gutter={[16, 16]}>
-                <Col xs={12} md={6}>
-                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #2563eb' }}>
-                        <Statistic title={<span style={{ fontWeight: 600 }}>Active MRs</span>} value={totals.active_mrs ?? '—'} />
-                    </Card>
-                </Col>
-                <Col xs={12} md={6}>
-                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #0891b2' }}>
-                        <Statistic title={<span style={{ fontWeight: 600 }}>Visits</span>} value={totals.visits ?? '—'} />
-                    </Card>
-                </Col>
-                <Col xs={12} md={6}>
-                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #7c3aed' }}>
-                        <Statistic title={<span style={{ fontWeight: 600 }}>Total Sales</span>} value={totals.invoiced_value ?? 0} prefix="NPR" precision={2} />
-                    </Card>
-                </Col>
-                <Col xs={12} md={6}>
-                    <Card className="metric-card metric-card-glow glass-card" loading={salesLoading} style={{ borderTop: '4px solid #10b981' }}>
-                        <Statistic title={<span style={{ fontWeight: 600 }}>Grand Total (Products)</span>} value={salesData?.grand_total ?? 0} prefix="NPR" precision={2} />
-                    </Card>
-                </Col>
-            </Row>
+                            <Row gutter={[16, 16]}>
+                                <Col xs={12} md={6}>
+                                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #2563eb' }}>
+                                        <Statistic title={<span style={{ fontWeight: 600 }}>Active MRs</span>} value={totals.active_mrs ?? '—'} />
+                                    </Card>
+                                </Col>
+                                <Col xs={12} md={6}>
+                                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #0891b2' }}>
+                                        <Statistic title={<span style={{ fontWeight: 600 }}>Visits</span>} value={totals.visits ?? '—'} />
+                                    </Card>
+                                </Col>
+                                <Col xs={12} md={6}>
+                                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #7c3aed' }}>
+                                        <Statistic title={<span style={{ fontWeight: 600 }}>Total Sales</span>} value={totals.invoiced_value ?? 0} prefix="NPR" precision={2} />
+                                    </Card>
+                                </Col>
+                                <Col xs={12} md={6}>
+                                    <Card className="metric-card metric-card-glow glass-card" loading={salesLoading} style={{ borderTop: '4px solid #10b981' }}>
+                                        <Statistic title={<span style={{ fontWeight: 600 }}>Grand Total (Products)</span>} value={salesData?.grand_total ?? 0} prefix="NPR" precision={2} />
+                                    </Card>
+                                </Col>
+                            </Row>
 
-            {/* ── Branch sales breakdown ────────────────────────────────────── */}
-            <Card
-                title="Product Sales by Branch & MR"
-                loading={salesLoading}
-                extra={<Tag color="blue">{salesData?.period}</Tag>}
-            >
-                <Table
-                    rowKey={(_, i) => i}
-                    dataSource={salesData?.rows || []}
-                    columns={branchSalesColumns}
-                    pagination={{ pageSize: 15, showSizeChanger: true }}
-                    scroll={{ x: 700 }}
-                    size="small"
-                />
-            </Card>
+                            {/* ── Branch sales breakdown ────────────────────────────────────── */}
+                            <Card
+                                title="Product Sales by Branch & MR"
+                                loading={salesLoading}
+                                extra={<Tag color="blue">{salesData?.period}</Tag>}
+                            >
+                                <Table
+                                    rowKey={(_, i) => i}
+                                    dataSource={salesData?.rows || []}
+                                    columns={branchSalesColumns}
+                                    pagination={{ pageSize: 15, showSizeChanger: true }}
+                                    scroll={{ x: 700 }}
+                                    size="small"
+                                />
+                            </Card>
                         </>
                     )}
 
-            {/* ── MR Performance table ──────────────────────────────────────── */}
-            {section === 'performance' && (
-            <Card title="MR Performance" loading={perfLoading}>
-                <Table
-                    rowKey="id"
-                    dataSource={perfData?.rows || []}
-                    pagination={{ pageSize: 10 }}
-                    columns={[
-                        { title: 'MR', dataIndex: 'name' },
-                        { title: 'Territory', dataIndex: 'territory' },
-                        { title: 'Visits', dataIndex: 'visits', align: 'right', width: 80 },
-                        { title: 'Orders', dataIndex: 'visit_order_value', align: 'right', width: 130, render: (v) => <Money value={v} /> },
-                        { title: 'Invoiced', dataIndex: 'invoiced_value', align: 'right', width: 130, render: (v) => <Money value={v} /> },
-                        { title: 'Target', dataIndex: 'monthly_target', align: 'right', width: 130, render: (v) => <Money value={v} /> },
-                        {
-                            title: 'Achievement', dataIndex: 'achievement_percent', width: 110, align: 'right',
-                            render: (v) => {
-                                const pct = Math.min(v || 0, 100);
-                                const color = pct >= 100 ? '#52c41a' : pct >= 70 ? '#faad14' : '#ff4d4f';
-                                return <span style={{ color, fontWeight: 600 }}>{pct.toFixed(1)}%</span>;
-                            },
-                        },
-                    ]}
-                    scroll={{ x: 800 }}
-                    size="small"
-                />
-            </Card>
-            )}
+                    {/* ── MR Performance table ──────────────────────────────────────── */}
+                    {section === 'performance' && (
+                        <Card title="MR Performance" loading={perfLoading}>
+                            <Table
+                                rowKey="id"
+                                dataSource={perfData?.rows || []}
+                                pagination={{ pageSize: 10 }}
+                                columns={[
+                                    { title: 'MR', dataIndex: 'name' },
+                                    { title: 'Territory', dataIndex: 'territory' },
+                                    { title: 'Visits', dataIndex: 'visits', align: 'right', width: 80 },
+                                    { title: 'Orders', dataIndex: 'visit_order_value', align: 'right', width: 130, render: (v) => <Money value={v} /> },
+                                    { title: 'Invoiced', dataIndex: 'invoiced_value', align: 'right', width: 130, render: (v) => <Money value={v} /> },
+                                    { title: 'Target', dataIndex: 'monthly_target', align: 'right', width: 130, render: (v) => <Money value={v} /> },
+                                    {
+                                        title: 'Achievement', dataIndex: 'achievement_percent', width: 110, align: 'right',
+                                        render: (v) => {
+                                            const pct = Math.min(v || 0, 100);
+                                            const color = pct >= 100 ? '#52c41a' : pct >= 70 ? '#faad14' : '#ff4d4f';
+                                            return <span style={{ color, fontWeight: 600 }}>{pct.toFixed(1)}%</span>;
+                                        },
+                                    },
+                                ]}
+                                scroll={{ x: 800 }}
+                                size="small"
+                            />
+                        </Card>
+                    )}
 
-            {/* ── MR Master list ────────────────────────────────────────────── */}
-            {section === 'representatives' && canManage && (
-                <Card title="MR Directory">
-                    <div className="table-toolbar table-toolbar-wide">
-                        <Input.Search
-                            value={mrTable.search}
-                            onChange={(e) => mrTable.setSearch(e.target.value)}
-                            placeholder="Search name, code or territory"
-                            allowClear
-                        />
-                        <Select
-                            allowClear placeholder="Branch"
-                            value={mrTable.filters.branch_id}
-                            onChange={(v) => mrTable.setFilters((c) => ({ ...c, branch_id: v }))}
-                            options={branchOptions.map((b) => ({ value: b.id, label: b.name }))}
-                            style={{ minWidth: 160 }}
-                        />
-                        <Select
-                            allowClear placeholder="Status"
-                            value={mrTable.filters.is_active}
-                            onChange={(v) => mrTable.setFilters((c) => ({ ...c, is_active: v }))}
-                            options={[{ value: true, label: 'Active' }, { value: false, label: 'Inactive' }]}
-                        />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openMr(null)}>Add MR</Button>
-                    </div>
-                    <ServerTable table={mrTable} columns={mrColumns} />
-                </Card>
-            )}
+                    {/* ── MR Master list ────────────────────────────────────────────── */}
+                    {section === 'representatives' && canManage && (
+                        <Card title="MR Directory">
+                            <div className="table-toolbar table-toolbar-wide">
+                                <Input.Search
+                                    value={mrTable.search}
+                                    onChange={(e) => mrTable.setSearch(e.target.value)}
+                                    placeholder="Search name, code or territory"
+                                    allowClear
+                                />
+                                <Select
+                                    allowClear placeholder="Branch"
+                                    value={mrTable.filters.branch_id}
+                                    onChange={(v) => mrTable.setFilters((c) => ({ ...c, branch_id: v }))}
+                                    options={branchOptions.map((b) => ({ value: b.id, label: b.name }))}
+                                    style={{ minWidth: 160 }}
+                                />
+                                <Select
+                                    allowClear placeholder="Status"
+                                    value={mrTable.filters.is_active}
+                                    onChange={(v) => mrTable.setFilters((c) => ({ ...c, is_active: v }))}
+                                    options={[{ value: true, label: 'Active' }, { value: false, label: 'Inactive' }]}
+                                />
+                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openMr(null)}>Add MR</Button>
+                            </div>
+                            <ServerTable table={mrTable} columns={mrColumns} />
+                        </Card>
+                    )}
 
-            {/* ── Visits list ───────────────────────────────────────────────── */}
-            {section === 'visits' && canVisits && (
-                <Card title="Visit Log">
-                    <div className="table-toolbar table-toolbar-wide">
-                        <Input.Search
-                            value={visitTable.search}
-                            onChange={(e) => visitTable.setSearch(e.target.value)}
-                            placeholder="Search MR or customer"
-                            allowClear
-                        />
-                        <Select
-                            allowClear placeholder="MR"
-                            value={visitTable.filters.medical_representative_id}
-                            onChange={(v) => visitTable.setFilters((c) => ({ ...c, medical_representative_id: v }))}
-                            options={mrOptions.map((m) => ({ value: m.id, label: m.name }))}
-                            style={{ minWidth: 160 }}
-                        />
-                        <Select
-                            allowClear placeholder="Status"
-                            value={visitTable.filters.status}
-                            onChange={(v) => visitTable.setFilters((c) => ({ ...c, status: v }))}
-                            options={mrVisitStatusOptions}
-                        />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit(null)}>Add Visit</Button>
-                    </div>
-                    <ServerTable table={visitTable} columns={visitColumns} />
-                </Card>
-            )}
+                    {/* ── Visits list ───────────────────────────────────────────────── */}
+                    {section === 'visits' && canVisits && (
+                        <Card title="Visit Log">
+                            <div className="table-toolbar table-toolbar-wide">
+                                <Input.Search
+                                    value={visitTable.search}
+                                    onChange={(e) => visitTable.setSearch(e.target.value)}
+                                    placeholder="Search MR or customer"
+                                    allowClear
+                                />
+                                <Select
+                                    allowClear placeholder="MR"
+                                    value={visitTable.filters.medical_representative_id}
+                                    onChange={(v) => visitTable.setFilters((c) => ({ ...c, medical_representative_id: v }))}
+                                    options={mrOptions.map((m) => ({ value: m.id, label: m.name }))}
+                                    style={{ minWidth: 160 }}
+                                />
+                                <Select
+                                    allowClear placeholder="Status"
+                                    value={visitTable.filters.status}
+                                    onChange={(v) => visitTable.setFilters((c) => ({ ...c, status: v }))}
+                                    options={mrVisitStatusOptions}
+                                />
+                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit(null)}>Add Visit</Button>
+                            </div>
+                            <ServerTable table={visitTable} columns={visitColumns} />
+                        </Card>
+                    )}
 
-            {/* ── Branches list ──────────────────────────────────────────────── */}
-            {section === 'branches' && canManage && (
-                <Card title="Branch Management">
-                    <div className="table-toolbar table-toolbar-wide">
-                        <Input.Search
-                            value={branchTable.search}
-                            onChange={(e) => branchTable.setSearch(e.target.value)}
-                            placeholder="Search branch name or code"
-                            allowClear
-                        />
-                        <Select
-                            allowClear placeholder="Type"
-                            value={branchTable.filters.type}
-                            onChange={(v) => branchTable.setFilters((c) => ({ ...c, type: v }))}
-                            options={[{ value: 'hq', label: 'HQ' }, { value: 'branch', label: 'Branch' }]}
-                            style={{ minWidth: 120 }}
-                        />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openBranch(null)}>Add Branch</Button>
-                    </div>
-                    <ServerTable table={branchTable} columns={branchColumns} />
-                </Card>
-            )}
-            </>
+                    {/* ── Branches list ──────────────────────────────────────────────── */}
+                    {section === 'branches' && canManage && (
+                        <Card title="Branch Management">
+                            <div className="table-toolbar table-toolbar-wide">
+                                <Input.Search
+                                    value={branchTable.search}
+                                    onChange={(e) => branchTable.setSearch(e.target.value)}
+                                    placeholder="Search branch name or code"
+                                    allowClear
+                                />
+                                <Select
+                                    allowClear placeholder="Type"
+                                    value={branchTable.filters.type}
+                                    onChange={(v) => branchTable.setFilters((c) => ({ ...c, type: v }))}
+                                    options={[{ value: 'hq', label: 'HQ' }, { value: 'branch', label: 'Branch' }]}
+                                    style={{ minWidth: 120 }}
+                                />
+                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openBranch(null)}>Add Branch</Button>
+                            </div>
+                            <ServerTable table={branchTable} columns={branchColumns} />
+                        </Card>
+                    )}
+                </>
             ) : view === 'mr' ? (
-            <Card 
-                title={editingMr ? `Edit MR: ${editingMr.name}` : 'New Medical Representative'}
-                extra={<Button onClick={() => setView('list')}>Cancel</Button>}
-            >
-                <Form form={mrForm} layout="vertical" onFinish={saveMr}>
-                    <Form.Item name="name" label="Full Name" rules={[{ required: true }]}><Input /></Form.Item>
-                    <div className="form-grid">
-                        <Form.Item name="employee_code" label="Employee Code"><Input /></Form.Item>
-                        <Form.Item name="branch_id" label="Branch">
-                            <Select allowClear options={branchOptions.map((b) => ({ value: b.id, label: b.name }))} />
-                        </Form.Item>
-                    </div>
-                    <div className="form-grid">
-                        <Form.Item name="phone" label="Phone"><Input /></Form.Item>
-                        <Form.Item name="email" label="Email"><Input /></Form.Item>
-                    </div>
-                    <Form.Item name="territory" label="Territory"><Input /></Form.Item>
-                    <Form.Item name="monthly_target" label="Monthly Target (NPR)">
-                        <InputNumber min={0} className="full-width" />
-                    </Form.Item>
-                    <Form.Item name="is_active" label="Active" valuePropName="checked"><Switch /></Form.Item>
-                    <Button type="primary" htmlType="submit">Save MR</Button>
-                </Form>
-            </Card>
-            ) : view === 'visit' ? (
-            <Card 
-                title={editingVisit ? 'Edit Visit' : 'New Visit'}
-                extra={<Button onClick={() => setView('list')}>Cancel</Button>}
-            >
-                <Form form={visitForm} layout="vertical" onFinish={saveVisit}>
-                    <Form.Item name="medical_representative_id" label="MR" rules={[{ required: true }]}>
-                        <Select options={mrOptions.map((m) => ({ value: m.id, label: m.name }))} />
-                    </Form.Item>
-                    <Form.Item name="customer_id" label="Customer">
-                        <Select allowClear options={customers.map((c) => ({ value: c.id, label: c.name }))} />
-                    </Form.Item>
-                    <div className="form-grid">
-                        <Form.Item name="visit_date" label="Visit Date" rules={[{ required: true }]}>
-                            <DatePicker className="full-width" />
-                        </Form.Item>
-                        <Form.Item name="status" label="Status" rules={[{ required: true }]}>
-                            <Select options={mrVisitStatusOptions} />
-                        </Form.Item>
-                    </div>
-                    <Form.Item name="order_value" label="Order Value">
-                        <InputNumber min={0} className="full-width" />
-                    </Form.Item>
-                    <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
-
-                    {/* GPS check-in */}
-                    <Card size="small" title="Check-in Location (optional)" style={{ marginBottom: 16 }}>
-                        <Button icon={<EnvironmentOutlined />} onClick={captureLocation} style={{ marginBottom: 12 }}>
-                            Capture Current Location
-                        </Button>
+                <Card
+                    title={editingMr ? `Edit MR: ${editingMr.name}` : 'New Medical Representative'}
+                    extra={<Button onClick={() => setView('list')}>Cancel</Button>}
+                >
+                    <Form form={mrForm} layout="vertical" onFinish={saveMr}>
+                        <Form.Item name="name" label="Full Name" rules={[{ required: true }]}><Input /></Form.Item>
                         <div className="form-grid">
-                            <Form.Item name="latitude" label="Latitude"><Input /></Form.Item>
-                            <Form.Item name="longitude" label="Longitude"><Input /></Form.Item>
+                            <Form.Item name="employee_code" label="Employee Code"><Input /></Form.Item>
+                            <Form.Item name="branch_id" label="Branch">
+                                <Select allowClear options={branchOptions.map((b) => ({ value: b.id, label: b.name }))} />
+                            </Form.Item>
                         </div>
-                        <Form.Item name="location_name" label="Location Name (optional)"><Input /></Form.Item>
-                    </Card>
-                    <Button type="primary" htmlType="submit">Save Visit</Button>
-                </Form>
-            </Card>
+                        <div className="form-grid">
+                            <Form.Item name="phone" label="Phone"><Input /></Form.Item>
+                            <Form.Item name="email" label="Email"><Input /></Form.Item>
+                        </div>
+                        <Form.Item name="territory" label="Territory"><Input /></Form.Item>
+                        <Form.Item name="monthly_target" label="Monthly Target (NPR)">
+                            <InputNumber min={0} className="full-width" />
+                        </Form.Item>
+                        <Form.Item name="is_active" label="Active" valuePropName="checked"><Switch /></Form.Item>
+                        <Button type="primary" htmlType="submit">Save MR</Button>
+                    </Form>
+                </Card>
+            ) : view === 'visit' ? (
+                <Card
+                    title={editingVisit ? 'Edit Visit' : 'New Visit'}
+                    extra={<Button onClick={() => setView('list')}>Cancel</Button>}
+                >
+                    <Form form={visitForm} layout="vertical" onFinish={saveVisit}>
+                        <Form.Item name="medical_representative_id" label="MR" rules={[{ required: true }]}>
+                            <Select options={mrOptions.map((m) => ({ value: m.id, label: m.name }))} />
+                        </Form.Item>
+                        <Form.Item name="customer_id" label="Customer">
+                            <Select allowClear options={customers.map((c) => ({ value: c.id, label: c.name }))} />
+                        </Form.Item>
+                        <div className="form-grid">
+                            <Form.Item name="visit_date" label="Visit Date" rules={[{ required: true }]}>
+                                <DatePicker className="full-width" />
+                            </Form.Item>
+                            <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+                                <Select options={mrVisitStatusOptions} />
+                            </Form.Item>
+                        </div>
+                        <Form.Item name="order_value" label="Order Value">
+                            <InputNumber min={0} className="full-width" />
+                        </Form.Item>
+                        <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
+
+                        {/* GPS check-in */}
+                        <Card size="small" title="Check-in Location (optional)" style={{ marginBottom: 16 }}>
+                            <Button icon={<EnvironmentOutlined />} onClick={captureLocation} style={{ marginBottom: 12 }}>
+                                Capture Current Location
+                            </Button>
+                            <div className="form-grid">
+                                <Form.Item name="latitude" label="Latitude"><Input /></Form.Item>
+                                <Form.Item name="longitude" label="Longitude"><Input /></Form.Item>
+                            </div>
+                            <Form.Item name="location_name" label="Location Name (optional)"><Input /></Form.Item>
+                        </Card>
+                        <Button type="primary" htmlType="submit">Save Visit</Button>
+                    </Form>
+                </Card>
             ) : null}
 
             {/* Branch form drawer */}

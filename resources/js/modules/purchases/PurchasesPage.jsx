@@ -9,6 +9,7 @@ import { ServerTable } from '../../core/components/ServerTable';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { itemFreeGoodsValue, itemGross, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
@@ -235,7 +236,7 @@ export function PurchasesPage() {
     const purchaseColumns = [
         { key: 'product', title: 'Product', render: (row, index) => productSelect(row, index, purchaseItems, setPurchaseItems, 'purchase_price'), width: 280 },
         { key: 'batch', title: 'Batch', render: (row, index) => <Input value={row.batch_no} onChange={(event) => updateRow(purchaseItems, setPurchaseItems, index, { batch_no: event.target.value })} />, width: 150 },
-        { key: 'expiry', title: 'Expiry', render: (row, index) => <DatePicker value={row.expires_at} onChange={(expires_at) => updateRow(purchaseItems, setPurchaseItems, index, { expires_at })} />, width: 150 },
+        { key: 'expiry', title: 'Expiry', render: (row, index) => <SmartDatePicker value={row.expires_at} onChange={(expires_at) => updateRow(purchaseItems, setPurchaseItems, index, { expires_at })} />, width: 150 },
         { key: 'quantity', title: 'Qty', render: (row, index) => <InputNumber min={0.001} value={row.quantity} onChange={(quantity) => updateRow(purchaseItems, setPurchaseItems, index, { quantity })} />, width: 100 },
         { key: 'free_quantity', title: 'Free Qty', render: (row, index) => <InputNumber min={0} value={row.free_quantity} onChange={(free_quantity) => updateRow(purchaseItems, setPurchaseItems, index, { free_quantity })} />, width: 105 },
         { key: 'mrp', title: 'MRP', render: (row, index) => <InputNumber min={0} value={row.mrp} onChange={(mrp) => updateRow(purchaseItems, setPurchaseItems, index, { mrp })} />, width: 115 },
@@ -276,7 +277,6 @@ export function PurchasesPage() {
         <div className="page-stack">
             <PageHeader
                 title={section === 'entry' ? 'Purchase Entry' : section === 'orders' ? 'Purchase Order' : section === 'returns' ? 'Purchase Return' : 'Purchase Bills'}
-                description={section === 'entry' ? 'Receive supplier bills, create batches and post stock' : section === 'orders' ? 'Prepare supplier purchase orders' : section === 'returns' ? 'Supplier return workflow' : 'Supplier purchase invoice list'}
                 actions={(
                     <Space>
                         {section !== 'entry' && <Button type="primary" icon={<PlusOutlined />} onClick={() => goToApp('/app/purchases/entry')}>New Purchase</Button>}
@@ -315,10 +315,10 @@ export function PurchasesPage() {
                                 />
                             </Form.Item>
                             <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
-                            <Form.Item name="purchase_date" label="Purchase Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
+                            <Form.Item name="purchase_date" label="Purchase Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
                             <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
                         </div>
-                        <Form.Item name="notes" label="Remarks / OCR Notes"><Input.TextArea rows={3} /></Form.Item>
+                        <Form.Item name="notes" label="RemarksI "><Input.TextArea rows={3} /></Form.Item>
                         <TransactionLineItems
                             rows={purchaseItems}
                             columns={purchaseColumns}

@@ -10,6 +10,7 @@ import { ServerTable } from '../../core/components/ServerTable';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { itemFreeGoodsValue, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
@@ -67,6 +68,21 @@ export function SalesPage() {
         }
 
         function handleKeyDown(event) {
+            if (event.altKey && event.key === 's') {
+                event.preventDefault();
+                if (section === 'pos') submitInvoice();
+            }
+            if (event.altKey && event.key === 'n') {
+                event.preventDefault();
+                goToApp('/app/sales/pos');
+            }
+            if (event.altKey && event.key === 'a') {
+                event.preventDefault();
+                if (section === 'pos') {
+                    searchProduct('').then(setProductOptions);
+                    document.querySelector('.pos-product-search input')?.focus();
+                }
+            }
             if (section !== 'pos') return;
             switch (event.key) {
                 case 'F2':
@@ -83,7 +99,7 @@ export function SalesPage() {
                     break;
                 case 'F8':
                     event.preventDefault();
-                    document.getElementById('pos-submit-btn')?.click();
+                    submitInvoice();
                     break;
                 case 'F9':
                     event.preventDefault();
@@ -238,8 +254,9 @@ export function SalesPage() {
         { title: 'Date', dataIndex: 'invoice_date', field: 'invoice_date', sorter: true, width: 130 },
         { title: 'Customer', dataIndex: ['customer', 'name'], render: (value) => value || 'Walk-in' },
         { title: 'MR', dataIndex: ['medical_representative', 'name'], render: (value) => value || '-' },
-        { title: 'Payment', dataIndex: 'payment_status', width: 120, render: (value) => <Tag color={value === 'paid' ? 'green' : value === 'partial' ? 'gold' : 'red'}>{value}</Tag> },
-        { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 140, render: (value) => <Money value={value} /> },
+        { title: 'Payment', dataIndex: 'payment_status', width: 120, render: (v) => <Tag color={v === 'paid' ? 'success' : v === 'partial' ? 'warning' : 'error'}>{v.toUpperCase()}</Tag> },
+        { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 140, render: (v) => <Money value={v} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 100, render: (v, row) => <StatusToggle value={v} id={row.id} endpoint={endpoints.salesInvoices} /> },
         {
             title: '',
             width: 150,
@@ -256,7 +273,6 @@ export function SalesPage() {
         <div className="page-stack">
             <PageHeader
                 title={section === 'invoices' ? 'Sales' : section === 'returns' ? 'Sales Return' : 'New Sales Invoice'}
-                description={section === 'invoices' ? 'Invoice list with customer, MR and payment filters' : section === 'returns' ? 'Customer return workflow' : 'Barcode entry, walk-in customer support, payment QR and batch-aware stock deduction'}
                 actions={(
                     <Space>
                         {section !== 'pos' && <Button type="primary" onClick={() => goToApp('/app/sales/pos')}>New Sales</Button>}
@@ -291,7 +307,7 @@ export function SalesPage() {
                             onChange={setMedicalRepresentativeId}
                             options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
                         />
-                        <DatePicker value={invoiceDate} onChange={setInvoiceDate} className="full-width" placeholder="Invoice Date" />
+                        <SmartDatePicker value={invoiceDate} onChange={setInvoiceDate} className="full-width" placeholder="Invoice Date" />
                         <InputNumber id="pos-paid-amount" min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
                     </div>
                     <div className="pos-walkin-strip">
@@ -336,9 +352,9 @@ export function SalesPage() {
                         ]}
                         actions={(
                             <Space>
-                                <Button 
-                                    icon={<QrcodeOutlined />} 
-                                    disabled={!items.length} 
+                                <Button
+                                    icon={<QrcodeOutlined />}
+                                    disabled={!items.length}
                                     onClick={() => setQrVisible(true)}
                                 >
                                     Payment QR
@@ -418,9 +434,9 @@ export function SalesPage() {
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                     <p style={{ marginBottom: 16, fontSize: 16 }}>Scan to pay <strong><Money value={invoiceSummary.grandTotal} /></strong></p>
                     <div style={{ background: '#fff', padding: 12, borderRadius: 12, display: 'inline-block', border: '1px solid #eee' }}>
-                        <img 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`Payment for Invoice: ${invoiceSummary.grandTotal} NPR`)}`} 
-                            alt="QR Code" 
+                        <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`Payment for Invoice: ${invoiceSummary.grandTotal} NPR`)}`}
+                            alt="QR Code"
                             style={{ width: 200, height: 200 }}
                         />
                     </div>

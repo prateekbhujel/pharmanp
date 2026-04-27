@@ -30,7 +30,7 @@ export function DataLookupPage() {
 
     const filteredOptions = useMemo(() =>
         (dropdownOptions || []).filter(o => o.alias === dropdownAlias),
-    [dropdownOptions, dropdownAlias]);
+        [dropdownOptions, dropdownAlias]);
 
     const selectedAliasMeta = dropdownAliases[dropdownAlias] || {};
     const dataField = dropdownDataField(dropdownAlias);
@@ -103,8 +103,7 @@ export function DataLookupPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title="Data Lookup"
-                description="Keep shared dropdown values, party types, and supplier groupings in one place"
+                title="Dropdown Masters"
             />
 
             <Tabs items={[
@@ -112,14 +111,14 @@ export function DataLookupPage() {
                     key: 'dropdowns',
                     label: 'Dropdown Options',
                     children: (
-                        <Card 
-                            title="Shared Dropdown Options" 
+                        <Card
+                            title="Shared Dropdown Options"
                             extra={
                                 <Space>
-                                    <Select 
-                                        value={dropdownAlias} 
-                                        onChange={setDropdownAlias} 
-                                        style={{ width: 200 }} 
+                                    <Select
+                                        value={dropdownAlias}
+                                        onChange={setDropdownAlias}
+                                        style={{ width: 200 }}
                                         options={aliasOptions}
                                     />
                                     <Button type="primary" icon={<PlusOutlined />} onClick={() => openDropdownOption()}>Add Option</Button>

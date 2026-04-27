@@ -34,6 +34,7 @@ import { appUrl } from '../utils/url';
 import { useTheme } from '../theme/ThemeContext';
 import { useApi } from '../hooks/useApi';
 import { GlobalSearch } from '../components/GlobalSearch';
+import { useBranding } from '../context/BrandingContext';
 
 const { Header, Sider, Content } = Layout;
 
@@ -122,7 +123,7 @@ function currentAppPath() {
 
 export function AppShell() {
     const { user: authUser } = useAuth();
-    const { data: brandingData, loading: brandingLoading } = useApi(endpoints.branding);
+    const { branding: brandingData, loading: brandingLoading } = useBranding();
     const { colorPrimary } = useTheme();
     
     const [collapsed, setCollapsed] = useState(true);
@@ -240,7 +241,6 @@ export function AppShell() {
                 show: canPurchase,
                 children: [
                     child('purchase-bills', 'Purchase Bills', appUrl('/app/purchases/bills')),
-                    child('purchase-entry', 'Purchase Entry', appUrl('/app/purchases/entry')),
                     child('purchase-orders', 'Purchase Orders', appUrl('/app/purchases/orders')),
                     child('purchase-returns', 'Purchase Returns', appUrl('/app/purchases/returns')),
                 ],
@@ -264,12 +264,6 @@ export function AppShell() {
                 label: 'Accounting & Finance',
                 show: canAccounting,
                 children: [
-                    child('accounting-vouchers', 'Vouchers', appUrl('/app/accounting/vouchers')),
-                    child('accounting-day-book', 'Day Book', appUrl('/app/accounting/day-book')),
-                    child('accounting-cash-book', 'Cash Book', appUrl('/app/accounting/cash-book')),
-                    child('accounting-bank-book', 'Bank Book', appUrl('/app/accounting/bank-book')),
-                    child('accounting-ledgers', 'Ledger', appUrl('/app/accounting/ledger')),
-                    child('accounting-trial', 'Trial Balance', appUrl('/app/accounting/trial-balance')),
                     child('accounting-payments', 'Payments', appUrl('/app/accounting/payments')),
                     child('accounting-expenses', 'Expenses', appUrl('/app/accounting/expenses')),
                 ],
@@ -287,24 +281,19 @@ export function AppShell() {
                     child('field-force-branches', 'Branches', appUrl('/app/field-force/branches')),
                 ],
             },
+            { key: register('reports', appUrl('/app/reports')), icon: <BarChartOutlined />, label: 'Reports', show: canReports },
+            { key: 'category-admin', label: 'Administration', disabled: true, className: 'menu-category' },
             {
-                key: 'reports',
-                icon: <HistoryOutlined />,
-                label: 'Reports',
-                show: canReports,
+                key: 'admin-master',
+                icon: <ContainerOutlined />,
+                label: 'Master',
+                show: canSetup,
                 children: [
-                    child('reports-sales', 'Sales Reports', appUrl('/app/reports/sales')),
-                    child('reports-purchase', 'Purchase Reports', appUrl('/app/reports/purchase')),
-                    child('reports-inventory', 'Stock Reports', appUrl('/app/reports/stock')),
-                    child('reports-expiry', 'Expiry Reports', appUrl('/app/reports/expiry')),
-                    child('reports-accounting', 'Accounting Reports', appUrl('/app/reports/accounting')),
-                    child('reports-performance', 'Supplier Performance', appUrl('/app/reports/supplier-performance')),
+                    child('admin-users', 'Users', appUrl('/app/administration/users')),
+                    child('admin-roles', 'Roles & Permissions', appUrl('/app/administration/roles')),
+                    child('admin-data', 'Dropdown Masters', appUrl('/app/administration/data-lookup')),
                 ],
             },
-            { key: 'category-admin', label: 'Administration', disabled: true, className: 'menu-category' },
-            { key: register('admin-users', appUrl('/app/administration/users')), icon: <TeamOutlined />, label: 'Users', show: can(user, 'users.manage') },
-            { key: register('admin-roles', appUrl('/app/administration/roles')), icon: <SafetyCertificateOutlined />, label: 'Role Access', show: can(user, 'roles.manage') },
-            { key: register('admin-data', appUrl('/app/administration/data-lookup')), icon: <SyncOutlined />, label: 'Data Lookup', show: canSetup },
             { key: register('settings', appUrl('/app/settings')), icon: <SettingOutlined />, label: 'Settings', show: canSetup },
             { key: register('system-update', appUrl('/app/system/update-check')), icon: <SyncOutlined />, label: 'System Update', show: user?.is_owner },
         ];
@@ -316,16 +305,23 @@ export function AppShell() {
             return i;
         });
 
+        const sortedRouteKeys = Object.entries(routeMap).sort((a, b) => b[1].length - a[1].length);
         let selectedKey = null;
         let openKey = null;
 
-        Object.entries(routeMap).forEach(([key, route]) => {
-            if (pathname.startsWith(route)) {
+        for (const [key, route] of sortedRouteKeys) {
+            if (pathname === route || (route !== appUrl('/app') && pathname.startsWith(route))) {
                 selectedKey = key;
                 const parent = flatItems.find(p => p.children?.some(c => c.key === key));
                 if (parent) openKey = parent.key;
+                break;
             }
-        });
+        }
+
+        // Fallback to dashboard only if exactly on home
+        if (!selectedKey && pathname === appUrl('/app')) {
+            selectedKey = 'dashboard';
+        }
 
         return { items: flatItems, routesByKey: routeMap, selectedMenuKey: selectedKey, openKeys: openKey ? [openKey] : [] };
     }, [pathname, user]);
@@ -361,34 +357,74 @@ export function AppShell() {
             return [{ key: 'empty', disabled: true, label: <div className="notification-empty">No stock alerts right now</div> }];
         }
         const items = [];
+        
+        // Header with Mark All as Read
+        items.push({
+            key: 'header',
+            disabled: true,
+            label: (
+                <div className="notification-tray-header">
+                    <strong>Notifications</strong>
+                    <Button 
+                        type="link" 
+                        size="small" 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setAlerts({ loading: false, lowStockRows: [], expiryRows: [], count: 0 });
+                        }}
+                    >
+                        Mark all as read
+                    </Button>
+                </div>
+            )
+        });
+        items.push({ type: 'divider' });
+
         if (alerts.lowStockRows.length > 0) {
-            items.push({ key: 'low-stock-title', disabled: true, label: <div className="notification-title"><WarningOutlined /> Low stock</div> });
-            alerts.lowStockRows.slice(0, 4).forEach((item) => {
+            items.push({ key: 'low-stock-title', disabled: true, label: <div className="notification-title"><WarningOutlined /> Low stock alert</div> });
+            alerts.lowStockRows.slice(0, 5).forEach((item) => {
                 items.push({
                     key: `low-stock-${item.id}`,
                     label: (
                         <div className="notification-row">
-                            <strong>{item.name}</strong>
-                            <span>{item.stock_on_hand} in stock, reorder at {item.reorder_level}</span>
+                            <div className="notification-content">
+                                <span className="notification-subject">{item.name}</span>
+                                <span className="notification-meta">{item.stock_on_hand} in stock, reorder at {item.reorder_level}</span>
+                            </div>
                         </div>
                     ),
                 });
             });
         }
+        
+        if (alerts.lowStockRows.length > 0 && alerts.expiryRows.length > 0) {
+            items.push({ type: 'divider' });
+        }
+
         if (alerts.expiryRows.length > 0) {
-            items.push({ key: 'expiry-title', disabled: true, label: <div className="notification-title"><WarningOutlined /> Expiry watch</div> });
-            alerts.expiryRows.slice(0, 4).forEach((item) => {
+            items.push({ key: 'expiry-title', disabled: true, label: <div className="notification-title"><HistoryOutlined /> Expiry watch</div> });
+            alerts.expiryRows.slice(0, 5).forEach((item) => {
                 items.push({
                     key: `expiry-${item.id}`,
                     label: (
                         <div className="notification-row">
-                            <strong>{item.name}</strong>
-                            <span>Batch {item.batch_no || '-'} expires {item.expires_at}</span>
+                            <div className="notification-content">
+                                <span className="notification-subject">{item.name}</span>
+                                <span className="notification-meta">Batch {item.batch_no || '-'} expires {item.expires_at}</span>
+                            </div>
                         </div>
                     ),
                 });
             });
         }
+        
+        items.push({ type: 'divider' });
+        items.push({
+            key: 'footer',
+            label: <div className="notification-tray-footer">View detailed reports</div>,
+            onClick: () => goTo(appUrl('/app/reports/inventory'))
+        });
+
         return items;
     }, [alerts]);
 
@@ -449,6 +485,7 @@ export function AppShell() {
                         defaultOpenKeys={openKeys}
                         items={menuItems}
                         onClick={navigate}
+                        className="app-menu"
                     />
                 </div>
             </Sider>
@@ -465,16 +502,18 @@ export function AppShell() {
                                 onClick={() => setCollapsed((value) => !value)}
                             />
                         )}
-                        <Button 
-                            className="search-trigger-btn" 
-                            onClick={() => setSearchVisible(true)}
-                            icon={<SearchOutlined />}
-                        >
-                            <span style={{ flex: 1, textAlign: 'left', marginLeft: 8 }}>Search modules or data...</span>
-                            <div className="search-trigger-kbd">
-                                {isMacPlatform() ? '⌘ K' : 'CTRL K'}
+                        <div className="search-wrapper" onClick={() => setSearchVisible(true)}>
+                            <SearchOutlined className="search-icon-inner" />
+                            <input 
+                                className="search-input-sleek" 
+                                placeholder="Search modules, invoices or products..."
+                                onClick={() => setSearchVisible(true)}
+                                readOnly
+                            />
+                            <div className="search-kbd">
+                                {isMacPlatform() ? '⌘K' : 'Ctrl K'}
                             </div>
-                        </Button>
+                        </div>
                     </Space>
                     <Space className="header-content-right" size={16}>
                         <div className="topbar-clock">
@@ -506,11 +545,18 @@ export function AppShell() {
                         <ActivePage key={activeKey} />
                     </Suspense>
                 </Content>
-                <div className="app-footer">
-                    <span>Developed by Prateek Bhujel</span>
-                    <span>GitHub: pratik bhujel</span>
-                    <span>prateekbhujelpb@gmail.com</span>
-                    <span>Panning</span>
+                <div className="app-footer-premium">
+                    <div className="footer-left">
+                        <span className="footer-copyright">© {new Date().getFullYear()} <strong>PharmaNP</strong></span>
+                        <span className="footer-sep">|</span>
+                        <span className="footer-credit">Developed with excellence by <strong>Prateek Bhujel</strong></span>
+                    </div>
+                    <div className="footer-right">
+                        <Space size="middle">
+                            <Typography.Text type="secondary" size="small">v2.4.0 Stable</Typography.Text>
+                            <span className="footer-contact">prateekbhujelpb@gmail.com</span>
+                        </Space>
+                    </div>
                 </div>
             </Layout>
             <GlobalSearch 
@@ -518,7 +564,7 @@ export function AppShell() {
                 onCancel={() => setSearchVisible(false)} 
                 onNavigate={(route) => {
                     if (route.startsWith('/')) {
-                        goTo(route);
+                        goTo(appUrl(route));
                     } else {
                         if (route === 'dashboard') goTo(appUrl('/app'));
                         if (route === 'products') goTo(appUrl('/app/inventory/products'));

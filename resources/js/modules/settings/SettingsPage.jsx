@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PlusOutlined, SendOutlined, UserOutlined } from '@ant-design/icons';
-import { App, Button, Card, Form, Input, InputNumber, Select, Space, Table, Tabs, Tag, Upload } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Table, Tabs, Tag, Upload } from 'antd';
+import { countryOptions, countries } from '../../core/utils/countries';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
 import { useAuth } from '../../core/auth/AuthProvider';
+import { useBranding } from '../../core/context/BrandingContext';
 import { FiscalYearPanel } from './FiscalYearPanel';
 
 function normalizeFile(event) {
@@ -82,8 +84,8 @@ export function SettingsPage() {
     const { notification } = App.useApp();
     const { user } = useAuth();
     const { data: features } = useApi(endpoints.featureCatalog);
-    const { data: branding, reload: reloadBranding } = useApi(endpoints.branding);
-    
+    const { data: branding, reload: reloadBranding } = useBranding();
+
     const [brandingForm] = Form.useForm();
     const [adminForm] = Form.useForm();
     const [adminSettingsLoading, setAdminSettingsLoading] = useState(false);
@@ -144,7 +146,7 @@ export function SettingsPage() {
 
     const featureRows = useMemo(() => {
         if (!features) return [];
-        return Object.entries(features).flatMap(([module, data]) => 
+        return Object.entries(features).flatMap(([module, data]) =>
             data.map(feature => ({ ...feature, module }))
         );
     }, [features]);
@@ -153,7 +155,6 @@ export function SettingsPage() {
         <div className="page-stack">
             <PageHeader
                 title="Settings"
-                description="Manage application identity and general configuration"
                 actions={<Tag icon={<UserOutlined />}>{user?.name}</Tag>}
             />
 
@@ -171,6 +172,33 @@ export function SettingsPage() {
                                             { value: 'vertical', label: 'Vertical Sidebar (Modern)' },
                                             { value: 'horizontal', label: 'Horizontal Menu (Traditional)' },
                                         ]} />
+                                    </Form.Item>
+                                    <Form.Item name="country_code" label="Country" rules={[{ required: true }]}>
+                                        <Select 
+                                            size="large" 
+                                            showSearch 
+                                            optionFilterProp="label" 
+                                            options={countryOptions} 
+                                            onChange={(code) => {
+                                                const country = countries.find(c => c.code === code);
+                                                if (country) {
+                                                    brandingForm.setFieldValue('currency_symbol', country.symbol);
+                                                }
+                                            }}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item name="currency_symbol" label="Currency Symbol" rules={[{ required: true }]}>
+                                        <Input size="large" placeholder="e.g. Rs. or $" />
+                                    </Form.Item>
+                                    <Form.Item name="calendar_type" label="Preferred Calendar System" rules={[{ required: true }]}>
+                                        <Segmented 
+                                            block 
+                                            size="large"
+                                            options={[
+                                                { label: 'AD (Gregorian)', value: 'ad' },
+                                                { label: 'BS (Nepali)', value: 'bs' },
+                                            ]} 
+                                        />
                                     </Form.Item>
                                 </div>
                                 <div className="branding-upload-grid">

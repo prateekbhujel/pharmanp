@@ -19,13 +19,13 @@ import { StockAdjustmentsPanel } from './StockAdjustmentsPanel';
 import { StockMovementsPanel } from './StockMovementsPanel';
 
 const inventorySections = {
-    companies: { title: 'Company', description: 'Company and manufacturer master records', master: 'companies' },
-    units: { title: 'Unit', description: 'Sale and purchase unit setup', master: 'units' },
-    categories: { title: 'Category', description: 'Product category and type setup', master: 'categories' },
-    batches: { title: 'Batches', description: 'Batch wise stock created from purchase entry' },
-    'stock-adjustment': { title: 'Stock Adjustment', description: 'Manual stock correction workflow' },
-    'case-movement': { title: 'Case Movement', description: 'Stock movement and case tracking' },
-    products: { title: 'Product', description: 'Product master with pricing, barcode, image and reorder setup' },
+    companies: { title: 'Company', master: 'companies' },
+    units: { title: 'Unit', master: 'units' },
+    categories: { title: 'Category', master: 'categories' },
+    batches: { title: 'Batches' },
+    'stock-adjustment': { title: 'Stock Adjustment' },
+    'case-movement': { title: 'Case Movement' },
+    products: { title: 'Product' },
 };
 
 function currentSection() {

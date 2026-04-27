@@ -8,6 +8,7 @@ import { AppShell } from './core/layout/AppShell';
 import { SetupWizard } from './modules/setup/SetupWizard';
 
 import { ThemeProvider, useTheme } from './core/theme/ThemeContext';
+import { BrandingProvider } from './core/context/BrandingContext';
 
 const rootElement = document.getElementById('pharmanp-root');
 const mode = rootElement?.dataset.appMode || 'app';
@@ -81,9 +82,11 @@ function RootApp() {
                 {mode === 'setup' ? (
                     <SetupWizard />
                 ) : (
-                    <AuthProvider>
-                        <AppShell />
-                    </AuthProvider>
+                    <BrandingProvider>
+                        <AuthProvider>
+                            <AppShell />
+                        </AuthProvider>
+                    </BrandingProvider>
                 )}
             </AntApp>
         </ConfigProvider>

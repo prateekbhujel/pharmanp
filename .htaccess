@@ -1,10 +1,13 @@
 <IfModule mod_rewrite.c>
+    Options -MultiViews -Indexes
     RewriteEngine On
-
-    # Ensure we are in the pharmanp directory context
     RewriteBase /pharmanp/
 
-    # Redirect to public folder
-    RewriteRule ^$ public/ [L]
-    RewriteRule (.*) public/$1 [L]
+    # Shared-hosting entrypoint: expose the project root, but serve through /public.
+    # Sensitive Laravel folders and project files must never be web-readable.
+    RewriteRule ^(?:app|bootstrap|config|database|docs|node_modules|resources|routes|storage|tests|vendor)(/|$) - [F,L]
+    RewriteRule ^(?:artisan|composer\.(?:json|lock)|package(?:-lock)?\.json|phpunit\.xml|vite\.config\.js|\.env.*|\.git.*|README\.md|CHANGELOG\.md|VERSION)$ - [F,L]
+
+    RewriteCond %{REQUEST_URI} !/public/
+    RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

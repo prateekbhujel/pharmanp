@@ -10,26 +10,16 @@ export function DualDatePicker({ value, onChange, className }) {
         if (onChange) {
             onChange(date);
         }
-        // In a full implementation with `nepali-date-converter`, you would:
-        // const converted = new NepaliDate(date.toDate()).format('YYYY-MM-DD');
-        // setBsDate(converted);
     }
 
     return (
-        <Space.Compact className={className} style={{ width: '100%' }}>
+        <div className={`dual-date-picker ${className || ''}`} style={{ display: 'flex', gap: 8, width: '100%' }}>
             <DatePicker 
                 value={value} 
-                onChange={handleAdChange} 
-                style={{ width: '60%' }} 
-                placeholder="AD Date" 
+                onChange={onChange} 
+                className="full-width"
+                placeholder="Select Date"
             />
-            <Input 
-                value={bsDate} 
-                onChange={(e) => setBsDate(e.target.value)} 
-                style={{ width: '40%' }} 
-                placeholder="BS (YYYY-MM-DD)" 
-                title="Bikram Sambat Date"
-            />
-        </Space.Compact>
+        </div>
     );
 }

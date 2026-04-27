@@ -1,6 +1,14 @@
 import React from 'react';
-import { money } from '../utils/formatters';
+import { useBranding } from '../context/BrandingContext';
 
 export function Money({ value }) {
-    return <span className="tabular">{money.format(Number(value || 0))}</span>;
+    const { branding } = useBranding();
+    const symbol = branding?.currency_symbol || 'Rs.';
+    
+    const formatted = new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(Number(value || 0));
+
+    return <span className="tabular">{symbol} {formatted}</span>;
 }

@@ -26,6 +26,10 @@ class DropdownOption extends Model
             'label' => 'Payment Mode',
             'supports_data' => true,
         ],
+        'payment_type' => [
+            'label' => 'Payment Type',
+            'supports_data' => false,
+        ],
         'expense_category' => [
             'label' => 'Expense Category',
             'supports_data' => true,

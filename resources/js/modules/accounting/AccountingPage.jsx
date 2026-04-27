@@ -9,17 +9,11 @@ import { http, validationErrors } from '../../core/api/http';
 import { accountCatalog, voucherTypeOptions } from '../../core/utils/accountCatalog';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
 import { appUrl } from '../../core/utils/url';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { ExpensesPanel } from './ExpensesPanel';
 import { PaymentsPanel } from './PaymentsPanel';
 
 const emptyEntry = { account_type: 'cash', entry_type: 'debit', amount: 0 };
-const bookOptions = [
-    { value: 'day-book', label: 'Day Book' },
-    { value: 'cash-book', label: 'Cash Book' },
-    { value: 'bank-book', label: 'Bank Book' },
-    { value: 'ledger', label: 'Ledger' },
-    { value: 'trial-balance', label: 'Trial Balance' },
-];
 
 function accountingRouteState() {
     const section = window.location.pathname.split('/').filter(Boolean).pop();
@@ -36,7 +30,11 @@ function accountingRouteState() {
         return { tab: 'books', book: section };
     }
 
-    return { tab: 'voucher', book: 'day-book' };
+    if (section === 'vouchers') {
+        return { tab: 'voucher', book: 'day-book' };
+    }
+
+    return { tab: 'books', book: 'day-book' };
 }
 
 function goToAccounting(path) {
@@ -48,13 +46,6 @@ export function AccountingPage() {
     const { notification } = App.useApp();
     const routeState = accountingRouteState();
     const [entries, setEntries] = useState([{ ...emptyEntry }, { account_type: 'sales', entry_type: 'credit', amount: 0 }]);
-    const [bookReport, setBookReport] = useState(routeState.book);
-    const [bookRange, setBookRange] = useState([dayjs().startOf('month'), dayjs()]);
-    const [bookFilters, setBookFilters] = useState({});
-    const [bookRows, setBookRows] = useState([]);
-    const [bookSummary, setBookSummary] = useState(null);
-    const [bookMeta, setBookMeta] = useState({ current_page: 1, per_page: 20, total: 0 });
-    const [bookLoading, setBookLoading] = useState(false);
     const [entryErrors, setEntryErrors] = useState({});
     const [customers, setCustomers] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
@@ -62,11 +53,25 @@ export function AccountingPage() {
 
     useEffect(() => {
         loadParties();
-    }, []);
-
-    useEffect(() => {
-        loadBook(1);
-    }, [bookReport, bookRange, bookFilters]);
+        const handleKeys = (e) => {
+            if (e.altKey && e.key === 's') {
+                e.preventDefault();
+                form.submit();
+            }
+            if (e.altKey && e.key === 'n') {
+                e.preventDefault();
+                goToAccounting('/app/accounting/vouchers');
+            }
+            if (e.altKey && e.key === 'a') {
+                e.preventDefault();
+                if (routeState.tab === 'voucher') {
+                    setEntries(prev => [...prev, { ...emptyEntry }]);
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeys);
+        return () => window.removeEventListener('keydown', handleKeys);
+    }, [routeState.tab]);
 
     async function loadParties() {
         const [{ data: customerData }, { data: supplierData }] = await Promise.all([
@@ -92,7 +97,6 @@ export function AccountingPage() {
             form.resetFields();
             setEntries([{ ...emptyEntry }, { account_type: 'sales', entry_type: 'credit', amount: 0 }]);
             setEntryErrors({});
-            loadBook(1);
         } catch (error) {
             const errors = validationErrors(error);
             setEntryErrors(validationErrorsByLine(errors, 'entries'));
@@ -100,27 +104,6 @@ export function AccountingPage() {
             notification.error({ message: 'Voucher failed', description: error?.response?.data?.message || error.message });
         }
     }
-
-    async function loadBook(page = 1) {
-        setBookLoading(true);
-        try {
-            const { data } = await http.get(`${endpoints.reports}/${bookReport}`, {
-                params: {
-                    page,
-                    per_page: bookMeta.per_page,
-                    from: bookRange?.[0]?.format('YYYY-MM-DD'),
-                    to: bookRange?.[1]?.format('YYYY-MM-DD'),
-                    ...bookFilters,
-                },
-            });
-            setBookRows(data.data || []);
-            setBookMeta(data.meta || bookMeta);
-            setBookSummary(data.summary || null);
-        } finally {
-            setBookLoading(false);
-        }
-    }
-
     const debit = useMemo(() => entries.filter((entry) => entry.entry_type === 'debit').reduce((sum, entry) => sum + Number(entry.amount || 0), 0), [entries]);
     const credit = useMemo(() => entries.filter((entry) => entry.entry_type === 'credit').reduce((sum, entry) => sum + Number(entry.amount || 0), 0), [entries]);
 
@@ -181,19 +164,13 @@ export function AccountingPage() {
         { key: 'amount', title: 'Amount', render: (row, index) => <InputNumber min={0} value={row.amount} onChange={(amount) => updateEntry(index, { amount })} className="full-width" />, width: 140 },
         { key: 'notes', title: 'Notes', render: (row, index) => <Input value={row.notes} onChange={(event) => updateEntry(index, { notes: event.target.value })} />, width: 220 },
     ];
-    const bookColumns = Object.keys(bookRows[0] || {}).map((key) => ({
-        title: key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
-        dataIndex: key,
-        render: (value) => typeof value === 'number' ? value.toLocaleString() : value,
-    }));
 
-    const activeBookLabel = bookOptions.find((item) => item.value === bookReport)?.label || 'Books';
     const pageTitle = routeState.tab === 'payments'
         ? 'Payments'
         : routeState.tab === 'expenses'
             ? 'Expenses'
             : routeState.tab === 'books'
-                ? activeBookLabel
+                ? 'Books'
                 : 'Voucher Entry';
 
     function renderVoucher() {
@@ -201,7 +178,7 @@ export function AccountingPage() {
             <Card title="Voucher Entry">
                 <Form form={form} layout="vertical" onFinish={submit} initialValues={{ voucher_date: dayjs(), voucher_type: 'journal' }}>
                     <div className="form-grid">
-                        <Form.Item name="voucher_date" label="Voucher Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
+                        <Form.Item name="voucher_date" label="Voucher Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
                         <Form.Item name="voucher_type" label="Voucher Type" rules={[{ required: true }]}>
                             <Select options={voucherTypeOptions} />
                         </Form.Item>
@@ -227,72 +204,23 @@ export function AccountingPage() {
         );
     }
 
-    function renderBooks() {
-        return (
-            <div className="page-stack">
-                {bookSummary && (
-                    <Row gutter={[12, 12]}>
-                        {Object.entries(bookSummary).map(([key, value]) => (
-                            <Col xs={24} sm={12} xl={6} key={key}>
-                                <Card className="summary-card-compact"><Statistic title={key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())} value={value || 0} /></Card>
-                            </Col>
-                        ))}
-                    </Row>
-                )}
-                <Card title={activeBookLabel}>
-                    <div className="report-filter-grid">
-                        <Select
-                            value={bookReport}
-                            onChange={(value) => {
-                                setBookReport(value);
-                                setBookFilters({});
-                                goToAccounting(`/app/accounting/${value}`);
-                            }}
-                            options={bookOptions}
-                        />
-                        <DatePicker.RangePicker value={bookRange} onChange={setBookRange} />
-                        {bookReport === 'ledger' && (
-                            <>
-                                <Select allowClear placeholder="Account" value={bookFilters.account_type} onChange={(value) => setBookFilters((current) => ({ ...current, account_type: value }))} options={accountCatalog} />
-                                <Select allowClear placeholder="Party Type" value={bookFilters.party_type} onChange={(value) => setBookFilters((current) => ({ ...current, party_type: value, party_id: undefined }))} options={[
-                                    { value: 'customer', label: 'Customer' },
-                                    { value: 'supplier', label: 'Supplier' },
-                                ]} />
-                                {bookFilters.party_type === 'customer' && <Select allowClear placeholder="Customer" value={bookFilters.party_id} onChange={(value) => setBookFilters((current) => ({ ...current, party_id: value }))} options={customers.map((item) => ({ value: item.id, label: item.name }))} />}
-                                {bookFilters.party_type === 'supplier' && <Select allowClear placeholder="Supplier" value={bookFilters.party_id} onChange={(value) => setBookFilters((current) => ({ ...current, party_id: value }))} options={suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
-                            </>
-                        )}
-                    </div>
-                    <Table
-                        className="server-table"
-                        loading={bookLoading}
-                        rowKey={(_, index) => index}
-                        columns={bookColumns}
-                        dataSource={bookRows}
-                        pagination={{
-                            current: bookMeta.current_page,
-                            pageSize: bookMeta.per_page,
-                            total: bookMeta.total,
-                            onChange: loadBook,
-                        }}
-                        scroll={{ x: 'max-content' }}
-                    />
-                </Card>
-            </div>
-        );
-    }
 
     function renderContent() {
         if (routeState.tab === 'payments') return <PaymentsPanel />;
         if (routeState.tab === 'expenses') return <ExpensesPanel />;
-        if (routeState.tab === 'books') return renderBooks();
+        if (routeState.tab === 'books') return <div className="screen-center">Redirecting to Unified Reports...</div>;
 
         return renderVoucher();
     }
 
     return (
         <div className="page-stack">
-            <PageHeader title={pageTitle} description="Accounting and finance records from posted transactions" />
+            <PageHeader
+                title={pageTitle}
+                actions={routeState.tab === 'books' && (
+                    <Button type="primary" onClick={() => goToAccounting('/app/accounting/vouchers')}>New Voucher</Button>
+                )}
+            />
             {renderContent()}
         </div>
     );

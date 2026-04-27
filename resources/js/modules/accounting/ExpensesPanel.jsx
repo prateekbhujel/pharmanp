@@ -100,14 +100,6 @@ export function ExpensesPanel() {
 
     return (
         <div className="page-stack">
-            {summary && (
-                <Row gutter={[16, 16]}>
-                    <Col xs={12} sm={6}><Card><Statistic title="This Month" value={summary.this_month} prefix="NPR" /></Card></Col>
-                    <Col xs={12} sm={6}><Card><Statistic title="Cash" value={summary.cash} prefix="NPR" /></Card></Col>
-                    <Col xs={12} sm={6}><Card><Statistic title="Bank" value={summary.bank} prefix="NPR" /></Card></Col>
-                    <Col xs={12} sm={6}><Card><Statistic title="Total" value={summary.total} prefix="NPR" /></Card></Col>
-                </Row>
-            )}
             <Card>
                 <div className="table-toolbar table-toolbar-wide">
                     <DatePicker.RangePicker value={range} onChange={setRange} />

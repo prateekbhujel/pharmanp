@@ -57,7 +57,7 @@ export function OcrImportPage() {
 
     return (
         <div className="page-stack">
-            <PageHeader title="OCR Purchase Helper" description="Scan supplier bills, inspect OCR output, then push the draft into purchase entry" />
+            <PageHeader title="OCR Purchase Helper" />
 
             <Card title="Upload Bill">
                 <div className="import-grid">

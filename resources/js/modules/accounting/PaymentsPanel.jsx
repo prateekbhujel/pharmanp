@@ -7,6 +7,7 @@ import { FormDrawer } from '../../core/components/FormDrawer';
 import { QuickDropdownOptionModal } from '../../core/components/QuickDropdownOptionModal';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 
 export function PaymentsPanel() {
     const { notification } = App.useApp();
@@ -123,7 +124,7 @@ export function PaymentsPanel() {
     return (
         <div className="page-stack">
             <Card>
-                <div className="table-toolbar table-toolbar-wide">
+                <div className="table-toolbar table-toolbar-payments">
                     <Select allowClear placeholder="Direction" value={direction} onChange={setDirection} style={{ width: 140 }} options={[{ value: 'in', label: 'Payment In' }, { value: 'out', label: 'Payment Out' }]} />
                     <DatePicker.RangePicker value={range} onChange={setRange} />
                     <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()}>New Payment</Button>
@@ -154,7 +155,7 @@ export function PaymentsPanel() {
                             onChange={(id) => loadBills(id, form.getFieldValue('party_type'))}
                         />
                     </Form.Item>
-                    <Form.Item name="payment_date" label="Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
+                    <Form.Item name="payment_date" label="Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
                     <Form.Item name="amount" label="Amount" rules={[{ required: true }]}><InputNumber min={0.01} className="full-width" /></Form.Item>
                     <Form.Item name="payment_mode_id" label="Mode" rules={[{ required: true }]}>
                         <Select

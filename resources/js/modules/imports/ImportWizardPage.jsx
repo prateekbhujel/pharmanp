@@ -66,7 +66,7 @@ export function ImportWizardPage() {
 
     return (
         <div className="page-stack">
-            <PageHeader title="Import Wizard" description="Upload, preview, map fields, validate, then commit clean data in chunks" />
+            <PageHeader title="Import Wizard" />
 
             <Card>
                 <Steps

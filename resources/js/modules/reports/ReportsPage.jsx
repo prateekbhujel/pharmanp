@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Col, DatePicker, Empty, Row, Segmented, Select, Statistic, Table } from 'antd';
+import { Button, Card, Col, DatePicker, Empty, Row, Segmented, Select, Space, Statistic, Table } from 'antd';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import dayjs from 'dayjs';
 import { BarChart, DonutChart } from '../../core/components/Charts';
 import { ExportButtons } from '../../core/components/ListToolbarActions';
@@ -203,33 +204,41 @@ export function ReportsPage() {
         <div className="page-stack">
             <PageHeader
                 title="Reports"
-                description="Server-side filtered operational, inventory, finance, and field-force analysis"
-                actions={<ExportButtons basePath={endpoints.reportExport(report)} params={{ from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD'), ...filters }} />}
+                actions={
+                    <Space wrap>
+                        <ExportButtons basePath={endpoints.reportExport(report)} params={{ from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD'), ...filters }} />
+                        {report === 'day-book' && (
+                            <Button type="primary" onClick={() => window.location.href = appUrl('/app/accounting/vouchers')}>New Voucher</Button>
+                        )}
+                    </Space>
+                }
             />
 
             <Card>
                 <div className="report-workspace-toolbar">
-                    <Segmented
-                        value={group}
-                        onChange={(value) => {
-                            const nextReport = reportGroups[value][0];
-                            setGroup(value);
-                            switchReport(nextReport);
-                        }}
-                        options={[
-                            { label: 'Sales & Purchase', value: 'sales' },
-                            { label: 'Inventory', value: 'inventory' },
-                            { label: 'Accounting', value: 'accounting' },
-                            { label: 'MR', value: 'mr' },
-                        ]}
-                    />
+                    <div className="reports-pill-tabs">
+                        <Segmented
+                            value={group}
+                            onChange={(value) => {
+                                const nextReport = reportGroups[value][0];
+                                setGroup(value);
+                                switchReport(nextReport);
+                            }}
+                            options={[
+                                { label: 'Sales & Purchase', value: 'sales' },
+                                { label: 'Inventory', value: 'inventory' },
+                                { label: 'Accounting', value: 'accounting' },
+                                { label: 'MR', value: 'mr' },
+                            ]}
+                        />
+                    </div>
                     <Select
                         value={report}
                         onChange={switchReport}
                         options={visibleReportOptions}
                         style={{ minWidth: 220 }}
                     />
-                    <DatePicker.RangePicker value={range} onChange={setRange} />
+                    <SmartDatePicker.RangePicker value={range} onChange={setRange} />
                 </div>
             </Card>
 
