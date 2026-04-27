@@ -27,7 +27,9 @@ class BrandingController extends Controller
         $payload = [
             ...$current,
             ...Arr::except($data, ['logo_file', 'sidebar_logo_file', 'app_icon_file', 'favicon_file']),
-            'sidebar_default_collapsed' => (bool) ($data['sidebar_default_collapsed'] ?? false),
+            'sidebar_default_collapsed' => array_key_exists('sidebar_default_collapsed', $data)
+                ? (bool) $data['sidebar_default_collapsed']
+                : (bool) ($current['sidebar_default_collapsed'] ?? true),
         ];
 
         foreach ([
@@ -59,7 +61,7 @@ class BrandingController extends Controller
             'favicon_url' => null,
             'accent_color' => '#0f766e',
             'layout' => 'vertical',
-            'sidebar_default_collapsed' => false,
+            'sidebar_default_collapsed' => true,
         ]);
 
         foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {

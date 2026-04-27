@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { App, Button, Card, Col, DatePicker, Empty, Row, Select, Space, Statistic, Table, Tag, Tabs } from 'antd';
-import { ReloadOutlined, WarningOutlined, PlusOutlined, ShopOutlined, MedicineBoxOutlined, LineChartOutlined, AlertOutlined } from '@ant-design/icons';
+import { App, Button, Card, Col, DatePicker, Empty, Row, Select, Segmented, Space, Statistic, Table, Tag, Tabs } from 'antd';
+import { ReloadOutlined, WarningOutlined, PlusOutlined, ShopOutlined, LineChartOutlined, AlertOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
 import { BarChart, DonutChart, MiniBar } from '../../core/components/Charts';
 import { endpoints } from '../../core/api/endpoints';
@@ -49,6 +48,7 @@ export function DashboardPage() {
     const [medicalRepresentativeId, setMedicalRepresentativeId] = useState(undefined);
     const [medicalRepresentatives, setMedicalRepresentatives] = useState([]);
     const [state, setState] = useState({ loading: true, data: null });
+    const [heroToggle, setHeroToggle] = useState('Sales');
 
     useEffect(() => {
         if (user?.is_owner || user?.permissions?.includes('mr.view')) {
@@ -82,6 +82,7 @@ export function DashboardPage() {
     const chart = data?.chart_data || {};
     const isMr  = data?.scope === 'medical_representative';
     const loading = state.loading;
+    const appName = branding?.app_name || 'PharmaNP';
 
     // ── Convert monthly_trend to BarChart format ───────────────────────────────
     const trendBars = (chart.monthly_trend || []).map((m) => ({
@@ -347,10 +348,129 @@ export function DashboardPage() {
 
     return (
         <div className="page-stack">
-            <PageHeader
-                title="Dashboard"
-                description={data?.period || 'Current operating period'}
-                actions={(
+            <Card
+                className="hero-gradient-card"
+                style={{ overflow: 'hidden', position: 'relative', border: 0, borderRadius: 16 }}
+                styles={{ body: { padding: '20px 24px' } }}
+            >
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: -50,
+                        right: -50,
+                        width: 200,
+                        height: 200,
+                        background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
+                        borderRadius: '50%',
+                    }}
+                />
+
+                <Row align="middle" gutter={[16, 16]}>
+                    <Col xs={24} lg={14} style={{ zIndex: 1 }}>
+                        <Tag
+                            color="cyan"
+                            style={{
+                                marginBottom: 12,
+                                border: 0,
+                                background: 'rgba(255,255,255,0.2)',
+                                color: '#fff',
+                                borderRadius: 8,
+                                padding: '2px 10px',
+                                fontSize: 12,
+                                fontWeight: 600,
+                            }}
+                        >
+                            <ShopOutlined /> Overview
+                        </Tag>
+                        <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px 0', color: '#fff', letterSpacing: '-0.01em' }}>
+                            {appName}
+                        </h1>
+                        <p
+                            style={{
+                                fontSize: 13,
+                                color: 'rgba(255,255,255,0.8)',
+                                margin: '0 0 16px 0',
+                                maxWidth: 500,
+                                lineHeight: 1.4,
+                            }}
+                        >
+                            Track your sales, manage purchases, and monitor your inventory alerts from one unified view.
+                        </p>
+
+                        <Space wrap size="small">
+                            <Button
+                                type="primary"
+                                href={appUrl('/app/sales/pos')}
+                                style={{ background: '#fff', color: '#0891b2', fontWeight: 600, border: 0 }}
+                                icon={<PlusOutlined />}
+                            >
+                                New Sale / POS
+                            </Button>
+                            {!isMr && (
+                                <Button
+                                    ghost
+                                    href={appUrl('/app/purchases/entry')}
+                                    style={{ borderColor: 'rgba(255,255,255,0.4)', color: '#fff', fontWeight: 600 }}
+                                    icon={<ShopOutlined />}
+                                >
+                                    Purchase Entry
+                                </Button>
+                            )}
+                        </Space>
+                    </Col>
+
+                    <Col xs={24} lg={10} style={{ zIndex: 1 }}>
+                        <div
+                            style={{
+                                background: 'rgba(255,255,255,0.1)',
+                                backdropFilter: 'blur(10px)',
+                                borderRadius: 12,
+                                padding: 16,
+                                border: '1px solid rgba(255,255,255,0.2)',
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                <span
+                                    style={{
+                                        color: 'rgba(255,255,255,0.8)',
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em',
+                                    }}
+                                >
+                                    Performance
+                                </span>
+                                {!isMr && (
+                                    <Segmented
+                                        options={['Sales', 'Purchases']}
+                                        value={heroToggle}
+                                        onChange={setHeroToggle}
+                                        style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: 12 }}
+                                    />
+                                )}
+                            </div>
+
+                            <div>
+                                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}>
+                                    {heroToggle === 'Sales' ? 'Period Sales Value' : 'Period Purchase Value'}
+                                </div>
+                                <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', lineHeight: 1, textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+                                    <Money value={heroToggle === 'Sales' ? stats.period_sales : stats.period_purchase} />
+                                </div>
+                                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
+                                    For {range?.[0]?.format('MMM D')} - {range?.[1]?.format('MMM D, YYYY')}
+                                </div>
+                            </div>
+                        </div>
+                    </Col>
+                </Row>
+            </Card>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: '#1e293b' }}>
+                    Dashboard Metrics
+                </div>
                 <Space wrap>
                     {!user?.medical_representative_id && medicalRepresentatives.length > 0 && (
                         <Select
@@ -365,19 +485,7 @@ export function DashboardPage() {
                     <DatePicker.RangePicker value={range} onChange={setRange} />
                     <Button icon={<ReloadOutlined />} onClick={loadSummary}>Refresh</Button>
                 </Space>
-                )}
-            />
-
-            <Space wrap>
-                <Button type="primary" href={appUrl('/app/sales/pos')} icon={<PlusOutlined />}>
-                    New Sale / POS
-                </Button>
-                {!isMr && (
-                    <Button href={appUrl('/app/purchases/entry')} icon={<ShopOutlined />}>
-                        Purchase Entry
-                    </Button>
-                )}
-            </Space>
+            </div>
 
             <Card className="glass-card" styles={{ body: { padding: '8px 24px 24px' } }}>
                 <Tabs 

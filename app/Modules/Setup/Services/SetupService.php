@@ -159,7 +159,7 @@ class SetupService
             'favicon_url' => $data['branding']['favicon_url'] ?? null,
             'accent_color' => $data['branding']['accent_color'] ?? '#0f766e',
             'layout' => $data['branding']['layout'],
-            'sidebar_default_collapsed' => (bool) ($data['branding']['sidebar_default_collapsed'] ?? false),
+            'sidebar_default_collapsed' => (bool) ($data['branding']['sidebar_default_collapsed'] ?? true),
             'tenant_id' => $tenantId,
             'company_id' => $companyId,
             'store_id' => $storeId,

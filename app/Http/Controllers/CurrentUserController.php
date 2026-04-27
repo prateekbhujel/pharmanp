@@ -20,7 +20,7 @@ class CurrentUserController extends Controller
             'favicon_url' => null,
             'accent_color' => '#0f766e',
             'layout' => 'vertical',
-            'sidebar_default_collapsed' => false,
+            'sidebar_default_collapsed' => true,
         ]);
 
         foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {

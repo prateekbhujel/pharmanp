@@ -53,6 +53,8 @@ const UsersPage = React.lazy(() => import('../../modules/settings/UsersPage').th
 const RolesPage = React.lazy(() => import('../../modules/settings/RolesPage').then((module) => ({ default: module.RolesPage })));
 const DataLookupPage = React.lazy(() => import('../../modules/settings/DataLookupPage').then((module) => ({ default: module.DataLookupPage })));
 
+const SIDEBAR_COLLAPSE_STORAGE_KEY = 'pharmanp-sidebar-collapsed';
+
 const routes = {
     [appUrl('/app')]: DashboardPage,
     [appUrl('/app/onboarding')]: OnboardingPage,
@@ -68,6 +70,7 @@ const routes = {
     [appUrl('/app/purchases/bills')]: PurchasesPage,
     [appUrl('/app/purchases/orders')]: PurchasesPage,
     [appUrl('/app/purchases/returns')]: PurchasesPage,
+    [appUrl('/app/sales')]: SalesPage,
     [appUrl('/app/sales/pos')]: SalesPage,
     [appUrl('/app/sales/invoices')]: SalesPage,
     [appUrl('/app/sales/returns')]: SalesPage,
@@ -104,7 +107,7 @@ export function AppShell() {
     const { data: brandingData, loading: brandingLoading } = useApi(endpoints.branding);
     const { colorPrimary, setColorPrimary } = useTheme();
     
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(true);
     const [isCompactViewport, setIsCompactViewport] = useState(false);
     const [pathname, setPathname] = useState(currentAppPath);
     const [alerts, setAlerts] = useState({ loading: true, lowStockRows: [], expiryRows: [], count: 0 });
@@ -138,10 +141,26 @@ export function AppShell() {
     }, []);
 
     useEffect(() => {
-        if (!isCompactViewport && brandingData?.sidebar_default_collapsed !== undefined) {
-            setCollapsed(Boolean(brandingData.sidebar_default_collapsed));
+        if (isCompactViewport) return;
+
+        const storedPreference = window.localStorage.getItem(SIDEBAR_COLLAPSE_STORAGE_KEY);
+        if (storedPreference !== null) {
+            setCollapsed(storedPreference === '1');
+            return;
         }
+
+        if (brandingData?.sidebar_default_collapsed !== undefined) {
+            setCollapsed(Boolean(brandingData.sidebar_default_collapsed));
+            return;
+        }
+
+        setCollapsed(true);
     }, [brandingData, isCompactViewport]);
+
+    useEffect(() => {
+        if (isCompactViewport) return;
+        window.localStorage.setItem(SIDEBAR_COLLAPSE_STORAGE_KEY, collapsed ? '1' : '0');
+    }, [collapsed, isCompactViewport]);
 
     useEffect(() => {
         if (brandingData?.accent_color && brandingData.accent_color !== colorPrimary) {
@@ -213,9 +232,8 @@ export function AppShell() {
                 label: 'Sales / POS',
                 show: canSales,
                 children: [
-                    child('sales-pos', 'POS Terminal', appUrl('/app/sales/pos')),
-                    child('sales-invoices', 'Sales Invoices', appUrl('/app/sales/invoices')),
-                    child('sales-returns', 'Sales Returns', appUrl('/app/sales/returns')),
+                    child('sales-index', 'Sales', appUrl('/app/sales')),
+                    child('sales-returns', 'Sales Return', appUrl('/app/sales/returns')),
                 ],
             },
             { key: register('party-management', appUrl('/app/party/management')), icon: <TeamOutlined />, label: 'Party Management', show: canParties },
@@ -458,7 +476,7 @@ export function AppShell() {
                     } else {
                         if (route === 'dashboard') goTo(appUrl('/app'));
                         if (route === 'products') goTo(appUrl('/app/inventory/products'));
-                        if (route === 'sales') goTo(appUrl('/app/sales/invoices'));
+                        if (route === 'sales') goTo(appUrl('/app/sales'));
                         if (route === 'users') goTo(appUrl('/app/administration/users'));
                         if (route === 'settings') goTo(appUrl('/app/settings'));
                     }

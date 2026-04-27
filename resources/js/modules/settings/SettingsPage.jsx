@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { EyeOutlined, PlusOutlined, SendOutlined, UserOutlined } from '@ant-design/icons';
-import { App, Badge, Button, Card, Checkbox, ColorPicker, Form, Image, Input, InputNumber, Select, Space, Switch, Table, Tabs, Tag, Upload } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { PlusOutlined, SendOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Button, Card, Form, Input, InputNumber, Select, Space, Table, Tabs, Tag, Upload } from 'antd';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -32,9 +32,7 @@ function brandingPayload(values) {
         }
 
         if (value !== undefined && value !== null) {
-            // Handle Ant Design ColorPicker object
-            const finalValue = typeof value === 'object' && value?.toHexString ? value.toHexString() : value;
-            payload.append(key, finalValue);
+            payload.append(key, value);
         }
     });
 
@@ -175,14 +173,6 @@ export function SettingsPage() {
                                             <div style={{ marginTop: 8, fontSize: 11, color: '#94a3b8' }}>{hint}</div>
                                         </div>
                                     ))}
-                                </div>
-                                <div className="form-grid">
-                                    <Form.Item name="accent_color" label="Brand Accent Color">
-                                        <ColorPicker showText format="hex" presets={[{ label: 'Pharma Theme', colors: ['#0f172a', '#3b82f6', '#10b981', '#ef4444'] }]} />
-                                    </Form.Item>
-                                    <Form.Item name="sidebar_default_collapsed" valuePropName="checked" style={{ paddingTop: 32 }}>
-                                        <Checkbox>Start sidebar in minimized mode</Checkbox>
-                                    </Form.Item>
                                 </div>
                                 <Space>
                                     <Button type="primary" size="large" htmlType="submit">Apply Branding</Button>

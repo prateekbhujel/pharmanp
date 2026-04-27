@@ -19,11 +19,11 @@ import { SalesReturnsPanel } from './SalesReturnsPanel';
 function salesSection() {
     const section = window.location.pathname.split('/').filter(Boolean).pop();
 
-    if (['invoices', 'returns'].includes(section)) {
+    if (['invoices', 'returns', 'pos'].includes(section)) {
         return section;
     }
 
-    return 'pos';
+    return 'invoices';
 }
 
 function goToApp(path) {
@@ -255,12 +255,12 @@ export function SalesPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title={section === 'invoices' ? 'Sales Invoices' : section === 'returns' ? 'Sales Return' : 'Sales / POS'}
-                description={section === 'invoices' ? 'Invoice list with customer, MR and payment filters' : section === 'returns' ? 'Customer return workflow' : 'Barcode POS with walk-in customer and batch aware stock deduction'}
+                title={section === 'invoices' ? 'Sales' : section === 'returns' ? 'Sales Return' : 'New Sales Invoice'}
+                description={section === 'invoices' ? 'Invoice list with customer, MR and payment filters' : section === 'returns' ? 'Customer return workflow' : 'Barcode entry, walk-in customer support, payment QR and batch-aware stock deduction'}
                 actions={(
                     <Space>
-                        {section !== 'pos' && <Button type="primary" onClick={() => goToApp('/app/sales/pos')}>Open POS</Button>}
-                        {section !== 'invoices' && <Button onClick={() => goToApp('/app/sales/invoices')}>Sales Invoices</Button>}
+                        {section !== 'pos' && <Button type="primary" onClick={() => goToApp('/app/sales/pos')}>New Sales</Button>}
+                        {section !== 'invoices' && <Button onClick={() => goToApp('/app/sales')}>Sales</Button>}
                         <Button icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick Product</Button>
                         <Button disabled={!lastPrintUrl} icon={<PrinterOutlined />} onClick={() => window.open(lastPrintUrl, '_blank')}>Print Last Invoice</Button>
                     </Space>

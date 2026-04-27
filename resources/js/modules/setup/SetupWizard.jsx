@@ -87,7 +87,7 @@ export function SetupWizard() {
                             app_name: 'PharmaNP',
                             accent_color: '#0f766e',
                             layout: 'vertical',
-                            sidebar_default_collapsed: false,
+                            sidebar_default_collapsed: true,
                         },
                         fiscal_year: {
                             name: `${dayjs().year()}/${String(dayjs().add(1, 'year').year()).slice(-2)}`,
