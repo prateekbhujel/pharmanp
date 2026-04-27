@@ -105,6 +105,7 @@ export function AppShell() {
     const { colorPrimary, setColorPrimary } = useTheme();
     
     const [collapsed, setCollapsed] = useState(false);
+    const [isCompactViewport, setIsCompactViewport] = useState(false);
     const [pathname, setPathname] = useState(currentAppPath);
     const [alerts, setAlerts] = useState({ loading: true, lowStockRows: [], expiryRows: [], count: 0 });
     const [searchVisible, setSearchVisible] = useState(false);
@@ -122,10 +123,25 @@ export function AppShell() {
     }, []);
 
     useEffect(() => {
-        if (brandingData?.sidebar_default_collapsed !== undefined) {
+        const media = window.matchMedia('(max-width: 900px)');
+        const syncViewport = () => {
+            setIsCompactViewport(media.matches);
+            if (media.matches) {
+                setCollapsed(true);
+            }
+        };
+
+        syncViewport();
+        media.addEventListener('change', syncViewport);
+
+        return () => media.removeEventListener('change', syncViewport);
+    }, []);
+
+    useEffect(() => {
+        if (!isCompactViewport && brandingData?.sidebar_default_collapsed !== undefined) {
             setCollapsed(Boolean(brandingData.sidebar_default_collapsed));
         }
-    }, [brandingData]);
+    }, [brandingData, isCompactViewport]);
 
     useEffect(() => {
         if (brandingData?.accent_color && brandingData.accent_color !== colorPrimary) {
@@ -361,12 +377,10 @@ export function AppShell() {
             <Sider 
                 width={260} 
                 collapsed={collapsed} 
-                theme="dark"
                 className="app-sidebar" 
                 breakpoint="lg" 
                 collapsedWidth={72} 
                 trigger={null}
-                style={{ background: 'var(--sidebar-bg)' }}
             >
                 <div className="main-sidebar-header">
                     <a href={appUrl('/app')} className="header-logo">
@@ -377,12 +391,10 @@ export function AppShell() {
                 <div className="main-sidebar">
                     <Menu
                         mode="inline"
-                        theme="dark"
                         selectedKeys={[selectedMenuKey]}
                         defaultOpenKeys={openKeys}
                         items={menuItems}
                         onClick={navigate}
-                        style={{ background: 'transparent' }}
                     />
                 </div>
             </Sider>
@@ -455,4 +467,3 @@ export function AppShell() {
         </Layout>
     );
 }
-
