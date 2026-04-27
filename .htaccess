@@ -1,7 +1,10 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    RewriteCond %{REQUEST_URI} !^/public/
+    # Ensure we are in the pharmanp directory context
+    RewriteBase /pharmanp/
+
+    # Redirect to public folder
     RewriteRule ^$ public/ [L]
     RewriteRule (.*) public/$1 [L]
 </IfModule>

@@ -18,6 +18,11 @@ import {
     TeamOutlined,
     UserSwitchOutlined,
     WarningOutlined,
+    SearchOutlined,
+    ContainerOutlined,
+    FileTextOutlined,
+    WalletOutlined,
+    HistoryOutlined,
 } from '@ant-design/icons';
 import { http } from '../api/http';
 import { endpoints } from '../api/endpoints';
@@ -27,9 +32,7 @@ import { isMacPlatform } from '../utils/platform';
 import { appUrl } from '../utils/url';
 import { useTheme } from '../theme/ThemeContext';
 import { useApi } from '../hooks/useApi';
-import { ColorPicker } from 'antd';
 import { GlobalSearch } from '../components/GlobalSearch';
-import { SearchOutlined } from '@ant-design/icons';
 
 const { Header, Sider, Content } = Layout;
 
@@ -134,10 +137,9 @@ export function AppShell() {
     const appName = brandingData?.app_name || 'PharmaNP';
     const logo = brandingData?.sidebar_logo_url || brandingData?.logo_url || brandingData?.app_icon_url;
     const user = authUser;
-    // Best-match: try exact match first, then longest prefix match
+
     const activeKey = useMemo(() => {
         if (routes[pathname]) return pathname;
-        // Sort routes by path length descending so most specific wins
         const sortedRoutes = Object.keys(routes).sort((a, b) => b.length - a.length);
         const match = sortedRoutes.find((route) => pathname.startsWith(route));
         return match || appUrl('/app');
@@ -161,17 +163,18 @@ export function AppShell() {
         const items = [
             { key: 'category-main', label: 'Main Menu', disabled: true, className: 'menu-category' },
             { key: register('dashboard', appUrl('/app')), icon: <DashboardOutlined />, label: 'Dashboard', show: can(user, 'dashboard.view') },
+            
             {
                 key: 'inventory',
                 icon: <MedicineBoxOutlined />,
                 label: 'Inventory',
                 show: canInventory,
                 children: [
-                    child('inventory-company', 'Company (Manufacturer)', appUrl('/app/inventory/companies')),
-                    child('inventory-unit', 'Unit', appUrl('/app/inventory/units')),
-                    child('inventory-categories', 'Categories', appUrl('/app/inventory/categories')),
-                    child('inventory-product', 'Product', appUrl('/app/inventory/products')),
+                    child('inventory-product', 'Products', appUrl('/app/inventory/products')),
                     child('inventory-batches', 'Batches', appUrl('/app/inventory/batches')),
+                    child('inventory-company', 'Companies (MFR)', appUrl('/app/inventory/companies')),
+                    child('inventory-unit', 'Units', appUrl('/app/inventory/units')),
+                    child('inventory-categories', 'Categories', appUrl('/app/inventory/categories')),
                     child('inventory-adjustment', 'Stock Adjustment', appUrl('/app/inventory/stock-adjustment')),
                     child('inventory-movement', 'Case Movement', appUrl('/app/inventory/case-movement')),
                 ],
@@ -188,7 +191,6 @@ export function AppShell() {
                     child('purchase-returns', 'Purchase Returns', appUrl('/app/purchases/returns')),
                 ],
             },
-            { key: register('party-management', appUrl('/app/party/management')), icon: <TeamOutlined />, label: 'Party Management', show: canParties },
             {
                 key: 'sales',
                 icon: <DollarOutlined />,
@@ -200,10 +202,11 @@ export function AppShell() {
                     child('sales-returns', 'Sales Returns', appUrl('/app/sales/returns')),
                 ],
             },
-            { key: register('sales-ocr', appUrl('/app/sales/ocr')), icon: <CloudUploadOutlined />, label: 'OCR', show: can(user, 'sales.ocr') },
+            { key: register('party-management', appUrl('/app/party/management')), icon: <TeamOutlined />, label: 'Party Management', show: canParties },
+            { key: register('sales-ocr', appUrl('/app/sales/ocr')), icon: <CloudUploadOutlined />, label: 'OCR Extraction', show: can(user, 'sales.ocr') },
             {
                 key: 'accounting',
-                icon: <BarChartOutlined />,
+                icon: <WalletOutlined />,
                 label: 'Accounting & Finance',
                 show: canAccounting,
                 children: [
@@ -227,7 +230,7 @@ export function AppShell() {
             },
             {
                 key: 'reports',
-                icon: <BarChartOutlined />,
+                icon: <HistoryOutlined />,
                 label: 'Reports',
                 show: canReports,
                 children: [
@@ -241,16 +244,7 @@ export function AppShell() {
             { key: register('admin-roles', appUrl('/app/administration/roles')), icon: <SafetyCertificateOutlined />, label: 'Role Access', show: can(user, 'roles.manage') },
             { key: register('admin-data', appUrl('/app/administration/data-lookup')), icon: <SyncOutlined />, label: 'Data Lookup', show: canSetup },
             { key: register('settings', appUrl('/app/settings')), icon: <SettingOutlined />, label: 'Settings', show: canSetup },
-            { key: register('onboarding', appUrl('/app/onboarding')), icon: <ShoppingCartOutlined />, label: 'First Run Guide', show: canSetup },
-            {
-                key: 'system',
-                icon: <SyncOutlined />,
-                label: 'System',
-                show: user?.is_owner,
-                children: [
-                    child('system-update', 'Update Check', appUrl('/app/system/update-check')),
-                ],
-            },
+            { key: register('system-update', appUrl('/app/system/update-check')), icon: <SyncOutlined />, label: 'System Update', show: user?.is_owner },
         ];
 
         const flatItems = items.filter(i => i.show !== false).map(i => {
@@ -260,14 +254,12 @@ export function AppShell() {
             return i;
         });
 
-        const activeKey = pathname;
         let selectedKey = null;
         let openKey = null;
 
         Object.entries(routeMap).forEach(([key, route]) => {
             if (pathname.startsWith(route)) {
                 selectedKey = key;
-                // Find parent for openKeys
                 const parent = flatItems.find(p => p.children?.some(c => c.key === key));
                 if (parent) openKey = parent.key;
             }
@@ -278,63 +270,37 @@ export function AppShell() {
 
 
     useEffect(() => {
-        function syncPath() {
-            setPathname(currentAppPath());
-        }
-
+        function syncPath() { setPathname(currentAppPath()); }
         window.addEventListener('popstate', syncPath);
-
         return () => window.removeEventListener('popstate', syncPath);
     }, []);
 
     useEffect(() => {
         let active = true;
-
         http.get(endpoints.dashboard)
             .then(({ data }) => {
-                if (!active) {
-                    return;
-                }
-
+                if (!active) return;
                 const payload = data.data || {};
                 const stats = payload.stats || {};
                 const lowStockRows = payload.low_stock_rows || [];
                 const expiryRows = payload.expiry_rows || [];
                 const count = Number(stats.low_stock || lowStockRows.length || 0)
                     + Number(stats.expiring_batches || expiryRows.length || 0);
-
                 setAlerts({ loading: false, lowStockRows, expiryRows, count });
             })
             .catch(() => {
-                if (active) {
-                    setAlerts({ loading: false, lowStockRows: [], expiryRows: [], count: 0 });
-                }
+                if (active) setAlerts({ loading: false, lowStockRows: [], expiryRows: [], count: 0 });
             });
-
-        return () => {
-            active = false;
-        };
+        return () => { active = false; };
     }, []);
 
     const notificationItems = useMemo(() => {
-        const items = [];
-
         if (!alerts.count) {
-            return [
-                {
-                    key: 'empty',
-                    disabled: true,
-                    label: <div className="notification-empty">No stock alerts right now</div>,
-                },
-            ];
+            return [{ key: 'empty', disabled: true, label: <div className="notification-empty">No stock alerts right now</div> }];
         }
-
+        const items = [];
         if (alerts.lowStockRows.length > 0) {
-            items.push({
-                key: 'low-stock-title',
-                disabled: true,
-                label: <div className="notification-title"><WarningOutlined /> Low stock</div>,
-            });
+            items.push({ key: 'low-stock-title', disabled: true, label: <div className="notification-title"><WarningOutlined /> Low stock</div> });
             alerts.lowStockRows.slice(0, 4).forEach((item) => {
                 items.push({
                     key: `low-stock-${item.id}`,
@@ -347,13 +313,8 @@ export function AppShell() {
                 });
             });
         }
-
         if (alerts.expiryRows.length > 0) {
-            items.push({
-                key: 'expiry-title',
-                disabled: true,
-                label: <div className="notification-title"><WarningOutlined /> Expiry watch</div>,
-            });
+            items.push({ key: 'expiry-title', disabled: true, label: <div className="notification-title"><WarningOutlined /> Expiry watch</div> });
             alerts.expiryRows.slice(0, 4).forEach((item) => {
                 items.push({
                     key: `expiry-${item.id}`,
@@ -366,35 +327,20 @@ export function AppShell() {
                 });
             });
         }
-
         return items;
     }, [alerts]);
 
-    const horizontalMenuItems = useMemo(() => (
-        menuItems.filter((item) => item.className !== 'menu-category')
-    ), [menuItems]);
-
     function goTo(route) {
-        if (!route || route === pathname) {
-            return;
-        }
-
+        if (!route || route === pathname) return;
         window.history.pushState({}, '', route);
         setPathname(currentAppPath());
     }
 
-    function navigate({ key }) {
-        goTo(routesByKey[key]);
-    }
+    function navigate({ key }) { goTo(routesByKey[key]); }
 
     function handleNotificationClick({ key }) {
-        if (key.startsWith('low-stock')) {
-            goTo(appUrl('/app/reports/low-stock'));
-        }
-
-        if (key.startsWith('expiry')) {
-            goTo(appUrl('/app/reports/expiry'));
-        }
+        if (key.startsWith('low-stock')) goTo(appUrl('/app/reports/low-stock'));
+        if (key.startsWith('expiry')) goTo(appUrl('/app/reports/expiry'));
     }
 
     function logout() {
@@ -404,38 +350,15 @@ export function AppShell() {
     }
 
     const profileItems = [
-        { key: 'profile', label: 'Profile', onClick: () => { window.location.href = appUrl('/app/settings'); } },
-        { key: 'logout', label: 'Sign Out', onClick: logout },
+        { key: 'profile', label: 'Profile Settings', icon: <UserSwitchOutlined />, onClick: () => { goTo(appUrl('/app/settings')); } },
+        { type: 'divider' },
+        { key: 'logout', label: 'Sign Out', danger: true, onClick: logout },
     ];
-
-    const THEME_PRESETS = [
-        { color: '#0891b2', name: 'Medical Cyan' },
-        { color: '#3b82f6', name: 'Royal Blue' },
-        { color: '#6366f1', name: 'Indigo' },
-        { color: '#8b5cf6', name: 'Amethyst' },
-        { color: '#10b981', name: 'Emerald' },
-        { color: '#f59e0b', name: 'Amber' },
-        { color: '#ef4444', name: 'Rose' },
-        { color: '#0f172a', name: 'Slate' },
-    ];
-
-    const themeMenu = {
-        items: THEME_PRESETS.map((p) => ({
-            key: p.color,
-            label: (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: p.color }} />
-                    <span style={{ fontWeight: 500 }}>{p.name}</span>
-                </div>
-            )
-        })),
-        onClick: ({ key }) => setColorPrimary(key)
-    };
 
     return (
         <Layout className={`app-shell app-shell-${layout}`}>
             {layout === 'vertical' && (
-            <Sider width={250} collapsed={collapsed} className="app-sidebar" breakpoint="lg" collapsedWidth={72} trigger={null}>
+            <Sider width={260} collapsed={collapsed} className="app-sidebar" breakpoint="lg" collapsedWidth={72} trigger={null}>
                 <div className="main-sidebar-header">
                     <a href={appUrl('/app')} className="header-logo">
                         {logo ? <img src={logo} alt={appName} className="brand-logo" /> : <div className="brand-mark" style={{ background: `linear-gradient(135deg, ${colorPrimary}, var(--primary-color-dark, #0369a1))` }}><SafetyCertificateOutlined /></div>}
@@ -458,30 +381,24 @@ export function AppShell() {
                     <Space className="header-content-left">
                         {layout === 'vertical' && (
                             <Button
-                                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                                type="text"
+                                className="sidebar-toggle-btn"
                                 icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                                 onClick={() => setCollapsed((value) => !value)}
                             />
-                        )}
-                        {layout === 'horizontal' && (
-                            <>
-                                {logo ? <img src={logo} alt={appName} className="brand-logo brand-logo-topbar" /> : <SafetyCertificateOutlined style={{ color: colorPrimary, fontSize: 20 }} />}
-                                <Typography.Text strong className="topbar-brand-name">{appName}</Typography.Text>
-                                <Menu mode="horizontal" selectedKeys={[selectedMenuKey]} items={horizontalMenuItems} onClick={navigate} className="topbar-menu" />
-                            </>
                         )}
                         <Button 
                             className="search-trigger-btn" 
                             onClick={() => setSearchVisible(true)}
                             icon={<SearchOutlined />}
                         >
-                            <span>Search...</span>
+                            <span>Search modules or data...</span>
                             <span className="search-trigger-kbd">
                                 {isMacPlatform() ? '⌘K' : 'Ctrl+K'}
                             </span>
                         </Button>
                     </Space>
-                    <Space className="header-content-right" size={18}>
+                    <Space className="header-content-right" size={16}>
                         <Dropdown
                             menu={{ items: notificationItems, onClick: handleNotificationClick }}
                             placement="bottomRight"
@@ -489,13 +406,16 @@ export function AppShell() {
                             classNames={{ root: 'notification-dropdown' }}
                         >
                             <Badge count={alerts.count} size="small" overflowCount={99}>
-                                <Button type="text" loading={alerts.loading} icon={<BellOutlined />} />
+                                <Button type="text" shape="circle" icon={<BellOutlined />} />
                             </Badge>
                         </Dropdown>
-                        <Typography.Text className="welcome-text">Welcome! <strong>{user?.name}</strong></Typography.Text>
-                        <Avatar>{user?.name?.slice(0, 1)}</Avatar>
-                        <Dropdown menu={{ items: profileItems }} trigger={['click']}>
-                            <Button type="text" icon={<DownOutlined />} />
+                        
+                        <Dropdown menu={{ items: profileItems }} trigger={['click']} placement="bottomRight">
+                            <div className="user-profile-trigger">
+                                <Avatar size="small" style={{ backgroundColor: colorPrimary }}>{user?.name?.slice(0, 1).toUpperCase()}</Avatar>
+                                <span className="user-name-label">{user?.name}</span>
+                                <DownOutlined style={{ fontSize: 10, opacity: 0.5 }} />
+                            </div>
                         </Dropdown>
                     </Space>
                 </Header>
@@ -512,7 +432,6 @@ export function AppShell() {
                     if (route.startsWith('/')) {
                         goTo(route);
                     } else {
-                        // Legacy keys if any
                         if (route === 'dashboard') goTo(appUrl('/app'));
                         if (route === 'products') goTo(appUrl('/app/inventory/products'));
                         if (route === 'sales') goTo(appUrl('/app/sales/invoices'));
@@ -524,3 +443,4 @@ export function AppShell() {
         </Layout>
     );
 }
+

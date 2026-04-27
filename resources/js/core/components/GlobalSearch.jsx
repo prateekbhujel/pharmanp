@@ -75,22 +75,24 @@ export function GlobalSearch({ visible, onCancel, onNavigate }) {
         >
             <div className="search-input-wrapper">
                 <Input
-                    prefix={loading ? <Spin size="small" style={{ marginRight: 12 }} /> : <SearchOutlined style={{ color: '#94a3b8', fontSize: '22px' }} />}
-                    placeholder="Search anything (products, customers, suppliers)..."
+                    prefix={loading ? <Spin size="small" style={{ marginRight: 12 }} /> : <SearchOutlined style={{ color: '#1e293b', fontSize: '20px' }} />}
+                    placeholder="Search anything (products, customers, invoices)..."
                     variant="borderless"
                     size="large"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     autoFocus
                     suffix={
-                        <Space size={6}>
-                            <Typography.Text keyboard>{isMac ? '⌘' : 'Ctrl'}</Typography.Text>
-                            <Typography.Text keyboard>K</Typography.Text>
-                        </Space>
+                        <div className="search-trigger-kbd">
+                            {isMac ? '⌘' : 'CTRL'} K
+                        </div>
                     }
                 />
             </div>
-            <div className="search-results" style={{ maxHeight: '480px', overflowY: 'auto', padding: '12px 0' }}>
+            <div className="search-results" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                <div style={{ padding: '8px 12px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {search ? 'Search Results' : 'Recent Actions / Pages'}
+                </div>
                 <List
                     dataSource={results}
                     renderItem={(item) => (
@@ -99,43 +101,37 @@ export function GlobalSearch({ visible, onCancel, onNavigate }) {
                             onClick={() => handleSelect(item)}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                                <Space size={16}>
+                                <Space size={14}>
                                     <div className="search-icon-box">{ICON_MAP[item.type] || <FileTextOutlined />}</div>
                                     <div>
-                                        <Space size={8}>
-                                            <Typography.Text strong style={{ fontSize: '15px', color: '#1e293b' }}>{item.label}</Typography.Text>
-                                            <Typography.Text type="secondary" style={{ fontSize: '10px', background: '#f1f5f9', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 700 }}>{item.type}</Typography.Text>
-                                        </Space>
-                                        <br />
-                                        <Typography.Text type="secondary" style={{ fontSize: '12px' }}>{item.description}</Typography.Text>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>{item.label}</span>
+                                            <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#64748b', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 700 }}>{item.type}</span>
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{item.description}</div>
                                     </div>
                                 </Space>
-                                <ArrowRightOutlined className="result-arrow" style={{ opacity: 0.3 }} />
+                                <ArrowRightOutlined className="result-arrow" style={{ opacity: 0, fontSize: '14px' }} />
                             </div>
                         </List.Item>
                     )}
                 />
                 {!loading && results.length === 0 && search && (
-                    <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-                        <SearchOutlined style={{ fontSize: '48px', color: '#e2e8f0', marginBottom: '16px' }} />
-                        <Typography.Title level={5} style={{ color: '#94a3b8', margin: 0 }}>No results found</Typography.Title>
-                        <Typography.Text type="secondary">Try searching for something else</Typography.Text>
+                    <div style={{ padding: '48px 20px', textAlign: 'center' }}>
+                        <SearchOutlined style={{ fontSize: '32px', color: '#e2e8f0', marginBottom: '12px' }} />
+                        <div style={{ fontWeight: 600, color: '#94a3b8' }}>No matches found</div>
+                        <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Try different keywords or tags</div>
                     </div>
                 )}
             </div>
             <div className="search-footer">
-                <Space size={24}>
-                    <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
-                        <Typography.Text keyboard>Enter</Typography.Text> Select
-                    </Typography.Text>
-                    <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
-                        <Typography.Text keyboard>↑↓</Typography.Text> Navigate
-                    </Typography.Text>
-                    <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
-                        <Typography.Text keyboard>Esc</Typography.Text> Close
-                    </Typography.Text>
+                <Space size={20}>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}><span className="search-trigger-kbd" style={{ verticalAlign: 'middle', marginRight: 4 }}>↵</span> Select</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}><span className="search-trigger-kbd" style={{ verticalAlign: 'middle', marginRight: 4 }}>↑↓</span> Navigate</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}><span className="search-trigger-kbd" style={{ verticalAlign: 'middle', marginRight: 4 }}>ESC</span> Close</span>
                 </Space>
             </div>
         </Modal>
     );
 }
+

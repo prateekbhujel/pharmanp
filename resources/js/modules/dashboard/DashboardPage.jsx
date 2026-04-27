@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { App, Button, Card, Col, DatePicker, Empty, Row, Select, Space, Statistic, Table, Tag, Tabs, Segmented } from 'antd';
-import { ReloadOutlined, WarningOutlined, PlusOutlined, FileExcelOutlined, ShopOutlined, MedicineBoxOutlined, StockOutlined, LineChartOutlined, AlertOutlined } from '@ant-design/icons';
+import { ReloadOutlined, WarningOutlined, PlusOutlined, ShopOutlined, MedicineBoxOutlined, StockOutlined, LineChartOutlined, AlertOutlined, RiseOutlined, FallOutlined, WalletOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
@@ -10,37 +10,41 @@ import { http } from '../../core/api/http';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { appUrl } from '../../core/utils/url';
 
-// ── Stat card with subtle trend arrow ────────────────────────────────────────
-function StatCard({ title, value, suffix, tone, loading, icon }) {
+function StatCard({ title, value, suffix, tone, loading, icon, trend }) {
     return (
         <Card 
-            className="metric-card metric-card-glow glass-card" 
-            loading={loading} 
-            style={{ borderTop: `4px solid ${tone}` }}
+            className="dashboard-mini-card glass-card" 
+            loading={loading}
         >
-            <Statistic
-                title={
-                    <span style={{ color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {icon && <span style={{ color: tone }}>{icon}</span>}
-                        {title}
-                    </span>
-                }
-                value={value ?? 0}
-                suffix={suffix}
-                styles={{ content: { color: tone, fontSize: 20, fontWeight: 800, marginTop: 4 } }}
-            />
+            <div className="mini-card-content">
+                <div className="mini-card-icon" style={{ backgroundColor: `${tone}15`, color: tone }}>
+                    {icon}
+                </div>
+                <div className="mini-card-info">
+                    <Typography.Text type="secondary" className="mini-card-title">{title}</Typography.Text>
+                    <div className="mini-card-value-row">
+                        <span className="mini-card-value">{value ?? 0}{suffix && <span className="mini-card-suffix">{suffix}</span>}</span>
+                        {trend && (
+                            <span className={`mini-card-trend ${trend > 0 ? 'up' : 'down'}`}>
+                                {trend > 0 ? <RiseOutlined /> : <FallOutlined />} {Math.abs(trend)}%
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
         </Card>
     );
 }
 
-// ── Palette for charts ────────────────────────────────────────────────────────
 const TONES = {
-    sales:   '#0ea5e9', // Medical Blue
-    purchase:'#10b981', // Success Green
+    sales:   '#0ea5e9',
+    purchase:'#10b981',
     paid:    '#10b981',
     partial: '#f59e0b',
     unpaid:  '#ef4444',
 };
+
+import { Typography } from 'antd';
 
 export function DashboardPage() {
     const { notification } = App.useApp();
@@ -85,7 +89,6 @@ export function DashboardPage() {
     const loading = state.loading;
     const appName = branding?.app_name || 'PharmaNP';
 
-    // ── Convert monthly_trend to BarChart format ───────────────────────────────
     const trendBars = (chart.monthly_trend || []).map((m) => ({
         label: m.month,
         bars: [
@@ -94,115 +97,113 @@ export function DashboardPage() {
         ],
     }));
 
-    // ── Convert payment_breakdown to DonutChart format ────────────────────────
     const pieData = (chart.payment_breakdown || []).map((p) => ({
         label: p.label,
         value: p.value,
         color: TONES[p.label?.toLowerCase()] ?? '#94a3b8',
     }));
 
-    // ── Top products max for MiniBar ──────────────────────────────────────────
     const topProducts = chart.top_products_chart || data?.top_products || [];
     const maxProductAmt = Math.max(...topProducts.map((p) => p.amount || 0), 1);
-
     const isAlertsHigh = stats.low_stock > 0 || stats.expiring_batches > 0;
 
     const items = [
         {
             key: 'overview',
-            label: <span style={{ fontWeight: 600 }}><ShopOutlined /> Overview</span>,
+            label: <span style={{ fontWeight: 600 }}>Overview</span>,
             children: (
                 <div className="page-stack" style={{ marginTop: 16 }}>
                     <Row gutter={[16, 16]}>
-                        <Col xs={12} md={6}>
-                            <StatCard title="Today's Sales" value={stats.today_sales} tone={TONES.sales} loading={loading} />
+                        <Col xs={24} sm={12} md={6}>
+                            <StatCard title="Today's Sales" value={<Money value={stats.today_sales} />} tone={TONES.sales} loading={loading} icon={<ShoppingCartOutlined />} />
                         </Col>
-                        <Col xs={12} md={6}>
-                            <StatCard title="Period Sales" value={stats.period_sales} tone="#0891b2" loading={loading} />
+                        <Col xs={24} sm={12} md={6}>
+                            <StatCard title="Period Sales" value={<Money value={stats.period_sales} />} tone="#0891b2" loading={loading} icon={<LineChartOutlined />} />
                         </Col>
                         {isMr ? (
                             <>
-                                <Col xs={12} md={6}>
-                                    <StatCard title="Visits" value={stats.visits} suffix="visits" tone="#0891b2" loading={loading} />
+                                <Col xs={24} sm={12} md={6}>
+                                    <StatCard title="Visits" value={stats.visits} suffix=" visits" tone="#0891b2" loading={loading} icon={<ShopOutlined />} />
                                 </Col>
-                                <Col xs={12} md={6}>
-                                    <StatCard title="Monthly Target" value={stats.target} tone="#f59e0b" loading={loading} />
+                                <Col xs={24} sm={12} md={6}>
+                                    <StatCard title="Monthly Target" value={<Money value={stats.target} />} tone="#f59e0b" loading={loading} icon={<WalletOutlined />} />
                                 </Col>
                             </>
                         ) : (
                             <>
-                                <Col xs={12} md={6}>
-                                    <StatCard title="Period Purchases" value={stats.period_purchase} tone={TONES.purchase} loading={loading} />
+                                <Col xs={24} sm={12} md={6}>
+                                    <StatCard title="Period Purchases" value={<Money value={stats.period_purchase} />} tone={TONES.purchase} loading={loading} icon={<MedicineBoxOutlined />} />
                                 </Col>
-                                <Col xs={12} md={6}>
-                                    <StatCard title="Receivables" value={stats.receivables} tone="#ea580c" loading={loading} />
-                                </Col>
-                            </>
-                        )}
-                        {!isMr && (
-                            <>
-                                <Col xs={12} md={6}>
-                                    <StatCard title="Payables" value={stats.payables} tone="#9333ea" loading={loading} />
-                                </Col>
-                                <Col xs={12} md={6}>
-                                    <StatCard title="Low Stock Items" value={stats.low_stock} suffix={stats.low_stock > 0 ? <WarningOutlined style={{ color: '#ef4444' }} /> : ''} tone={stats.low_stock > 0 ? "#ef4444" : "#64748b"} loading={loading} />
-                                </Col>
-                                <Col xs={12} md={6}>
-                                    <StatCard title="Expiring Batches" value={stats.expiring_batches} suffix="batches" tone={stats.expiring_batches > 0 ? "#f59e0b" : "#64748b"} loading={loading} />
-                                </Col>
-                                <Col xs={12} md={6}>
-                                    <StatCard title="Total Products" value={stats.products} suffix="items" tone="#6366f1" loading={loading} />
+                                <Col xs={24} sm={12} md={6}>
+                                    <StatCard title="Receivables" value={<Money value={stats.receivables} />} tone="#ea580c" loading={loading} icon={<WalletOutlined />} />
                                 </Col>
                             </>
                         )}
                     </Row>
+                    
+                    {!isMr && (
+                    <Row gutter={[16, 16]}>
+                         <Col xs={24} sm={12} md={6}>
+                            <StatCard title="Payables" value={<Money value={stats.payables} />} tone="#9333ea" loading={loading} icon={<WalletOutlined />} />
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <StatCard title="Low Stock" value={stats.low_stock} tone={stats.low_stock > 0 ? "#ef4444" : "#64748b"} loading={loading} icon={<WarningOutlined />} />
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <StatCard title="Expiring Soon" value={stats.expiring_batches} tone={stats.expiring_batches > 0 ? "#f59e0b" : "#64748b"} loading={loading} icon={<AlertOutlined />} />
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <StatCard title="Active Products" value={stats.products} tone="#6366f1" loading={loading} icon={<MedicineBoxOutlined />} />
+                        </Col>
+                    </Row>
+                    )}
 
                     <Row gutter={[16, 16]}>
                         <Col xs={24} lg={12}>
-                            <Card title="Recent Sales" loading={loading} extra={<Button type="link" href={appUrl('/app/sales/invoices')}>View All</Button>}>
+                            <Card title="Recent Sales" size="small" loading={loading} extra={<Button type="link" size="small" href={appUrl('/app/sales/invoices')}>View All</Button>}>
                                 <Table
                                     rowKey="id"
                                     size="small"
-                                    scroll={{ x: 500 }}
+                                    scroll={{ x: 400 }}
                                     pagination={false}
                                     dataSource={data?.recent_sales?.slice(0, 5) || []}
                                     columns={[
-                                        { title: 'Invoice', dataIndex: 'invoice_no', width: 120 },
-                                        { title: 'Customer', dataIndex: 'customer_name', render: (v) => <strong style={{color: '#1e293b'}}>{v || 'Walk-in'}</strong> },
+                                        { title: 'Invoice', dataIndex: 'invoice_no', width: 100 },
+                                        { title: 'Customer', dataIndex: 'customer_name', render: (v) => <span style={{fontWeight: 500}}>{v || 'Walk-in'}</span> },
                                         {
-                                            title: 'Status', dataIndex: 'payment_status', width: 100,
+                                            title: 'Status', dataIndex: 'payment_status', width: 90,
                                             render: (v) => (
-                                                <Tag color={v === 'paid' ? 'success' : v === 'partial' ? 'warning' : 'error'} style={{ borderRadius: 12, padding: '0 8px' }}>
+                                                <Tag color={v === 'paid' ? 'success' : v === 'partial' ? 'warning' : 'error'} style={{ borderRadius: 10, fontSize: 10 }}>
                                                     {v?.toUpperCase()}
                                                 </Tag>
                                             ),
                                         },
-                                        { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 120, render: (v) => <Money value={v} /> },
+                                        { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 100, render: (v) => <Money value={v} /> },
                                     ]}
                                 />
                             </Card>
                         </Col>
                         <Col xs={24} lg={12}>
                             {!isMr && (
-                                <Card title="Recent Purchases" loading={loading} extra={<Button type="link" href={appUrl('/app/purchases/bills')}>View All</Button>}>
+                                <Card title="Recent Purchases" size="small" loading={loading} extra={<Button type="link" size="small" href={appUrl('/app/purchases/bills')}>View All</Button>}>
                                     <Table
                                         rowKey="id"
                                         size="small"
-                                        scroll={{ x: 500 }}
+                                        scroll={{ x: 400 }}
                                         pagination={false}
                                         dataSource={data?.recent_purchases?.slice(0, 5) || []}
                                         columns={[
-                                            { title: 'Bill', dataIndex: 'purchase_no', width: 120 },
-                                            { title: 'Supplier', dataIndex: 'supplier_name', render: (v) => <strong style={{color: '#1e293b'}}>{v}</strong> },
+                                            { title: 'Bill', dataIndex: 'purchase_no', width: 100 },
+                                            { title: 'Supplier', dataIndex: 'supplier_name', render: (v) => <span style={{fontWeight: 500}}>{v}</span> },
                                             {
-                                                title: 'Status', dataIndex: 'payment_status', width: 100,
+                                                title: 'Status', dataIndex: 'payment_status', width: 90,
                                                 render: (v) => (
-                                                    <Tag color={v === 'paid' ? 'success' : v === 'partial' ? 'warning' : 'error'} style={{ borderRadius: 12, padding: '0 8px' }}>
+                                                    <Tag color={v === 'paid' ? 'success' : v === 'partial' ? 'warning' : 'error'} style={{ borderRadius: 10, fontSize: 10 }}>
                                                         {v?.toUpperCase()}
                                                     </Tag>
                                                 ),
                                             },
-                                            { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 120, render: (v) => <Money value={v} /> },
+                                            { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 100, render: (v) => <Money value={v} /> },
                                         ]}
                                     />
                                 </Card>
@@ -214,19 +215,19 @@ export function DashboardPage() {
         },
         !isMr && {
             key: 'analytics',
-            label: <span style={{ fontWeight: 600 }}><LineChartOutlined /> Analytics</span>,
+            label: <span style={{ fontWeight: 600 }}>Analytics</span>,
             children: (
                 <div className="page-stack" style={{ marginTop: 16 }}>
                     <Row gutter={[16, 16]}>
                         <Col xs={24} xl={15}>
                             <Card
-                                title="Sales vs Purchases (Last 6 Months)"
+                                title="Sales vs Purchases"
+                                size="small"
                                 loading={loading}
-                                style={{ height: '100%' }}
                             >
                                 <BarChart
                                     data={trendBars}
-                                    height={320}
+                                    height={280}
                                     legend={['Sales', 'Purchases']}
                                     colors={[TONES.sales, TONES.purchase]}
                                 />
@@ -234,14 +235,14 @@ export function DashboardPage() {
                         </Col>
                         <Col xs={24} xl={9}>
                             <Card
-                                title="Invoice Payment Status"
+                                title="Payment Distribution"
+                                size="small"
                                 loading={loading}
-                                style={{ height: '100%' }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 320 }}>
+                                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 280 }}>
                                     {pieData.length > 0
-                                        ? <DonutChart data={pieData} size={220} />
-                                        : <Empty description="No invoices in period" />
+                                        ? <DonutChart data={pieData} size={180} />
+                                        : <Empty description="No data" />
                                     }
                                 </div>
                             </Card>
@@ -249,28 +250,27 @@ export function DashboardPage() {
                     </Row>
                     <Row gutter={[16, 16]}>
                         <Col xs={24}>
-                            <Card title="Top Selling Products" loading={loading}>
+                            <Card title="Top Performing Products" size="small" loading={loading}>
                                 <Table
                                     rowKey="id"
                                     scroll={{ x: 500 }}
                                     pagination={false}
                                     dataSource={topProducts}
                                     columns={[
-                                        { title: 'Product', dataIndex: 'name', render: (v) => <strong style={{color: '#1e293b'}}>{v}</strong> },
+                                        { title: 'Product', dataIndex: 'name', render: (v) => <span style={{fontWeight: 500}}>{v}</span> },
                                         {
-                                            title: 'Qty Sold',
+                                            title: 'Qty',
                                             dataIndex: 'quantity',
                                             align: 'right',
-                                            width: 100,
+                                            width: 80,
                                             render: (v) => (+v).toFixed(0),
                                         },
                                         {
-                                            title: 'Revenue',
+                                            title: 'Revenue Distribution',
                                             dataIndex: 'amount',
-                                            width: 400,
                                             render: (v) => (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                    <span style={{ minWidth: 100, textAlign: 'right', fontWeight: 600 }}>
+                                                    <span style={{ minWidth: 90, textAlign: 'right', fontWeight: 600 }}>
                                                         <Money value={v || 0} />
                                                     </span>
                                                     <div style={{ flex: 1 }}>
@@ -280,7 +280,7 @@ export function DashboardPage() {
                                             ),
                                         },
                                     ]}
-                                    locale={{ emptyText: <Empty description="No posted sales in this period" /> }}
+                                    locale={{ emptyText: <Empty description="No sales data" /> }}
                                     size="small"
                                 />
                             </Card>
@@ -293,51 +293,48 @@ export function DashboardPage() {
             key: 'alerts',
             label: (
                 <span style={{ fontWeight: 600, color: isAlertsHigh ? '#ef4444' : undefined }}>
-                    <AlertOutlined /> Alerts {isAlertsHigh && <Tag color="error" style={{ marginLeft: 8, borderRadius: 12 }}>!</Tag>}
+                    Alerts {isAlertsHigh && <Badge count={stats.low_stock + stats.expiring_batches} size="small" style={{ marginLeft: 4 }} />}
                 </span>
             ),
             children: (
                 <div className="page-stack" style={{ marginTop: 16 }}>
                     <Row gutter={[16, 16]}>
                         <Col xs={24} xl={12}>
-                            <Card title="Low Stock Lines" loading={loading} extra={<Tag color="error" style={{ borderRadius: 12 }}>{stats.low_stock || 0} items</Tag>}>
+                            <Card title="Low Stock Items" size="small" loading={loading}>
                                 <Table
                                     rowKey="id"
                                     size="small"
-                                    scroll={{ x: 400 }}
+                                    scroll={{ x: 300 }}
                                     pagination={false}
                                     dataSource={data?.low_stock_rows || []}
                                     columns={[
-                                        { title: 'Product', dataIndex: 'name', render: (v) => <strong style={{color: '#1e293b'}}>{v}</strong> },
+                                        { title: 'Product', dataIndex: 'name', render: (v) => <span style={{fontWeight: 500}}>{v}</span> },
                                         {
-                                            title: 'Stock vs Reorder', dataIndex: 'stock_on_hand', width: 220,
+                                            title: 'Stock / Min', dataIndex: 'stock_on_hand', width: 140,
                                             render: (v, r) => (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                    <Tag color="error" style={{ borderRadius: 12, minWidth: 40, textAlign: 'center' }}>{(+v).toFixed(0)}</Tag>
-                                                    <span style={{ color: '#64748b', fontSize: 12 }}>/ {(+r.reorder_level).toFixed(0)} min</span>
-                                                </div>
+                                                <Space>
+                                                    <Tag color="error" style={{ borderRadius: 6 }}>{(+v).toFixed(0)}</Tag>
+                                                    <span style={{ color: '#94a3b8' }}>/ {(+r.reorder_level).toFixed(0)}</span>
+                                                </Space>
                                             ),
                                         },
                                     ]}
-                                    locale={{ emptyText: <Empty description="Stock levels are healthy" /> }}
                                 />
                             </Card>
                         </Col>
                         <Col xs={24} xl={12}>
-                            <Card title="Expiry Watch (next 90 days)" loading={loading} extra={<Tag color="warning" style={{ borderRadius: 12 }}>{stats.expiring_batches || 0} batches</Tag>}>
+                            <Card title="Expiry Watch" size="small" loading={loading}>
                                 <Table
                                     rowKey="id"
                                     size="small"
-                                    scroll={{ x: 400 }}
+                                    scroll={{ x: 300 }}
                                     pagination={false}
                                     dataSource={data?.expiry_rows || []}
                                     columns={[
-                                        { title: 'Product', dataIndex: 'name', render: (v) => <strong style={{color: '#1e293b'}}>{v}</strong> },
-                                        { title: 'Batch', dataIndex: 'batch_no', width: 110 },
-                                        { title: 'Expires', dataIndex: 'expires_at', width: 120, render: (v) => <span style={{ color: '#f59e0b', fontWeight: 600 }}>{v}</span> },
-                                        { title: 'Qty', dataIndex: 'quantity_available', align: 'right', width: 80 },
+                                        { title: 'Product', dataIndex: 'name', render: (v) => <span style={{fontWeight: 500}}>{v}</span> },
+                                        { title: 'Batch', dataIndex: 'batch_no', width: 90 },
+                                        { title: 'Expires', dataIndex: 'expires_at', width: 100, render: (v) => <span style={{ color: '#f59e0b', fontWeight: 600 }}>{v}</span> },
                                     ]}
-                                    locale={{ emptyText: <Empty description="No batches expiring soon" /> }}
                                 />
                             </Card>
                         </Col>
@@ -349,96 +346,67 @@ export function DashboardPage() {
 
     return (
         <div className="page-stack">
-            {/* ── Hero Section (Inspired by Legacy) ─────────────────────────── */}
-            <Card className="hero-gradient-card" style={{ overflow: 'hidden', position: 'relative', border: 0, borderRadius: 16 }} styles={{ body: { padding: '20px 24px' } }}>
-                {/* Decorative background element */}
-                <div style={{ position: 'absolute', top: -50, right: -50, width: 200, height: 200, background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)', borderRadius: '50%' }}></div>
-                
-                <Row align="middle" gutter={[16, 16]}>
-                    <Col xs={24} lg={14} style={{ zIndex: 1 }}>
-                        <Tag color="cyan" style={{ marginBottom: 12, border: 0, background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>
-                            <ShopOutlined /> Overview
-                        </Tag>
-                        <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px 0', color: '#fff', letterSpacing: '-0.01em' }}>
-                            {appName}
-                        </h1>
-                        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', margin: '0 0 16px 0', maxWidth: 500, lineHeight: 1.4 }}>
-                            Track your sales, manage purchases, and monitor your inventory alerts from one unified view.
-                        </p>
-                        
-                        <Space wrap size="small">
-                            <Button type="primary" href={appUrl('/app/sales/pos')} style={{ background: '#fff', color: '#0891b2', fontWeight: 600, border: 0 }} icon={<PlusOutlined />}>
-                                New Sale / POS
-                            </Button>
-                            {!isMr && (
-                                <Button ghost href={appUrl('/app/purchases/entry')} style={{ borderColor: 'rgba(255,255,255,0.4)', color: '#fff', fontWeight: 600 }} icon={<ShopOutlined />}>
-                                    Purchase Entry
-                                </Button>
-                            )}
-                        </Space>
-                    </Col>
-                    
-                    <Col xs={24} lg={10} style={{ zIndex: 1 }}>
-                        <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', borderRadius: 12, padding: 16, border: '1px solid rgba(255,255,255,0.2)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Performance</span>
-                                {!isMr && (
-                                    <Segmented 
-                                        options={['Sales', 'Purchases']} 
-                                        value={heroToggle} 
-                                        onChange={setHeroToggle} 
-                                        style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: 12 }}
-                                    />
-                                )}
-                            </div>
-                            
-                            <div>
-                                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}>
-                                    {heroToggle === 'Sales' ? "Period Sales Value" : "Period Purchase Value"}
-                                </div>
-                                <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', lineHeight: 1, textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-                                    <Money value={heroToggle === 'Sales' ? stats.period_sales : stats.period_purchase} />
-                                </div>
-                                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
-                                    For {range?.[0]?.format('MMM D')} - {range?.[1]?.format('MMM D, YYYY')}
-                                </div>
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
-            </Card>
-
-            {/* ── Filtering Row ─────────────────────────────────────────────── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 16, fontWeight: 600, color: '#1e293b' }}>
-                    Dashboard Metrics
+            <div className="dashboard-header-modern">
+                <div>
+                    <Typography.Title level={4} style={{ margin: 0 }}>Dashboard</Typography.Title>
+                    <Typography.Text type="secondary">Welcome back to {appName} management portal</Typography.Text>
                 </div>
                 <Space wrap>
                     {!user?.medical_representative_id && medicalRepresentatives.length > 0 && (
                         <Select
                             allowClear
                             placeholder="All MRs"
-                            style={{ minWidth: 200 }}
+                            size="small"
+                            style={{ minWidth: 160 }}
                             value={medicalRepresentativeId}
                             onChange={setMedicalRepresentativeId}
                             options={medicalRepresentatives.map((m) => ({ value: m.id, label: m.name }))}
                         />
                     )}
-                    <DatePicker.RangePicker value={range} onChange={setRange} />
-                    <Button icon={<ReloadOutlined />} onClick={loadSummary}>Refresh</Button>
+                    <DatePicker.RangePicker size="small" value={range} onChange={setRange} />
+                    <Button size="small" icon={<ReloadOutlined />} onClick={loadSummary}>Sync</Button>
                 </Space>
             </div>
 
-            {/* ── Tabs Content ──────────────────────────────────────────────── */}
-            <Card className="glass-card" styles={{ body: { padding: '8px 24px 24px' } }}>
-                <Tabs 
-                    defaultActiveKey="overview" 
-                    items={items} 
-                    size="large"
-                    animated
-                    tabBarStyle={{ marginBottom: 0, borderBottom: '1px solid #f1f5f9' }}
-                />
+            <Card className="dashboard-hero-compact glass-card">
+                <Row gutter={[24, 24]} align="middle">
+                    <Col xs={24} md={14}>
+                        <div className="hero-welcome">
+                            <Tag color="blue" style={{ borderRadius: 4, marginBottom: 8 }}>Operational Summary</Tag>
+                            <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>Pharmacy Insights</Typography.Title>
+                            <Typography.Text style={{ opacity: 0.8 }}>
+                                Track your inventory health, sales performance and financial status in real-time.
+                            </Typography.Text>
+                            <div style={{ marginTop: 20 }}>
+                                <Space>
+                                    <Button type="primary" href={appUrl('/app/sales/pos')} icon={<PlusOutlined />}>POS</Button>
+                                    <Button href={appUrl('/app/inventory/products')}>Inventory</Button>
+                                </Space>
+                            </div>
+                        </div>
+                    </Col>
+                    <Col xs={24} md={10}>
+                        <div className="hero-quick-stats">
+                            <div className="quick-stat-item">
+                                <span className="label">Period Revenue</span>
+                                <span className="value"><Money value={stats.period_sales} /></span>
+                            </div>
+                            <div className="quick-stat-divider" />
+                            <div className="quick-stat-item">
+                                <span className="label">Outstanding</span>
+                                <span className="value" style={{ color: '#ef4444' }}><Money value={stats.receivables} /></span>
+                            </div>
+                        </div>
+                    </Col>
+                </Row>
             </Card>
+
+            <Tabs 
+                defaultActiveKey="overview" 
+                items={items} 
+                className="dashboard-tabs"
+                animated
+            />
         </div>
     );
 }

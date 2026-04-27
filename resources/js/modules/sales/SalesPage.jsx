@@ -3,7 +3,6 @@ import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select,
 import { PlusOutlined, PrinterOutlined, QrcodeOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
-import { DualDatePicker } from '../../core/components/DualDatePicker';
 import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
 import { QuickProductModal } from '../../core/components/QuickProductModal';
@@ -288,7 +287,7 @@ export function SalesPage() {
                             onChange={setMedicalRepresentativeId}
                             options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
                         />
-                        <DualDatePicker value={invoiceDate} onChange={setInvoiceDate} />
+                        <DatePicker value={invoiceDate} onChange={setInvoiceDate} className="full-width" placeholder="Invoice Date" />
                         <InputNumber id="pos-paid-amount" min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
                     </div>
                     <div className="pos-walkin-strip">

@@ -72,6 +72,18 @@ class ProductController extends Controller
         return response()->json(['message' => 'Product deleted.']);
     }
 
+    public function toggleStatus(Request $request, Product $product): JsonResponse
+    {
+        $this->authorize('update', $product);
+
+        $product->update([
+            'is_active' => $request->boolean('is_active'),
+            'updated_by' => $request->user()->id,
+        ]);
+
+        return response()->json(['message' => 'Status updated.']);
+    }
+
     public function meta(): JsonResponse
     {
         $this->authorize('viewAny', Product::class);

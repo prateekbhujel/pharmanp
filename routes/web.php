@@ -105,6 +105,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::delete('/inventory/masters/{master}/{id}', [InventoryMasterController::class, 'destroy'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.destroy');
         Route::post('/inventory/masters/{master}/{id}/restore', [InventoryMasterController::class, 'restore'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.restore');
         Route::apiResource('inventory/products', ProductController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::patch('/inventory/products/{product}/status', [ProductController::class, 'toggleStatus'])->name('inventory.products.status');
 
         Route::get('/suppliers/options', [SupplierController::class, 'options'])->name('suppliers.options');
         Route::apiResource('suppliers', SupplierController::class)->only(['index', 'store', 'update', 'destroy']);

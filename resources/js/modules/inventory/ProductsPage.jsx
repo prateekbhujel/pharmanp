@@ -8,6 +8,7 @@ import { Money } from '../../core/components/Money';
 import { PageHeader } from '../../core/components/PageHeader';
 import { ServerTable } from '../../core/components/ServerTable';
 import { StatusTag } from '../../core/components/StatusTag';
+import { StatusToggle } from '../../core/components/StatusToggle';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -235,7 +236,7 @@ export function ProductsPage() {
         { title: 'Stock Qty', dataIndex: 'stock_on_hand', field: 'stock_on_hand', sorter: true, align: 'right', width: 120 },
         { title: 'MRP', dataIndex: 'mrp', field: 'mrp', sorter: true, align: 'right', width: 120, render: (value) => <Money value={value} /> },
         { title: 'CC Rate', dataIndex: 'cc_rate', align: 'right', width: 110, render: (value) => `${Number(value || 0).toFixed(2)}%` },
-        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value) => <StatusTag active={value} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value, row) => <StatusToggle value={value} id={row.id} endpoint={endpoints.products} /> },
         {
             title: 'Action',
             key: 'actions',
