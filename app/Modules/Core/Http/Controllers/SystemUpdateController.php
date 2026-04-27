@@ -11,8 +11,8 @@ class SystemUpdateController extends Controller
     {
         return response()->json([
             'data' => [
-                'current_version' => trim((string) @file_get_contents(base_path('VERSION'))) ?: '0.1.0',
-                'channel' => config('app.env') === 'production' ? 'stable' : 'development',
+                'current_version' => '1.0.0',
+                'channel' => config('app.env') == 'production' ? 'stable' : 'development',
                 'strategy' => 'Manual backup-first update. No production git pull or migration is run from the browser.',
                 'commands' => [
                     'backup' => 'php artisan pharmanp:backup',

@@ -5,6 +5,7 @@ namespace App\Modules\Inventory\Services;
 use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\StockAdjustment;
+use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -107,6 +108,17 @@ class StockAdjustmentService
 
     private function isInbound(string $type): bool
     {
-        return in_array($type, ['add', 'return'], true);
+        if (in_array($type, ['add', 'return'], true)) {
+            return true;
+        }
+
+        if (in_array($type, ['subtract', 'expired', 'damaged'], true)) {
+            return false;
+        }
+
+        return DropdownOption::query()
+            ->forAlias('adjustment_type')
+            ->where('name', $type)
+            ->value('data') === 'in';
     }
 }

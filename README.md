@@ -25,6 +25,12 @@ php artisan serve
 
 Open `/setup` first, create company/store/admin, then sign in. URLs do not need `/public`; the root entrypoint and `.htaccess` forward requests to Laravel safely.
 
+For a one-command local install after cloning into `htdocs/pharmanp`:
+
+```bash
+bash scripts/install-local.sh
+```
+
 Default setup form values are filled for local speed:
 
 - Admin email: `pratik@admin.com`
@@ -56,5 +62,11 @@ The frontend still expects a running Laravel backend from the same app URL. Prod
 PharmaNP is shipped as a standalone Laravel application. A pharmacy installs it, completes the first-run setup, configures branding/fiscal year/roles, and begins daily operation from the same codebase. It uses one database with company, branch and store scoped columns where the workflow needs them, which keeps shared-hosting deployment simple while still protecting data boundaries inside the app.
 
 ## Deployment
+
+The live shared-hosting install is configured at:
+
+```text
+https://pharmanp.pratikbhujel.com.np
+```
 
 Shared-hosting deployment notes and the GitHub Actions secret list are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).

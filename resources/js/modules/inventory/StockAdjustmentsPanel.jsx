@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
+import { QuickDropdownOptionModal } from '../../core/components/QuickDropdownOptionModal';
+import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { ServerTable } from '../../core/components/ServerTable';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 
-const adjustmentTypes = [
+const defaultAdjustmentTypes = [
     { value: 'add', label: 'Add Stock' },
     { value: 'subtract', label: 'Subtract Stock' },
     { value: 'expired', label: 'Expired Stock' },
@@ -24,12 +27,16 @@ export function StockAdjustmentsPanel() {
     const [editing, setEditing] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [adjustmentTypes, setAdjustmentTypes] = useState(defaultAdjustmentTypes);
+    const [quickProductOpen, setQuickProductOpen] = useState(false);
+    const [quickAdjustmentOpen, setQuickAdjustmentOpen] = useState(false);
     const table = useServerTable({ endpoint: endpoints.stockAdjustments });
     const productId = Form.useWatch('product_id', form);
 
     useEffect(() => {
         searchProducts('');
         loadBatches();
+        loadAdjustmentTypes();
         form.setFieldsValue({ adjustment_date: dayjs(), adjustment_type: 'add' });
     }, []);
 
@@ -48,6 +55,15 @@ export function StockAdjustmentsPanel() {
     async function loadBatches(product_id = null) {
         const { data } = await http.get(endpoints.inventoryBatchOptions, { params: { product_id } });
         setBatches(data.data || []);
+    }
+
+    async function loadAdjustmentTypes() {
+        const { data } = await http.get(endpoints.dropdownOptions, { params: { alias: 'adjustment_type' } });
+        const activeOptions = (data.data || [])
+            .filter((option) => option.alias === 'adjustment_type' && option.is_active)
+            .map((option) => ({ value: option.name, label: option.name, effect: option.data }));
+
+        setAdjustmentTypes(activeOptions.length ? activeOptions : defaultAdjustmentTypes);
     }
 
     function productOptions() {
@@ -108,7 +124,7 @@ export function StockAdjustmentsPanel() {
     function openCreate() {
         setEditing(null);
         form.resetFields();
-        form.setFieldsValue({ adjustment_date: dayjs(), adjustment_type: 'add', quantity: 1 });
+        form.setFieldsValue({ adjustment_date: dayjs(), adjustment_type: adjustmentTypes[0]?.value || 'add', quantity: 1 });
         setModalOpen(true);
     }
 
@@ -129,7 +145,7 @@ export function StockAdjustmentsPanel() {
         { title: 'Date', dataIndex: 'adjustment_date', width: 130 },
         { title: 'Product', dataIndex: ['product', 'name'], width: 260 },
         { title: 'Batch', dataIndex: ['batch', 'batch_no'], width: 150 },
-        { title: 'Type', dataIndex: 'adjustment_type', width: 150, render: (value) => <Tag>{adjustmentTypes.find((item) => item.value === value)?.label || value}</Tag> },
+        { title: 'Type', dataIndex: 'adjustment_type', width: 170, render: (value) => <Tag>{adjustmentTypes.find((item) => item.value === value)?.label || defaultAdjustmentTypes.find((item) => item.value === value)?.label || value}</Tag> },
         { title: 'Qty', dataIndex: 'quantity', align: 'right', width: 110 },
         { title: 'Reason', dataIndex: 'reason', width: 300 },
         { title: 'By', dataIndex: ['adjusted_by', 'name'], width: 150 },
@@ -177,7 +193,19 @@ export function StockAdjustmentsPanel() {
                 <Form form={form} layout="vertical" onFinish={submit}>
                     <div className="form-grid">
                         <Form.Item name="product_id" label="Product" rules={[{ required: true }]}>
-                            <Select showSearch filterOption={false} onSearch={searchProducts} options={productOptions()} />
+                            <Select
+                                showSearch
+                                filterOption={false}
+                                onFocus={() => searchProducts('')}
+                                onSearch={searchProducts}
+                                options={productOptions()}
+                                dropdownRender={(menu) => (
+                                    <>
+                                        {menu}
+                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick add product</Button>
+                                    </>
+                                )}
+                            />
                         </Form.Item>
                         <Form.Item name="batch_id" label="Batch" rules={[{ required: true }]}>
                             <Select showSearch optionFilterProp="label" options={batchOptions()} />
@@ -185,18 +213,46 @@ export function StockAdjustmentsPanel() {
                     </div>
                     <div className="form-grid form-grid-3">
                         <Form.Item name="adjustment_type" label="Adjustment Type" rules={[{ required: true }]}>
-                            <Select options={adjustmentTypes} />
+                            <Select
+                                options={adjustmentTypes}
+                                dropdownRender={(menu) => (
+                                    <>
+                                        {menu}
+                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickAdjustmentOpen(true)}>Quick add adjustment type</Button>
+                                    </>
+                                )}
+                            />
                         </Form.Item>
                         <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>
                             <InputNumber min={0.001} className="full-width" />
                         </Form.Item>
                         <Form.Item name="adjustment_date" label="Date" rules={[{ required: true }]}>
-                            <DatePicker className="full-width" />
+                            <SmartDatePicker className="full-width" />
                         </Form.Item>
                     </div>
                     <Form.Item name="reason" label="Reason"><Input placeholder="Write short reason" /></Form.Item>
                 </Form>
             </Modal>
+            <QuickProductModal
+                open={quickProductOpen}
+                onClose={() => setQuickProductOpen(false)}
+                onCreated={(product) => {
+                    setProducts((current) => [product, ...current.filter((item) => item.id !== product.id)]);
+                    form.setFieldValue('product_id', product.id);
+                    loadBatches(product.id);
+                }}
+            />
+            <QuickDropdownOptionModal
+                alias="adjustment_type"
+                title="Quick Add Adjustment Type"
+                open={quickAdjustmentOpen}
+                onClose={() => setQuickAdjustmentOpen(false)}
+                onCreated={(option) => {
+                    const next = { value: option.name, label: option.name, effect: option.data };
+                    setAdjustmentTypes((current) => [next, ...current.filter((item) => item.value !== next.value)]);
+                    form.setFieldValue('adjustment_type', next.value);
+                }}
+            />
         </div>
     );
 }

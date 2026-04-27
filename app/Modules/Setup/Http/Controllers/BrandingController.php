@@ -62,6 +62,9 @@ class BrandingController extends Controller
             'accent_color' => '#0f766e',
             'layout' => 'vertical',
             'sidebar_default_collapsed' => true,
+            'country_code' => 'NP',
+            'currency_symbol' => 'NPR',
+            'calendar_type' => 'ad',
         ]);
 
         foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {

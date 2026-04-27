@@ -937,6 +937,27 @@ body {
     font-size: 11px;
 }
 
+.payment-qr-preview {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding: 10px;
+}
+
+.payment-qr-preview img {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    height: 82px;
+    object-fit: contain;
+    padding: 6px;
+    width: 82px;
+}
+
 .transaction-footer {
     align-items: center;
     border-top: 1px solid #e5e7eb;

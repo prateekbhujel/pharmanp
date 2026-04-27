@@ -1,8 +1,6 @@
 <IfModule mod_rewrite.c>
     Options -MultiViews -Indexes
     RewriteEngine On
-    RewriteBase /pharmanp/
-
     # Shared-hosting entrypoint: expose the project root, but serve through /public.
     # Sensitive Laravel folders and project files must never be web-readable.
     RewriteRule ^(?:app|bootstrap|config|database|docs|node_modules|resources|routes|storage|tests|vendor)(/|$) - [F,L]

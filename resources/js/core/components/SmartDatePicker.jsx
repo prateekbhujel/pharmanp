@@ -2,7 +2,6 @@ import React from 'react';
 import { DatePicker } from 'antd';
 import { useBranding } from '../context/BrandingContext';
 import { NepaliDatePicker } from './NepaliDatePicker';
-import dayjs from 'dayjs';
 
 export function SmartDatePicker(props) {
     const { branding } = useBranding();

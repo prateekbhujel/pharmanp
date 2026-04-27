@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Badge, Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Space, Statistic, Table } from 'antd';
+import { App, Badge, Button, Card, Col, Form, Input, InputNumber, Row, Select, Space, Statistic, Table } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Money } from '../../core/components/Money';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { QuickDropdownOptionModal } from '../../core/components/QuickDropdownOptionModal';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 
@@ -102,7 +103,7 @@ export function ExpensesPanel() {
         <div className="page-stack">
             <Card>
                 <div className="table-toolbar table-toolbar-wide">
-                    <DatePicker.RangePicker value={range} onChange={setRange} />
+                    <SmartDatePicker.RangePicker value={range} onChange={setRange} />
                     <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()}>New Expense</Button>
                 </div>
                 <Table
@@ -126,7 +127,7 @@ export function ExpensesPanel() {
                 footer={<Button type="primary" onClick={() => form.submit()} block>Save Expense</Button>}
             >
                 <Form form={form} layout="vertical" onFinish={submit}>
-                    <Form.Item name="expense_date" label="Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
+                    <Form.Item name="expense_date" label="Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
                     <Form.Item name="expense_category_id" label="Category" rules={[{ required: true }]}>
                         <Select
                             showSearch

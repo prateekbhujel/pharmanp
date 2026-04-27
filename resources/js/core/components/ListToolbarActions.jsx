@@ -1,10 +1,12 @@
 import React from 'react';
 import { Button, Space } from 'antd';
 import { FileExcelOutlined, FilePdfOutlined, UploadOutlined } from '@ant-design/icons';
-import { appUrl } from '../utils/url';
+import { appUrl, basePath } from '../utils/url';
 
 function urlWithParams(path, params = {}) {
-    const url = new URL(appUrl(path), window.location.origin);
+    const alreadyScoped = basePath && path.startsWith(`${basePath}/`);
+    const resolvedPath = alreadyScoped || path.startsWith('http') ? path : appUrl(path);
+    const url = new URL(resolvedPath, window.location.origin);
 
     Object.entries(params || {}).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {

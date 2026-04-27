@@ -125,7 +125,7 @@ export function AppShell() {
     const { user: authUser } = useAuth();
     const { branding: brandingData, loading: brandingLoading } = useBranding();
     const { colorPrimary } = useTheme();
-    
+
     const [collapsed, setCollapsed] = useState(true);
     const [isCompactViewport, setIsCompactViewport] = useState(false);
     const [pathname, setPathname] = useState(currentAppPath);
@@ -218,7 +218,7 @@ export function AppShell() {
         const items = [
             { key: 'category-main', label: 'Main Menu', disabled: true, className: 'menu-category' },
             { key: register('dashboard', appUrl('/app')), icon: <DashboardOutlined />, label: 'Dashboard', show: can(user, 'dashboard.view') },
-            
+
             {
                 key: 'inventory',
                 icon: <MedicineBoxOutlined />,
@@ -357,7 +357,7 @@ export function AppShell() {
             return [{ key: 'empty', disabled: true, label: <div className="notification-empty">No stock alerts right now</div> }];
         }
         const items = [];
-        
+
         // Header with Mark All as Read
         items.push({
             key: 'header',
@@ -365,9 +365,9 @@ export function AppShell() {
             label: (
                 <div className="notification-tray-header">
                     <strong>Notifications</strong>
-                    <Button 
-                        type="link" 
-                        size="small" 
+                    <Button
+                        type="link"
+                        size="small"
                         onClick={(e) => {
                             e.stopPropagation();
                             setAlerts({ loading: false, lowStockRows: [], expiryRows: [], count: 0 });
@@ -396,7 +396,7 @@ export function AppShell() {
                 });
             });
         }
-        
+
         if (alerts.lowStockRows.length > 0 && alerts.expiryRows.length > 0) {
             items.push({ type: 'divider' });
         }
@@ -417,7 +417,7 @@ export function AppShell() {
                 });
             });
         }
-        
+
         items.push({ type: 'divider' });
         items.push({
             key: 'footer',
@@ -464,31 +464,31 @@ export function AppShell() {
     return (
         <Layout className={`app-shell app-shell-${layout}`}>
             {layout === 'vertical' && (
-            <Sider 
-                width={260} 
-                collapsed={collapsed} 
-                className="app-sidebar" 
-                breakpoint="lg" 
-                collapsedWidth={72} 
-                trigger={null}
-            >
-                <div className="main-sidebar-header">
-                    <a href={appUrl('/app')} className="header-logo">
-                        {logo ? <img src={logo} alt={appName} className="brand-logo" /> : <div className="brand-mark"><SafetyCertificateOutlined /></div>}
-                        {!collapsed && <strong>{appName}</strong>}
-                    </a>
-                </div>
-                <div className="main-sidebar">
-                    <Menu
-                        mode="inline"
-                        selectedKeys={[selectedMenuKey]}
-                        defaultOpenKeys={openKeys}
-                        items={menuItems}
-                        onClick={navigate}
-                        className="app-menu"
-                    />
-                </div>
-            </Sider>
+                <Sider
+                    width={260}
+                    collapsed={collapsed}
+                    className="app-sidebar"
+                    breakpoint="lg"
+                    collapsedWidth={72}
+                    trigger={null}
+                >
+                    <div className="main-sidebar-header">
+                        <a href={appUrl('/app')} className="header-logo">
+                            {logo ? <img src={logo} alt={appName} className="brand-logo" /> : <div className="brand-mark"><SafetyCertificateOutlined /></div>}
+                            {!collapsed && <strong>{appName}</strong>}
+                        </a>
+                    </div>
+                    <div className="main-sidebar">
+                        <Menu
+                            mode="inline"
+                            selectedKeys={[selectedMenuKey]}
+                            defaultOpenKeys={openKeys}
+                            items={menuItems}
+                            onClick={navigate}
+                            className="app-menu"
+                        />
+                    </div>
+                </Sider>
 
             )}
             <Layout>
@@ -504,8 +504,8 @@ export function AppShell() {
                         )}
                         <div className="search-wrapper" onClick={() => setSearchVisible(true)}>
                             <SearchOutlined className="search-icon-inner" />
-                            <input 
-                                className="search-input-sleek" 
+                            <input
+                                className="search-input-sleek"
                                 placeholder="Search modules, invoices or products..."
                                 onClick={() => setSearchVisible(true)}
                                 readOnly
@@ -530,7 +530,7 @@ export function AppShell() {
                                 <Button type="text" shape="circle" icon={<BellOutlined />} />
                             </Badge>
                         </Dropdown>
-                        
+
                         <Dropdown menu={{ items: profileItems }} trigger={['click']} placement="bottomRight">
                             <div className="user-profile-trigger">
                                 <Avatar size="small" style={{ backgroundColor: colorPrimary }}>{user?.name?.slice(0, 1).toUpperCase()}</Avatar>
@@ -549,19 +549,19 @@ export function AppShell() {
                     <div className="footer-left">
                         <span className="footer-copyright">© {new Date().getFullYear()} <strong>PharmaNP</strong></span>
                         <span className="footer-sep">|</span>
-                        <span className="footer-credit">Developed with excellence by <strong>Prateek Bhujel</strong></span>
+                        <span className="footer-credit">Developed with excellence by <strong>Pratik Bhujel</strong></span>
                     </div>
                     <div className="footer-right">
                         <Space size="middle">
-                            <Typography.Text type="secondary" size="small">v2.4.0 Stable</Typography.Text>
+                            <Typography.Text type="secondary" size="small">v1.0.0 Stable</Typography.Text>
                             <span className="footer-contact">prateekbhujelpb@gmail.com</span>
                         </Space>
                     </div>
                 </div>
             </Layout>
-            <GlobalSearch 
-                visible={searchVisible} 
-                onCancel={() => setSearchVisible(false)} 
+            <GlobalSearch
+                visible={searchVisible}
+                onCancel={() => setSearchVisible(false)}
                 onNavigate={(route) => {
                     if (route.startsWith('/')) {
                         goTo(appUrl(route));

@@ -1,15 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { Badge, Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag } from 'antd';
+import React, { useState } from 'react';
+import { Button, Card, Form, Input, Select, Space, Switch, Table, Tag } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
-import { useApi } from '../../core/hooks/useApi';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { useAuth } from '../../core/auth/AuthProvider';
-import { can } from '../../core/utils/permissions';
-import { appUrl } from '../../core/utils/url';
 
 export function UsersPage() {
     const { user } = useAuth();
@@ -17,7 +14,7 @@ export function UsersPage() {
     const [editingUser, setEditingUser] = useState(null);
     const [userForm] = Form.useForm();
 
-    const userTable = useServerTable(endpoints.users);
+    const userTable = useServerTable({ endpoint: endpoints.users });
     const userLookups = userTable.extra?.lookups || {};
 
     const openUser = (record = null) => {

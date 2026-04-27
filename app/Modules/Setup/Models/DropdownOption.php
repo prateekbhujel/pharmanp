@@ -30,11 +30,23 @@ class DropdownOption extends Model
             'label' => 'Payment Type',
             'supports_data' => false,
         ],
+        'adjustment_type' => [
+            'label' => 'Stock Adjustment Type',
+            'supports_data' => true,
+        ],
         'expense_category' => [
             'label' => 'Expense Category',
             'supports_data' => true,
         ],
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'meta' => 'array',
+            'status' => 'boolean',
+        ];
+    }
 
     // Most dropdowns only need active values, so this keeps controller code short.
     public function scopeActive(Builder $query): Builder

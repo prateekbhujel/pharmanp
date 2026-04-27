@@ -26,6 +26,9 @@ class BrandingSettingsRequest extends FormRequest
             'accent_color' => ['nullable', 'string', 'max:20'],
             'layout' => ['required', 'in:vertical,horizontal'],
             'sidebar_default_collapsed' => ['sometimes', 'boolean'],
+            'country_code' => ['nullable', 'string', 'size:2'],
+            'currency_symbol' => ['nullable', 'string', 'max:20'],
+            'calendar_type' => ['nullable', 'in:ad,bs'],
         ];
     }
 }

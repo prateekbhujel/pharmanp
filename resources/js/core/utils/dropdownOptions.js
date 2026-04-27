@@ -12,8 +12,14 @@ export const fallbackDropdownAliases = {
     sales_type: { label: 'Sales Type', supports_data: false },
     payment_mode: { label: 'Payment Mode', supports_data: true },
     payment_type: { label: 'Payment Type', supports_data: false },
+    adjustment_type: { label: 'Stock Adjustment Type', supports_data: true },
     expense_category: { label: 'Expense Category', supports_data: true },
 };
+
+export const stockEffectOptions = [
+    { value: 'in', label: 'Adds stock' },
+    { value: 'out', label: 'Reduces stock' },
+];
 
 export function dropdownAliasOptions(aliases = fallbackDropdownAliases) {
     return Object.entries(aliases).map(([value, meta]) => ({
@@ -35,6 +41,14 @@ export function dropdownDataField(alias) {
         return {
             label: 'Group Tag',
             placeholder: 'Optional internal grouping',
+        };
+    }
+
+    if (alias === 'adjustment_type') {
+        return {
+            label: 'Stock Effect',
+            options: stockEffectOptions,
+            placeholder: 'Choose stock effect',
         };
     }
 

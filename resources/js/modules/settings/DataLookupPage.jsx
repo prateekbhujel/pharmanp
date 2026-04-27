@@ -6,13 +6,14 @@ import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
 import { dropdownAliasOptions, dropdownDataField, fallbackDropdownAliases } from '../../core/utils/dropdownOptions';
+import { PaymentModePanel } from './PaymentModePanel';
 
 export function DataLookupPage() {
     const { data: dropdownResponse, reload: reloadDropdowns } = useApi(endpoints.dropdownOptions);
     const { data: partyTypes, reload: reloadPartyTypes } = useApi(endpoints.partyTypes);
     const { data: supplierTypes, reload: reloadSupplierTypes } = useApi(endpoints.supplierTypes);
 
-    const dropdownOptions = dropdownResponse?.data || [];
+    const dropdownOptions = Array.isArray(dropdownResponse) ? dropdownResponse : (dropdownResponse?.data || []);
     const dropdownAliases = dropdownResponse?.aliases || fallbackDropdownAliases;
     const aliasOptions = useMemo(() => dropdownAliasOptions(dropdownAliases), [dropdownAliases]);
     const [dropdownAlias, setDropdownAlias] = useState(aliasOptions[0]?.value || 'product_status');
@@ -108,8 +109,13 @@ export function DataLookupPage() {
 
             <Tabs items={[
                 {
+                    key: 'payment-modes',
+                    label: 'Payment Modes / QR',
+                    children: <PaymentModePanel />,
+                },
+                {
                     key: 'dropdowns',
-                    label: 'Dropdown Options',
+                    label: 'General Options',
                     children: (
                         <Card
                             title="Shared Dropdown Options"

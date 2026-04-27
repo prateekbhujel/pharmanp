@@ -2,9 +2,12 @@
 
 namespace App\Modules\Setup\Http\Controllers;
 
+use App\Core\Support\AssetUrl;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 class DropdownOptionController
@@ -40,6 +43,7 @@ class DropdownOptionController
             'alias' => $validated['alias'],
             'name' => trim($validated['name']),
             'data' => $this->cleanDataValue($validated['data'] ?? null),
+            'meta' => $this->metaPayload($request, $validated['meta'] ?? []),
             'status' => (int) ($validated['status'] ?? 1),
         ]);
 
@@ -58,6 +62,7 @@ class DropdownOptionController
             'alias' => $validated['alias'],
             'name' => trim($validated['name']),
             'data' => $this->cleanDataValue($validated['data'] ?? null),
+            'meta' => $this->metaPayload($request, $validated['meta'] ?? ($dropdownOption->meta ?? []), $dropdownOption),
             'status' => (int) ($validated['status'] ?? $dropdownOption->status),
         ]);
 
@@ -98,6 +103,9 @@ class DropdownOptionController
                     ->ignore($ignoreId),
             ],
             'data' => ['nullable', 'string', 'max:255'],
+            'meta' => ['nullable', 'array'],
+            'meta.instructions' => ['nullable', 'string', 'max:1000'],
+            'qr_file' => ['nullable', 'image', 'max:2048'],
             'status' => ['nullable', 'boolean'],
         ]);
     }
@@ -110,6 +118,7 @@ class DropdownOptionController
             'alias_label' => $option->alias_label,
             'name' => $option->name,
             'data' => $option->data,
+            'meta' => $this->resolvedMeta($option),
             'status' => (int) $option->status,
             'is_active' => (bool) $option->status,
         ];
@@ -118,6 +127,38 @@ class DropdownOptionController
     private function cleanDataValue(?string $value): ?string
     {
         return filled($value) ? trim($value) : null;
+    }
+
+    private function metaPayload(Request $request, array $meta, ?DropdownOption $option = null): array
+    {
+        $payload = Arr::where($meta, fn ($value) => filled($value));
+
+        if ($option?->meta && ! $request->has('meta')) {
+            $payload = $option->meta;
+        }
+
+        if ($request->hasFile('qr_file')) {
+            $payload['qr_url'] = $this->storeQrAsset($request->file('qr_file'));
+        } elseif ($option?->meta && isset($option->meta['qr_url']) && ! array_key_exists('qr_url', $payload)) {
+            $payload['qr_url'] = $option->meta['qr_url'];
+        }
+
+        return $payload;
+    }
+
+    private function resolvedMeta(DropdownOption $option): array
+    {
+        $meta = $option->meta ?? [];
+        if (! empty($meta['qr_url'])) {
+            $meta['qr_url'] = AssetUrl::resolve($meta['qr_url']);
+        }
+
+        return $meta;
+    }
+
+    private function storeQrAsset(UploadedFile $file): string
+    {
+        return AssetUrl::publicStorage($file->store('settings/payment-modes', 'public'));
     }
 
     private function linkedUsageCount(DropdownOption $option): int

@@ -7,6 +7,7 @@ import { FormDrawer } from '../../core/components/FormDrawer';
 import { ServerTable } from '../../core/components/ServerTable';
 import { Money } from '../../core/components/Money';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
@@ -589,7 +590,7 @@ export function MrTrackingPage() {
                         </Form.Item>
                         <div className="form-grid">
                             <Form.Item name="visit_date" label="Visit Date" rules={[{ required: true }]}>
-                                <DatePicker className="full-width" />
+                                <SmartDatePicker className="full-width" />
                             </Form.Item>
                             <Form.Item name="status" label="Status" rules={[{ required: true }]}>
                                 <Select options={mrVisitStatusOptions} />
