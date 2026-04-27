@@ -27,6 +27,8 @@ import { appUrl } from '../utils/url';
 import { useTheme } from '../theme/ThemeContext';
 import { useApi } from '../hooks/useApi';
 import { ColorPicker } from 'antd';
+import { GlobalSearch } from '../components/GlobalSearch';
+import { SearchOutlined } from '@ant-design/icons';
 
 const { Header, Sider, Content } = Layout;
 
@@ -101,6 +103,19 @@ export function AppShell() {
     const [collapsed, setCollapsed] = useState(false);
     const [pathname, setPathname] = useState(currentAppPath);
     const [alerts, setAlerts] = useState({ loading: true, lowStockRows: [], expiryRows: [], count: 0 });
+    const [searchVisible, setSearchVisible] = useState(false);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setSearchVisible(true);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     useEffect(() => {
         if (brandingData?.sidebar_default_collapsed !== undefined) {
@@ -454,13 +469,18 @@ export function AppShell() {
                                 <Menu mode="horizontal" selectedKeys={[selectedMenuKey]} items={horizontalMenuItems} onClick={navigate} className="topbar-menu" />
                             </>
                         )}
+                        <Button 
+                            className="search-trigger-btn" 
+                            onClick={() => setSearchVisible(true)}
+                            icon={<SearchOutlined />}
+                        >
+                            <span>Search...</span>
+                            <span className="search-trigger-kbd">
+                                {navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘K' : 'Ctrl+K'}
+                            </span>
+                        </Button>
                     </Space>
                     <Space className="header-content-right" size={18}>
-                        <ColorPicker 
-                            value={colorPrimary} 
-                            onChange={(color) => setColorPrimary(color.toHexString())} 
-                            size="small" 
-                        />
                         <Dropdown
                             menu={{ items: notificationItems, onClick: handleNotificationClick }}
                             placement="bottomRight"
@@ -484,6 +504,22 @@ export function AppShell() {
                     </Suspense>
                 </Content>
             </Layout>
+            <GlobalSearch 
+                visible={searchVisible} 
+                onCancel={() => setSearchVisible(false)} 
+                onNavigate={(route) => {
+                    if (route.startsWith('/')) {
+                        goTo(route);
+                    } else {
+                        // Legacy keys if any
+                        if (route === 'dashboard') goTo(appUrl('/app'));
+                        if (route === 'products') goTo(appUrl('/app/inventory/products'));
+                        if (route === 'sales') goTo(appUrl('/app/sales/invoices'));
+                        if (route === 'users') goTo(appUrl('/app/administration/users'));
+                        if (route === 'settings') goTo(appUrl('/app/settings'));
+                    }
+                }}
+            />
         </Layout>
     );
 }

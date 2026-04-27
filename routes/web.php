@@ -71,6 +71,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
     Route::prefix('api/v1')->name('api.')->group(function () {
         Route::get('/me', CurrentUserController::class)->name('me');
         Route::get('/dashboard/summary', DashboardController::class)->name('dashboard.summary');
+        Route::get('/search', \App\Modules\Core\Http\Controllers\GlobalSearchController::class)->name('search');
         Route::get('/system/update-check', SystemUpdateController::class)->name('system.update-check');
         Route::get('/setup/features', FeatureCatalogController::class)->name('setup.features');
         Route::get('/setup/branding', [BrandingController::class, 'show'])->name('setup.branding.show');

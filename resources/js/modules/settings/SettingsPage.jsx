@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { App, Badge, Button, Card, Checkbox, ColorPicker, Form, Input, InputNumber, Select, Space, Switch, Table, Tabs, Tag, Upload } from 'antd';
-import { PlusOutlined, SendOutlined, UserOutlined } from '@ant-design/icons';
+import { EyeOutlined, PlusOutlined, SendOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Badge, Button, Card, Checkbox, ColorPicker, Form, Image, Input, InputNumber, Select, Space, Switch, Table, Tabs, Tag, Upload } from 'antd';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -160,9 +160,15 @@ export function SettingsPage() {
                                                 </Upload>
                                             </Form.Item>
                                             {url && (
-                                                <div className="brand-upload-current-compact">
-                                                    <img src={url} alt="current" />
-                                                    <Tag color="blue" bordered={false}>Current Asset</Tag>
+                                                <div className="brand-upload-current-compact-v2">
+                                                    <Image
+                                                        src={url}
+                                                        alt="current"
+                                                        preview={{
+                                                            mask: <><EyeOutlined /> View</>,
+                                                        }}
+                                                    />
+                                                    <div className="asset-label">Current Asset</div>
                                                 </div>
                                             )}
                                         </div>

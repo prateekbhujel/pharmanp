@@ -3,6 +3,7 @@ import { appUrl } from '../utils/url';
 export const endpoints = {
     me: appUrl('/api/v1/me'),
     dashboard: appUrl('/api/v1/dashboard/summary'),
+    search: appUrl('/api/v1/search'),
     profile: appUrl('/api/v1/profile'),
     productMeta: appUrl('/api/v1/inventory/products/meta'),
     products: appUrl('/api/v1/inventory/products'),
