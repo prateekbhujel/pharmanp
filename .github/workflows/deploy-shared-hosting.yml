@@ -59,6 +59,7 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
         run: |
           test -n "$SSH_PRIVATE_KEY"
           test -n "$SSH_HOST"
@@ -66,7 +67,7 @@ jobs:
           chmod 700 ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${SSH_PORT}" -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
       - name: Package release
         run: |
