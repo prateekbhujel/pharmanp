@@ -10,6 +10,23 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+:root {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-bg: #eff6ff;
+    --primary-color-rgb: 37, 99, 235;
+    --sidebar-bg: #0f172a;
+    --sidebar-text: #94a3b8;
+    --sidebar-active: #3b82f6;
+    --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --border-radius: 12px;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --text-main: #1e293b;
+    --text-secondary: #64748b;
+    --bg-light: #f8fafc;
+}
 
 html,
 body,
@@ -1415,10 +1432,84 @@ body {
         justify-content: flex-start;
     }
 
-    .transaction-summary-panel {
-        justify-self: stretch;
-    }
+.smart-image-upload-wrapper {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: 12px;
+    border: 2px dashed #e2e8f0;
+    background: #f8fafc;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
+
+.smart-image-upload-wrapper:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.smart-image-preview {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 8px;
+    z-index: 1;
+}
+
+.smart-image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 2;
+    color: #ffffff;
+    gap: 8px;
+}
+
+.smart-image-upload-wrapper:hover .smart-image-overlay {
+    opacity: 1;
+}
+
+.smart-image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #94a3b8;
+    gap: 8px;
+}
+
+.smart-image-placeholder i {
+    font-size: 24px;
+}
+
+.smart-image-placeholder span {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.branding-upload-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 32px;
+    margin: 24px 0;
+}
+
 
 /* ── Redesigned Dashboard Styles ────────────────────────────────────────── */
 .dashboard-header-modern {

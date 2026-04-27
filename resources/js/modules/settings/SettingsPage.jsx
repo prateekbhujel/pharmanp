@@ -7,6 +7,7 @@ import { http, validationErrors } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { FiscalYearPanel } from './FiscalYearPanel';
+import { PaymentModePanel } from './PaymentModePanel';
 
 function normalizeFile(event) {
     return Array.isArray(event) ? event : event?.fileList;
@@ -126,66 +127,75 @@ export function SettingsPage() {
                     key: 'branding',
                     label: 'Branding',
                     children: (
-                        <Card title="Application Identity">
+                        <Card title="Application Identity" description="Customize how your pharmacy app looks to staff and customers">
                             <Form form={brandingForm} layout="vertical" onFinish={saveBranding}>
                                 <div className="form-grid">
-                                    <Form.Item name="app_name" label="App Name" rules={[{ required: true }]}><Input /></Form.Item>
+                                    <Form.Item name="app_name" label="Pharmacy Name" rules={[{ required: true }]}><Input size="large" /></Form.Item>
                                     <Form.Item name="layout" label="Navigation Layout" rules={[{ required: true }]}>
-                                        <Select options={[
-                                            { value: 'vertical', label: 'Vertical sidebar' },
-                                            { value: 'horizontal', label: 'Horizontal top menu' },
+                                        <Select size="large" options={[
+                                            { value: 'vertical', label: 'Vertical Sidebar (Modern)' },
+                                            { value: 'horizontal', label: 'Horizontal Menu (Traditional)' },
                                         ]} />
                                     </Form.Item>
                                 </div>
                                 <div className="branding-upload-grid">
                                     {[
-                                        ['logo_upload', 'Main Logo', branding?.logo_url],
-                                        ['sidebar_logo_upload', 'Sidebar Logo', branding?.sidebar_logo_url],
-                                        ['app_icon_upload', 'App Icon', branding?.app_icon_url],
-                                        ['favicon_upload', 'Favicon', branding?.favicon_url],
-                                    ].map(([name, label, url]) => (
-                                        <div key={name} className="branding-upload-item">
-                                            <Form.Item name={name} label={label} valuePropName="fileList" getValueFromEvent={normalizeFile}>
+                                        ['logo_upload', 'Main Logo', branding?.logo_url, 'Best for light headers'],
+                                        ['sidebar_logo_upload', 'Sidebar Logo', branding?.sidebar_logo_url, 'Compact sidebar icon'],
+                                        ['app_icon_upload', 'App Icon', branding?.app_icon_url, 'Desktop/Mobile icon'],
+                                        ['favicon_upload', 'Favicon', branding?.favicon_url, 'Browser tab icon'],
+                                    ].map(([name, label, url, hint]) => (
+                                        <div key={name} className="branding-box">
+                                            <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 600 }}>{label}</div>
+                                            <Form.Item name={name} valuePropName="fileList" getValueFromEvent={normalizeFile} noStyle>
                                                 <Upload 
                                                     beforeUpload={() => false} 
                                                     maxCount={1} 
                                                     accept={name === 'favicon_upload' ? '.ico,image/*' : 'image/*'} 
-                                                    listType="picture-card"
-                                                    className="robust-uploader"
+                                                    showUploadList={false}
                                                 >
-                                                    <div>
-                                                        <PlusOutlined />
-                                                        <div style={{ marginTop: 8 }}>Upload</div>
+                                                    <div className="smart-image-upload-wrapper">
+                                                        {url ? (
+                                                            <>
+                                                                <img src={url} alt="preview" className="smart-image-preview" />
+                                                                <div className="smart-image-overlay">
+                                                                    <PlusOutlined />
+                                                                    <span>Change Asset</span>
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="smart-image-placeholder">
+                                                                <PlusOutlined />
+                                                                <span>Upload</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </Upload>
                                             </Form.Item>
-                                            {url && (
-                                                <div className="brand-upload-current-compact-v2">
-                                                    <Image
-                                                        src={url}
-                                                        alt="current"
-                                                        preview={{
-                                                            mask: <><EyeOutlined /> View</>,
-                                                        }}
-                                                    />
-                                                    <div className="asset-label">Current Asset</div>
-                                                </div>
-                                            )}
+                                            <div style={{ marginTop: 8, fontSize: 11, color: '#94a3b8' }}>{hint}</div>
                                         </div>
                                     ))}
                                 </div>
                                 <div className="form-grid">
-                                    <Form.Item name="accent_color" label="Accent Color">
-                                        <ColorPicker showText format="hex" />
+                                    <Form.Item name="accent_color" label="Brand Accent Color">
+                                        <ColorPicker showText format="hex" presets={[{ label: 'Pharma Theme', colors: ['#0f172a', '#3b82f6', '#10b981', '#ef4444'] }]} />
                                     </Form.Item>
                                     <Form.Item name="sidebar_default_collapsed" valuePropName="checked" style={{ paddingTop: 32 }}>
-                                        <Checkbox>Start sidebar minimized</Checkbox>
+                                        <Checkbox>Start sidebar in minimized mode</Checkbox>
                                     </Form.Item>
                                 </div>
-                                <Button type="primary" htmlType="submit">Save Branding</Button>
+                                <Space>
+                                    <Button type="primary" size="large" htmlType="submit">Apply Branding</Button>
+                                    <Button size="large" onClick={() => reloadBranding()}>Discard Changes</Button>
+                                </Space>
                             </Form>
                         </Card>
                     )
+                },
+                {
+                    key: 'payment-modes',
+                    label: 'Payment Modes',
+                    children: <PaymentModePanel />
                 },
                 {
                     key: 'general',

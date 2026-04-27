@@ -358,7 +358,16 @@ export function AppShell() {
     return (
         <Layout className={`app-shell app-shell-${layout}`}>
             {layout === 'vertical' && (
-            <Sider width={260} collapsed={collapsed} className="app-sidebar" breakpoint="lg" collapsedWidth={72} trigger={null}>
+            <Sider 
+                width={260} 
+                collapsed={collapsed} 
+                theme="dark"
+                className="app-sidebar" 
+                breakpoint="lg" 
+                collapsedWidth={72} 
+                trigger={null}
+                style={{ background: 'var(--sidebar-bg)' }}
+            >
                 <div className="main-sidebar-header">
                     <a href={appUrl('/app')} className="header-logo">
                         {logo ? <img src={logo} alt={appName} className="brand-logo" /> : <div className="brand-mark" style={{ background: `linear-gradient(135deg, ${colorPrimary}, var(--primary-color-dark, #0369a1))` }}><SafetyCertificateOutlined /></div>}
@@ -368,13 +377,16 @@ export function AppShell() {
                 <div className="main-sidebar">
                     <Menu
                         mode="inline"
+                        theme="dark"
                         selectedKeys={[selectedMenuKey]}
                         defaultOpenKeys={openKeys}
                         items={menuItems}
                         onClick={navigate}
+                        style={{ background: 'transparent' }}
                     />
                 </div>
             </Sider>
+
             )}
             <Layout>
                 <Header className="app-topbar">
@@ -392,10 +404,10 @@ export function AppShell() {
                             onClick={() => setSearchVisible(true)}
                             icon={<SearchOutlined />}
                         >
-                            <span>Search modules or data...</span>
-                            <span className="search-trigger-kbd">
-                                {isMacPlatform() ? '⌘K' : 'Ctrl+K'}
-                            </span>
+                            <span style={{ flex: 1, textAlign: 'left', marginLeft: 8 }}>Search modules or data...</span>
+                            <div className="search-trigger-kbd">
+                                {isMacPlatform() ? '⌘ K' : 'CTRL K'}
+                            </div>
                         </Button>
                     </Space>
                     <Space className="header-content-right" size={16}>

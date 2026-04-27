@@ -62,6 +62,10 @@ export function SalesPage() {
         loadCustomers();
         loadMedicalRepresentatives();
 
+        if (section === 'pos') {
+            setTimeout(() => document.getElementById('pos-barcode-input')?.focus(), 300);
+        }
+
         function handleKeyDown(event) {
             if (section !== 'pos') return;
             switch (event.key) {
