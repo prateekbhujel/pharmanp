@@ -114,7 +114,14 @@ export function AppShell() {
     const appName = brandingData?.app_name || 'PharmaNP';
     const logo = brandingData?.sidebar_logo_url || brandingData?.logo_url || brandingData?.app_icon_url;
     const user = authUser;
-    const activeKey = routes[pathname] ? pathname : appUrl('/app');
+    // Best-match: try exact match first, then longest prefix match
+    const activeKey = useMemo(() => {
+        if (routes[pathname]) return pathname;
+        // Sort routes by path length descending so most specific wins
+        const sortedRoutes = Object.keys(routes).sort((a, b) => b.length - a.length);
+        const match = sortedRoutes.find((route) => pathname.startsWith(route));
+        return match || appUrl('/app');
+    }, [pathname]);
     const ActivePage = routes[activeKey] || DashboardPage;
 
     const { items: menuItems, routesByKey, selectedMenuKey, openKeys } = useMemo(() => {

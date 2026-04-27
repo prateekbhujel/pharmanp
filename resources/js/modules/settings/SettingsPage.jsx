@@ -1,13 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { App, Badge, Button, Card, Checkbox, ColorPicker, Form, Input, InputNumber, Menu, Modal, Popconfirm, Select, Space, Switch, Table, Tabs, Tag, Upload } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, SendOutlined, UploadOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Badge, Button, Card, Checkbox, ColorPicker, Form, Input, InputNumber, Select, Space, Switch, Table, Tabs, Tag, Upload } from 'antd';
+import { PlusOutlined, SendOutlined, UserOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
-import { FormDrawer } from '../../core/components/FormDrawer';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
 import { useAuth } from '../../core/auth/AuthProvider';
-import { can } from '../../core/utils/permissions';
 
 function normalizeFile(event) {
     return Array.isArray(event) ? event : event?.fileList;
@@ -67,36 +65,13 @@ export function SettingsPage() {
         setAdminSettingsLoading(true);
         try {
             const { data } = await http.get(endpoints.settingsAdmin);
-            setAdminSettings(data.data || {});
             adminForm.setFieldsValue(data.data || {});
-        } finally {
-            setAdminSettingsLoading(false);
+        } catch (e) {
+            // Silently handle — form stays empty
         }
+        setAdminSettingsLoading(false);
     }
 
-    async function saveAdminSettings(values) {
-        try {
-            await http.put(endpoints.settingsAdmin, values);
-            notification.success({ message: 'Settings saved' });
-            loadAdminSettings();
-        } catch (error) {
-            adminForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
-            notification.error({ message: 'Save failed', description: error?.response?.data?.message || error.message });
-        }
-    }
-
-    async function sendTestMail() {
-        try {
-            const { data } = await http.post(endpoints.settingsTestMail, { email: adminForm.getFieldValue('notification_email') || adminForm.getFieldValue('mail_from_address') });
-            notification.success({ message: data.message });
-        } catch (error) {
-            notification.error({ message: error?.response?.data?.message || 'Test mail failed' });
-        }
-    }
-
-    async function loadDropdownOptions() {
-        const { data } = await http.get(endpoints.dropdownOptions);
-        setDropdownOptions(data.data || []);
     async function saveBranding(values) {
         try {
             await http.post(endpoints.branding, brandingPayload(values));
@@ -108,32 +83,25 @@ export function SettingsPage() {
         }
     }
 
-    async function loadAdminSettings() {
-        setAdminSettingsLoading(true);
-        try {
-            const { data } = await http.get(endpoints.adminSettings);
-            adminForm.setFieldsValue(data.data || {});
-        } catch (e) { }
-        setAdminSettingsLoading(false);
-    }
-
     async function saveAdminSettings(values) {
         try {
-            await http.post(endpoints.adminSettings, values);
+            await http.put(endpoints.settingsAdmin, values);
             notification.success({ message: 'Configuration saved' });
-        } catch (e) {
-            adminForm.setFields(Object.entries(validationErrors(e)).map(([name, messages]) => ({ name, errors: messages })));
-            notification.error({ message: 'Configuration save failed' });
+            loadAdminSettings();
+        } catch (error) {
+            adminForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
+            notification.error({ message: 'Configuration save failed', description: error?.response?.data?.message || error.message });
         }
     }
 
     async function sendTestMail() {
         try {
-            const values = adminForm.getFieldsValue();
-            await http.post(endpoints.sendTestMail, values);
-            notification.success({ message: 'Test email sent' });
-        } catch (e) {
-            notification.error({ message: 'Failed to send test email' });
+            const { data } = await http.post(endpoints.settingsTestMail, {
+                email: adminForm.getFieldValue('notification_email') || adminForm.getFieldValue('mail_from_address'),
+            });
+            notification.success({ message: data.message || 'Test email sent' });
+        } catch (error) {
+            notification.error({ message: error?.response?.data?.message || 'Test mail failed' });
         }
     }
 
@@ -143,6 +111,7 @@ export function SettingsPage() {
             data.map(feature => ({ ...feature, module }))
         );
     }, [features]);
+
     return (
         <div className="page-stack">
             <PageHeader
@@ -273,5 +242,3 @@ export function SettingsPage() {
         </div>
     );
 }
-
-
