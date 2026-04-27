@@ -1,11 +1,18 @@
 <IfModule mod_rewrite.c>
-    Options -MultiViews -Indexes
-    RewriteEngine On
-    # Shared-hosting entrypoint: expose the project root, but serve through /public.
-    # Sensitive Laravel folders and project files must never be web-readable.
-    RewriteRule ^(?:app|bootstrap|config|database|docs|node_modules|resources|routes|storage|tests|vendor)(/|$) - [F,L]
-    RewriteRule ^(?:artisan|composer\.(?:json|lock)|package(?:-lock)?\.json|phpunit\.xml|vite\.config\.js|\.env.*|\.git.*|README\.md|CHANGELOG\.md|VERSION)$ - [F,L]
+    <IfModule mod_negotiation.c>
+        Options -MultiViews
+    </IfModule>
 
-    RewriteCond %{REQUEST_URI} !/public/
-    RewriteRule ^(.*)$ public/$1 [L]
+    RewriteEngine On
+
+    RewriteCond %{REQUEST_FILENAME} -d [OR]
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ ^$1 [N]
+
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteRule ^(.*)$ public/$1
+
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ server.php
 </IfModule>
