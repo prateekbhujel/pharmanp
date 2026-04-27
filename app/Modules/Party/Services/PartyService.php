@@ -52,7 +52,9 @@ class PartyService
 
     private function paginate(Builder $query, TableQueryData $table): LengthAwarePaginator
     {
-        $query->select('*');
+        $query
+            ->select('*')
+            ->when((bool) ($table->filters['deleted'] ?? false), fn (Builder $builder) => $builder->onlyTrashed());
 
         $query->when($table->search, function (Builder $builder, string $search) {
             $builder->where(function (Builder $inner) use ($search) {

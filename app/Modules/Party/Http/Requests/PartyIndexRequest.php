@@ -20,6 +20,7 @@ class PartyIndexRequest extends FormRequest
             'sort_field' => ['nullable', 'string', 'max:80'],
             'sort_order' => ['nullable', 'in:asc,desc'],
             'is_active' => ['nullable', 'boolean'],
+            'deleted' => ['nullable', 'boolean'],
         ];
     }
 }

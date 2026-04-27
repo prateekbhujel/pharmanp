@@ -16,10 +16,13 @@ use App\Modules\Party\Models\Supplier;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Rap2hpoutre\FastExcel\FastExcel;
 
 class ImportPreviewService
 {
+    private const PREVIEW_ROW_LIMIT = 25;
+
     public const TARGET_FIELDS = [
         'products' => ['sku', 'barcode', 'name', 'generic_name', 'composition', 'formulation', 'mrp', 'purchase_price', 'selling_price', 'reorder_level'],
         'suppliers' => ['name', 'contact_person', 'phone', 'email', 'pan_number', 'address', 'opening_balance'],
@@ -49,14 +52,7 @@ class ImportPreviewService
                 'created_by' => $userId,
             ]);
 
-            $rows->take(25)->values()->each(function (array $row, int $index) use ($job) {
-                ImportStagedRow::query()->create([
-                    'import_job_id' => $job->id,
-                    'row_number' => $index + 1,
-                    'raw_data' => $row,
-                    'status' => 'pending',
-                ]);
-            });
+            $this->persistPreviewRows($job, $rows);
 
             return $job->fresh('rows');
         });
@@ -66,6 +62,8 @@ class ImportPreviewService
     {
         return DB::transaction(function () use ($jobId, $mapping, $user) {
             $job = ImportJob::query()->lockForUpdate()->findOrFail($jobId);
+            $job->rows()->delete();
+
             $required = $this->requiredFields($job->target);
             $mappedSystemFields = array_values(array_filter($mapping));
             $missing = array_values(array_diff($required, $mappedSystemFields));
@@ -78,7 +76,10 @@ class ImportPreviewService
                     'status' => 'needs_mapping',
                 ]);
 
-                $job->rows()->update([
+                ImportStagedRow::query()->create([
+                    'import_job_id' => $job->id,
+                    'row_number' => 0,
+                    'raw_data' => [],
                     'errors' => ['Missing required mapping: '.implode(', ', $missing)],
                     'status' => 'invalid',
                 ]);
@@ -88,21 +89,40 @@ class ImportPreviewService
 
             $valid = 0;
             $invalid = 0;
+            $rows = $this->readRows(
+                Storage::disk('local')->path($job->stored_path),
+                pathinfo($job->original_filename, PATHINFO_EXTENSION),
+            );
 
-            $job->rows()->chunkById(50, function ($rows) use ($job, $mapping, $user, &$valid, &$invalid) {
-                foreach ($rows as $row) {
-                    $mapped = $this->mapRow($row->raw_data, $mapping);
+            foreach ($rows as $index => $rawRow) {
+                $mapped = $this->mapRow($rawRow, $mapping);
 
-                    try {
-                        $this->insertMappedRow($job->target, $mapped, $user);
-                        $row->update(['mapped_data' => $mapped, 'errors' => null, 'status' => 'imported']);
-                        $valid++;
-                    } catch (\Throwable $throwable) {
-                        $row->update(['mapped_data' => $mapped, 'errors' => [$throwable->getMessage()], 'status' => 'invalid']);
-                        $invalid++;
+                try {
+                    $this->insertMappedRow($job->target, $mapped, $user);
+                    $valid++;
+
+                    if ($index < self::PREVIEW_ROW_LIMIT) {
+                        ImportStagedRow::query()->create([
+                            'import_job_id' => $job->id,
+                            'row_number' => $index + 1,
+                            'raw_data' => $rawRow,
+                            'mapped_data' => $mapped,
+                            'status' => 'imported',
+                        ]);
                     }
+                } catch (\Throwable $throwable) {
+                    $invalid++;
+
+                    ImportStagedRow::query()->create([
+                        'import_job_id' => $job->id,
+                        'row_number' => $index + 1,
+                        'raw_data' => $rawRow,
+                        'mapped_data' => $mapped,
+                        'errors' => [$throwable->getMessage()],
+                        'status' => 'invalid',
+                    ]);
                 }
-            });
+            }
 
             $job->update([
                 'mapping' => $mapping,
@@ -128,6 +148,19 @@ class ImportPreviewService
             'opening_stock', 'batches' => ['sku', 'batch_no', 'quantity_available'],
             default => [],
         };
+    }
+
+    public function sampleCsv(string $target): string
+    {
+        $fields = $this->targetFields()[$target] ?? [];
+        $handle = fopen('php://temp', 'r+');
+        fputcsv($handle, $fields);
+        fputcsv($handle, array_map(fn ($field) => 'sample_'.$field, $fields));
+        rewind($handle);
+        $contents = stream_get_contents($handle) ?: '';
+        fclose($handle);
+
+        return $contents;
     }
 
     public function rejectedCsv(ImportJob $job): string
@@ -321,10 +354,22 @@ class ImportPreviewService
         return $value;
     }
 
+    private function persistPreviewRows(ImportJob $job, Collection $rows): void
+    {
+        $rows->take(self::PREVIEW_ROW_LIMIT)->values()->each(function (array $row, int $index) use ($job) {
+            ImportStagedRow::query()->create([
+                'import_job_id' => $job->id,
+                'row_number' => $index + 1,
+                'raw_data' => $row,
+                'status' => 'pending',
+            ]);
+        });
+    }
+
     private function readRows(string $path, string $extension): Collection
     {
         if (in_array(strtolower($extension), ['xlsx', 'xls'], true)) {
-            return (new FastExcel())->import($path)->take(100)->map(fn ($row) => $this->normaliseRow((array) $row))->values();
+            return (new FastExcel())->import($path)->map(fn ($row) => $this->normaliseRow((array) $row))->values();
         }
 
         $handle = fopen($path, 'rb');
@@ -332,7 +377,7 @@ class ImportPreviewService
         $rows = collect();
         $line = 0;
 
-        while (($data = fgetcsv($handle)) !== false && $rows->count() < 100) {
+        while (($data = fgetcsv($handle)) !== false) {
             $line++;
 
             if ($line === 1) {

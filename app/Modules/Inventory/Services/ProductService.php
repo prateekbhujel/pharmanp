@@ -29,6 +29,7 @@ class ProductService
     {
         $query = Product::query()
             ->select('products.*')
+            ->when((bool) ($table->filters['deleted'] ?? false), fn (Builder $builder) => $builder->onlyTrashed())
             ->with(['company:id,name', 'unit:id,name', 'category:id,name'])
             ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available');
 
@@ -86,6 +87,21 @@ class ProductService
             ])->save();
 
             $product->delete();
+        });
+    }
+
+    public function restore(int $id, ?User $user = null): Product
+    {
+        return DB::transaction(function () use ($id, $user) {
+            $product = Product::query()->onlyTrashed()->findOrFail($id);
+            $product->restore();
+            $product->forceFill([
+                'deleted_by' => null,
+                'is_active' => true,
+                'updated_by' => $user?->id,
+            ])->save();
+
+            return $product->fresh(['company', 'unit', 'category']);
         });
     }
 

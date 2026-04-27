@@ -10,6 +10,7 @@ use App\Modules\Core\Http\Controllers\DashboardController;
 use App\Modules\Core\Http\Controllers\SystemUpdateController;
 use App\Modules\ImportExport\Http\Controllers\ExportController;
 use App\Modules\ImportExport\Http\Controllers\ImportWizardController;
+use App\Modules\ImportExport\Http\Controllers\PurchaseOcrController;
 use App\Modules\Inventory\Http\Controllers\InventoryMasterController;
 use App\Modules\Inventory\Http\Controllers\BatchController;
 use App\Modules\Inventory\Http\Controllers\ProductController;
@@ -102,14 +103,20 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/inventory/masters/{master}', [InventoryMasterController::class, 'index'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.index');
         Route::post('/inventory/masters/{master}', [InventoryMasterController::class, 'store'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.store');
         Route::put('/inventory/masters/{master}/{id}', [InventoryMasterController::class, 'update'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.update');
+        Route::patch('/inventory/masters/{master}/{id}/status', [InventoryMasterController::class, 'toggleStatus'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.status');
         Route::delete('/inventory/masters/{master}/{id}', [InventoryMasterController::class, 'destroy'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.destroy');
         Route::post('/inventory/masters/{master}/{id}/restore', [InventoryMasterController::class, 'restore'])->whereIn('master', ['companies', 'units', 'categories'])->name('inventory.masters.restore');
+        Route::post('/inventory/products/{id}/restore', [ProductController::class, 'restore'])->name('inventory.products.restore');
         Route::apiResource('inventory/products', ProductController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::patch('/inventory/products/{product}/status', [ProductController::class, 'toggleStatus'])->name('inventory.products.status');
 
         Route::get('/suppliers/options', [SupplierController::class, 'options'])->name('suppliers.options');
+        Route::patch('/suppliers/{supplier}/status', [SupplierController::class, 'toggleStatus'])->name('suppliers.status');
+        Route::post('/suppliers/{id}/restore', [SupplierController::class, 'restore'])->name('suppliers.restore');
         Route::apiResource('suppliers', SupplierController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::get('/customers/options', [CustomerController::class, 'options'])->name('customers.options');
+        Route::patch('/customers/{customer}/status', [CustomerController::class, 'toggleStatus'])->name('customers.status');
+        Route::post('/customers/{id}/restore', [CustomerController::class, 'restore'])->name('customers.restore');
         Route::apiResource('customers', CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
 
         Route::apiResource('purchase/orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
@@ -175,11 +182,16 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::delete('/settings/supplier-types/{supplierType}', [SupplierTypeController::class, 'destroy'])->name('settings.supplier-types.destroy');
         Route::apiResource('settings/fiscal-years', FiscalYearController::class)->only(['index', 'store', 'update', 'destroy']);
 
+        Route::get('/reports/{report}/export/{format}', [ReportController::class, 'export'])
+            ->whereIn('format', ['xlsx', 'pdf'])
+            ->name('reports.export');
         Route::get('/reports/{report}', ReportController::class)->name('reports.show');
 
         Route::get('/imports/targets', [ImportWizardController::class, 'targets'])->name('imports.targets');
+        Route::get('/imports/targets/{target}/sample', [ImportWizardController::class, 'sample'])->name('imports.sample');
         Route::post('/imports/preview', [ImportWizardController::class, 'preview'])->name('imports.preview');
         Route::post('/imports/confirm', [ImportWizardController::class, 'confirm'])->name('imports.confirm');
+        Route::post('/imports/ocr/extract', [PurchaseOcrController::class, 'extract'])->name('imports.ocr.extract');
         Route::get('/imports/{job}/rejected.csv', [ImportWizardController::class, 'rejected'])->name('imports.rejected');
 
         Route::get('/exports/inventory/masters/{master}/{format}', [ExportController::class, 'inventoryMaster'])

@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Col, DatePicker, Input, Row, Select, Statistic, Table } from 'antd';
+import { Card, Col, DatePicker, Empty, Row, Segmented, Select, Statistic, Table } from 'antd';
 import dayjs from 'dayjs';
+import { BarChart, DonutChart } from '../../core/components/Charts';
+import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { accountCatalog, paymentStatusOptions } from '../../core/utils/accountCatalog';
+import { appUrl } from '../../core/utils/url';
 
 const reportOptions = [
     { value: 'sales', label: 'Sales report' },
@@ -24,8 +27,74 @@ const reportOptions = [
     { value: 'trial-balance', label: 'Trial balance' },
 ];
 
+const reportGroups = {
+    sales: ['sales', 'purchase', 'supplier-performance'],
+    inventory: ['stock', 'low-stock', 'expiry', 'product-movement'],
+    accounting: ['day-book', 'cash-book', 'bank-book', 'ledger', 'trial-balance', 'supplier-ledger', 'customer-ledger'],
+    mr: ['mr-performance'],
+};
+
+function reportFromPath() {
+    const section = window.location.pathname.split('/').filter(Boolean).pop();
+
+    if (reportOptions.some((item) => item.value === section)) {
+        return section;
+    }
+
+    return ({
+        sales: 'sales',
+        purchase: 'purchase',
+        stock: 'stock',
+        expiry: 'expiry',
+        accounting: 'day-book',
+        inventory: 'stock',
+    })[section] || 'sales';
+}
+
+function routeForReport(report) {
+    return appUrl(`/app/reports/${report}`);
+}
+
+function inferGroup(report) {
+    return Object.entries(reportGroups).find(([, values]) => values.includes(report))?.[0] || 'sales';
+}
+
+function labelForKey(key) {
+    return key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function inferChart(rows, report) {
+    if (!rows.length) {
+        return null;
+    }
+
+    const first = rows[0];
+    const keys = Object.keys(first);
+    const numericKeys = keys.filter((key) => typeof first[key] === 'number');
+    const labelKey = ['name', 'product', 'customer', 'supplier', 'reference', 'invoice_no', 'purchase_no', 'movement_date', 'date']
+        .find((key) => key in first) || keys.find((key) => typeof first[key] === 'string');
+
+    if (!labelKey || !numericKeys.length) {
+        return null;
+    }
+
+    const selectedKeys = report === 'product-movement'
+        ? numericKeys.filter((key) => ['quantity_in', 'quantity_out'].includes(key)).slice(0, 2)
+        : numericKeys.slice(0, 2);
+
+    return rows.slice(0, 8).map((row) => ({
+        label: String(row[labelKey] ?? '-').slice(0, 16),
+        bars: selectedKeys.map((key, index) => ({
+            value: Number(row[key] || 0),
+            color: index === 0 ? '#0891b2' : '#10b981',
+        })),
+    }));
+}
+
 export function ReportsPage() {
-    const [report, setReport] = useState('sales');
+    const initialReport = reportFromPath();
+    const [report, setReport] = useState(initialReport);
+    const [group, setGroup] = useState(inferGroup(initialReport));
     const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
     const [filters, setFilters] = useState({});
     const [rows, setRows] = useState([]);
@@ -42,6 +111,13 @@ export function ReportsPage() {
     useEffect(() => {
         load(1);
     }, [report, range, filters]);
+
+    useEffect(() => {
+        const nextGroup = inferGroup(report);
+        if (nextGroup !== group) {
+            setGroup(nextGroup);
+        }
+    }, [group, report]);
 
     async function loadLookups() {
         try {
@@ -85,13 +161,37 @@ export function ReportsPage() {
     }
 
     const columns = useMemo(() => Object.keys(rows[0] || {}).map((key) => ({
-        title: key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        title: labelForKey(key),
         dataIndex: key,
         render: (value) => typeof value === 'number' ? value.toLocaleString() : value,
     })), [rows]);
+    const visibleReportOptions = useMemo(
+        () => reportOptions.filter((item) => (reportGroups[group] || []).includes(item.value)),
+        [group],
+    );
+    const chartData = useMemo(() => inferChart(rows, report), [report, rows]);
+    const summaryChartData = useMemo(() => {
+        if (!summary) return [];
+
+        return Object.entries(summary)
+            .filter(([, value]) => typeof value === 'number' && Number(value) > 0)
+            .slice(0, 5)
+            .map(([key, value], index) => ({
+                label: labelForKey(key),
+                value: Number(value || 0),
+                color: ['#0891b2', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'][index],
+            }));
+    }, [summary]);
 
     function updateFilter(name, value) {
         setFilters((current) => ({ ...current, [name]: value || undefined }));
+    }
+
+    function switchReport(nextReport) {
+        setReport(nextReport);
+        setFilters({});
+        window.history.pushState({}, '', routeForReport(nextReport));
+        window.dispatchEvent(new PopStateEvent('popstate'));
     }
 
     async function searchProducts(q) {
@@ -101,29 +201,76 @@ export function ReportsPage() {
 
     return (
         <div className="page-stack">
-            <PageHeader title="Reports" description="Server-side filtered operational, accounting and MR reports" />
+            <PageHeader
+                title="Reports"
+                description="Server-side filtered operational, inventory, finance, and field-force analysis"
+                actions={<ExportButtons basePath={endpoints.reportExport(report)} params={{ from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD'), ...filters }} />}
+            />
+
+            <Card>
+                <div className="report-workspace-toolbar">
+                    <Segmented
+                        value={group}
+                        onChange={(value) => {
+                            const nextReport = reportGroups[value][0];
+                            setGroup(value);
+                            switchReport(nextReport);
+                        }}
+                        options={[
+                            { label: 'Sales & Purchase', value: 'sales' },
+                            { label: 'Inventory', value: 'inventory' },
+                            { label: 'Accounting', value: 'accounting' },
+                            { label: 'MR', value: 'mr' },
+                        ]}
+                    />
+                    <Select
+                        value={report}
+                        onChange={switchReport}
+                        options={visibleReportOptions}
+                        style={{ minWidth: 220 }}
+                    />
+                    <DatePicker.RangePicker value={range} onChange={setRange} />
+                </div>
+            </Card>
 
             {summary && (
                 <Row gutter={[16, 16]}>
                     {Object.entries(summary).map(([key, value]) => (
                         <Col xs={24} sm={12} xl={6} key={key}>
-                            <Card><Statistic title={key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())} value={value || 0} /></Card>
+                            <Card size="small"><Statistic title={labelForKey(key)} value={value || 0} /></Card>
                         </Col>
                     ))}
                 </Row>
             )}
 
+            <Row gutter={[16, 16]}>
+                <Col xs={24} xl={14}>
+                    <Card title="Report Snapshot">
+                        {chartData ? (
+                            <BarChart
+                                data={chartData}
+                                height={300}
+                                legend={chartData[0]?.bars?.length > 1 ? ['Primary', 'Secondary'] : undefined}
+                                colors={['#0891b2', '#10b981']}
+                            />
+                        ) : (
+                            <Empty description="No chartable rows for this report yet" />
+                        )}
+                    </Card>
+                </Col>
+                <Col xs={24} xl={10}>
+                    <Card title="Summary Mix">
+                        {summaryChartData.length ? (
+                            <DonutChart data={summaryChartData} size={220} />
+                        ) : (
+                            <Empty description="Summary totals will appear here" />
+                        )}
+                    </Card>
+                </Col>
+            </Row>
+
             <Card>
                 <div className="report-filter-grid">
-                    <Select
-                        value={report}
-                        onChange={(value) => {
-                            setReport(value);
-                            setFilters({});
-                        }}
-                        options={reportOptions}
-                    />
-                    <DatePicker.RangePicker value={range} onChange={setRange} />
                     {report === 'sales' && (
                         <>
                             <Select allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />

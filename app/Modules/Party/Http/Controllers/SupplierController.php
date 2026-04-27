@@ -16,7 +16,7 @@ class SupplierController extends Controller
 {
     public function index(PartyIndexRequest $request, PartyService $service)
     {
-        return PartyResource::collection($service->suppliers(TableQueryData::fromRequest($request, ['is_active'])));
+        return PartyResource::collection($service->suppliers(TableQueryData::fromRequest($request, ['is_active', 'deleted'])));
     }
 
     public function store(SupplierRequest $request, PartyService $service): JsonResponse
@@ -40,6 +40,25 @@ class SupplierController extends Controller
         $supplier->delete();
 
         return response()->json(['message' => 'Supplier deleted.']);
+    }
+
+    public function toggleStatus(Request $request, Supplier $supplier): JsonResponse
+    {
+        $supplier->forceFill([
+            'is_active' => $request->boolean('is_active'),
+            'updated_by' => $request->user()?->id,
+        ])->save();
+
+        return response()->json(['message' => 'Supplier status updated.', 'data' => new PartyResource($supplier->refresh())]);
+    }
+
+    public function restore(Request $request, int $id): JsonResponse
+    {
+        $supplier = Supplier::query()->onlyTrashed()->findOrFail($id);
+        $supplier->restore();
+        $supplier->forceFill(['is_active' => true, 'updated_by' => $request->user()?->id])->save();
+
+        return response()->json(['message' => 'Supplier restored.', 'data' => new PartyResource($supplier->refresh())]);
     }
 
     public function options(): JsonResponse

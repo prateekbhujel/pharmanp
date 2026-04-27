@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { App, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Row, Space, Statistic, Switch, Table, Tabs } from 'antd';
-import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined, UndoOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../core/components/PageHeader';
 import { ServerTable } from '../../core/components/ServerTable';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { Money } from '../../core/components/Money';
 import { StatusTag } from '../../core/components/StatusTag';
+import { StatusToggle } from '../../core/components/StatusToggle';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -15,10 +16,12 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 function PartyTab({ type, onViewLedger }) {
     const { notification } = App.useApp();
     const endpoint = type === 'suppliers' ? endpoints.suppliers : endpoints.customers;
+    const restoreEndpoint = type === 'suppliers' ? endpoints.supplierRestore : endpoints.customerRestore;
     const table = useServerTable({ endpoint });
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form] = Form.useForm();
+    const deletedMode = Boolean(table.filters.deleted);
 
     function open(record = null) {
         setEditing(record);
@@ -55,26 +58,50 @@ function PartyTab({ type, onViewLedger }) {
         });
     }
 
+    function restore(record) {
+        confirmDelete({
+            title: `Restore ${record.name}?`,
+            content: 'This party will return to the active master list.',
+            okText: 'Restore',
+            danger: false,
+            onOk: async () => {
+                await http.post(restoreEndpoint(record.id));
+                notification.success({ message: 'Party restored' });
+                table.reload();
+            },
+        });
+    }
+
     const columns = [
         { title: 'Name', dataIndex: 'name', sorter: true, field: 'name' },
         { title: 'Phone', dataIndex: 'phone', width: 140 },
         { title: 'PAN', dataIndex: 'pan_number', width: 120 },
         { title: 'Balance', dataIndex: 'current_balance', sorter: true, field: 'current_balance', align: 'right', width: 130, render: (value) => <Money value={value} /> },
-        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value) => <StatusTag active={value} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value, record) => record.deleted_at ? <StatusTag active={false} falseText="Deleted" /> : <StatusToggle value={value} id={record.id} endpoint={endpoint} /> },
         { title: '', width: type === 'customers' ? 160 : 112, render: (_, record) => (
-            <Space>
-                {type === 'customers' && <Button icon={<BookOutlined />} onClick={() => onViewLedger?.(record)}>Ledger</Button>}
-                <Button icon={<EditOutlined />} onClick={() => open(record)} />
-                <Button danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
-            </Space>
+            record.deleted_at ? (
+                <Button icon={<UndoOutlined />} onClick={() => restore(record)}>Restore</Button>
+            ) : (
+                <Space>
+                    {type === 'customers' && <Button icon={<BookOutlined />} onClick={() => onViewLedger?.(record)}>Ledger</Button>}
+                    <Button icon={<EditOutlined />} onClick={() => open(record)} />
+                    <Button danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
+                </Space>
+            )
         ) },
     ];
 
     return (
         <Card>
-            <div className="table-toolbar">
+            <div className="table-toolbar table-toolbar-legacy">
                 <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder={`Search ${type}`} allowClear />
-                <span />
+                <div className="table-switch">
+                    <Switch
+                        checked={deletedMode}
+                        onChange={(deleted) => table.setFilters((filters) => ({ ...filters, deleted: deleted ? 1 : undefined }))}
+                    />
+                    <span>View Deleted</span>
+                </div>
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>New {type === 'suppliers' ? 'Supplier' : 'Customer'}</Button>
             </div>
             <ServerTable table={table} columns={columns} />

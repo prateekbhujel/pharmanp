@@ -5,6 +5,7 @@ namespace App\Modules\Accounting\Models;
 use App\Models\User;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
+use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +24,7 @@ class Payment extends Model
         'direction',
         'party_type',
         'party_id',
+        'payment_mode_id',
         'payment_mode',
         'amount',
         'reference_no',
@@ -54,6 +56,11 @@ class Payment extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function paymentModeOption(): BelongsTo
+    {
+        return $this->belongsTo(DropdownOption::class, 'payment_mode_id');
+    }
+
     public function allocations(): HasMany
     {
         return $this->hasMany(PaymentBillAllocation::class);
@@ -71,5 +78,10 @@ class Payment extends Model
         }
 
         return '-';
+    }
+
+    public function getPaymentModeLabelAttribute(): string
+    {
+        return $this->paymentModeOption?->name ?? ucfirst(str_replace('_', ' ', (string) $this->payment_mode));
     }
 }

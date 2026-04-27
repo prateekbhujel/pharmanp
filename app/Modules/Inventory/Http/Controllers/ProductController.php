@@ -27,6 +27,7 @@ class ProductController extends Controller
             'company_id',
             'category_id',
             'is_active',
+            'deleted',
         ]));
 
         return ProductResource::collection($products);
@@ -70,6 +71,17 @@ class ProductController extends Controller
         $service->delete($product, $request->user());
 
         return response()->json(['message' => 'Product deleted.']);
+    }
+
+    public function restore(Request $request, int $id, ProductService $service): JsonResponse
+    {
+        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.products.update'), 403);
+
+        $product = $service->restore($id, $request->user());
+
+        return (new ProductResource($product))
+            ->additional(['message' => 'Product restored.'])
+            ->response();
     }
 
     public function toggleStatus(Request $request, Product $product): JsonResponse

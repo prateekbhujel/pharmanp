@@ -124,7 +124,8 @@ class DropdownOptionController
     {
         return match ($option->alias) {
             'expense_category' => \App\Modules\Accounting\Models\Expense::query()->where('expense_category_id', $option->id)->count(),
-            'payment_mode' => \App\Modules\Accounting\Models\Expense::query()->where('payment_mode_id', $option->id)->count(),
+            'payment_mode' => \App\Modules\Accounting\Models\Expense::query()->where('payment_mode_id', $option->id)->count()
+                + \App\Modules\Accounting\Models\Payment::query()->where('payment_mode_id', $option->id)->count(),
             default => 0,
         };
     }

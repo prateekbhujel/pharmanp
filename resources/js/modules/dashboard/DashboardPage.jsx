@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { App, Button, Card, Col, DatePicker, Empty, Row, Select, Segmented, Space, Statistic, Table, Tag, Tabs } from 'antd';
-import { ReloadOutlined, WarningOutlined, PlusOutlined, ShopOutlined, LineChartOutlined, AlertOutlined } from '@ant-design/icons';
+import { AlertOutlined, LineChartOutlined, PlusOutlined, ReloadOutlined, ShopOutlined, WarningOutlined, DollarCircleOutlined, ShoppingCartOutlined, WalletOutlined, MedicineBoxOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Money } from '../../core/components/Money';
 import { BarChart, DonutChart, MiniBar } from '../../core/components/Charts';
@@ -15,7 +15,9 @@ function StatCard({ title, value, suffix, tone, loading, icon }) {
         <Card 
             className="metric-card metric-card-glow glass-card" 
             loading={loading} 
+            size="small"
             style={{ borderTop: `4px solid ${tone}` }}
+            styles={{ body: { padding: 14 } }}
         >
             <Statistic
                 title={
@@ -114,43 +116,43 @@ export function DashboardPage() {
                 <div className="page-stack" style={{ marginTop: 16 }}>
                     <Row gutter={[16, 16]}>
                         <Col xs={12} md={6}>
-                            <StatCard title="Today's Sales" value={stats.today_sales} tone={TONES.sales} loading={loading} />
+                            <StatCard title="Today's Sales" value={stats.today_sales} tone={TONES.sales} loading={loading} icon={<DollarCircleOutlined />} />
                         </Col>
                         <Col xs={12} md={6}>
-                            <StatCard title="Period Sales" value={stats.period_sales} tone="#0891b2" loading={loading} />
+                            <StatCard title="Period Sales" value={stats.period_sales} tone="#0891b2" loading={loading} icon={<LineChartOutlined />} />
                         </Col>
                         {isMr ? (
                             <>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Visits" value={stats.visits} suffix="visits" tone="#0891b2" loading={loading} />
+                                    <StatCard title="Visits" value={stats.visits} suffix="visits" tone="#0891b2" loading={loading} icon={<ShopOutlined />} />
                                 </Col>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Monthly Target" value={stats.target} tone="#f59e0b" loading={loading} />
+                                    <StatCard title="Monthly Target" value={stats.target} tone="#f59e0b" loading={loading} icon={<AlertOutlined />} />
                                 </Col>
                             </>
                         ) : (
                             <>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Period Purchases" value={stats.period_purchase} tone={TONES.purchase} loading={loading} />
+                                    <StatCard title="Period Purchases" value={stats.period_purchase} tone={TONES.purchase} loading={loading} icon={<ShoppingCartOutlined />} />
                                 </Col>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Receivables" value={stats.receivables} tone="#ea580c" loading={loading} />
+                                    <StatCard title="Receivables" value={stats.receivables} tone="#ea580c" loading={loading} icon={<WalletOutlined />} />
                                 </Col>
                             </>
                         )}
                         {!isMr && (
                             <>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Payables" value={stats.payables} tone="#9333ea" loading={loading} />
+                                    <StatCard title="Payables" value={stats.payables} tone="#9333ea" loading={loading} icon={<WalletOutlined />} />
                                 </Col>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Low Stock Items" value={stats.low_stock} suffix={stats.low_stock > 0 ? <WarningOutlined style={{ color: '#ef4444' }} /> : ''} tone={stats.low_stock > 0 ? "#ef4444" : "#64748b"} loading={loading} />
+                                    <StatCard title="Low Stock Items" value={stats.low_stock} suffix={stats.low_stock > 0 ? <WarningOutlined style={{ color: '#ef4444' }} /> : ''} tone={stats.low_stock > 0 ? "#ef4444" : "#64748b"} loading={loading} icon={<AlertOutlined />} />
                                 </Col>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Expiring Batches" value={stats.expiring_batches} suffix="batches" tone={stats.expiring_batches > 0 ? "#f59e0b" : "#64748b"} loading={loading} />
+                                    <StatCard title="Expiring Batches" value={stats.expiring_batches} suffix="batches" tone={stats.expiring_batches > 0 ? "#f59e0b" : "#64748b"} loading={loading} icon={<WarningOutlined />} />
                                 </Col>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Total Products" value={stats.products} suffix="items" tone="#6366f1" loading={loading} />
+                                    <StatCard title="Total Products" value={stats.products} suffix="items" tone="#6366f1" loading={loading} icon={<MedicineBoxOutlined />} />
                                 </Col>
                             </>
                         )}

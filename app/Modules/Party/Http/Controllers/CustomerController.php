@@ -16,7 +16,7 @@ class CustomerController extends Controller
 {
     public function index(PartyIndexRequest $request, PartyService $service)
     {
-        return PartyResource::collection($service->customers(TableQueryData::fromRequest($request, ['is_active'])));
+        return PartyResource::collection($service->customers(TableQueryData::fromRequest($request, ['is_active', 'deleted'])));
     }
 
     public function store(CustomerRequest $request, PartyService $service): JsonResponse
@@ -40,6 +40,25 @@ class CustomerController extends Controller
         $customer->delete();
 
         return response()->json(['message' => 'Customer deleted.']);
+    }
+
+    public function toggleStatus(Request $request, Customer $customer): JsonResponse
+    {
+        $customer->forceFill([
+            'is_active' => $request->boolean('is_active'),
+            'updated_by' => $request->user()?->id,
+        ])->save();
+
+        return response()->json(['message' => 'Customer status updated.', 'data' => new PartyResource($customer->refresh())]);
+    }
+
+    public function restore(Request $request, int $id): JsonResponse
+    {
+        $customer = Customer::query()->onlyTrashed()->findOrFail($id);
+        $customer->restore();
+        $customer->forceFill(['is_active' => true, 'updated_by' => $request->user()?->id])->save();
+
+        return response()->json(['message' => 'Customer restored.', 'data' => new PartyResource($customer->refresh())]);
     }
 
     public function options(): JsonResponse

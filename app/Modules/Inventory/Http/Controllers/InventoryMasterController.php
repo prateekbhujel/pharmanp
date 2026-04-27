@@ -82,6 +82,24 @@ class InventoryMasterController extends Controller
         return response()->json(['message' => 'Inventory master updated.', 'data' => $this->shape($master, $row)]);
     }
 
+    public function toggleStatus(Request $request, string $master, int $id): JsonResponse
+    {
+        abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.products.update'), 403);
+
+        $row = DB::transaction(function () use ($request, $master, $id) {
+            $model = $this->modelFor($master);
+            $row = $model::query()->findOrFail($id);
+            $row->forceFill([
+                'is_active' => $request->boolean('is_active'),
+                'updated_by' => $request->user()?->id,
+            ])->save();
+
+            return $row->refresh();
+        });
+
+        return response()->json(['message' => 'Inventory master status updated.', 'data' => $this->shape($master, $row)]);
+    }
+
     public function destroy(Request $request, string $master, int $id): JsonResponse
     {
         abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.products.delete'), 403);

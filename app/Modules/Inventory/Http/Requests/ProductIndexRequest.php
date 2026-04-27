@@ -23,6 +23,7 @@ class ProductIndexRequest extends FormRequest
             'company_id' => ['nullable', 'integer', 'exists:companies,id'],
             'category_id' => ['nullable', 'integer', 'exists:product_categories,id'],
             'is_active' => ['nullable', 'boolean'],
+            'deleted' => ['nullable', 'boolean'],
         ];
     }
 }

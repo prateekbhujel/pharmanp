@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, App, Button, Card, Select, Space, Steps, Table, Upload } from 'antd';
-import { InboxOutlined } from '@ant-design/icons';
+import { CloseCircleOutlined, FileTextOutlined, InboxOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
@@ -70,7 +70,7 @@ export function ImportWizardPage() {
 
             <Card>
                 <Steps
-                    current={preview ? (preview.status === 'validated' ? 2 : 1) : 0}
+                    current={preview ? ((preview.status || '').startsWith('completed') ? 2 : 1) : 0}
                     items={[{ title: 'Upload' }, { title: 'Map & Validate' }, { title: 'Ready' }]}
                 />
             </Card>
@@ -78,18 +78,31 @@ export function ImportWizardPage() {
             <Card title="Upload">
                 <div className="import-grid">
                     <Select value={target} onChange={setTarget} options={targets.map((item) => ({ value: item.target, label: item.target.replace('_', ' ') }))} />
-                    <Upload.Dragger
-                        maxCount={1}
-                        beforeUpload={(nextFile) => {
-                            setFile(nextFile);
-                            return false;
-                        }}
-                        onRemove={() => setFile(null)}
-                    >
-                        <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-                        <p className="ant-upload-text">Drop CSV/XLSX here</p>
-                    </Upload.Dragger>
-                    <Button type="primary" loading={loading} onClick={runPreview}>Preview Columns</Button>
+                    <div className="import-dropzone">
+                        <Upload.Dragger
+                            maxCount={1}
+                            showUploadList={false}
+                            beforeUpload={(nextFile) => {
+                                setFile(nextFile);
+                                return false;
+                            }}
+                            onRemove={() => setFile(null)}
+                        >
+                            <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                            <p className="ant-upload-text">Drop CSV/XLSX here</p>
+                        </Upload.Dragger>
+                        {file?.name && (
+                            <div className="selected-file-chip" title={file.name}>
+                                <FileTextOutlined />
+                                <span>{file.name}</span>
+                                <Button size="small" type="text" icon={<CloseCircleOutlined />} onClick={() => setFile(null)} />
+                            </div>
+                        )}
+                    </div>
+                    <Space>
+                        <Button onClick={() => window.open(endpoints.importSample(target), '_blank')}>Sample Template</Button>
+                        <Button type="primary" loading={loading} onClick={runPreview}>Preview File</Button>
+                    </Space>
                 </div>
             </Card>
 
@@ -112,9 +125,16 @@ export function ImportWizardPage() {
                         ))}
                     </div>
                     <Space className="mt-16">
-                        <Button type="primary" loading={loading} onClick={confirmMapping}>Validate Mapping</Button>
-                        <span>{preview.valid_rows} valid / {preview.invalid_rows} invalid / {preview.total_rows} total</span>
+                        <Button type="primary" loading={loading} onClick={confirmMapping}>Confirm Import</Button>
+                        <span>{preview.valid_rows} imported / {preview.invalid_rows} invalid / {preview.total_rows} total</span>
                     </Space>
+                    <Alert
+                        className="mt-16"
+                        type="info"
+                        showIcon
+                        message="Preview rows are sampled"
+                        description="The table below shows a sample preview. Confirm import processes the full stored file, not just these rows."
+                    />
                     {preview.invalid_rows > 0 && (
                         <Alert
                             className="mt-16"

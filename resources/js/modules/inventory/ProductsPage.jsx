@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { App, Button, Card, Divider, Form, Input, InputNumber, Modal, Select, Space, Switch, Upload } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UndoOutlined, UploadOutlined } from '@ant-design/icons';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { ExportButtons, ImportButton } from '../../core/components/ListToolbarActions';
@@ -83,6 +83,7 @@ export function ProductsPage() {
     const [quickMaster, setQuickMaster] = useState(null);
     const [form] = Form.useForm();
     const [quickForm] = Form.useForm();
+    const deletedMode = Boolean(table.filters.deleted);
 
     const watchedMrp = Number(Form.useWatch('mrp', form) || 0);
     const watchedDiscount = Number(Form.useWatch('discount_percent', form) || 0);
@@ -202,6 +203,20 @@ export function ProductsPage() {
         });
     }
 
+    function restore(record) {
+        confirmDelete({
+            title: 'Restore product?',
+            content: `${record.name} will return to the active product list.`,
+            okText: 'Restore',
+            danger: false,
+            onOk: async () => {
+                await http.post(endpoints.productRestore(record.id));
+                notification.success({ message: 'Product restored' });
+                table.reload();
+            },
+        });
+    }
+
     function syncPricing(changedValues, values) {
         if (!('mrp' in changedValues) && !('discount_percent' in changedValues)) {
             return;
@@ -236,17 +251,21 @@ export function ProductsPage() {
         { title: 'Stock Qty', dataIndex: 'stock_on_hand', field: 'stock_on_hand', sorter: true, align: 'right', width: 120 },
         { title: 'MRP', dataIndex: 'mrp', field: 'mrp', sorter: true, align: 'right', width: 120, render: (value) => <Money value={value} /> },
         { title: 'CC Rate', dataIndex: 'cc_rate', align: 'right', width: 110, render: (value) => `${Number(value || 0).toFixed(2)}%` },
-        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value, row) => <StatusToggle value={value} id={row.id} endpoint={endpoints.products} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value, row) => row.deleted_at ? <StatusTag active={false} falseText="Deleted" /> : <StatusToggle value={value} id={row.id} endpoint={endpoints.products} /> },
         {
             title: 'Action',
             key: 'actions',
             fixed: 'right',
             width: 112,
             render: (_, record) => (
-                <Space>
-                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-                    <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
-                </Space>
+                record.deleted_at ? (
+                    <Button aria-label="Restore" icon={<UndoOutlined />} onClick={() => restore(record)}>Restore</Button>
+                ) : (
+                    <Space>
+                        <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+                        <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
+                    </Space>
+                )
             ),
         },
     ];
@@ -254,7 +273,7 @@ export function ProductsPage() {
     function productList() {
         return (
             <Card title="Product List">
-                <div className="table-toolbar">
+                <div className="table-toolbar table-toolbar-products">
                     <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search product, generic, code or barcode" allowClear />
                     <Select
                         allowClear
@@ -262,6 +281,13 @@ export function ProductsPage() {
                         options={meta.companies?.map((item) => ({ value: item.id, label: item.name }))}
                         onChange={(company_id) => table.setFilters((filters) => ({ ...filters, company_id }))}
                     />
+                    <div className="table-switch">
+                        <Switch
+                            checked={deletedMode}
+                            onChange={(deleted) => table.setFilters((filters) => ({ ...filters, deleted: deleted ? 1 : undefined }))}
+                        />
+                        <span>View Deleted</span>
+                    </div>
                     <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                 </div>
                 <ServerTable table={table} columns={columns} />

@@ -1,26 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Badge, Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tabs } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
-
-const dropdownAliases = {
-    'product.dosage_form': { label: 'Dosage Forms' },
-    'product.uom': { label: 'Units of Measure' },
-    'product.storage_condition': { label: 'Storage Conditions' },
-    'product.category': { label: 'Product Categories' },
-    'order.status': { label: 'Order Statuses' },
-    'payment.method': { label: 'Payment Methods' },
-};
+import { dropdownAliasOptions, dropdownDataField, fallbackDropdownAliases } from '../../core/utils/dropdownOptions';
 
 export function DataLookupPage() {
-    const { data: dropdownOptions, reload: reloadDropdowns } = useApi(endpoints.dropdownOptions);
+    const { data: dropdownResponse, reload: reloadDropdowns } = useApi(endpoints.dropdownOptions);
     const { data: partyTypes, reload: reloadPartyTypes } = useApi(endpoints.partyTypes);
     const { data: supplierTypes, reload: reloadSupplierTypes } = useApi(endpoints.supplierTypes);
 
-    const [dropdownAlias, setDropdownAlias] = useState('product.dosage_form');
+    const dropdownOptions = dropdownResponse?.data || [];
+    const dropdownAliases = dropdownResponse?.aliases || fallbackDropdownAliases;
+    const aliasOptions = useMemo(() => dropdownAliasOptions(dropdownAliases), [dropdownAliases]);
+    const [dropdownAlias, setDropdownAlias] = useState(aliasOptions[0]?.value || 'product_status');
     const [dropdownModalOpen, setDropdownModalOpen] = useState(false);
     const [editingOption, setEditingOption] = useState(null);
     const [dropdownForm] = Form.useForm();
@@ -33,16 +28,25 @@ export function DataLookupPage() {
     const [editingSupplierType, setEditingSupplierType] = useState(null);
     const [supplierTypeForm] = Form.useForm();
 
-    const filteredOptions = useMemo(() => 
+    const filteredOptions = useMemo(() =>
         (dropdownOptions || []).filter(o => o.alias === dropdownAlias),
     [dropdownOptions, dropdownAlias]);
+
+    const selectedAliasMeta = dropdownAliases[dropdownAlias] || {};
+    const dataField = dropdownDataField(dropdownAlias);
 
     // --- Handlers ---
     const openDropdownOption = (record = null) => {
         setEditingOption(record);
         dropdownForm.resetFields();
-        if (record) dropdownForm.setFieldsValue(record);
-        else dropdownForm.setFieldsValue({ alias: dropdownAlias, status: true });
+        if (record) {
+            dropdownForm.setFieldsValue({
+                ...record,
+                status: Boolean(record.status),
+            });
+        } else {
+            dropdownForm.setFieldsValue({ alias: dropdownAlias, status: true });
+        }
         setDropdownModalOpen(true);
     };
 
@@ -100,7 +104,7 @@ export function DataLookupPage() {
         <div className="page-stack">
             <PageHeader
                 title="Data Lookup"
-                description="Manage dropdown values, party types, and supplier categories"
+                description="Keep shared dropdown values, party types, and supplier groupings in one place"
             />
 
             <Tabs items={[
@@ -116,7 +120,7 @@ export function DataLookupPage() {
                                         value={dropdownAlias} 
                                         onChange={setDropdownAlias} 
                                         style={{ width: 200 }} 
-                                        options={Object.entries(dropdownAliases).map(([key, meta]) => ({ value: key, label: meta.label }))} 
+                                        options={aliasOptions}
                                     />
                                     <Button type="primary" icon={<PlusOutlined />} onClick={() => openDropdownOption()}>Add Option</Button>
                                 </Space>
@@ -128,7 +132,11 @@ export function DataLookupPage() {
                                 pagination={false}
                                 columns={[
                                     { title: 'Name', dataIndex: 'name' },
-                                    { title: 'Data', dataIndex: 'data', render: (v) => v || '-' },
+                                    {
+                                        title: selectedAliasMeta.supports_data ? (dataField?.label || 'Data') : 'Data',
+                                        dataIndex: 'data',
+                                        render: (v) => v || '-',
+                                    },
                                     { title: 'Status', dataIndex: 'is_active', width: 100, render: (v) => <Badge status={v ? 'success' : 'default'} text={v ? 'Active' : 'Inactive'} /> },
                                     {
                                         title: '', width: 112, render: (_, record) => (
@@ -198,9 +206,16 @@ export function DataLookupPage() {
             {/* Modals */}
             <Modal title={editingOption ? 'Edit Option' : 'New Option'} open={dropdownModalOpen} onCancel={() => setDropdownModalOpen(false)} onOk={() => dropdownForm.submit()} destroyOnHidden>
                 <Form form={dropdownForm} layout="vertical" onFinish={saveDropdownOption}>
-                    <Form.Item name="alias" label="Alias" rules={[{ required: true }]}><Select options={Object.entries(dropdownAliases).map(([key, meta]) => ({ value: key, label: meta.label }))} /></Form.Item>
+                    <Form.Item name="alias" label="Alias" rules={[{ required: true }]}><Select options={aliasOptions} /></Form.Item>
                     <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
-                    <Form.Item name="data" label="Data (optional)"><Input /></Form.Item>
+                    {selectedAliasMeta.supports_data && dataField?.options && (
+                        <Form.Item name="data" label={dataField.label}>
+                            <Select allowClear options={dataField.options} placeholder={dataField.placeholder} />
+                        </Form.Item>
+                    )}
+                    {selectedAliasMeta.supports_data && !dataField?.options && (
+                        <Form.Item name="data" label={dataField?.label || 'Data (optional)'}><Input placeholder={dataField?.placeholder || 'Optional'} /></Form.Item>
+                    )}
                     <Form.Item name="status" valuePropName="checked" label="Active"><Switch /></Form.Item>
                 </Form>
             </Modal>

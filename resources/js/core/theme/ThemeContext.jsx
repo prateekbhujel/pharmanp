@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export const ThemeContext = createContext({
-    colorPrimary: '#0891b2',
+    colorPrimary: '#0f766e',
     setColorPrimary: () => {},
 });
 
@@ -18,13 +18,11 @@ function hexToRgb(hex) {
 }
 
 export function ThemeProvider({ children }) {
-    const [colorPrimary, setColorPrimary] = useState(localStorage.getItem('pharmanp-theme-color') || '#0891b2');
+    const [colorPrimary, setColorPrimary] = useState('#0f766e');
 
     useEffect(() => {
-        localStorage.setItem('pharmanp-theme-color', colorPrimary);
         document.documentElement.style.setProperty('--primary-color', colorPrimary);
         document.documentElement.style.setProperty('--primary-color-rgb', hexToRgb(colorPrimary));
-        // Create a slightly darker shade for gradients
         document.documentElement.style.setProperty('--primary-color-dark', adjustColor(colorPrimary, -40));
     }, [colorPrimary]);
 

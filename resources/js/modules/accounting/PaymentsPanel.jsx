@@ -4,6 +4,7 @@ import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Money } from '../../core/components/Money';
 import { FormDrawer } from '../../core/components/FormDrawer';
+import { QuickDropdownOptionModal } from '../../core/components/QuickDropdownOptionModal';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 
@@ -21,6 +22,7 @@ export function PaymentsPanel() {
     const [allocations, setAllocations] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
+    const [quickPaymentModeOpen, setQuickPaymentModeOpen] = useState(false);
     const [form] = Form.useForm();
 
     useEffect(() => { loadPayments(1); loadParties(); }, [range, direction]);
@@ -58,6 +60,7 @@ export function PaymentsPanel() {
         form.setFieldsValue(record ? {
             ...record,
             payment_date: dayjs(record.payment_date),
+            payment_mode_id: record.payment_mode_id || lookups.payment_modes.find((mode) => mode.name === record.payment_mode)?.id,
         } : { payment_date: dayjs(), direction: 'out', party_type: 'supplier' });
         setDrawerOpen(true);
     }
@@ -85,6 +88,7 @@ export function PaymentsPanel() {
                 ...values,
                 id: editingId || undefined,
                 payment_date: values.payment_date.format('YYYY-MM-DD'),
+                payment_mode_id: values.payment_mode_id,
                 allocations: allocations.filter((a) => a.allocated_amount > 0),
             });
             notification.success({ message: 'Payment saved' });
@@ -152,8 +156,18 @@ export function PaymentsPanel() {
                     </Form.Item>
                     <Form.Item name="payment_date" label="Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
                     <Form.Item name="amount" label="Amount" rules={[{ required: true }]}><InputNumber min={0.01} className="full-width" /></Form.Item>
-                    <Form.Item name="payment_mode" label="Mode" rules={[{ required: true }]}>
-                        <Select showSearch optionFilterProp="label" options={lookups.payment_modes.map((m) => ({ value: m.name, label: m.name }))} />
+                    <Form.Item name="payment_mode_id" label="Mode" rules={[{ required: true }]}>
+                        <Select
+                            showSearch
+                            optionFilterProp="label"
+                            options={lookups.payment_modes.map((m) => ({ value: m.id, label: m.name }))}
+                            dropdownRender={(menu) => (
+                                <>
+                                    {menu}
+                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickPaymentModeOpen(true)}>Quick add payment mode</Button>
+                                </>
+                            )}
+                        />
                     </Form.Item>
                     <Form.Item name="reference_no" label="Reference #"><Input /></Form.Item>
                     <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
@@ -180,6 +194,18 @@ export function PaymentsPanel() {
                     </Card>
                 )}
             </FormDrawer>
+            <QuickDropdownOptionModal
+                alias="payment_mode"
+                open={quickPaymentModeOpen}
+                onClose={() => setQuickPaymentModeOpen(false)}
+                onCreated={(option) => {
+                    setLookups((current) => ({
+                        ...current,
+                        payment_modes: [option, ...current.payment_modes.filter((item) => item.id !== option.id)],
+                    }));
+                    form.setFieldValue('payment_mode_id', option.id);
+                }}
+            />
         </div>
     );
 }

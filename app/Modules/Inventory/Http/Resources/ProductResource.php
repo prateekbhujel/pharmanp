@@ -40,6 +40,7 @@ class ProductResource extends JsonResource
             'description' => $this->description,
             'image_path' => $this->image_path,
             'image_url' => $this->image_path ? AssetUrl::resolve(AssetUrl::publicStorage($this->image_path)) : null,
+            'deleted_at' => $this->deleted_at?->toISOString(),
             'company' => $this->whenLoaded('company', fn () => [
                 'id' => $this->company?->id,
                 'name' => $this->company?->name,

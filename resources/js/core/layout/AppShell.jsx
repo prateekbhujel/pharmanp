@@ -3,6 +3,7 @@ import { Avatar, Badge, Button, Dropdown, Layout, Menu, Space, Spin, Typography 
 import {
     BarChartOutlined,
     BellOutlined,
+    ClockCircleOutlined,
     CloudUploadOutlined,
     DashboardOutlined,
     DollarOutlined,
@@ -40,6 +41,7 @@ const DashboardPage = React.lazy(() => import('../../modules/dashboard/Dashboard
 const ProductsPage = React.lazy(() => import('../../modules/inventory/ProductsPage').then((module) => ({ default: module.ProductsPage })));
 const SalesPage = React.lazy(() => import('../../modules/sales/SalesPage').then((module) => ({ default: module.SalesPage })));
 const ImportWizardPage = React.lazy(() => import('../../modules/imports/ImportWizardPage').then((module) => ({ default: module.ImportWizardPage })));
+const OcrImportPage = React.lazy(() => import('../../modules/imports/OcrImportPage').then((module) => ({ default: module.OcrImportPage })));
 const SystemUpdatePage = React.lazy(() => import('../../modules/system/SystemUpdatePage').then((module) => ({ default: module.SystemUpdatePage })));
 const OnboardingPage = React.lazy(() => import('../../modules/onboarding/OnboardingPage').then((module) => ({ default: module.OnboardingPage })));
 const MrTrackingPage = React.lazy(() => import('../../modules/mr/MrTrackingPage').then((module) => ({ default: module.MrTrackingPage })));
@@ -74,7 +76,8 @@ const routes = {
     [appUrl('/app/sales/pos')]: SalesPage,
     [appUrl('/app/sales/invoices')]: SalesPage,
     [appUrl('/app/sales/returns')]: SalesPage,
-    [appUrl('/app/sales/ocr')]: SalesPage,
+    [appUrl('/app/sales/ocr')]: OcrImportPage,
+    [appUrl('/app/imports')]: ImportWizardPage,
     [appUrl('/app/field-force/dashboard')]: MrTrackingPage,
     [appUrl('/app/field-force/performance')]: MrTrackingPage,
     [appUrl('/app/field-force/representatives')]: MrTrackingPage,
@@ -82,15 +85,30 @@ const routes = {
     [appUrl('/app/field-force/branches')]: MrTrackingPage,
     [appUrl('/app/accounting')]: AccountingPage,
     [appUrl('/app/accounting/vouchers')]: AccountingPage,
+    [appUrl('/app/accounting/day-book')]: AccountingPage,
+    [appUrl('/app/accounting/cash-book')]: AccountingPage,
+    [appUrl('/app/accounting/bank-book')]: AccountingPage,
     [appUrl('/app/accounting/ledgers')]: AccountingPage,
+    [appUrl('/app/accounting/ledger')]: AccountingPage,
     [appUrl('/app/accounting/trial-balance')]: AccountingPage,
+    [appUrl('/app/accounting/payments')]: AccountingPage,
+    [appUrl('/app/accounting/expenses')]: AccountingPage,
     [appUrl('/app/party/management')]: PartiesPage,
     [appUrl('/app/party/suppliers')]: PartiesPage,
     [appUrl('/app/party/customers')]: PartiesPage,
     [appUrl('/app/reports')]: ReportsPage,
     [appUrl('/app/reports/inventory')]: ReportsPage,
     [appUrl('/app/reports/sales')]: ReportsPage,
+    [appUrl('/app/reports/purchase')]: ReportsPage,
+    [appUrl('/app/reports/stock')]: ReportsPage,
+    [appUrl('/app/reports/low-stock')]: ReportsPage,
+    [appUrl('/app/reports/expiry')]: ReportsPage,
+    [appUrl('/app/reports/accounting')]: ReportsPage,
     [appUrl('/app/reports/supplier-performance')]: ReportsPage,
+    [appUrl('/app/reports/supplier-ledger')]: ReportsPage,
+    [appUrl('/app/reports/customer-ledger')]: ReportsPage,
+    [appUrl('/app/reports/product-movement')]: ReportsPage,
+    [appUrl('/app/reports/mr-performance')]: ReportsPage,
     [appUrl('/app/administration/users')]: UsersPage,
     [appUrl('/app/administration/roles')]: RolesPage,
     [appUrl('/app/administration/data-lookup')]: DataLookupPage,
@@ -105,13 +123,14 @@ function currentAppPath() {
 export function AppShell() {
     const { user: authUser } = useAuth();
     const { data: brandingData, loading: brandingLoading } = useApi(endpoints.branding);
-    const { colorPrimary, setColorPrimary } = useTheme();
+    const { colorPrimary } = useTheme();
     
     const [collapsed, setCollapsed] = useState(true);
     const [isCompactViewport, setIsCompactViewport] = useState(false);
     const [pathname, setPathname] = useState(currentAppPath);
     const [alerts, setAlerts] = useState({ loading: true, lowStockRows: [], expiryRows: [], count: 0 });
     const [searchVisible, setSearchVisible] = useState(false);
+    const [now, setNow] = useState(new Date());
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -123,6 +142,11 @@ export function AppShell() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    useEffect(() => {
+        const timer = window.setInterval(() => setNow(new Date()), 1000);
+        return () => window.clearInterval(timer);
     }, []);
 
     useEffect(() => {
@@ -162,12 +186,6 @@ export function AppShell() {
         window.localStorage.setItem(SIDEBAR_COLLAPSE_STORAGE_KEY, collapsed ? '1' : '0');
     }, [collapsed, isCompactViewport]);
 
-    useEffect(() => {
-        if (brandingData?.accent_color && brandingData.accent_color !== colorPrimary) {
-            setColorPrimary(brandingData.accent_color);
-        }
-    }, [brandingData, colorPrimary, setColorPrimary]);
-
     const layout = brandingData?.layout || 'vertical';
     const appName = brandingData?.app_name || 'PharmaNP';
     const logo = brandingData?.sidebar_logo_url || brandingData?.logo_url || brandingData?.app_icon_url;
@@ -189,6 +207,7 @@ export function AppShell() {
         const canAccounting = can(user, 'accounting.vouchers.view') || can(user, 'accounting.books.view') || can(user, 'accounting.trial_balance.view');
         const canReports = can(user, 'reports.view');
         const canSetup = can(user, 'settings.manage') || can(user, 'users.manage') || can(user, 'roles.manage') || user?.is_owner;
+        const canImports = canInventory || canPurchase || canSetup;
         const routeMap = {};
         const register = (key, route) => {
             routeMap[key] = route;
@@ -229,7 +248,7 @@ export function AppShell() {
             {
                 key: 'sales',
                 icon: <DollarOutlined />,
-                label: 'Sales / POS',
+                label: 'Sales',
                 show: canSales,
                 children: [
                     child('sales-index', 'Sales', appUrl('/app/sales')),
@@ -237,7 +256,8 @@ export function AppShell() {
                 ],
             },
             { key: register('party-management', appUrl('/app/party/management')), icon: <TeamOutlined />, label: 'Party Management', show: canParties },
-            { key: register('sales-ocr', appUrl('/app/sales/ocr')), icon: <CloudUploadOutlined />, label: 'OCR Extraction', show: can(user, 'sales.ocr') },
+            { key: register('imports', appUrl('/app/imports')), icon: <CloudUploadOutlined />, label: 'Import Center', show: canImports },
+            { key: register('sales-ocr', appUrl('/app/sales/ocr')), icon: <CloudUploadOutlined />, label: 'OCR Purchase', show: can(user, 'sales.ocr') || canImports },
             {
                 key: 'accounting',
                 icon: <WalletOutlined />,
@@ -245,8 +265,13 @@ export function AppShell() {
                 show: canAccounting,
                 children: [
                     child('accounting-vouchers', 'Vouchers', appUrl('/app/accounting/vouchers')),
-                    child('accounting-ledgers', 'Ledgers', appUrl('/app/accounting/ledgers')),
+                    child('accounting-day-book', 'Day Book', appUrl('/app/accounting/day-book')),
+                    child('accounting-cash-book', 'Cash Book', appUrl('/app/accounting/cash-book')),
+                    child('accounting-bank-book', 'Bank Book', appUrl('/app/accounting/bank-book')),
+                    child('accounting-ledgers', 'Ledger', appUrl('/app/accounting/ledger')),
                     child('accounting-trial', 'Trial Balance', appUrl('/app/accounting/trial-balance')),
+                    child('accounting-payments', 'Payments', appUrl('/app/accounting/payments')),
+                    child('accounting-expenses', 'Expenses', appUrl('/app/accounting/expenses')),
                 ],
             },
             {
@@ -268,8 +293,11 @@ export function AppShell() {
                 label: 'Reports',
                 show: canReports,
                 children: [
-                    child('reports-inventory', 'Inventory Reports', appUrl('/app/reports/inventory')),
                     child('reports-sales', 'Sales Reports', appUrl('/app/reports/sales')),
+                    child('reports-purchase', 'Purchase Reports', appUrl('/app/reports/purchase')),
+                    child('reports-inventory', 'Stock Reports', appUrl('/app/reports/stock')),
+                    child('reports-expiry', 'Expiry Reports', appUrl('/app/reports/expiry')),
+                    child('reports-accounting', 'Accounting Reports', appUrl('/app/reports/accounting')),
                     child('reports-performance', 'Supplier Performance', appUrl('/app/reports/supplier-performance')),
                 ],
             },
@@ -388,6 +416,14 @@ export function AppShell() {
         { type: 'divider' },
         { key: 'logout', label: 'Sign Out', danger: true, onClick: logout },
     ];
+    const timeLabel = new Intl.DateTimeFormat(undefined, {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    }).format(now);
 
     return (
         <Layout className={`app-shell app-shell-${layout}`}>
@@ -402,7 +438,7 @@ export function AppShell() {
             >
                 <div className="main-sidebar-header">
                     <a href={appUrl('/app')} className="header-logo">
-                        {logo ? <img src={logo} alt={appName} className="brand-logo" /> : <div className="brand-mark" style={{ background: `linear-gradient(135deg, ${colorPrimary}, var(--primary-color-dark, #0369a1))` }}><SafetyCertificateOutlined /></div>}
+                        {logo ? <img src={logo} alt={appName} className="brand-logo" /> : <div className="brand-mark"><SafetyCertificateOutlined /></div>}
                         {!collapsed && <strong>{appName}</strong>}
                     </a>
                 </div>
@@ -441,6 +477,10 @@ export function AppShell() {
                         </Button>
                     </Space>
                     <Space className="header-content-right" size={16}>
+                        <div className="topbar-clock">
+                            <ClockCircleOutlined />
+                            <span>{timeLabel}</span>
+                        </div>
                         <Dropdown
                             menu={{ items: notificationItems, onClick: handleNotificationClick }}
                             placement="bottomRight"
@@ -466,6 +506,12 @@ export function AppShell() {
                         <ActivePage key={activeKey} />
                     </Suspense>
                 </Content>
+                <div className="app-footer">
+                    <span>Developed by Prateek Bhujel</span>
+                    <span>GitHub: pratik bhujel</span>
+                    <span>prateekbhujelpb@gmail.com</span>
+                    <span>Panning</span>
+                </div>
             </Layout>
             <GlobalSearch 
                 visible={searchVisible} 

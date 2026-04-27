@@ -34,6 +34,15 @@ class ImportWizardController extends Controller
         return $this->jobResponse($job, $service);
     }
 
+    public function sample(string $target, ImportPreviewService $service): StreamedResponse
+    {
+        abort_unless(array_key_exists($target, $service->targetFields()), 404);
+
+        return response()->streamDownload(function () use ($target, $service) {
+            echo $service->sampleCsv($target);
+        }, $target.'-sample.csv', ['Content-Type' => 'text/csv']);
+    }
+
     public function confirm(ConfirmImportRequest $request, ImportPreviewService $service): JsonResponse
     {
         $job = $service->confirm(
@@ -66,7 +75,7 @@ class ImportWizardController extends Controller
                 'total_rows' => $job->total_rows,
                 'valid_rows' => $job->valid_rows,
                 'invalid_rows' => $job->invalid_rows,
-                'rows' => $job->rows->map(fn ($row) => [
+                'rows' => $job->rows->sortBy('row_number')->take(50)->map(fn ($row) => [
                     'row_number' => $row->row_number,
                     'raw_data' => $row->raw_data,
                     'errors' => $row->errors,

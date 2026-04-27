@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Space, Statistic, Table, Tabs } from 'antd';
+import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Statistic, Table } from 'antd';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
@@ -8,6 +8,7 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { accountCatalog, voucherTypeOptions } from '../../core/utils/accountCatalog';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
+import { appUrl } from '../../core/utils/url';
 import { ExpensesPanel } from './ExpensesPanel';
 import { PaymentsPanel } from './PaymentsPanel';
 
@@ -20,10 +21,34 @@ const bookOptions = [
     { value: 'trial-balance', label: 'Trial Balance' },
 ];
 
+function accountingRouteState() {
+    const section = window.location.pathname.split('/').filter(Boolean).pop();
+
+    if (section === 'payments') {
+        return { tab: 'payments', book: 'day-book' };
+    }
+
+    if (section === 'expenses') {
+        return { tab: 'expenses', book: 'day-book' };
+    }
+
+    if (['day-book', 'cash-book', 'bank-book', 'ledger', 'trial-balance'].includes(section)) {
+        return { tab: 'books', book: section };
+    }
+
+    return { tab: 'voucher', book: 'day-book' };
+}
+
+function goToAccounting(path) {
+    window.history.pushState({}, '', appUrl(path));
+    window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
 export function AccountingPage() {
     const { notification } = App.useApp();
+    const routeState = accountingRouteState();
     const [entries, setEntries] = useState([{ ...emptyEntry }, { account_type: 'sales', entry_type: 'credit', amount: 0 }]);
-    const [bookReport, setBookReport] = useState('day-book');
+    const [bookReport, setBookReport] = useState(routeState.book);
     const [bookRange, setBookRange] = useState([dayjs().startOf('month'), dayjs()]);
     const [bookFilters, setBookFilters] = useState({});
     const [bookRows, setBookRows] = useState([]);
@@ -162,101 +187,113 @@ export function AccountingPage() {
         render: (value) => typeof value === 'number' ? value.toLocaleString() : value,
     }));
 
+    const activeBookLabel = bookOptions.find((item) => item.value === bookReport)?.label || 'Books';
+    const pageTitle = routeState.tab === 'payments'
+        ? 'Payments'
+        : routeState.tab === 'expenses'
+            ? 'Expenses'
+            : routeState.tab === 'books'
+                ? activeBookLabel
+                : 'Voucher Entry';
+
+    function renderVoucher() {
+        return (
+            <Card title="Voucher Entry">
+                <Form form={form} layout="vertical" onFinish={submit} initialValues={{ voucher_date: dayjs(), voucher_type: 'journal' }}>
+                    <div className="form-grid">
+                        <Form.Item name="voucher_date" label="Voucher Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
+                        <Form.Item name="voucher_type" label="Voucher Type" rules={[{ required: true }]}>
+                            <Select options={voucherTypeOptions} />
+                        </Form.Item>
+                    </div>
+                    <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
+                    <TransactionLineItems
+                        rows={entries}
+                        columns={voucherColumns}
+                        errors={entryErrors}
+                        addLabel="Add Entry"
+                        minRows={2}
+                        onAdd={() => setEntries([...entries, { ...emptyEntry }])}
+                        onRemove={(index) => setEntries(entries.filter((_, rowIndex) => rowIndex !== index))}
+                        summary={[
+                            { label: 'Debit', value: <Money value={debit} /> },
+                            { label: 'Credit', value: <Money value={credit} /> },
+                            { label: 'Difference', value: <Money value={Math.abs(debit - credit)} />, strong: true },
+                        ]}
+                        actions={<Button type="primary" htmlType="submit" disabled={debit !== credit || debit <= 0}>Post Voucher</Button>}
+                    />
+                </Form>
+            </Card>
+        );
+    }
+
+    function renderBooks() {
+        return (
+            <div className="page-stack">
+                {bookSummary && (
+                    <Row gutter={[12, 12]}>
+                        {Object.entries(bookSummary).map(([key, value]) => (
+                            <Col xs={24} sm={12} xl={6} key={key}>
+                                <Card className="summary-card-compact"><Statistic title={key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())} value={value || 0} /></Card>
+                            </Col>
+                        ))}
+                    </Row>
+                )}
+                <Card title={activeBookLabel}>
+                    <div className="report-filter-grid">
+                        <Select
+                            value={bookReport}
+                            onChange={(value) => {
+                                setBookReport(value);
+                                setBookFilters({});
+                                goToAccounting(`/app/accounting/${value}`);
+                            }}
+                            options={bookOptions}
+                        />
+                        <DatePicker.RangePicker value={bookRange} onChange={setBookRange} />
+                        {bookReport === 'ledger' && (
+                            <>
+                                <Select allowClear placeholder="Account" value={bookFilters.account_type} onChange={(value) => setBookFilters((current) => ({ ...current, account_type: value }))} options={accountCatalog} />
+                                <Select allowClear placeholder="Party Type" value={bookFilters.party_type} onChange={(value) => setBookFilters((current) => ({ ...current, party_type: value, party_id: undefined }))} options={[
+                                    { value: 'customer', label: 'Customer' },
+                                    { value: 'supplier', label: 'Supplier' },
+                                ]} />
+                                {bookFilters.party_type === 'customer' && <Select allowClear placeholder="Customer" value={bookFilters.party_id} onChange={(value) => setBookFilters((current) => ({ ...current, party_id: value }))} options={customers.map((item) => ({ value: item.id, label: item.name }))} />}
+                                {bookFilters.party_type === 'supplier' && <Select allowClear placeholder="Supplier" value={bookFilters.party_id} onChange={(value) => setBookFilters((current) => ({ ...current, party_id: value }))} options={suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
+                            </>
+                        )}
+                    </div>
+                    <Table
+                        className="server-table"
+                        loading={bookLoading}
+                        rowKey={(_, index) => index}
+                        columns={bookColumns}
+                        dataSource={bookRows}
+                        pagination={{
+                            current: bookMeta.current_page,
+                            pageSize: bookMeta.per_page,
+                            total: bookMeta.total,
+                            onChange: loadBook,
+                        }}
+                        scroll={{ x: 'max-content' }}
+                    />
+                </Card>
+            </div>
+        );
+    }
+
+    function renderContent() {
+        if (routeState.tab === 'payments') return <PaymentsPanel />;
+        if (routeState.tab === 'expenses') return <ExpensesPanel />;
+        if (routeState.tab === 'books') return renderBooks();
+
+        return renderVoucher();
+    }
+
     return (
         <div className="page-stack">
-            <PageHeader title="Accounting" description="Balanced vouchers, books, ledger and trial balance on posted transactions" />
-            <Tabs items={[
-                {
-                    key: 'voucher',
-                    label: 'Voucher Entry',
-                    children: (
-                        <Card>
-                            <Form form={form} layout="vertical" onFinish={submit} initialValues={{ voucher_date: dayjs(), voucher_type: 'journal' }}>
-                                <div className="form-grid">
-                                    <Form.Item name="voucher_date" label="Voucher Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
-                                    <Form.Item name="voucher_type" label="Voucher Type" rules={[{ required: true }]}>
-                                        <Select options={voucherTypeOptions} />
-                                    </Form.Item>
-                                </div>
-                                <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
-                                <TransactionLineItems
-                                    rows={entries}
-                                    columns={voucherColumns}
-                                    errors={entryErrors}
-                                    addLabel="Add Entry"
-                                    minRows={2}
-                                    onAdd={() => setEntries([...entries, { ...emptyEntry }])}
-                                    onRemove={(index) => setEntries(entries.filter((_, rowIndex) => rowIndex !== index))}
-                                    summary={[
-                                        { label: 'Debit', value: <Money value={debit} /> },
-                                        { label: 'Credit', value: <Money value={credit} /> },
-                                        { label: 'Difference', value: <Money value={Math.abs(debit - credit)} />, strong: true },
-                                    ]}
-                                    actions={<Button type="primary" htmlType="submit" disabled={debit !== credit || debit <= 0}>Post Voucher</Button>}
-                                />
-                            </Form>
-                        </Card>
-                    ),
-                },
-                {
-                    key: 'books',
-                    label: 'Books & Trial Balance',
-                    children: (
-                        <div className="page-stack">
-                            {bookSummary && (
-                                <Row gutter={[16, 16]}>
-                                    {Object.entries(bookSummary).map(([key, value]) => (
-                                        <Col xs={24} sm={12} xl={6} key={key}>
-                                            <Card><Statistic title={key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())} value={value || 0} /></Card>
-                                        </Col>
-                                    ))}
-                                </Row>
-                            )}
-                            <Card>
-                                <div className="report-filter-grid">
-                                    <Select value={bookReport} onChange={(value) => { setBookReport(value); setBookFilters({}); }} options={bookOptions} />
-                                    <DatePicker.RangePicker value={bookRange} onChange={setBookRange} />
-                                    {bookReport === 'ledger' && (
-                                        <>
-                                            <Select allowClear placeholder="Account" value={bookFilters.account_type} onChange={(value) => setBookFilters((current) => ({ ...current, account_type: value }))} options={accountCatalog} />
-                                            <Select allowClear placeholder="Party Type" value={bookFilters.party_type} onChange={(value) => setBookFilters((current) => ({ ...current, party_type: value, party_id: undefined }))} options={[
-                                                { value: 'customer', label: 'Customer' },
-                                                { value: 'supplier', label: 'Supplier' },
-                                            ]} />
-                                            {bookFilters.party_type === 'customer' && <Select allowClear placeholder="Customer" value={bookFilters.party_id} onChange={(value) => setBookFilters((current) => ({ ...current, party_id: value }))} options={customers.map((item) => ({ value: item.id, label: item.name }))} />}
-                                            {bookFilters.party_type === 'supplier' && <Select allowClear placeholder="Supplier" value={bookFilters.party_id} onChange={(value) => setBookFilters((current) => ({ ...current, party_id: value }))} options={suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
-                                        </>
-                                    )}
-                                </div>
-                                <Table
-                                    className="server-table"
-                                    loading={bookLoading}
-                                    rowKey={(_, index) => index}
-                                    columns={bookColumns}
-                                    dataSource={bookRows}
-                                    pagination={{
-                                        current: bookMeta.current_page,
-                                        pageSize: bookMeta.per_page,
-                                        total: bookMeta.total,
-                                        onChange: loadBook,
-                                    }}
-                                    scroll={{ x: 'max-content' }}
-                                />
-                            </Card>
-                        </div>
-                    ),
-                },
-                {
-                    key: 'expenses',
-                    label: 'Expenses',
-                    children: <ExpensesPanel />,
-                },
-                {
-                    key: 'payments',
-                    label: 'Payments',
-                    children: <PaymentsPanel />,
-                },
-            ]} />
+            <PageHeader title={pageTitle} description="Accounting and finance records from posted transactions" />
+            {renderContent()}
         </div>
     );
 }

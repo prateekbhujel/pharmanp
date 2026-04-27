@@ -15,9 +15,9 @@ const mode = rootElement?.dataset.appMode || 'app';
 const baseTheme = {
     token: {
         fontSize: 13,
-        colorPrimary: '#0891b2',
-        colorInfo: '#0ea5e9',
-        colorSuccess: '#10b981',
+        colorPrimary: '#0f766e',
+        colorInfo: '#0369a1',
+        colorSuccess: '#16a34a',
         colorError: '#ef4444',
         colorWarning: '#f59e0b',
         borderRadius: 8,
@@ -39,6 +39,7 @@ const baseTheme = {
             borderRadius: 6,
             controlHeight: 34,
             fontWeight: 500,
+            primaryShadow: '0 6px 14px rgba(15, 118, 110, 0.18)',
         },
         Table: { 
             headerBg: '#f8fafc', 

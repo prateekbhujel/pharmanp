@@ -4,6 +4,7 @@ import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Money } from '../../core/components/Money';
 import { FormDrawer } from '../../core/components/FormDrawer';
+import { QuickDropdownOptionModal } from '../../core/components/QuickDropdownOptionModal';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 
@@ -16,6 +17,7 @@ export function ExpensesPanel() {
     const [loading, setLoading] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [quickAlias, setQuickAlias] = useState(null);
     const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
     const [form] = Form.useForm();
 
@@ -134,16 +136,58 @@ export function ExpensesPanel() {
                 <Form form={form} layout="vertical" onFinish={submit}>
                     <Form.Item name="expense_date" label="Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
                     <Form.Item name="expense_category_id" label="Category" rules={[{ required: true }]}>
-                        <Select showSearch optionFilterProp="label" options={lookups.expense_categories.map((c) => ({ value: c.id, label: c.name }))} />
+                        <Select
+                            showSearch
+                            optionFilterProp="label"
+                            options={lookups.expense_categories.map((c) => ({ value: c.id, label: c.name }))}
+                            dropdownRender={(menu) => (
+                                <>
+                                    {menu}
+                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickAlias('expense_category')}>Quick add category</Button>
+                                </>
+                            )}
+                        />
                     </Form.Item>
                     <Form.Item name="vendor_name" label="Vendor / Payee"><Input /></Form.Item>
                     <Form.Item name="payment_mode_id" label="Payment Mode" rules={[{ required: true }]}>
-                        <Select showSearch optionFilterProp="label" options={lookups.payment_modes.map((m) => ({ value: m.id, label: m.name }))} />
+                        <Select
+                            showSearch
+                            optionFilterProp="label"
+                            options={lookups.payment_modes.map((m) => ({ value: m.id, label: m.name }))}
+                            dropdownRender={(menu) => (
+                                <>
+                                    {menu}
+                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickAlias('payment_mode')}>Quick add payment mode</Button>
+                                </>
+                            )}
+                        />
                     </Form.Item>
                     <Form.Item name="amount" label="Amount" rules={[{ required: true }]}><InputNumber min={0.01} className="full-width" /></Form.Item>
                     <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
                 </Form>
             </FormDrawer>
+            <QuickDropdownOptionModal
+                alias={quickAlias || 'payment_mode'}
+                open={Boolean(quickAlias)}
+                onClose={() => setQuickAlias(null)}
+                onCreated={(option) => {
+                    if (option.alias === 'payment_mode') {
+                        setLookups((current) => ({
+                            ...current,
+                            payment_modes: [option, ...current.payment_modes.filter((item) => item.id !== option.id)],
+                        }));
+                        form.setFieldValue('payment_mode_id', option.id);
+                    }
+
+                    if (option.alias === 'expense_category') {
+                        setLookups((current) => ({
+                            ...current,
+                            expense_categories: [option, ...current.expense_categories.filter((item) => item.id !== option.id)],
+                        }));
+                        form.setFieldValue('expense_category_id', option.id);
+                    }
+                }}
+            />
         </div>
     );
 }

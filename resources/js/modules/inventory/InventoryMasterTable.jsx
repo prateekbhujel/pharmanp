@@ -4,6 +4,7 @@ import { CopyOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutline
 import { ExportButtons, ImportButton } from '../../core/components/ListToolbarActions';
 import { ServerTable } from '../../core/components/ServerTable';
 import { StatusTag } from '../../core/components/StatusTag';
+import { StatusToggle } from '../../core/components/StatusToggle';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -73,7 +74,7 @@ export function InventoryMasterTable({ master }) {
 
     const columns = useMemo(() => [
         ...config.columns,
-        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value, record) => record.deleted_at ? <StatusTag active={false} falseText="Deleted" /> : <StatusTag active={value} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value, record) => record.deleted_at ? <StatusTag active={false} falseText="Deleted" /> : <StatusToggle value={value} id={record.id} endpoint={endpoints.inventoryMaster(master)} /> },
         {
             title: 'Action',
             key: 'actions',

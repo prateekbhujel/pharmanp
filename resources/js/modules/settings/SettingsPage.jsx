@@ -7,7 +7,6 @@ import { http, validationErrors } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { FiscalYearPanel } from './FiscalYearPanel';
-import { PaymentModePanel } from './PaymentModePanel';
 
 function normalizeFile(event) {
     return Array.isArray(event) ? event : event?.fileList;
@@ -39,6 +38,44 @@ function brandingPayload(values) {
     payload.append('_method', 'PUT');
 
     return payload;
+}
+
+function BrandingUploadField({ form, name, label, url, hint }) {
+    const fileList = Form.useWatch(name, form) || [];
+    const selectedFileName = fileList?.[0]?.name;
+
+    return (
+        <div className="branding-box">
+            <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 600 }}>{label}</div>
+            <Form.Item name={name} valuePropName="fileList" getValueFromEvent={normalizeFile} noStyle>
+                <Upload
+                    beforeUpload={() => false}
+                    maxCount={1}
+                    accept={name === 'favicon_upload' ? '.ico,image/*' : 'image/*'}
+                    showUploadList={false}
+                >
+                    <div className="smart-image-upload-wrapper">
+                        {url ? (
+                            <>
+                                <img src={url} alt="preview" className="smart-image-preview" />
+                                <div className="smart-image-overlay">
+                                    <PlusOutlined />
+                                    <span>Change Asset</span>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="smart-image-placeholder">
+                                <PlusOutlined />
+                                <span>Upload</span>
+                            </div>
+                        )}
+                    </div>
+                </Upload>
+            </Form.Item>
+            {selectedFileName && <div className="upload-file-name" title={selectedFileName}>{selectedFileName}</div>}
+            <div style={{ marginTop: 8, fontSize: 11, color: '#94a3b8' }}>{hint}</div>
+        </div>
+    );
 }
 
 export function SettingsPage() {
@@ -142,37 +179,7 @@ export function SettingsPage() {
                                         ['sidebar_logo_upload', 'Sidebar Logo', branding?.sidebar_logo_url, 'Compact sidebar icon'],
                                         ['app_icon_upload', 'App Icon', branding?.app_icon_url, 'Desktop/Mobile icon'],
                                         ['favicon_upload', 'Favicon', branding?.favicon_url, 'Browser tab icon'],
-                                    ].map(([name, label, url, hint]) => (
-                                        <div key={name} className="branding-box">
-                                            <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 600 }}>{label}</div>
-                                            <Form.Item name={name} valuePropName="fileList" getValueFromEvent={normalizeFile} noStyle>
-                                                <Upload 
-                                                    beforeUpload={() => false} 
-                                                    maxCount={1} 
-                                                    accept={name === 'favicon_upload' ? '.ico,image/*' : 'image/*'} 
-                                                    showUploadList={false}
-                                                >
-                                                    <div className="smart-image-upload-wrapper">
-                                                        {url ? (
-                                                            <>
-                                                                <img src={url} alt="preview" className="smart-image-preview" />
-                                                                <div className="smart-image-overlay">
-                                                                    <PlusOutlined />
-                                                                    <span>Change Asset</span>
-                                                                </div>
-                                                            </>
-                                                        ) : (
-                                                            <div className="smart-image-placeholder">
-                                                                <PlusOutlined />
-                                                                <span>Upload</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </Upload>
-                                            </Form.Item>
-                                            <div style={{ marginTop: 8, fontSize: 11, color: '#94a3b8' }}>{hint}</div>
-                                        </div>
-                                    ))}
+                                    ].map(([name, label, url, hint]) => <BrandingUploadField key={name} form={brandingForm} name={name} label={label} url={url} hint={hint} />)}
                                 </div>
                                 <Space>
                                     <Button type="primary" size="large" htmlType="submit">Apply Branding</Button>
@@ -181,11 +188,6 @@ export function SettingsPage() {
                             </Form>
                         </Card>
                     )
-                },
-                {
-                    key: 'payment-modes',
-                    label: 'Payment Modes',
-                    children: <PaymentModePanel />
                 },
                 {
                     key: 'general',

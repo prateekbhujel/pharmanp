@@ -22,7 +22,7 @@ class PaymentController
     public function index(Request $request): JsonResponse
     {
         $query = Payment::query()
-            ->with(['customer', 'supplier', 'allocations'])
+            ->with(['customer', 'supplier', 'allocations', 'paymentModeOption:id,name,data'])
             ->latest('payment_date')
             ->latest('id');
 
@@ -66,7 +66,9 @@ class PaymentController
                 'party_type' => $payment->party_type,
                 'party_name' => $payment->party_name,
                 'party_id' => $payment->party_id,
-                'payment_mode' => $payment->payment_mode,
+                'payment_mode_id' => $payment->payment_mode_id,
+                'payment_mode' => $payment->payment_mode_label,
+                'payment_mode_data' => $payment->paymentModeOption?->data,
                 'amount' => round((float) $payment->amount, 2),
                 'reference_no' => $payment->reference_no,
                 'notes' => $payment->notes,
@@ -93,7 +95,7 @@ class PaymentController
             'party_id' => ['required', 'integer'],
             'payment_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'payment_mode' => ['required', 'string', 'max:60'],
+            'payment_mode_id' => ['required', 'integer', Rule::exists('dropdown_options', 'id')->where(fn ($query) => $query->where('alias', 'payment_mode'))],
             'reference_no' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
             'allocations' => ['nullable', 'array'],
@@ -109,7 +111,12 @@ class PaymentController
             Supplier::query()->findOrFail($validated['party_id']);
         }
 
-        $payment = DB::transaction(function () use ($validated, $request) {
+        $paymentMode = DropdownOption::query()
+            ->forAlias('payment_mode')
+            ->active()
+            ->findOrFail($validated['payment_mode_id']);
+
+        $payment = DB::transaction(function () use ($validated, $paymentMode, $request) {
             $existingPayment = ! empty($validated['id'])
                 ? Payment::query()->with('allocations')->findOrFail($validated['id'])
                 : null;
@@ -128,7 +135,8 @@ class PaymentController
                     'party_id' => $validated['party_id'],
                     'payment_date' => $validated['payment_date'],
                     'amount' => round((float) $validated['amount'], 2),
-                    'payment_mode' => $validated['payment_mode'],
+                    'payment_mode_id' => $paymentMode->id,
+                    'payment_mode' => $paymentMode->data ?: strtolower($paymentMode->name),
                     'reference_no' => $validated['reference_no'] ?? null,
                     'notes' => $validated['notes'] ?? null,
                     'updated_by' => $request->user()->id,
@@ -147,7 +155,8 @@ class PaymentController
                     'party_id' => $validated['party_id'],
                     'payment_date' => $validated['payment_date'],
                     'amount' => round((float) $validated['amount'], 2),
-                    'payment_mode' => $validated['payment_mode'],
+                    'payment_mode_id' => $paymentMode->id,
+                    'payment_mode' => $paymentMode->data ?: strtolower($paymentMode->name),
                     'reference_no' => $validated['reference_no'] ?? null,
                     'notes' => $validated['notes'] ?? null,
                     'created_by' => $request->user()->id,
@@ -200,7 +209,8 @@ class PaymentController
             }
 
             // Post accounting entries.
-            $cashAccount = str_contains(strtolower($payment->payment_mode), 'cash') ? 'cash' : 'bank';
+            $modeType = strtolower((string) ($paymentMode->data ?: $payment->payment_mode));
+            $cashAccount = $modeType === 'cash' ? 'cash' : 'bank';
             $userId = $request->user()->id;
 
             if ($payment->direction === 'in') {

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
+import { Alert, App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
 import { PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../core/components/PageHeader';
@@ -34,6 +34,7 @@ const emptyOrderItem = {
     unit_price: 0,
     discount_percent: 0,
 };
+const OCR_DRAFT_STORAGE_KEY = 'pharmanp-purchase-ocr-draft';
 
 function purchaseSection() {
     const section = window.location.pathname.split('/').filter(Boolean).pop();
@@ -62,6 +63,7 @@ export function PurchasesPage() {
     const [quickSupplierOpen, setQuickSupplierOpen] = useState(false);
     const [quickProductOpen, setQuickProductOpen] = useState(false);
     const [lastPurchasePrintUrl, setLastPurchasePrintUrl] = useState(null);
+    const [ocrDraft, setOcrDraft] = useState(null);
     const [billRange, setBillRange] = useState([dayjs().startOf('month'), dayjs()]);
     const [purchaseForm] = Form.useForm();
     const [orderForm] = Form.useForm();
@@ -78,6 +80,7 @@ export function PurchasesPage() {
     useEffect(() => {
         loadSuppliers();
         searchProducts('');
+        loadOcrDraft();
     }, []);
 
     useEffect(() => {
@@ -91,6 +94,29 @@ export function PurchasesPage() {
     async function loadSuppliers() {
         const { data } = await http.get(endpoints.supplierOptions);
         setSuppliers(data.data);
+    }
+
+    function loadOcrDraft() {
+        try {
+            const stored = window.sessionStorage.getItem(OCR_DRAFT_STORAGE_KEY);
+            if (!stored) return;
+
+            const draft = JSON.parse(stored);
+            setOcrDraft(draft);
+            purchaseForm.setFieldsValue({
+                supplier_id: draft.supplier_id || undefined,
+                supplier_invoice_no: draft.supplier_invoice_no || '',
+                purchase_date: draft.purchase_date ? dayjs(draft.purchase_date) : dayjs(),
+                notes: draft.notes || '',
+            });
+        } catch {
+            window.sessionStorage.removeItem(OCR_DRAFT_STORAGE_KEY);
+        }
+    }
+
+    function clearOcrDraft() {
+        window.sessionStorage.removeItem(OCR_DRAFT_STORAGE_KEY);
+        setOcrDraft(null);
     }
 
     async function searchProducts(q) {
@@ -135,6 +161,7 @@ export function PurchasesPage() {
             setPurchaseItems([{ ...emptyPurchaseItem }]);
             setPurchaseLineErrors({});
             setLastPurchasePrintUrl(data.print_url);
+            clearOcrDraft();
             purchaseTable.reload();
         } catch (error) {
             const errors = validationErrors(error);
@@ -263,6 +290,16 @@ export function PurchasesPage() {
             {section === 'entry' && (
                 <Card>
                     <Form form={purchaseForm} layout="vertical" onFinish={submitPurchase} initialValues={{ purchase_date: dayjs(), paid_amount: 0 }}>
+                        {ocrDraft && (
+                            <Alert
+                                type="info"
+                                showIcon
+                                className="mb-16"
+                                message="OCR draft loaded"
+                                description={`Supplier: ${ocrDraft.supplier_name || 'manual review'} | Invoice: ${ocrDraft.supplier_invoice_no || '-'} | ${ocrDraft.matches?.length || 0} possible match(es) found.`}
+                                action={<Button size="small" onClick={clearOcrDraft}>Clear</Button>}
+                            />
+                        )}
                         <div className="form-grid">
                             <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
                                 <Select
@@ -281,6 +318,7 @@ export function PurchasesPage() {
                             <Form.Item name="purchase_date" label="Purchase Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
                             <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
                         </div>
+                        <Form.Item name="notes" label="Remarks / OCR Notes"><Input.TextArea rows={3} /></Form.Item>
                         <TransactionLineItems
                             rows={purchaseItems}
                             columns={purchaseColumns}
