@@ -23,6 +23,7 @@ import { http } from '../api/http';
 import { endpoints } from '../api/endpoints';
 import { useAuth } from '../auth/AuthProvider';
 import { can } from '../utils/permissions';
+import { isMacPlatform } from '../utils/platform';
 import { appUrl } from '../utils/url';
 import { useTheme } from '../theme/ThemeContext';
 import { useApi } from '../hooks/useApi';
@@ -476,7 +477,7 @@ export function AppShell() {
                         >
                             <span>Search...</span>
                             <span className="search-trigger-kbd">
-                                {navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘K' : 'Ctrl+K'}
+                                {isMacPlatform() ? '⌘K' : 'Ctrl+K'}
                             </span>
                         </Button>
                     </Space>

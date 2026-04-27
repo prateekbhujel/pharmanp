@@ -2,6 +2,7 @@
 
 namespace App\Modules\Setup\Http\Controllers;
 
+use App\Core\Support\AssetUrl;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Modules\Setup\Http\Requests\BrandingSettingsRequest;
@@ -50,7 +51,7 @@ class BrandingController extends Controller
 
     private function branding(): array
     {
-        return Setting::getValue('app.branding', [
+        $branding = Setting::getValue('app.branding', [
             'app_name' => config('app.name', 'PharmaNP'),
             'logo_url' => null,
             'sidebar_logo_url' => null,
@@ -60,10 +61,16 @@ class BrandingController extends Controller
             'layout' => 'vertical',
             'sidebar_default_collapsed' => false,
         ]);
+
+        foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {
+            $branding[$key] = AssetUrl::resolve($branding[$key] ?? null);
+        }
+
+        return $branding;
     }
 
     private function storeBrandAsset(UploadedFile $file): string
     {
-        return Storage::disk('public')->url($file->store('settings/branding', 'public'));
+        return AssetUrl::publicStorage($file->store('settings/branding', 'public'));
     }
 }

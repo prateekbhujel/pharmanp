@@ -33,6 +33,7 @@ use App\Modules\Sales\Http\Controllers\ProductLookupController;
 use App\Modules\Setup\Http\Controllers\BrandingController;
 use App\Modules\Setup\Http\Controllers\DropdownOptionController;
 use App\Modules\Setup\Http\Controllers\FeatureCatalogController;
+use App\Modules\Setup\Http\Controllers\FiscalYearController;
 use App\Modules\Setup\Http\Controllers\PartyTypeController;
 use App\Modules\Setup\Http\Controllers\ProfileController;
 use App\Modules\Setup\Http\Controllers\RolePermissionController;
@@ -171,6 +172,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::post('/settings/supplier-types', [SupplierTypeController::class, 'store'])->name('settings.supplier-types.store');
         Route::put('/settings/supplier-types/{supplierType}', [SupplierTypeController::class, 'update'])->name('settings.supplier-types.update');
         Route::delete('/settings/supplier-types/{supplierType}', [SupplierTypeController::class, 'destroy'])->name('settings.supplier-types.destroy');
+        Route::apiResource('settings/fiscal-years', FiscalYearController::class)->only(['index', 'store', 'update', 'destroy']);
 
         Route::get('/reports/{report}', ReportController::class)->name('reports.show');
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Core\Support\AssetUrl;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,20 @@ class CurrentUserController extends Controller
     public function __invoke(Request $request): JsonResponse
     {
         $user = $request->user()->loadMissing(['roles:id,name', 'medicalRepresentative:id,name']);
+        $branding = Setting::getValue('app.branding', [
+            'app_name' => config('app.name', 'PharmaNP'),
+            'logo_url' => null,
+            'sidebar_logo_url' => null,
+            'app_icon_url' => null,
+            'favicon_url' => null,
+            'accent_color' => '#0f766e',
+            'layout' => 'vertical',
+            'sidebar_default_collapsed' => false,
+        ]);
+
+        foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {
+            $branding[$key] = AssetUrl::resolve($branding[$key] ?? null);
+        }
 
         return response()->json([
             'data' => [
@@ -30,16 +45,7 @@ class CurrentUserController extends Controller
                     'name' => $user->medicalRepresentative->name,
                 ] : null,
             ],
-            'branding' => Setting::getValue('app.branding', [
-                'app_name' => config('app.name', 'PharmaNP'),
-                'logo_url' => null,
-                'sidebar_logo_url' => null,
-                'app_icon_url' => null,
-                'favicon_url' => null,
-                'accent_color' => '#0f766e',
-                'layout' => 'vertical',
-                'sidebar_default_collapsed' => false,
-            ]),
+            'branding' => $branding,
         ]);
     }
 }

@@ -35,7 +35,6 @@ class MrBranchSalesController
             ->leftJoin('medical_representatives as mr', 'mr.id', '=', 'si.medical_representative_id')
             ->leftJoin('branches as b', 'b.id', '=', 'mr.branch_id')
             ->whereNull('si.deleted_at')
-            ->whereNull('sii.deleted_at')
             ->whereBetween('si.invoice_date', [$from, $to])
             ->when($branchId, fn ($q) => $q->where('b.id', $branchId))
             ->when($representativeId, fn ($q) => $q->where('mr.id', $representativeId))
@@ -48,7 +47,7 @@ class MrBranchSalesController
                 p.id          as product_id,
                 p.name        as product_name,
                 SUM(sii.quantity)   as total_qty,
-                SUM(sii.total_price) as total_value
+                SUM(sii.line_total) as total_value
             ')
             ->groupBy('b.id', 'b.name', 'mr.id', 'mr.name', 'p.id', 'p.name')
             ->orderByDesc('total_value')

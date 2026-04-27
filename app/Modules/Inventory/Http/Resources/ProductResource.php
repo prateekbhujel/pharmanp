@@ -2,9 +2,9 @@
 
 namespace App\Modules\Inventory\Http\Resources;
 
+use App\Core\Support\AssetUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 class ProductResource extends JsonResource
 {
@@ -39,7 +39,7 @@ class ProductResource extends JsonResource
             'keywords' => $this->keywords,
             'description' => $this->description,
             'image_path' => $this->image_path,
-            'image_url' => $this->image_path ? Storage::disk('public')->url($this->image_path) : null,
+            'image_url' => $this->image_path ? AssetUrl::resolve(AssetUrl::publicStorage($this->image_path)) : null,
             'company' => $this->whenLoaded('company', fn () => [
                 'id' => $this->company?->id,
                 'name' => $this->company?->name,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Card, DatePicker, Form, Input, Space, Switch, Tag } from 'antd';
+import { Button, Card, DatePicker, Form, Input, Select, Space, Switch, Tag } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { FormDrawer } from '../../core/components/FormDrawer';
@@ -13,16 +13,16 @@ export function FiscalYearPanel() {
     const [editing, setEditing] = useState(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [form] = Form.useForm();
-    const table = useServerTable({ endpoint: endpoints.fiscalYears, defaultSort: { field: 'start_date', order: 'desc' } });
+    const table = useServerTable({ endpoint: endpoints.fiscalYears, defaultSort: { field: 'starts_on', order: 'desc' } });
 
     function openDrawer(record = null) {
         setEditing(record);
         form.resetFields();
         form.setFieldsValue(record ? {
             ...record,
-            start_date: record.start_date ? dayjs(record.start_date) : null,
-            end_date: record.end_date ? dayjs(record.end_date) : null,
-        } : { is_active: true });
+            starts_on: record.starts_on ? dayjs(record.starts_on) : null,
+            ends_on: record.ends_on ? dayjs(record.ends_on) : null,
+        } : { is_current: true, status: 'open' });
         setDrawerOpen(true);
     }
 
@@ -30,8 +30,8 @@ export function FiscalYearPanel() {
         try {
             const payload = {
                 ...values,
-                start_date: values.start_date.format('YYYY-MM-DD'),
-                end_date: values.end_date.format('YYYY-MM-DD'),
+                starts_on: values.starts_on.format('YYYY-MM-DD'),
+                ends_on: values.ends_on.format('YYYY-MM-DD'),
             };
 
             if (editing) {
@@ -60,9 +60,10 @@ export function FiscalYearPanel() {
 
     const columns = [
         { title: 'Fiscal Year Name', dataIndex: 'name', field: 'name', sorter: true },
-        { title: 'Start Date', dataIndex: 'start_date', width: 150 },
-        { title: 'End Date', dataIndex: 'end_date', width: 150 },
-        { title: 'Status', dataIndex: 'is_active', width: 120, render: (value) => <Tag color={value ? 'green' : 'default'}>{value ? 'Active' : 'Closed'}</Tag> },
+        { title: 'Start Date', dataIndex: 'starts_on', field: 'starts_on', sorter: true, width: 150 },
+        { title: 'End Date', dataIndex: 'ends_on', field: 'ends_on', sorter: true, width: 150 },
+        { title: 'Status', dataIndex: 'status', field: 'status', sorter: true, width: 120, render: (value) => <Tag color={value === 'open' ? 'green' : 'default'}>{value === 'open' ? 'Open' : 'Closed'}</Tag> },
+        { title: 'Current', dataIndex: 'is_current', width: 110, render: (value) => value ? <Tag color="blue">Current</Tag> : <Tag>Archive</Tag> },
         {
             title: '',
             width: 120,
@@ -96,16 +97,26 @@ export function FiscalYearPanel() {
                         <Input />
                     </Form.Item>
                     <div className="form-grid">
-                        <Form.Item name="start_date" label="Start Date" rules={[{ required: true }]}>
+                        <Form.Item name="starts_on" label="Start Date" rules={[{ required: true }]}>
                             <DatePicker className="full-width" />
                         </Form.Item>
-                        <Form.Item name="end_date" label="End Date" rules={[{ required: true }]}>
+                        <Form.Item name="ends_on" label="End Date" rules={[{ required: true }]}>
                             <DatePicker className="full-width" />
                         </Form.Item>
                     </div>
-                    <Form.Item name="is_active" label="Status" valuePropName="checked">
-                        <Switch checkedChildren="Active" unCheckedChildren="Closed" />
-                    </Form.Item>
+                    <div className="form-grid">
+                        <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+                            <Select
+                                options={[
+                                    { value: 'open', label: 'Open' },
+                                    { value: 'closed', label: 'Closed' },
+                                ]}
+                            />
+                        </Form.Item>
+                        <Form.Item name="is_current" label="Current Fiscal Year" valuePropName="checked">
+                            <Switch checkedChildren="Current" unCheckedChildren="Archive" />
+                        </Form.Item>
+                    </div>
                 </Form>
             </FormDrawer>
         </Card>

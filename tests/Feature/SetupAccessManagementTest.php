@@ -62,4 +62,40 @@ class SetupAccessManagementTest extends TestCase
 
         $this->assertTrue(password_verify('secret67890', $owner->fresh()->password));
     }
+
+    public function test_owner_can_manage_fiscal_years(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $company = Company::query()->create(['name' => 'Fiscal Pharma']);
+        $owner = User::factory()->create([
+            'company_id' => $company->id,
+            'is_owner' => true,
+        ]);
+
+        $createResponse = $this->actingAs($owner)->postJson('/api/v1/settings/fiscal-years', [
+            'name' => 'FY 2081/82',
+            'starts_on' => '2024-07-16',
+            'ends_on' => '2025-07-15',
+            'is_current' => true,
+            'status' => 'open',
+        ])->assertCreated();
+
+        $fiscalYearId = $createResponse->json('data.id');
+
+        $this->actingAs($owner)->getJson('/api/v1/settings/fiscal-years')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'FY 2081/82');
+
+        $this->actingAs($owner)->putJson("/api/v1/settings/fiscal-years/{$fiscalYearId}", [
+            'name' => 'FY 2081/82 Revised',
+            'starts_on' => '2024-07-16',
+            'ends_on' => '2025-07-15',
+            'is_current' => true,
+            'status' => 'open',
+        ])->assertOk()
+            ->assertJsonPath('data.name', 'FY 2081/82 Revised');
+
+        $this->actingAs($owner)->deleteJson("/api/v1/settings/fiscal-years/{$fiscalYearId}")
+            ->assertOk();
+    }
 }

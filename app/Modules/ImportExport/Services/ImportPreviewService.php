@@ -16,7 +16,6 @@ use App\Modules\Party\Models\Supplier;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Rap2hpoutre\FastExcel\FastExcel;
 
 class ImportPreviewService
@@ -33,8 +32,8 @@ class ImportPreviewService
 
     public function preview(string $target, UploadedFile $file, ?int $userId = null): ImportJob
     {
-        $path = $file->store('imports/staged');
-        $rows = $this->readRows(Storage::disk('local')->path($path), $file->getClientOriginalExtension());
+        $rows = $this->readRows($file->getRealPath(), $file->getClientOriginalExtension());
+        $path = $file->store('imports/staged', 'local');
         $headers = array_values(array_unique($rows->flatMap(fn (array $row) => array_keys($row))->filter()->all()));
 
         return DB::transaction(function () use ($target, $file, $path, $rows, $headers, $userId) {

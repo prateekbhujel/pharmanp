@@ -3,6 +3,7 @@ import { Modal, Input, List, Typography, Space, Spin } from 'antd';
 import { SearchOutlined, FileTextOutlined, ShoppingCartOutlined, UserOutlined, SettingOutlined, ArrowRightOutlined, TeamOutlined, ShopOutlined } from '@ant-design/icons';
 import { http } from '../api/http';
 import { endpoints } from '../api/endpoints';
+import { isMacPlatform } from '../utils/platform';
 
 const ICON_MAP = {
     'Page': <FileTextOutlined />,
@@ -21,7 +22,7 @@ export function GlobalSearch({ visible, onCancel, onNavigate }) {
     const [isMac, setIsMac] = useState(false);
 
     useEffect(() => {
-        setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
+        setIsMac(isMacPlatform());
     }, []);
 
     useEffect(() => {
@@ -30,7 +31,7 @@ export function GlobalSearch({ visible, onCancel, onNavigate }) {
                 { key: 'dashboard', label: 'Dashboard', type: 'Page', description: 'Overview of your business metrics', route: '/app' },
                 { key: 'products', label: 'Products', type: 'Inventory', description: 'Manage medicine inventory and stock', route: '/app/inventory/products' },
                 { key: 'sales', label: 'Sales Invoices', type: 'Sales', description: 'View and create customer invoices', route: '/app/sales/invoices' },
-                { key: 'users', label: 'Users', type: 'Admin', description: 'Staff accounts and access control', route: '/app/administration/users' },
+                { key: 'users', label: 'Users', type: 'Admin', description: 'Staff accounts and access control', route: '/app/settings' },
                 { key: 'settings', label: 'Settings', type: 'Admin', description: 'System configuration and branding', route: '/app/settings' },
             ]);
             return;
