@@ -103,6 +103,7 @@ const routes = {
     [appUrl('/app/reports/stock')]: ReportsPage,
     [appUrl('/app/reports/low-stock')]: ReportsPage,
     [appUrl('/app/reports/expiry')]: ReportsPage,
+    [appUrl('/app/reports/smart-inventory')]: ReportsPage,
     [appUrl('/app/reports/accounting')]: ReportsPage,
     [appUrl('/app/reports/supplier-performance')]: ReportsPage,
     [appUrl('/app/reports/supplier-ledger')]: ReportsPage,

@@ -11,8 +11,10 @@ class PurchaseOcrController extends Controller
 {
     public function extract(Request $request, PurchaseOcrService $service): JsonResponse
     {
+        $uploadMaxKb = max(1024, (int) config('services.ocr_space.upload_max_kb', 10240));
+
         $request->validate([
-            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:'.$uploadMaxKb],
         ]);
 
         $result = $service->extract($request->file('image'));

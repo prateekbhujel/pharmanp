@@ -18,6 +18,7 @@ const reportOptions = [
     { value: 'stock', label: 'Stock report' },
     { value: 'low-stock', label: 'Low stock report' },
     { value: 'expiry', label: 'Expiry report' },
+    { value: 'smart-inventory', label: 'Smart inventory signals' },
     { value: 'supplier-performance', label: 'Supplier performance' },
     { value: 'supplier-ledger', label: 'Supplier ledger' },
     { value: 'customer-ledger', label: 'Customer ledger' },
@@ -32,7 +33,7 @@ const reportOptions = [
 
 const reportGroups = {
     sales: ['sales', 'purchase', 'supplier-performance'],
-    inventory: ['stock', 'low-stock', 'expiry', 'product-movement'],
+    inventory: ['stock', 'low-stock', 'expiry', 'smart-inventory', 'product-movement'],
     accounting: ['day-book', 'cash-book', 'bank-book', 'ledger', 'trial-balance', 'supplier-ledger', 'customer-ledger'],
     mr: ['mr-performance'],
 };
@@ -304,11 +305,28 @@ export function ReportsPage() {
                             <Select allowClear placeholder="Payment" value={filters.payment_status} onChange={(value) => updateFilter('payment_status', value)} options={paymentStatusOptions} />
                         </>
                     )}
-                    {(report === 'stock' || report === 'low-stock') && (
+                    {['stock', 'low-stock', 'smart-inventory'].includes(report) && (
                         <>
                             <Select allowClear placeholder="Company" value={filters.company_id} onChange={(value) => updateFilter('company_id', value)} options={lookups.companies.map((item) => ({ value: item.id, label: item.name }))} />
                             <Select allowClear placeholder="Category" value={filters.category_id} onChange={(value) => updateFilter('category_id', value)} options={lookups.categories.map((item) => ({ value: item.id, label: item.name }))} />
                         </>
+                    )}
+                    {report === 'smart-inventory' && (
+                        <Select
+                            allowClear
+                            placeholder="Signal"
+                            value={filters.signal}
+                            onChange={(value) => updateFilter('signal', value)}
+                            options={[
+                                { value: 'urgent_reorder', label: 'Urgent reorder' },
+                                { value: 'reorder_soon', label: 'Reorder soon' },
+                                { value: 'overstock', label: 'Overstock' },
+                                { value: 'expiry_urgent', label: 'Expiry urgent' },
+                                { value: 'expiry_watch', label: 'Expiry watch' },
+                                { value: 'fast_moving', label: 'Fast moving' },
+                                { value: 'slow_moving', label: 'Slow moving' },
+                            ]}
+                        />
                     )}
                     {report === 'supplier-ledger' && <Select allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
                     {report === 'customer-ledger' && <Select allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}

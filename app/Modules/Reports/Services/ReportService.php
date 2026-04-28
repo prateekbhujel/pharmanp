@@ -3,6 +3,7 @@
 namespace App\Modules\Reports\Services;
 
 use App\Modules\Accounting\Support\AccountCatalog;
+use App\Modules\Analytics\Services\PharmaSignalService;
 use App\Modules\MR\Services\MrPerformanceService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -13,6 +14,7 @@ class ReportService
 {
     public function __construct(
         private readonly MrPerformanceService $mrPerformance,
+        private readonly PharmaSignalService $signals,
     ) {}
 
     public function run(string $report, Request $request): array
@@ -27,6 +29,7 @@ class ReportService
             'stock' => $this->stock($request, $perPage),
             'low-stock' => $this->lowStock($request, $perPage),
             'expiry' => $this->expiry($request, $from, $to, $perPage),
+            'smart-inventory' => $this->signals->inventorySignals($request, $perPage),
             'day-book' => $this->accountBook($request, $from, $to, $perPage),
             'cash-book' => $this->accountBook($request, $from, $to, $perPage, 'cash'),
             'bank-book' => $this->accountBook($request, $from, $to, $perPage, 'bank'),

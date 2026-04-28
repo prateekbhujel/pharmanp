@@ -13,27 +13,48 @@ class PurchaseOcrService
 {
     public function extract(UploadedFile $file): array
     {
-        $apiKey = env('OCR_SPACE_API_KEY', 'helloworld');
-        $base64 = 'data:'.$file->getMimeType().';base64,'.base64_encode(file_get_contents($file->getRealPath()));
+        $apiKey = (string) config('services.ocr_space.key', 'helloworld');
+        $endpoint = (string) config('services.ocr_space.endpoint', 'https://api.ocr.space/parse/image');
+        $providerMaxKb = max(1, (int) config('services.ocr_space.provider_max_kb', 1024));
+        $fileSizeKb = (int) ceil(($file->getSize() ?: 0) / 1024);
+
+        if ($fileSizeKb > $providerMaxKb) {
+            return $this->failedResult(
+                $file,
+                'OCR provider limit exceeded. Current OCR.space limit is configured as '.$providerMaxKb.' KB; this file is '.$fileSizeKb.' KB. Use a paid OCR.space key with a higher OCR_SPACE_MAX_KB value, or compress/scan the bill smaller.',
+                [
+                    'file_size_kb' => $fileSizeKb,
+                    'provider_max_kb' => $providerMaxKb,
+                    'provider' => 'ocr.space',
+                ],
+            );
+        }
 
         $payload = null;
         $text = '';
         $errorMessage = null;
 
         foreach ([2, 1] as $engine) {
-            $response = Http::timeout(120)
-                ->acceptJson()
-                ->asForm()
-                ->post('https://api.ocr.space/parse/image', [
-                    'apikey' => $apiKey,
-                    'language' => 'eng',
-                    'isOverlayRequired' => 'false',
-                    'OCREngine' => (string) $engine,
-                    'scale' => 'true',
-                    'detectOrientation' => 'true',
-                    'base64Image' => $base64,
-                    'filetype' => Str::lower($file->getClientOriginalExtension()),
-                ]);
+            $handle = fopen($file->getRealPath(), 'r');
+
+            try {
+                $response = Http::timeout(120)
+                    ->acceptJson()
+                    ->attach('file', $handle, $file->getClientOriginalName())
+                    ->post($endpoint, [
+                        'apikey' => $apiKey,
+                        'language' => 'eng',
+                        'isOverlayRequired' => 'false',
+                        'OCREngine' => (string) $engine,
+                        'scale' => 'true',
+                        'detectOrientation' => 'true',
+                        'filetype' => Str::lower($file->getClientOriginalExtension()),
+                    ]);
+            } finally {
+                if (is_resource($handle)) {
+                    fclose($handle);
+                }
+            }
 
             $payload = $response->json();
             $rawBody = $response->body();
@@ -58,26 +79,15 @@ class PurchaseOcrService
             ->all();
 
         if ($text === '') {
-            return [
-                'file_name' => $file->getClientOriginalName(),
-                'text' => '',
-                'lines' => [],
-                'analysis' => [
-                    'document_type' => 'unknown',
-                    'invoice_no' => null,
-                    'invoice_date' => null,
-                    'supplier_id' => null,
-                    'supplier_name' => null,
-                    'total_amount' => null,
-                    'confidence' => 0,
-                    'bill_state' => 'manual_review',
-                    'next_action' => 'fill_manually',
-                    'match_count' => 0,
+            return $this->failedResult(
+                $file,
+                $errorMessage ?: 'OCR could not read this image clearly. Try a clearer scan or continue manually.',
+                [
+                    'file_size_kb' => $fileSizeKb,
+                    'provider_max_kb' => $providerMaxKb,
+                    'provider' => 'ocr.space',
                 ],
-                'matches' => [],
-                'extraction_status' => 'failed',
-                'failure_message' => $errorMessage ?: 'OCR could not read this image clearly. Try a clearer scan or continue manually.',
-            ];
+            );
         }
 
         $analysis = $this->analyzeInvoiceText($text, $lines);
@@ -96,7 +106,37 @@ class PurchaseOcrService
             'lines' => $lines,
             'analysis' => $analysis,
             'matches' => $matches,
+            'ocr_limits' => [
+                'file_size_kb' => $fileSizeKb,
+                'provider_max_kb' => $providerMaxKb,
+                'provider' => 'ocr.space',
+            ],
             'extraction_status' => 'success',
+        ];
+    }
+
+    private function failedResult(UploadedFile $file, string $message, array $limits = []): array
+    {
+        return [
+            'file_name' => $file->getClientOriginalName(),
+            'text' => '',
+            'lines' => [],
+            'analysis' => [
+                'document_type' => 'unknown',
+                'invoice_no' => null,
+                'invoice_date' => null,
+                'supplier_id' => null,
+                'supplier_name' => null,
+                'total_amount' => null,
+                'confidence' => 0,
+                'bill_state' => 'manual_review',
+                'next_action' => 'fill_manually',
+                'match_count' => 0,
+            ],
+            'matches' => [],
+            'ocr_limits' => $limits,
+            'extraction_status' => 'failed',
+            'failure_message' => $message,
         ];
     }
 

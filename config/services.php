@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'ocr_space' => [
+        'key' => env('OCR_SPACE_API_KEY', 'helloworld'),
+        'endpoint' => env('OCR_SPACE_ENDPOINT', 'https://api.ocr.space/parse/image'),
+        'upload_max_kb' => (int) env('OCR_UPLOAD_MAX_KB', 10240),
+        'provider_max_kb' => (int) env('OCR_SPACE_MAX_KB', 1024),
+    ],
+
 ];
