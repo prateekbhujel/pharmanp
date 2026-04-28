@@ -46,6 +46,22 @@ class SalesInvoiceResource extends JsonResource
                 'free_goods_value' => (float) ($item->free_goods_value ?? 0),
                 'line_total' => (float) $item->line_total,
             ])->values()),
+            'returns' => $this->whenLoaded('returns', fn () => $this->returns->map(fn ($return) => [
+                'id' => $return->id,
+                'return_no' => $return->return_no,
+                'return_date' => $return->return_date?->toDateString(),
+                'total_amount' => (float) $return->total_amount,
+                'status' => $return->status,
+                'reason' => $return->reason,
+                'items' => $return->items->map(fn ($item) => [
+                    'id' => $item->id,
+                    'product_name' => $item->product?->name,
+                    'batch_no' => $item->batch?->batch_no,
+                    'quantity' => (float) $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'line_total' => (float) $item->line_total,
+                ])->values(),
+            ])->values()),
         ];
     }
 }

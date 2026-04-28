@@ -62,6 +62,66 @@ class TransactionPostingTest extends TestCase
         $this->assertSame('8.00', (string) $customer->fresh()->current_balance);
     }
 
+    public function test_purchase_order_receive_creates_purchase_batch_and_stock_movement(): void
+    {
+        [$user, $product, $supplier] = $this->fixture();
+
+        $orderResponse = $this->actingAs($user)->postJson('/api/v1/purchase/orders', [
+            'supplier_id' => $supplier->id,
+            'order_date' => '2026-04-25',
+            'expected_date' => '2026-04-27',
+            'items' => [[
+                'product_id' => $product->id,
+                'quantity' => 8,
+                'unit_price' => 5,
+                'discount_percent' => 0,
+            ]],
+        ])->assertCreated();
+
+        $orderId = $orderResponse->json('data.id');
+        $orderItemId = $orderResponse->json('data.items.0.id');
+
+        $receiveResponse = $this->actingAs($user)->postJson('/api/v1/purchase/orders/'.$orderId.'/receive', [
+            'supplier_invoice_no' => 'SUP-PO-001',
+            'purchase_date' => '2026-04-26',
+            'paid_amount' => 10,
+            'items' => [[
+                'purchase_order_item_id' => $orderItemId,
+                'product_id' => $product->id,
+                'batch_no' => 'PO-RCV-001',
+                'expires_at' => '2027-04-26',
+                'quantity' => 8,
+                'free_quantity' => 1,
+                'purchase_price' => 5,
+                'mrp' => 8,
+            ]],
+        ])->assertOk();
+
+        $purchaseId = (int) \App\Modules\Purchase\Models\PurchaseOrder::query()
+            ->whereKey($orderId)
+            ->value('received_purchase_id');
+        $batch = Batch::query()->where('batch_no', 'PO-RCV-001')->firstOrFail();
+
+        $this->assertDatabaseHas('purchase_orders', [
+            'id' => $orderId,
+            'status' => 'received',
+            'received_purchase_id' => $purchaseId,
+        ]);
+        $this->assertDatabaseHas('purchases', [
+            'id' => $purchaseId,
+            'supplier_invoice_no' => 'SUP-PO-001',
+            'payment_status' => 'partial',
+        ]);
+        $this->assertSame('9.000', (string) $batch->quantity_available);
+        $this->assertSame('30.00', (string) $supplier->fresh()->current_balance);
+        $this->assertDatabaseHas('stock_movements', [
+            'movement_type' => 'purchase_receive',
+            'source_type' => 'purchase',
+            'source_id' => $purchaseId,
+            'quantity_in' => 9,
+        ]);
+    }
+
     public function test_sales_return_posts_stock_movement_and_delete_reverses_it(): void
     {
         [$user, $product, $supplier, $customer] = $this->fixture();
@@ -119,6 +179,68 @@ class TransactionPostingTest extends TestCase
 
         $this->assertSame('10.000', (string) $batch->fresh()->quantity_available);
         $this->assertDatabaseHas('stock_movements', ['movement_type' => 'sales_return_reverse', 'quantity_out' => 1]);
+    }
+
+    public function test_sales_invoice_payment_update_refreshes_customer_balance_and_ledger(): void
+    {
+        [$user, $product, $supplier, $customer] = $this->fixture();
+
+        $this->actingAs($user)->postJson('/api/v1/purchases', [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => '2026-04-25',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_no' => 'SALE-PAY-001',
+                'expires_at' => '2027-04-25',
+                'quantity' => 10,
+                'purchase_price' => 5,
+                'mrp' => 8,
+            ]],
+        ])->assertCreated();
+
+        $invoiceResponse = $this->actingAs($user)->postJson('/api/v1/sales/invoices', [
+            'customer_id' => $customer->id,
+            'invoice_date' => '2026-04-25',
+            'sale_type' => 'pos',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'quantity' => 2,
+                'unit_price' => 8,
+            ]],
+        ])->assertCreated();
+
+        $invoiceId = $invoiceResponse->json('data.id');
+        $this->assertSame('16.00', (string) $customer->fresh()->current_balance);
+
+        $this->actingAs($user)->patchJson('/api/v1/sales/invoices/'.$invoiceId.'/payment', [
+            'paid_amount' => 10,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.payment_status', 'partial')
+            ->assertJsonPath('data.paid_amount', 10);
+
+        $this->assertSame('6.00', (string) $customer->fresh()->current_balance);
+        $this->assertDatabaseHas('account_transactions', [
+            'source_type' => 'sales_invoice',
+            'source_id' => $invoiceId,
+            'account_type' => 'cash',
+            'debit' => 10,
+            'credit' => 0,
+        ]);
+        $this->assertDatabaseHas('account_transactions', [
+            'source_type' => 'sales_invoice',
+            'source_id' => $invoiceId,
+            'account_type' => 'receivable',
+            'debit' => 6,
+            'credit' => 0,
+        ]);
+
+        $this->actingAs($user)->getJson('/api/v1/customers/'.$customer->id.'/ledger')
+            ->assertOk()
+            ->assertJsonPath('summary.total_paid', 10)
+            ->assertJsonPath('summary.balance', 6);
     }
 
     public function test_unbalanced_voucher_is_rejected(): void
@@ -219,12 +341,14 @@ class TransactionPostingTest extends TestCase
         ])->assertOk();
 
         $this->assertDatabaseHas('purchases', ['id' => $purchaseId, 'paid_amount' => 20, 'payment_status' => 'partial']);
+        $this->assertSame('30.00', (string) $supplier->fresh()->current_balance);
 
         $paymentId = $paymentResponse->json('data.id');
         $this->actingAs($user)->deleteJson('/api/v1/accounting/payments/'.$paymentId)->assertOk();
 
         $this->assertSoftDeleted('payments', ['id' => $paymentId]);
         $this->assertDatabaseHas('purchases', ['id' => $purchaseId, 'paid_amount' => 0, 'payment_status' => 'unpaid']);
+        $this->assertSame('50.00', (string) $supplier->fresh()->current_balance);
 
         $this->actingAs($user)
             ->getJson('/api/v1/accounting/payments?deleted=1')

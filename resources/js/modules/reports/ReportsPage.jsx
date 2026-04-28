@@ -28,13 +28,14 @@ const reportOptions = [
     { value: 'cash-book', label: 'Cash book' },
     { value: 'bank-book', label: 'Bank book' },
     { value: 'ledger', label: 'Account ledger' },
+    { value: 'account-tree', label: 'Account tree' },
     { value: 'trial-balance', label: 'Trial balance' },
 ];
 
 const reportGroups = {
     sales: ['sales', 'purchase', 'supplier-performance'],
     inventory: ['stock', 'low-stock', 'expiry', 'smart-inventory', 'product-movement'],
-    accounting: ['day-book', 'cash-book', 'bank-book', 'ledger', 'trial-balance', 'supplier-ledger', 'customer-ledger'],
+    accounting: ['day-book', 'cash-book', 'bank-book', 'ledger', 'account-tree', 'trial-balance', 'supplier-ledger', 'customer-ledger'],
     mr: ['mr-performance'],
 };
 

@@ -21,6 +21,7 @@ class PurchaseOrder extends Model
         'order_date',
         'expected_date',
         'status',
+        'received_purchase_id',
         'subtotal',
         'discount_total',
         'grand_total',
@@ -48,5 +49,10 @@ class PurchaseOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function receivedPurchase(): BelongsTo
+    {
+        return $this->belongsTo(Purchase::class, 'received_purchase_id');
     }
 }

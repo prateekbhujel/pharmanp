@@ -8,6 +8,7 @@ import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
 import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { ServerTable } from '../../core/components/ServerTable';
+import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -353,6 +354,7 @@ export function PurchasesPage() {
                             options={paymentStatusOptions}
                         />
                         <SmartDatePicker.RangePicker value={billRange} onChange={setBillRange} />
+                        <ExportButtons basePath={endpoints.datasetExport('purchases')} params={{ ...purchaseTable.filters, search: purchaseTable.search, ...applyDateRangeFilter({}, billRange) }} />
                         <Button onClick={purchaseTable.reload}>Refresh</Button>
                     </div>
                     <ServerTable table={purchaseTable} columns={billColumns} />

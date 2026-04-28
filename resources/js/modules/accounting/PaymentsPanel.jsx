@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Switch, Table } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { App, Button, Card, Descriptions, Form, Input, InputNumber, Modal, Segmented, Select, Space, Switch, Table } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DateText } from '../../core/components/DateText';
 import { Money } from '../../core/components/Money';
 import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { FormModal } from '../../core/components/FormModal';
 import { QuickDropdownOptionModal } from '../../core/components/QuickDropdownOptionModal';
+import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -21,6 +22,7 @@ export function PaymentsPanel() {
     const [loading, setLoading] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [viewingPayment, setViewingPayment] = useState(null);
     const [range, setRange] = useState([]);
     const [direction, setDirection] = useState(undefined);
     const [deletedMode, setDeletedMode] = useState(false);
@@ -58,17 +60,41 @@ export function PaymentsPanel() {
         } finally { setLoading(false); }
     }
 
-    function openDrawer(record = null) {
-        setEditingId(record?.id || null);
+    async function openDrawer(record = null) {
         setOutstandingBills([]);
         setAllocations([]);
         form.resetFields();
-        form.setFieldsValue(record ? {
-            ...record,
-            payment_date: dayjs(record.payment_date),
-            payment_mode_id: record.payment_mode_id || lookups.payment_modes.find((mode) => mode.name === record.payment_mode)?.id,
-        } : { payment_date: dayjs(), direction: 'out', party_type: 'supplier' });
+
+        if (record?.id) {
+            const { data } = await http.get(`${endpoints.payments}/${record.id}`);
+            const payment = data.data;
+            setEditingId(payment.id);
+            form.setFieldsValue({
+                ...payment,
+                payment_date: dayjs(payment.payment_date),
+                payment_mode_id: payment.payment_mode_id || lookups.payment_modes.find((mode) => mode.name === payment.payment_mode)?.id,
+            });
+            setOutstandingBills(payment.allocations || []);
+            setAllocations((payment.allocations || []).map((allocation) => ({
+                bill_id: allocation.bill_id,
+                bill_type: allocation.bill_type,
+                allocated_amount: allocation.allocated_amount,
+            })));
+        } else {
+            setEditingId(null);
+            form.setFieldsValue({ payment_date: dayjs(), direction: 'out', party_type: 'supplier' });
+        }
+
         setDrawerOpen(true);
+    }
+
+    async function viewPayment(record) {
+        try {
+            const { data } = await http.get(`${endpoints.payments}/${record.id}`);
+            setViewingPayment(data.data);
+        } catch (error) {
+            notification.error({ message: 'Payment details failed', description: error?.response?.data?.message || error.message });
+        }
     }
 
     async function loadBills(partyId, partyType) {
@@ -137,6 +163,8 @@ export function PaymentsPanel() {
                     <PharmaBadge tone="deleted">Deleted</PharmaBadge>
                 ) : (
                     <Space className="table-action-buttons">
+                        <Button aria-label="View" icon={<EyeOutlined />} onClick={() => viewPayment(record)} />
+                        <Button aria-label="Print" icon={<PrinterOutlined />} onClick={() => window.open(record.print_url, '_blank')} />
                         <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openDrawer(record)} />
                         <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => deletePayment(record)} />
                     </Space>
@@ -164,6 +192,7 @@ export function PaymentsPanel() {
                         <Switch checked={deletedMode} onChange={setDeletedMode} />
                         <span>View Deleted</span>
                     </label>
+                    <ExportButtons basePath={endpoints.datasetExport('payments')} params={{ direction, deleted: deletedMode ? 1 : undefined, ...dateRangeParams(range) }} />
                     <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()}>New Payment</Button>
                 </div>
                 <Table rowKey="id" loading={loading} dataSource={rows} columns={columns}
@@ -246,6 +275,44 @@ export function PaymentsPanel() {
                     form.setFieldValue('payment_mode_id', option.id);
                 }}
             />
+            <Modal
+                title={`Payment Details: ${viewingPayment?.payment_no || ''}`}
+                open={!!viewingPayment}
+                onCancel={() => setViewingPayment(null)}
+                footer={[
+                    <Button key="print" icon={<PrinterOutlined />} onClick={() => window.open(viewingPayment?.print_url, '_blank')}>Print</Button>,
+                    <Button key="close" onClick={() => setViewingPayment(null)}>Close</Button>,
+                ]}
+                width={780}
+                destroyOnHidden
+            >
+                {viewingPayment && (
+                    <div className="page-stack">
+                        <Descriptions bordered size="small" column={2}>
+                            <Descriptions.Item label="Date"><DateText value={viewingPayment.payment_date} style="compact" /></Descriptions.Item>
+                            <Descriptions.Item label="Direction"><PharmaBadge tone={viewingPayment.direction === 'in' ? 'success' : 'warning'} dot>{viewingPayment.direction_label}</PharmaBadge></Descriptions.Item>
+                            <Descriptions.Item label="Party">{viewingPayment.party_name}</Descriptions.Item>
+                            <Descriptions.Item label="Mode">{viewingPayment.payment_mode}</Descriptions.Item>
+                            <Descriptions.Item label="Reference">{viewingPayment.reference_no || '-'}</Descriptions.Item>
+                            <Descriptions.Item label="Amount"><Money value={viewingPayment.amount} /></Descriptions.Item>
+                            <Descriptions.Item label="Notes" span={2}>{viewingPayment.notes || '-'}</Descriptions.Item>
+                        </Descriptions>
+                        <Table
+                            rowKey={(row) => `${row.bill_type}-${row.bill_id}`}
+                            dataSource={viewingPayment.allocations || []}
+                            pagination={false}
+                            size="small"
+                            columns={[
+                                { title: 'Bill', dataIndex: 'bill_number' },
+                                { title: 'Date', dataIndex: 'bill_date', render: (value) => <DateText value={value} style="compact" /> },
+                                { title: 'Total', dataIndex: 'net_amount', align: 'right', render: (value) => <Money value={value} /> },
+                                { title: 'Allocated', dataIndex: 'allocated_amount', align: 'right', render: (value) => <Money value={value} /> },
+                            ]}
+                            locale={{ emptyText: 'No bill allocations. This is an on-account payment.' }}
+                        />
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }

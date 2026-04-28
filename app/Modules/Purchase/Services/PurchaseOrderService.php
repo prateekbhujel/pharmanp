@@ -5,7 +5,9 @@ namespace App\Modules\Purchase\Services;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Purchase\Models\PurchaseOrder;
+use App\Modules\Purchase\Models\Purchase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseOrderService
 {
@@ -54,6 +56,71 @@ class PurchaseOrderService
             }
 
             return $order->fresh(['supplier', 'items.product']);
+        });
+    }
+
+    public function receive(PurchaseOrder $order, array $data, User $user, PurchaseEntryService $purchases): Purchase
+    {
+        return DB::transaction(function () use ($order, $data, $user, $purchases) {
+            $order = PurchaseOrder::query()
+                ->with('items')
+                ->lockForUpdate()
+                ->findOrFail($order->id);
+
+            if (in_array($order->status, ['received', 'paid'], true) || $order->received_purchase_id) {
+                throw ValidationException::withMessages([
+                    'order' => 'This purchase order has already been received.',
+                ]);
+            }
+
+            if ($order->status === 'ordered') {
+                $order->forceFill(['status' => 'approved', 'updated_by' => $user->id])->save();
+            }
+
+            $orderItems = $order->items->keyBy('id');
+            $purchaseItems = collect($data['items'])
+                ->map(function (array $item) use ($orderItems) {
+                    $orderItem = $orderItems->get((int) $item['purchase_order_item_id']);
+
+                    if (! $orderItem || (int) $orderItem->product_id !== (int) $item['product_id']) {
+                        throw ValidationException::withMessages([
+                            'items' => 'One received item does not belong to this purchase order.',
+                        ]);
+                    }
+
+                    return [
+                        'product_id' => $orderItem->product_id,
+                        'batch_no' => $item['batch_no'],
+                        'barcode' => $item['barcode'] ?? null,
+                        'manufactured_at' => $item['manufactured_at'] ?? null,
+                        'expires_at' => $item['expires_at'],
+                        'quantity' => $item['quantity'],
+                        'free_quantity' => $item['free_quantity'] ?? 0,
+                        'purchase_price' => $item['purchase_price'],
+                        'mrp' => $item['mrp'],
+                        'cc_rate' => $item['cc_rate'] ?? 0,
+                        'discount_percent' => $item['discount_percent'] ?? $orderItem->discount_percent,
+                    ];
+                })
+                ->values()
+                ->all();
+
+            $purchase = $purchases->create([
+                'supplier_id' => $order->supplier_id,
+                'supplier_invoice_no' => $data['supplier_invoice_no'] ?? $order->order_no,
+                'purchase_date' => $data['purchase_date'],
+                'paid_amount' => $data['paid_amount'] ?? 0,
+                'notes' => trim(($data['notes'] ?? '')."\nReceived against PO ".$order->order_no),
+                'items' => $purchaseItems,
+            ], $user);
+
+            $order->forceFill([
+                'status' => 'received',
+                'received_purchase_id' => $purchase->id,
+                'updated_by' => $user->id,
+            ])->save();
+
+            return $purchase->fresh(['supplier', 'items.product', 'items.batch']);
         });
     }
 

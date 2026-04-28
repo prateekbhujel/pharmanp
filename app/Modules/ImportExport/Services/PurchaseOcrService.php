@@ -115,6 +115,23 @@ class PurchaseOcrService
         ];
     }
 
+    public function draftPurchase(array $data): array
+    {
+        $analysis = $data['analysis'] ?? [];
+
+        return [
+            'supplier_id' => $analysis['supplier_id'] ?? null,
+            'supplier_name' => $analysis['supplier_name'] ?? null,
+            'supplier_invoice_no' => $analysis['invoice_no'] ?? '',
+            'purchase_date' => $analysis['invoice_date'] ?? null,
+            'notes' => $data['ocr_text'] ?? '',
+            'selected_purchase_id' => $data['selected_purchase_id'] ?? null,
+            'matches' => $data['matches'] ?? [],
+            'analysis' => $analysis,
+            'created_at' => now()->toISOString(),
+        ];
+    }
+
     private function failedResult(UploadedFile $file, string $message, array $limits = []): array
     {
         return [

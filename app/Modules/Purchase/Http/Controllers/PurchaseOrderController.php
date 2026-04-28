@@ -3,12 +3,13 @@
 namespace App\Modules\Purchase\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Purchase\Http\Requests\PurchaseOrderReceiveRequest;
 use App\Modules\Purchase\Http\Requests\PurchaseOrderStoreRequest;
 use App\Modules\Purchase\Http\Resources\PurchaseResource;
 use App\Modules\Purchase\Models\PurchaseOrder;
+use App\Modules\Purchase\Services\PurchaseEntryService;
 use App\Modules\Purchase\Services\PurchaseOrderService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class PurchaseOrderController extends Controller
 {
@@ -35,7 +36,7 @@ class PurchaseOrderController extends Controller
 
     public function show(PurchaseOrder $order): JsonResponse
     {
-        $order->load(['supplier:id,name', 'items.product:id,name']);
+        $order->load(['supplier:id,name', 'items.product:id,name,sku,mrp,purchase_price,selling_price,cc_rate', 'items', 'receivedPurchase']);
         return response()->json(['data' => $order]);
     }
 
@@ -45,14 +46,20 @@ class PurchaseOrderController extends Controller
         return response()->json(['message' => 'Order approved', 'data' => $order]);
     }
 
-    public function receive(Request $request, PurchaseOrder $order): JsonResponse
+    public function receive(PurchaseOrderReceiveRequest $request, PurchaseOrder $order, PurchaseOrderService $service, PurchaseEntryService $purchases): JsonResponse
     {
-        // simplistic receive
-        $order->update(['status' => 'received']);
-        return response()->json(['message' => 'Order received', 'data' => $order]);
+        $purchase = $service->receive($order, $request->validated(), $request->user(), $purchases);
+        $order->refresh()->load(['supplier:id,name', 'items.product:id,name', 'receivedPurchase']);
+
+        return response()->json([
+            'message' => 'Order received and purchase bill posted.',
+            'data' => $order,
+            'purchase' => new PurchaseResource($purchase),
+            'print_url' => route('purchases.print', $purchase),
+        ]);
     }
 
-    public function pay(Request $request, PurchaseOrder $order): JsonResponse
+    public function pay(PurchaseOrder $order): JsonResponse
     {
         $order->update(['status' => 'paid']);
         return response()->json(['message' => 'Order marked as paid', 'data' => $order]);

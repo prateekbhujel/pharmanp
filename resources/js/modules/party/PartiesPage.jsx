@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { App, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Switch, Table, Tabs } from 'antd';
 import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined, UndoOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
+import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { ServerTable } from '../../core/components/ServerTable';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { Money } from '../../core/components/Money';
@@ -13,6 +14,7 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { dateRangeParams } from '../../core/utils/dateFilters';
+import { appUrl } from '../../core/utils/url';
 
 function PartyTab({ type, onViewLedger }) {
     const { notification } = App.useApp();
@@ -140,6 +142,7 @@ function PartyTab({ type, onViewLedger }) {
                     />
                     <span>View Deleted</span>
                 </div>
+                <ExportButtons basePath={endpoints.datasetExport(type)} params={{ search: table.search, deleted: deletedMode ? 1 : undefined }} />
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>New {type === 'suppliers' ? 'Supplier' : 'Customer'}</Button>
             </div>
             <ServerTable table={table} columns={columns} />
@@ -241,6 +244,8 @@ export function PartiesPage() {
                     <div className="page-stack">
                         <div className="table-toolbar">
                             <SmartDatePicker.RangePicker value={ledgerRange} onChange={updateLedgerRange} />
+                            <Button onClick={() => window.open(`${appUrl(`/customers/${ledgerCustomer.id}/ledger/print`)}?${new URLSearchParams(dateRangeParams(ledgerRange)).toString()}`, '_blank')}>Print</Button>
+                            <Button onClick={() => window.open(`${appUrl(`/customers/${ledgerCustomer.id}/ledger/pdf`)}?${new URLSearchParams(dateRangeParams(ledgerRange)).toString()}`, '_blank')}>PDF</Button>
                         </div>
                         <Row gutter={[12, 12]}>
                             <Col span={6}><Statistic title="Invoiced" value={ledgerData.summary?.total_invoiced} prefix="NPR" /></Col>

@@ -2,18 +2,41 @@
 
 namespace App\Modules\Party\Http\Controllers;
 
-use App\Modules\Accounting\Models\AccountTransaction;
+use App\Models\Setting;
 use App\Modules\Accounting\Models\Payment;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesReturn;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class CustomerLedgerController
 {
     // Return customer ledger: invoices, returns, payments, and balance.
     public function show(Request $request, Customer $customer): JsonResponse
+    {
+        return response()->json($this->ledgerPayload($request, $customer));
+    }
+
+    public function print(Request $request, Customer $customer): View
+    {
+        return view('prints.customer-ledger', [
+            'ledger' => $this->ledgerPayload($request, $customer),
+            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
+        ]);
+    }
+
+    public function pdf(Request $request, Customer $customer)
+    {
+        return Pdf::loadView('prints.customer-ledger', [
+            'ledger' => $this->ledgerPayload($request, $customer),
+            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
+        ])->setPaper('a4', 'landscape')->stream('customer-ledger-'.$customer->id.'.pdf');
+    }
+
+    private function ledgerPayload(Request $request, Customer $customer): array
     {
         $from = $request->input('from');
         $to = $request->input('to');
@@ -88,9 +111,10 @@ class CustomerLedgerController
         // Balance summary
         $totalInvoiced = SalesInvoice::query()->where('customer_id', $customer->id)->sum('grand_total');
         $totalReturned = SalesReturn::query()->where('customer_id', $customer->id)->sum('total_amount');
-        $totalPaid = Payment::query()->where('party_type', 'customer')->where('party_id', $customer->id)->where('direction', 'in')->sum('amount');
+        $totalPaid = SalesInvoice::query()->where('customer_id', $customer->id)->sum('paid_amount');
+        $totalPayments = Payment::query()->where('party_type', 'customer')->where('party_id', $customer->id)->where('direction', 'in')->sum('amount');
 
-        return response()->json([
+        return [
             'customer' => [
                 'id' => $customer->id,
                 'name' => $customer->name,
@@ -106,8 +130,13 @@ class CustomerLedgerController
                 'total_invoiced' => round((float) $totalInvoiced, 2),
                 'total_returned' => round((float) $totalReturned, 2),
                 'total_paid' => round((float) $totalPaid, 2),
-                'balance' => round((float) $totalInvoiced - (float) $totalReturned - (float) $totalPaid, 2),
+                'total_payments' => round((float) $totalPayments, 2),
+                'balance' => round((float) $customer->current_balance, 2),
             ],
-        ]);
+            'filters' => [
+                'from' => $from,
+                'to' => $to,
+            ],
+        ];
     }
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
-import { PlusOutlined, PrinterOutlined, QrcodeOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Button, Card, Descriptions, Form, Input, InputNumber, Modal, Select, Space, Table } from 'antd';
+import { DollarOutlined, EyeOutlined, PlusOutlined, PrinterOutlined, QrcodeOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
 import { DateText } from '../../core/components/DateText';
@@ -9,6 +9,7 @@ import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
 import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { ServerTable } from '../../core/components/ServerTable';
+import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -53,8 +54,11 @@ export function SalesPage() {
     const [quickProductOpen, setQuickProductOpen] = useState(false);
     const [quickMrOpen, setQuickMrOpen] = useState(false);
     const [qrVisible, setQrVisible] = useState(false);
+    const [viewingInvoice, setViewingInvoice] = useState(null);
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [customerForm] = Form.useForm();
     const [mrForm] = Form.useForm();
+    const [paymentForm] = Form.useForm();
     const invoiceTable = useServerTable({
         endpoint: endpoints.salesInvoices,
         defaultSort: { field: 'invoice_date', order: 'desc' },
@@ -239,6 +243,46 @@ export function SalesPage() {
         }
     }
 
+    async function viewInvoice(row) {
+        try {
+            const { data } = await http.get(`${endpoints.salesInvoices}/${row.id}`);
+            setViewingInvoice(data.data);
+            return data.data;
+        } catch (error) {
+            notification.error({ message: 'Invoice details failed', description: error?.response?.data?.message || error.message });
+            return null;
+        }
+    }
+
+    async function openInvoicePayment(row) {
+        const invoice = await viewInvoice(row);
+        if (invoice) {
+            openPaymentUpdate(invoice);
+        }
+    }
+
+    function openPaymentUpdate(invoice = viewingInvoice) {
+        if (!invoice) return;
+        paymentForm.resetFields();
+        paymentForm.setFieldsValue({ paid_amount: invoice.paid_amount || 0 });
+        setPaymentModalOpen(true);
+    }
+
+    async function submitPayment(values) {
+        if (!viewingInvoice) return;
+
+        try {
+            const { data } = await http.patch(endpoints.salesInvoicePayment(viewingInvoice.id), values);
+            notification.success({ message: data.message || 'Invoice payment updated' });
+            setViewingInvoice(data.data);
+            setPaymentModalOpen(false);
+            invoiceTable.reload();
+        } catch (error) {
+            paymentForm.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name, errors })));
+            notification.error({ message: 'Payment update failed', description: error?.response?.data?.message || error.message });
+        }
+    }
+
     const columns = [
         {
             key: 'product',
@@ -270,9 +314,11 @@ export function SalesPage() {
         { title: 'Status', dataIndex: 'is_active', width: 110, render: (v) => <StatusBadge value={v} /> },
         {
             title: 'Action',
-            width: 150,
+            width: 240,
             render: (_, row) => (
                 <Space>
+                    <Button icon={<EyeOutlined />} onClick={() => viewInvoice(row)}>View</Button>
+                    <Button icon={<DollarOutlined />} onClick={() => openInvoicePayment(row)}>Payment</Button>
                     <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/sales/invoices/${row.id}/print`), '_blank')}>Print</Button>
                     <Button onClick={() => window.open(appUrl(`/sales/invoices/${row.id}/pdf`), '_blank')}>PDF</Button>
                 </Space>
@@ -419,6 +465,7 @@ export function SalesPage() {
                             options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
                         />
                         <SmartDatePicker.RangePicker value={invoiceRange} onChange={setInvoiceRange} />
+                        <ExportButtons basePath={endpoints.datasetExport('sales-invoices')} params={{ ...invoiceTable.filters, search: invoiceTable.search, ...applyDateRangeFilter({}, invoiceRange) }} />
                         <Button onClick={invoiceTable.reload}>Refresh</Button>
                     </div>
                     <ServerTable table={invoiceTable} columns={invoiceColumns} />
@@ -489,6 +536,81 @@ export function SalesPage() {
                     </div>
                     <p style={{ marginTop: 16, color: '#64748b', fontSize: 12 }}>Accepts all major fonepay/QR apps</p>
                 </div>
+            </Modal>
+
+            <Modal
+                title={`Invoice Details: ${viewingInvoice?.invoice_no || ''}`}
+                open={!!viewingInvoice}
+                onCancel={() => setViewingInvoice(null)}
+                footer={[
+                    <Button key="payment" icon={<DollarOutlined />} onClick={() => openPaymentUpdate()}>Update Payment</Button>,
+                    <Button key="print" icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/sales/invoices/${viewingInvoice?.id}/print`), '_blank')}>Print</Button>,
+                    <Button key="close" onClick={() => setViewingInvoice(null)}>Close</Button>,
+                ]}
+                width={980}
+                destroyOnHidden
+            >
+                {viewingInvoice && (
+                    <div className="page-stack">
+                        <Descriptions bordered size="small" column={3}>
+                            <Descriptions.Item label="Customer">{viewingInvoice.customer?.name || 'Walk-in'}</Descriptions.Item>
+                            <Descriptions.Item label="Date"><DateText value={viewingInvoice.invoice_date} style="compact" /></Descriptions.Item>
+                            <Descriptions.Item label="Payment"><PaymentStatusBadge value={viewingInvoice.payment_status} /></Descriptions.Item>
+                            <Descriptions.Item label="MR">{viewingInvoice.medical_representative?.name || '-'}</Descriptions.Item>
+                            <Descriptions.Item label="Total"><Money value={viewingInvoice.grand_total} /></Descriptions.Item>
+                            <Descriptions.Item label="Paid"><Money value={viewingInvoice.paid_amount} /></Descriptions.Item>
+                        </Descriptions>
+                        <Table
+                            rowKey="id"
+                            dataSource={viewingInvoice.items || []}
+                            pagination={false}
+                            size="small"
+                            columns={[
+                                { title: 'Product', dataIndex: 'product_name' },
+                                { title: 'Batch', dataIndex: 'batch_no', width: 120 },
+                                { title: 'Expiry', dataIndex: 'expires_at', width: 120, render: (value) => <DateText value={value} style="compact" /> },
+                                { title: 'Qty', dataIndex: 'quantity', align: 'right', width: 90 },
+                                { title: 'Rate', dataIndex: 'unit_price', align: 'right', width: 110, render: (value) => <Money value={value} /> },
+                                { title: 'Discount', dataIndex: 'discount_amount', align: 'right', width: 110, render: (value) => <Money value={value} /> },
+                                { title: 'Total', dataIndex: 'line_total', align: 'right', width: 120, render: (value) => <Money value={value} /> },
+                            ]}
+                        />
+                        <Card size="small" title={`Return History (${viewingInvoice.returns?.length || 0})`}>
+                            <Table
+                                rowKey="id"
+                                dataSource={viewingInvoice.returns || []}
+                                pagination={false}
+                                size="small"
+                                columns={[
+                                    { title: 'Return No', dataIndex: 'return_no' },
+                                    { title: 'Date', dataIndex: 'return_date', render: (value) => <DateText value={value} style="compact" /> },
+                                    { title: 'Status', dataIndex: 'status', render: (value) => <PharmaBadge tone={value}>{value || '-'}</PharmaBadge> },
+                                    { title: 'Amount', dataIndex: 'total_amount', align: 'right', render: (value) => <Money value={value} /> },
+                                    { title: 'Reason', dataIndex: 'reason', render: (value) => value || '-' },
+                                ]}
+                                locale={{ emptyText: 'No return history for this invoice.' }}
+                            />
+                        </Card>
+                    </div>
+                )}
+            </Modal>
+
+            <Modal
+                title={`Update Payment: ${viewingInvoice?.invoice_no || ''}`}
+                open={paymentModalOpen}
+                onCancel={() => setPaymentModalOpen(false)}
+                onOk={() => paymentForm.submit()}
+                okText="Save Payment"
+                destroyOnHidden
+            >
+                <Form form={paymentForm} layout="vertical" onFinish={submitPayment}>
+                    <Descriptions size="small" bordered column={1} className="mb-16">
+                        <Descriptions.Item label="Invoice Total"><Money value={viewingInvoice?.grand_total || 0} /></Descriptions.Item>
+                    </Descriptions>
+                    <Form.Item name="paid_amount" label="Paid Amount" rules={[{ required: true }]}>
+                        <InputNumber min={0} max={Number(viewingInvoice?.grand_total || 0)} className="full-width" />
+                    </Form.Item>
+                </Form>
             </Modal>
         </div>
     );

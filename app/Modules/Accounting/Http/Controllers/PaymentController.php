@@ -2,6 +2,7 @@
 
 namespace App\Modules\Accounting\Http\Controllers;
 
+use App\Models\Setting;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Models\Payment;
 use App\Modules\Accounting\Models\PaymentBillAllocation;
@@ -15,6 +16,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\View\View;
 
 class PaymentController
 {
@@ -75,6 +78,8 @@ class PaymentController
                 'notes' => $payment->notes,
                 'linked_bills' => $payment->allocations->count(),
                 'deleted_at' => $payment->deleted_at?->toISOString(),
+                'print_url' => route('payments.print', $payment),
+                'pdf_url' => route('payments.pdf', $payment),
             ]),
             'meta' => [
                 'current_page' => $paginated->currentPage(),
@@ -199,6 +204,7 @@ class PaymentController
                 $bill->paid_amount    = $newPaid;
                 $bill->payment_status = $this->resolveBillPaymentStatus($bill, $allocation['bill_type']);
                 $bill->save();
+                $this->adjustPartyBalanceForAllocation($payment, $bill, (float) $allocatedAmount);
 
                 $allocatedTotal = bcadd($allocatedTotal, $allocatedAmount, 2);
             }
@@ -279,6 +285,25 @@ class PaymentController
         return response()->json(['data' => $bills]);
     }
 
+    public function show(Payment $payment): JsonResponse
+    {
+        $payment->load(['customer', 'supplier', 'paymentModeOption:id,name,data', 'allocations']);
+
+        return response()->json(['data' => $this->paymentPayload($payment, true)]);
+    }
+
+    public function print(Payment $payment): View
+    {
+        return view('prints.payment', $this->printData($payment));
+    }
+
+    public function pdf(Payment $payment)
+    {
+        return Pdf::loadView('prints.payment', $this->printData($payment))
+            ->setPaper('a4')
+            ->stream($payment->payment_no.'.pdf');
+    }
+
     public function destroy(Payment $payment): JsonResponse
     {
         DB::transaction(function () use ($payment) {
@@ -328,6 +353,30 @@ class PaymentController
             $bill->paid_amount    = number_format(max(0, (float) $newPaid), 2, '.', '');
             $bill->payment_status = $this->resolveBillPaymentStatus($bill, $allocation->bill_type);
             $bill->save();
+            $this->adjustPartyBalanceForAllocation($payment, $bill, (float) $allocation->allocated_amount, reverse: true);
+        }
+    }
+
+    private function adjustPartyBalanceForAllocation(Payment $payment, $bill, float $amount, bool $reverse = false): void
+    {
+        $delta = $reverse ? $amount : -$amount;
+
+        if ($payment->party_type === 'customer' && $bill instanceof SalesInvoice && $bill->customer_id) {
+            $customer = Customer::query()->lockForUpdate()->find($bill->customer_id);
+            if ($customer) {
+                $customer->forceFill([
+                    'current_balance' => round(max(0, (float) $customer->current_balance + $delta), 2),
+                ])->save();
+            }
+        }
+
+        if ($payment->party_type === 'supplier' && $bill instanceof Purchase && $bill->supplier_id) {
+            $supplier = Supplier::query()->lockForUpdate()->find($bill->supplier_id);
+            if ($supplier) {
+                $supplier->forceFill([
+                    'current_balance' => round(max(0, (float) $supplier->current_balance + $delta), 2),
+                ])->save();
+            }
         }
     }
 
@@ -363,5 +412,60 @@ class PaymentController
         }
 
         return $paid >= $total ? 'paid' : 'partial';
+    }
+
+    private function paymentPayload(Payment $payment, bool $includeAllocations = false): array
+    {
+        $payload = [
+            'id' => $payment->id,
+            'payment_no' => $payment->payment_no,
+            'payment_date' => $payment->payment_date->format('Y-m-d'),
+            'payment_date_display' => $payment->payment_date->format('M j, Y'),
+            'direction' => $payment->direction,
+            'direction_label' => $payment->direction === 'in' ? 'Payment In' : 'Payment Out',
+            'party_type' => $payment->party_type,
+            'party_name' => $payment->party_name,
+            'party_id' => $payment->party_id,
+            'payment_mode_id' => $payment->payment_mode_id,
+            'payment_mode' => $payment->payment_mode_label,
+            'payment_mode_data' => $payment->paymentModeOption?->data,
+            'amount' => round((float) $payment->amount, 2),
+            'reference_no' => $payment->reference_no,
+            'notes' => $payment->notes,
+            'linked_bills' => $payment->allocations->count(),
+            'deleted_at' => $payment->deleted_at?->toISOString(),
+            'print_url' => route('payments.print', $payment),
+            'pdf_url' => route('payments.pdf', $payment),
+        ];
+
+        if ($includeAllocations) {
+            $payload['allocations'] = $payment->allocations->map(function (PaymentBillAllocation $allocation) use ($payment) {
+                $bill = $this->resolveBill($allocation->bill_type, $allocation->bill_id, $payment->party_id, $payment->party_type);
+                $outstandingAfterReverse = round($this->billOutstanding($bill, $allocation->bill_type) + (float) $allocation->allocated_amount, 2);
+
+                return [
+                    'bill_id' => $allocation->bill_id,
+                    'bill_type' => $allocation->bill_type,
+                    'bill_number' => $bill->invoice_no ?? $bill->purchase_no ?? '#'.$allocation->bill_id,
+                    'bill_date' => ($bill->invoice_date ?? $bill->purchase_date)?->format('M j, Y'),
+                    'net_amount' => round((float) $bill->grand_total, 2),
+                    'total_paid' => round((float) $bill->paid_amount, 2),
+                    'outstanding' => $outstandingAfterReverse,
+                    'allocated_amount' => round((float) $allocation->allocated_amount, 2),
+                ];
+            })->values();
+        }
+
+        return $payload;
+    }
+
+    private function printData(Payment $payment): array
+    {
+        $payment->load(['customer', 'supplier', 'paymentModeOption:id,name,data', 'allocations']);
+
+        return [
+            'payment' => $this->paymentPayload($payment, true),
+            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
+        ];
     }
 }

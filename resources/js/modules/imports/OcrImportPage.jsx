@@ -45,22 +45,21 @@ export function OcrImportPage() {
         }
     }
 
-    function loadIntoPurchase() {
+    async function loadIntoPurchase() {
         if (!result) return;
 
-        const draft = {
-            supplier_id: result.analysis?.supplier_id || null,
-            supplier_name: result.analysis?.supplier_name || null,
-            supplier_invoice_no: result.analysis?.invoice_no || '',
-            purchase_date: result.analysis?.invoice_date || null,
-            notes: result.text || '',
-            matches: result.matches || [],
-            analysis: result.analysis || {},
-        };
-
-        window.sessionStorage.setItem(OCR_DRAFT_STORAGE_KEY, JSON.stringify(draft));
-        window.history.pushState({}, '', appUrl('/app/purchases/entry'));
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        try {
+            const { data } = await http.post(endpoints.purchaseOcrDraft, {
+                ocr_text: result.text || '',
+                analysis: result.analysis || {},
+                matches: result.matches || [],
+            });
+            window.sessionStorage.setItem(OCR_DRAFT_STORAGE_KEY, JSON.stringify(data.data));
+            window.history.pushState({}, '', appUrl('/app/purchases/entry'));
+            window.dispatchEvent(new PopStateEvent('popstate'));
+        } catch (error) {
+            notification.error({ message: 'Could not prepare purchase draft', description: error?.response?.data?.message || error.message });
+        }
     }
 
     return (

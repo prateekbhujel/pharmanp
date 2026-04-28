@@ -6,6 +6,7 @@ import { DateText } from '../../core/components/DateText';
 import { Money } from '../../core/components/Money';
 import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { ServerTable } from '../../core/components/ServerTable';
+import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
@@ -27,9 +28,13 @@ export function PurchaseOrdersPanel() {
     const [products, setProducts] = useState([]);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [viewingOrder, setViewingOrder] = useState(null);
+    const [receivingOrder, setReceivingOrder] = useState(null);
     const [orderItems, setOrderItems] = useState([{ ...emptyOrderItem }]);
+    const [receiveItems, setReceiveItems] = useState([]);
     const [orderLineErrors, setOrderLineErrors] = useState({});
+    const [receiveLineErrors, setReceiveLineErrors] = useState({});
     const [orderForm] = Form.useForm();
+    const [receiveForm] = Form.useForm();
     const [range, setRange] = useState([]);
 
     const table = useServerTable({
@@ -124,6 +129,70 @@ export function PurchaseOrdersPanel() {
         }
     }
 
+    async function openReceive(order) {
+        try {
+            const { data } = await http.get(`${endpoints.purchaseOrders}/${order.id}`);
+            const fullOrder = data.data;
+            setReceivingOrder(fullOrder);
+            setReceiveLineErrors({});
+            receiveForm.resetFields();
+            receiveForm.setFieldsValue({
+                purchase_date: dayjs(),
+                supplier_invoice_no: fullOrder.order_no,
+                paid_amount: 0,
+            });
+            setReceiveItems((fullOrder.items || []).map((item) => ({
+                purchase_order_item_id: item.id,
+                product_id: item.product_id,
+                product_name: item.product?.name,
+                batch_no: '',
+                expires_at: null,
+                quantity: Number(item.quantity || 0),
+                free_quantity: 0,
+                purchase_price: Number(item.unit_price || item.product?.purchase_price || 0),
+                mrp: Number(item.product?.mrp || item.unit_price || 0),
+                cc_rate: Number(item.product?.cc_rate || 0),
+                discount_percent: Number(item.discount_percent || 0),
+            })));
+        } catch (error) {
+            notification.error({ message: 'Failed to load receive form' });
+        }
+    }
+
+    function updateReceiveRow(index, patch) {
+        setReceiveItems((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
+    }
+
+    const receiveSummary = summarizeItems(receiveItems, 'purchase_price');
+
+    async function submitReceive(values) {
+        if (!receivingOrder) return;
+
+        try {
+            const { data } = await http.post(endpoints.purchaseOrderReceive(receivingOrder.id), {
+                ...values,
+                purchase_date: values.purchase_date.format('YYYY-MM-DD'),
+                items: receiveItems.map((item) => ({
+                    ...item,
+                    expires_at: item.expires_at?.format('YYYY-MM-DD'),
+                    manufactured_at: item.manufactured_at?.format('YYYY-MM-DD'),
+                })),
+            });
+            notification.success({ message: data.message || 'Order received' });
+            setReceivingOrder(null);
+            setViewingOrder(data.data);
+            table.reload();
+            if (data.print_url) {
+                window.open(data.print_url, '_blank');
+            }
+        } catch (error) {
+            const errors = validationErrors(error);
+            setReceiveLineErrors(validationErrorsByLine(errors, 'items'));
+            receiveForm.setFields(Object.entries(errors).map(([name, messages]) => ({ name: name.split('.'), errors: messages })));
+            notification.error({ message: 'Receive failed', description: error?.response?.data?.message || error.message });
+        }
+    }
+
     const orderColumns = [
         {
             key: 'product', title: 'Product', width: 360, render: (row, index) => (
@@ -188,6 +257,7 @@ export function PurchaseOrdersPanel() {
                         ]}
                     />
                     <SmartDatePicker.RangePicker value={range} onChange={setRange} />
+                    <ExportButtons basePath={endpoints.datasetExport('purchase-orders')} params={{ ...table.filters, search: table.search, ...applyDateRangeFilter({}, range) }} />
                     <Button type="primary" icon={<PlusOutlined />} onClick={openNewOrder}>New Order</Button>
                 </div>
                 <ServerTable table={table} columns={listColumns} />
@@ -274,8 +344,8 @@ export function PurchaseOrdersPanel() {
                                 </Button>
                             )}
                             {viewingOrder.status === 'approved' && (
-                                <Button type="primary" icon={<TruckOutlined />} onClick={() => processAction('receive', endpoints.purchaseOrderReceive(viewingOrder.id))}>
-                                    Mark Received
+                                <Button type="primary" icon={<TruckOutlined />} onClick={() => openReceive(viewingOrder)}>
+                                    Receive Stock
                                 </Button>
                             )}
                             {viewingOrder.status === 'received' && (
@@ -286,6 +356,62 @@ export function PurchaseOrdersPanel() {
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            <Modal
+                title={`Receive Purchase Order: ${receivingOrder?.order_no || ''}`}
+                open={!!receivingOrder}
+                onCancel={() => setReceivingOrder(null)}
+                footer={null}
+                width={1100}
+                destroyOnClose
+            >
+                <Form form={receiveForm} layout="vertical" onFinish={submitReceive}>
+                    <div className="form-grid">
+                        <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
+                        <Form.Item name="purchase_date" label="Receive Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
+                        <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
+                    </div>
+                    <Form.Item name="notes" label="Receive Notes"><Input.TextArea rows={2} /></Form.Item>
+
+                    <TransactionLineItems
+                        rows={receiveItems}
+                        errors={receiveLineErrors}
+                        addLabel="Add Line"
+                        minRows={1}
+                        onAdd={() => setReceiveItems((rows) => [...rows, {
+                            purchase_order_item_id: null,
+                            product_id: null,
+                            product_name: '',
+                            batch_no: '',
+                            expires_at: null,
+                            quantity: 1,
+                            free_quantity: 0,
+                            purchase_price: 0,
+                            mrp: 0,
+                            cc_rate: 0,
+                            discount_percent: 0,
+                        }])}
+                        onRemove={(index) => setReceiveItems((rows) => rows.filter((_, rowIndex) => rowIndex !== index))}
+                        columns={[
+                            { key: 'product', title: 'Product', width: 220, render: (row) => <strong>{row.product_name || row.product_id || '-'}</strong> },
+                            { key: 'batch', title: 'Batch', width: 140, render: (row, index) => <Input value={row.batch_no} onChange={(event) => updateReceiveRow(index, { batch_no: event.target.value })} /> },
+                            { key: 'expiry', title: 'Expiry', width: 150, render: (row, index) => <SmartDatePicker value={row.expires_at} onChange={(expires_at) => updateReceiveRow(index, { expires_at })} /> },
+                            { key: 'quantity', title: 'Qty', width: 100, render: (row, index) => <InputNumber min={0.001} value={row.quantity} onChange={(quantity) => updateReceiveRow(index, { quantity })} /> },
+                            { key: 'free_quantity', title: 'Free', width: 90, render: (row, index) => <InputNumber min={0} value={row.free_quantity} onChange={(free_quantity) => updateReceiveRow(index, { free_quantity })} /> },
+                            { key: 'purchase_price', title: 'Rate', width: 110, render: (row, index) => <InputNumber min={0} value={row.purchase_price} onChange={(purchase_price) => updateReceiveRow(index, { purchase_price })} /> },
+                            { key: 'mrp', title: 'MRP', width: 110, render: (row, index) => <InputNumber min={0} value={row.mrp} onChange={(mrp) => updateReceiveRow(index, { mrp })} /> },
+                            { key: 'discount_percent', title: 'Disc %', width: 100, render: (row, index) => <InputNumber min={0} max={100} value={row.discount_percent} onChange={(discount_percent) => updateReceiveRow(index, { discount_percent })} /> },
+                            { key: 'amount', title: 'Amount', className: 'line-money-cell', width: 120, render: (row) => <Money value={itemNet(row, 'purchase_price')} /> },
+                        ]}
+                        summary={[
+                            { label: 'Subtotal', value: <Money value={receiveSummary.subtotal} /> },
+                            { label: 'Discount', value: <Money value={receiveSummary.discount} /> },
+                            { label: 'Grand Total', value: <Money value={receiveSummary.grandTotal} />, strong: true },
+                        ]}
+                        actions={<Button type="primary" htmlType="submit">Receive and Post Purchase</Button>}
+                    />
+                </Form>
             </Modal>
         </div>
     );

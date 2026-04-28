@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
+use App\Modules\Party\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -72,5 +73,28 @@ class ImportPreviewTest extends TestCase
             ->assertJsonPath('data.valid_rows', 1);
 
         $this->assertDatabaseHas('products', ['sku' => 'CET-10', 'name' => 'Cetirizine 10']);
+    }
+
+    public function test_ocr_purchase_draft_prepares_purchase_entry_payload(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $company = Company::query()->create(['name' => 'OCR Pharma']);
+        $supplier = Supplier::query()->create(['company_id' => $company->id, 'name' => 'Himal Supplier']);
+        $user = User::factory()->create(['company_id' => $company->id, 'is_owner' => true]);
+
+        $this->actingAs($user)->postJson('/api/v1/imports/ocr/draft-purchase', [
+            'ocr_text' => "Himal Supplier\nInvoice No: HS-101\nDate: 2026-04-25",
+            'analysis' => [
+                'supplier_id' => $supplier->id,
+                'supplier_name' => $supplier->name,
+                'invoice_no' => 'HS-101',
+                'invoice_date' => '2026-04-25',
+                'confidence' => 85,
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.supplier_id', $supplier->id)
+            ->assertJsonPath('data.supplier_invoice_no', 'HS-101')
+            ->assertJsonPath('data.purchase_date', '2026-04-25');
     }
 }

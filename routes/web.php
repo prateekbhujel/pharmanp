@@ -132,6 +132,9 @@ Route::middleware(['installed', 'auth'])->group(function () {
 
         Route::get('/sales/product-lookup', ProductLookupController::class)->name('sales.product-lookup');
         Route::apiResource('sales/invoices', SalesInvoiceController::class)->only(['index', 'store', 'show']);
+        Route::get('/sales/invoices/{invoice}/items', [SalesInvoiceController::class, 'items'])->name('sales.invoices.items');
+        Route::get('/sales/invoices/{invoice}/returns', [SalesInvoiceController::class, 'returns'])->name('sales.invoices.returns');
+        Route::patch('/sales/invoices/{invoice}/payment', [SalesInvoiceController::class, 'updatePayment'])->name('sales.invoices.payment');
         Route::get('/mr/performance', MrPerformanceController::class)->name('mr.performance');
         Route::get('/mr/options', [MedicalRepresentativeController::class, 'options'])->name('mr.options');
         Route::apiResource('mr/representatives', MedicalRepresentativeController::class)->only(['index', 'store', 'update', 'destroy'])->parameter('representatives', 'representative');
@@ -151,8 +154,9 @@ Route::middleware(['installed', 'auth'])->group(function () {
 
         Route::get('/accounting/payments', [PaymentController::class, 'index'])->name('accounting.payments.index');
         Route::post('/accounting/payments', [PaymentController::class, 'store'])->name('accounting.payments.store');
-        Route::delete('/accounting/payments/{payment}', [PaymentController::class, 'destroy'])->name('accounting.payments.destroy');
         Route::get('/accounting/payments/outstanding-bills', [PaymentController::class, 'outstandingBills'])->name('accounting.payments.outstanding-bills');
+        Route::get('/accounting/payments/{payment}', [PaymentController::class, 'show'])->name('accounting.payments.show');
+        Route::delete('/accounting/payments/{payment}', [PaymentController::class, 'destroy'])->name('accounting.payments.destroy');
 
         Route::get('/sales/returns/invoice-options', [SalesReturnController::class, 'invoiceOptions'])->name('sales.returns.invoice-options');
         Route::get('/sales/returns/invoices/{invoice}/items', [SalesReturnController::class, 'invoiceItems'])->name('sales.returns.invoice-items');
@@ -195,6 +199,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::post('/imports/preview', [ImportWizardController::class, 'preview'])->name('imports.preview');
         Route::post('/imports/confirm', [ImportWizardController::class, 'confirm'])->name('imports.confirm');
         Route::post('/imports/ocr/extract', [PurchaseOcrController::class, 'extract'])->name('imports.ocr.extract');
+        Route::post('/imports/ocr/draft-purchase', [PurchaseOcrController::class, 'draftPurchase'])->name('imports.ocr.draft-purchase');
         Route::get('/imports/{job}/rejected.csv', [ImportWizardController::class, 'rejected'])->name('imports.rejected');
 
         Route::get('/exports/inventory/masters/{master}/{format}', [ExportController::class, 'inventoryMaster'])
@@ -207,6 +212,10 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/exports/inventory/batches/{format}', [ExportController::class, 'inventoryBatches'])
             ->whereIn('format', ['xlsx', 'pdf'])
             ->name('exports.inventory.batches');
+        Route::get('/exports/{dataset}/{format}', [ExportController::class, 'dataset'])
+            ->whereIn('dataset', ['suppliers', 'customers', 'sales-invoices', 'purchases', 'purchase-orders', 'payments', 'expenses', 'users', 'account-tree'])
+            ->whereIn('format', ['xlsx', 'pdf'])
+            ->name('exports.dataset');
     });
 
     Route::get('/purchases/{purchase}/print', [PurchaseController::class, 'print'])->name('purchases.print');
@@ -215,6 +224,10 @@ Route::middleware(['installed', 'auth'])->group(function () {
     Route::get('/purchase-returns/{purchaseReturn}/pdf', [PurchaseReturnController::class, 'pdf'])->name('purchase-returns.pdf');
     Route::get('/sales/invoices/{invoice}/print', [SalesInvoiceController::class, 'print'])->name('sales.invoices.print');
     Route::get('/sales/invoices/{invoice}/pdf', [SalesInvoiceController::class, 'pdf'])->name('sales.invoices.pdf');
+    Route::get('/payments/{payment}/print', [PaymentController::class, 'print'])->name('payments.print');
+    Route::get('/payments/{payment}/pdf', [PaymentController::class, 'pdf'])->name('payments.pdf');
+    Route::get('/customers/{customer}/ledger/print', [CustomerLedgerController::class, 'print'])->name('customers.ledger.print');
+    Route::get('/customers/{customer}/ledger/pdf', [CustomerLedgerController::class, 'pdf'])->name('customers.ledger.pdf');
 
     Route::get('/app/{any?}', SpaController::class)->where('any', '.*')->name('app');
 });

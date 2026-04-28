@@ -3,14 +3,24 @@
 namespace App\Modules\ImportExport\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Modules\Accounting\Models\Expense;
+use App\Modules\Accounting\Models\Payment;
+use App\Modules\Accounting\Support\AccountCatalog;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
+use App\Modules\Party\Models\Customer;
+use App\Modules\Party\Models\Supplier;
+use App\Modules\Purchase\Models\Purchase;
+use App\Modules\Purchase\Models\PurchaseOrder;
+use App\Modules\Sales\Models\SalesInvoice;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Rap2hpoutre\FastExcel\FastExcel;
 
@@ -105,6 +115,24 @@ class ExportController extends Controller
         return $this->download($format, 'inventory-batches.xlsx', 'inventory-batches.pdf', 'Inventory Batch List', $rows);
     }
 
+    public function dataset(Request $request, string $dataset, string $format)
+    {
+        [$title, $rows] = match ($dataset) {
+            'suppliers' => ['Supplier List', $this->supplierRows($request)],
+            'customers' => ['Customer List', $this->customerRows($request)],
+            'sales-invoices' => ['Sales Invoice List', $this->salesInvoiceRows($request)],
+            'purchases' => ['Purchase Bill List', $this->purchaseRows($request)],
+            'purchase-orders' => ['Purchase Order List', $this->purchaseOrderRows($request)],
+            'payments' => ['Payment List', $this->paymentRows($request)],
+            'expenses' => ['Expense List', $this->expenseRows($request)],
+            'users' => ['User List', $this->userRows($request)],
+            'account-tree' => ['Account Tree', $this->accountTreeRows($request)],
+            default => abort(404),
+        };
+
+        return $this->download($format, $dataset.'.xlsx', $dataset.'.pdf', $title, $rows);
+    }
+
     private function masterRows(Request $request, string $master): Collection
     {
         $model = match ($master) {
@@ -141,6 +169,175 @@ class ExportController extends Controller
                     'Added Date' => $row->created_at?->toDateString(),
                 ],
             });
+    }
+
+    private function supplierRows(Request $request): Collection
+    {
+        return Supplier::query()
+            ->when($request->boolean('deleted'), fn (Builder $query) => $query->onlyTrashed())
+            ->when(trim((string) $request->query('search')) !== '', fn (Builder $query) => $query->where('name', 'like', '%'.trim((string) $request->query('search')).'%'))
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Supplier $supplier) => [
+                'Supplier' => $supplier->name,
+                'Phone' => $supplier->phone ?: '-',
+                'Email' => $supplier->email ?: '-',
+                'PAN' => $supplier->pan_number ?: '-',
+                'Balance' => (float) $supplier->current_balance,
+                'Status' => $supplier->deleted_at ? 'Deleted' : ($supplier->is_active ? 'Active' : 'Inactive'),
+            ]);
+    }
+
+    private function customerRows(Request $request): Collection
+    {
+        return Customer::query()
+            ->when($request->boolean('deleted'), fn (Builder $query) => $query->onlyTrashed())
+            ->when(trim((string) $request->query('search')) !== '', fn (Builder $query) => $query->where('name', 'like', '%'.trim((string) $request->query('search')).'%'))
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Customer $customer) => [
+                'Customer' => $customer->name,
+                'Phone' => $customer->phone ?: '-',
+                'Email' => $customer->email ?: '-',
+                'PAN' => $customer->pan_number ?: '-',
+                'Credit Limit' => (float) $customer->credit_limit,
+                'Balance' => (float) $customer->current_balance,
+                'Status' => $customer->deleted_at ? 'Deleted' : ($customer->is_active ? 'Active' : 'Inactive'),
+            ]);
+    }
+
+    private function salesInvoiceRows(Request $request): Collection
+    {
+        return SalesInvoice::query()
+            ->with(['customer:id,name', 'medicalRepresentative:id,name'])
+            ->whereNull('deleted_at')
+            ->when($request->filled('from'), fn (Builder $query) => $query->whereDate('invoice_date', '>=', $request->query('from')))
+            ->when($request->filled('to'), fn (Builder $query) => $query->whereDate('invoice_date', '<=', $request->query('to')))
+            ->orderByDesc('invoice_date')
+            ->get()
+            ->map(fn (SalesInvoice $invoice) => [
+                'Invoice' => $invoice->invoice_no,
+                'Date' => $invoice->invoice_date?->toDateString(),
+                'Customer' => $invoice->customer?->name ?: 'Walk-in',
+                'MR' => $invoice->medicalRepresentative?->name ?: '-',
+                'Payment' => $invoice->payment_status,
+                'Total' => (float) $invoice->grand_total,
+                'Paid' => (float) $invoice->paid_amount,
+            ]);
+    }
+
+    private function purchaseRows(Request $request): Collection
+    {
+        return Purchase::query()
+            ->with('supplier:id,name')
+            ->whereNull('deleted_at')
+            ->when($request->filled('from'), fn (Builder $query) => $query->whereDate('purchase_date', '>=', $request->query('from')))
+            ->when($request->filled('to'), fn (Builder $query) => $query->whereDate('purchase_date', '<=', $request->query('to')))
+            ->orderByDesc('purchase_date')
+            ->get()
+            ->map(fn (Purchase $purchase) => [
+                'Purchase' => $purchase->purchase_no,
+                'Date' => $purchase->purchase_date?->toDateString(),
+                'Supplier Bill' => $purchase->supplier_invoice_no ?: '-',
+                'Supplier' => $purchase->supplier?->name ?: '-',
+                'Payment' => $purchase->payment_status,
+                'Total' => (float) $purchase->grand_total,
+                'Paid' => (float) $purchase->paid_amount,
+            ]);
+    }
+
+    private function purchaseOrderRows(Request $request): Collection
+    {
+        return PurchaseOrder::query()
+            ->with('supplier:id,name')
+            ->whereNull('deleted_at')
+            ->orderByDesc('order_date')
+            ->get()
+            ->map(fn (PurchaseOrder $order) => [
+                'Order' => $order->order_no,
+                'Date' => $order->order_date?->toDateString(),
+                'Expected' => $order->expected_date?->toDateString() ?: '-',
+                'Supplier' => $order->supplier?->name ?: '-',
+                'Status' => $order->status,
+                'Total' => (float) $order->grand_total,
+            ]);
+    }
+
+    private function paymentRows(Request $request): Collection
+    {
+        return Payment::query()
+            ->with(['customer:id,name', 'supplier:id,name', 'paymentModeOption:id,name'])
+            ->whereNull('deleted_at')
+            ->when($request->filled('from'), fn (Builder $query) => $query->whereDate('payment_date', '>=', $request->query('from')))
+            ->when($request->filled('to'), fn (Builder $query) => $query->whereDate('payment_date', '<=', $request->query('to')))
+            ->orderByDesc('payment_date')
+            ->get()
+            ->map(fn (Payment $payment) => [
+                'Payment' => $payment->payment_no,
+                'Date' => $payment->payment_date?->toDateString(),
+                'Direction' => $payment->direction === 'in' ? 'Payment In' : 'Payment Out',
+                'Party' => $payment->party_name,
+                'Mode' => $payment->payment_mode_label,
+                'Amount' => (float) $payment->amount,
+                'Reference' => $payment->reference_no ?: '-',
+            ]);
+    }
+
+    private function expenseRows(Request $request): Collection
+    {
+        return Expense::query()
+            ->when($request->filled('from'), fn (Builder $query) => $query->whereDate('expense_date', '>=', $request->query('from')))
+            ->when($request->filled('to'), fn (Builder $query) => $query->whereDate('expense_date', '<=', $request->query('to')))
+            ->orderByDesc('expense_date')
+            ->get()
+            ->map(fn (Expense $expense) => [
+                'Date' => $expense->expense_date?->toDateString(),
+                'Category' => $expense->category ?: '-',
+                'Payment Mode' => $expense->payment_mode ?: '-',
+                'Amount' => (float) $expense->amount,
+                'Notes' => $expense->notes ?: '-',
+            ]);
+    }
+
+    private function userRows(Request $request): Collection
+    {
+        return User::query()
+            ->with('roles:id,name')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $user) => [
+                'Name' => $user->name,
+                'Email' => $user->email,
+                'Roles' => $user->roles->pluck('name')->implode(', ') ?: '-',
+                'Status' => $user->is_active ? 'Active' : 'Inactive',
+                'Owner' => $user->is_owner ? 'Yes' : 'No',
+            ]);
+    }
+
+    private function accountTreeRows(Request $request): Collection
+    {
+        $summary = DB::table('account_transactions')
+            ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
+            ->groupBy('account_type')
+            ->get()
+            ->keyBy('account_type');
+
+        return collect(AccountCatalog::all())->map(function (array $account) use ($summary) {
+            $totals = $summary->get($account['key']);
+            $debit = round((float) ($totals?->debit_total ?? 0), 2);
+            $credit = round((float) ($totals?->credit_total ?? 0), 2);
+            $closing = AccountCatalog::closingBalance($debit, $credit, $account['nature']);
+
+            return [
+                'Code' => $account['code'],
+                'Account' => $account['name'],
+                'Group' => $account['group'],
+                'Normal Side' => strtoupper($account['nature']),
+                'Debit' => $debit,
+                'Credit' => $credit,
+                'Closing' => $closing['amount'].' '.$closing['side'],
+            ];
+        });
     }
 
     private function download(string $format, string $excelName, string $pdfName, string $title, Collection $rows)

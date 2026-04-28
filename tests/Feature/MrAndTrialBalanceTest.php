@@ -65,6 +65,14 @@ class MrAndTrialBalanceTest extends TestCase
         $this->assertTrue(collect($trialBalance)->contains(fn ($row) => $row['account'] === 'Inventory Stock' && (float) $row['debit'] === 50.0));
         $this->assertTrue(collect($trialBalance)->contains(fn ($row) => $row['account'] === 'Sales Income' && (float) $row['credit'] === 16.0));
 
+        $accountTree = $this->actingAs($user)->getJson('/api/v1/reports/account-tree?from=2026-04-01&to=2026-04-30')
+            ->assertOk()
+            ->assertJsonPath('summary.debit', 66)
+            ->assertJsonPath('summary.credit', 66)
+            ->json('data');
+
+        $this->assertTrue(collect($accountTree)->contains(fn ($row) => $row['account_key'] === 'inventory' && (float) $row['debit'] === 50.0));
+
         $this->actingAs($user)->getJson('/api/v1/mr/performance?from=2026-04-01&to=2026-04-30')
             ->assertOk()
             ->assertJsonPath('data.rows.0.name', 'Nabin MR')

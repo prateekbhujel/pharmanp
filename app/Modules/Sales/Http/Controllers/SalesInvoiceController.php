@@ -8,8 +8,11 @@ use App\Modules\Sales\Http\Requests\SalesInvoiceStoreRequest;
 use App\Modules\Sales\Http\Resources\SalesInvoiceResource;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Services\SalesInvoiceService;
+use App\Modules\Setup\Models\DropdownOption;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class SalesInvoiceController extends Controller
@@ -61,7 +64,49 @@ class SalesInvoiceController extends Controller
 
     public function show(SalesInvoice $invoice): SalesInvoiceResource
     {
-        return new SalesInvoiceResource($invoice->load(['customer', 'medicalRepresentative', 'items.product', 'items.batch']));
+        return new SalesInvoiceResource($invoice->load(['customer', 'medicalRepresentative', 'items.product', 'items.batch', 'returns.items.product', 'returns.items.batch']));
+    }
+
+    public function items(SalesInvoice $invoice): JsonResponse
+    {
+        $invoice->load(['items.product', 'items.batch']);
+
+        return response()->json([
+            'data' => (new SalesInvoiceResource($invoice))->resolve(request())['items'] ?? [],
+        ]);
+    }
+
+    public function returns(SalesInvoice $invoice): JsonResponse
+    {
+        $invoice->load(['returns.items.product', 'returns.items.batch']);
+
+        return response()->json([
+            'data' => (new SalesInvoiceResource($invoice))->resolve(request())['returns'] ?? [],
+        ]);
+    }
+
+    public function updatePayment(Request $request, SalesInvoice $invoice, SalesInvoiceService $service): SalesInvoiceResource
+    {
+        $validated = $request->validate([
+            'paid_amount' => ['required', 'numeric', 'min:0', 'max:'.(float) $invoice->grand_total],
+            'payment_mode_id' => [
+                'nullable',
+                Rule::exists('dropdown_options', 'id')->where(fn ($query) => $query->where('alias', 'payment_mode')),
+            ],
+        ]);
+
+        $cashAccount = 'cash';
+        if (! empty($validated['payment_mode_id'])) {
+            $mode = DropdownOption::query()->forAlias('payment_mode')->find($validated['payment_mode_id']);
+            $cashAccount = strtolower((string) ($mode?->data ?: $mode?->name)) === 'cash' ? 'cash' : 'bank';
+        }
+
+        $invoice = $service->updatePayment($invoice, [
+            'paid_amount' => $validated['paid_amount'],
+            'cash_account' => $cashAccount,
+        ], $request->user());
+
+        return (new SalesInvoiceResource($invoice))->additional(['message' => 'Invoice payment updated.']);
     }
 
     public function print(SalesInvoice $invoice): View

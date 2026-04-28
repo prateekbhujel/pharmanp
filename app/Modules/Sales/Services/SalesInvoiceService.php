@@ -73,6 +73,44 @@ class SalesInvoiceService
         });
     }
 
+    public function updatePayment(SalesInvoice $invoice, array $data, User $user): SalesInvoice
+    {
+        return DB::transaction(function () use ($invoice, $data, $user) {
+            $invoice = SalesInvoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            $paidAmount = round((float) $data['paid_amount'], 2);
+
+            if ($paidAmount > (float) $invoice->grand_total) {
+                throw ValidationException::withMessages(['paid_amount' => 'Paid amount cannot be greater than invoice total.']);
+            }
+
+            $oldDue = round((float) $invoice->grand_total - (float) $invoice->paid_amount, 2);
+            $newDue = round((float) $invoice->grand_total - $paidAmount, 2);
+
+            $invoice->forceFill([
+                'paid_amount' => $paidAmount,
+                'payment_status' => $this->paymentStatus((float) $invoice->grand_total, $paidAmount),
+                'updated_by' => $user->id,
+            ])->save();
+
+            if ($invoice->customer_id) {
+                Customer::query()
+                    ->whereKey($invoice->customer_id)
+                    ->increment('current_balance', round($newDue - $oldDue, 2));
+            }
+
+            $cashAccount = ($data['cash_account'] ?? 'cash') === 'bank' ? 'bank' : 'cash';
+            $this->accounts->replaceForSource(
+                $user,
+                'sales_invoice',
+                $invoice->id,
+                $invoice->invoice_date->toDateString(),
+                $this->journalEntries($invoice, $paidAmount, $cashAccount),
+            );
+
+            return $invoice->fresh(['customer', 'medicalRepresentative', 'items.product', 'items.batch', 'returns.items.product', 'returns.items.batch']);
+        });
+    }
+
     private function postItem(SalesInvoice $invoice, array $item, User $user): void
     {
         $product = Product::query()->findOrFail($item['product_id']);
@@ -175,13 +213,13 @@ class SalesInvoiceService
         return $this->numbers->next('sales_invoice', 'sales_invoices');
     }
 
-    private function journalEntries(SalesInvoice $invoice, float $paidAmount): array
+    private function journalEntries(SalesInvoice $invoice, float $paidAmount, string $cashAccount = 'cash'): array
     {
         $entries = [];
 
         if ($paidAmount > 0) {
             $entries[] = [
-                'account_type' => 'cash',
+                'account_type' => $cashAccount,
                 'debit' => $paidAmount,
                 'credit' => 0,
                 'notes' => 'Collected on '.$invoice->invoice_no,

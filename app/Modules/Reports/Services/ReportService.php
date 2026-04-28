@@ -35,6 +35,7 @@ class ReportService
             'bank-book' => $this->accountBook($request, $from, $to, $perPage, 'bank'),
             'ledger' => $this->accountLedger($request, $request->query('account_type'), $from, $to, $perPage),
             'trial-balance' => $this->trialBalance($request, $from, $to, $perPage),
+            'account-tree' => $this->accountTree($request, $from, $to, $perPage),
             'supplier-performance' => $this->supplierPerformance($request, $from, $to, $perPage),
             'supplier-ledger' => $this->supplierLedger((int) $request->query('supplier_id'), $from, $to, $perPage),
             'customer-ledger' => $this->customerLedger((int) $request->query('customer_id'), $from, $to, $perPage),
@@ -257,6 +258,56 @@ class ReportService
                 'debit' => round((float) $rows->sum('debit'), 2),
                 'credit' => round((float) $rows->sum('credit'), 2),
                 'difference' => round(abs((float) $rows->sum('debit') - (float) $rows->sum('credit')), 2),
+            ],
+        ];
+    }
+
+    private function accountTree(Request $request, ?string $from, ?string $to, int $perPage): array
+    {
+        $summary = DB::table('account_transactions')
+            ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
+            ->groupBy('account_type');
+
+        $this->applyDateRange($summary, 'transaction_date', $from, $to);
+
+        $summary = $summary->get()->keyBy('account_type');
+        $rows = collect(AccountCatalog::all())
+            ->map(function (array $account) use ($summary) {
+                $totals = $summary->get($account['key']);
+                $debit = round((float) ($totals?->debit_total ?? 0), 2);
+                $credit = round((float) ($totals?->credit_total ?? 0), 2);
+                $closing = AccountCatalog::closingBalance($debit, $credit, $account['nature']);
+
+                return [
+                    'code' => $account['code'],
+                    'account' => $account['name'],
+                    'account_key' => $account['key'],
+                    'group' => $account['group'],
+                    'normal_side' => strtoupper($account['nature']),
+                    'debit' => $debit,
+                    'credit' => $credit,
+                    'closing_amount' => $closing['amount'],
+                    'closing_side' => $closing['side'],
+                ];
+            })
+            ->values();
+
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $items = $rows->forPage($page, $perPage)->values();
+        $paginator = new LengthAwarePaginator($items, $rows->count(), $perPage, $page);
+
+        return [
+            'data' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+            'summary' => [
+                'accounts' => $rows->count(),
+                'debit' => round((float) $rows->sum('debit'), 2),
+                'credit' => round((float) $rows->sum('credit'), 2),
             ],
         ];
     }
