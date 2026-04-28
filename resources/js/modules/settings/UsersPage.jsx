@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { Button, Card, Form, Input, Select, Space, Switch, Table, Tag } from 'antd';
+import { Button, Card, Form, Input, Select, Space, Switch, Table } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { FormDrawer } from '../../core/components/FormDrawer';
+import { PharmaBadge, StatusBadge } from '../../core/components/PharmaBadge';
+import { StatusToggle } from '../../core/components/StatusToggle';
+import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
@@ -46,9 +49,14 @@ export function UsersPage() {
     };
 
     const deleteUser = async (record) => {
-        if (!window.confirm('Are you sure you want to delete this user?')) return;
-        await http.delete(endpoints.users + '/' + record.id);
-        userTable.reload();
+        confirmDelete({
+            title: `Delete ${record.name}?`,
+            content: 'This user will lose access to PharmaNP. Existing audit history remains untouched.',
+            onOk: async () => {
+                await http.delete(endpoints.users + '/' + record.id);
+                userTable.reload();
+            },
+        });
     };
 
     return (
@@ -100,12 +108,27 @@ export function UsersPage() {
                     columns={[
                         { title: 'Name', dataIndex: 'name', sorter: true, field: 'name' },
                         { title: 'Email', dataIndex: 'email', sorter: true, field: 'email' },
-                        { title: 'Roles', dataIndex: 'role_names', render: (roles) => roles?.map((role) => <Tag key={role}>{role}</Tag>) },
+                        {
+                            title: 'Roles',
+                            dataIndex: 'role_names',
+                            render: (roles) => (
+                                <div className="badge-row">
+                                    {roles?.map((role) => <PharmaBadge key={role} tone="info">{role}</PharmaBadge>)}
+                                </div>
+                            ),
+                        },
                         { title: 'MR Link', dataIndex: ['medical_representative', 'name'], render: (value) => value || '-' },
-                        { title: 'Status', dataIndex: 'is_active', render: (value) => <Tag color={value ? 'green' : 'red'}>{value ? 'Active' : 'Inactive'}</Tag>, width: 110 },
+                        {
+                            title: 'Status',
+                            dataIndex: 'is_active',
+                            render: (value, record) => record.id === user?.id
+                                ? <StatusBadge value={value} />
+                                : <StatusToggle value={value} id={record.id} endpoint={endpoints.users} />,
+                            width: 150,
+                        },
                         { title: 'Last Login', dataIndex: 'last_login_at', sorter: true, field: 'last_login_at', width: 170, render: (value) => value || '-' },
                         {
-                            title: '',
+                            title: 'Action',
                             width: 112,
                             render: (_, record) => (
                                 <Space>

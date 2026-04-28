@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Progress, Row, Select, Space, Statistic, Switch, Table, Tabs, Tag } from 'antd';
+import { App, Button, Card, Col, Form, Input, InputNumber, Progress, Row, Select, Space, Statistic, Switch, Table, Tabs } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { DateText } from '../../core/components/DateText';
+import { StatusBadge } from '../../core/components/PharmaBadge';
 import { PageHeader } from '../../core/components/PageHeader';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { Money } from '../../core/components/Money';
 import { ServerTable } from '../../core/components/ServerTable';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -13,11 +16,12 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { can } from '../../core/utils/permissions';
 import { mrVisitStatusOptions } from '../../core/utils/accountCatalog';
+import { dateRangeParams } from '../../core/utils/dateFilters';
 
 export function MrPerformancePage() {
     const { notification } = App.useApp();
     const { user } = useAuth();
-    const [summaryRange, setSummaryRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [summaryRange, setSummaryRange] = useState([]);
     const [summary, setSummary] = useState({ loading: true, data: null });
     const [mrOptions, setMrOptions] = useState([]);
     const [customers, setCustomers] = useState([]);
@@ -45,10 +49,7 @@ export function MrPerformancePage() {
 
         try {
             const { data } = await http.get(endpoints.mrPerformance, {
-                params: {
-                    from: summaryRange?.[0]?.format('YYYY-MM-DD'),
-                    to: summaryRange?.[1]?.format('YYYY-MM-DD'),
-                },
+                params: dateRangeParams(summaryRange),
             });
             setSummary({ loading: false, data: data.data });
         } catch (error) {
@@ -174,9 +175,9 @@ export function MrPerformancePage() {
         { title: 'Territory', dataIndex: 'territory', width: 160 },
         { title: 'Phone', dataIndex: 'phone', width: 140 },
         { title: 'Target', dataIndex: 'monthly_target', align: 'right', width: 130, render: (value) => <Money value={value} /> },
-        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value) => <Tag color={value ? 'green' : 'red'}>{value ? 'Active' : 'Inactive'}</Tag> },
+        { title: 'Status', dataIndex: 'is_active', width: 120, render: (value) => <StatusBadge value={value} /> },
         canManageRepresentatives ? {
-            title: '',
+            title: 'Action',
             width: 112,
             render: (_, record) => (
                 <Space>
@@ -188,13 +189,13 @@ export function MrPerformancePage() {
     ].filter(Boolean);
 
     const visitColumns = [
-        { title: 'Date', dataIndex: 'visit_date', field: 'visit_date', sorter: true, width: 120 },
+        { title: 'Date', dataIndex: 'visit_date', field: 'visit_date', sorter: true, width: 120, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'MR', dataIndex: ['medical_representative', 'name'], render: (value) => value || '-' },
         { title: 'Customer', dataIndex: ['customer', 'name'], render: (value) => value || '-' },
         { title: 'Status', dataIndex: 'status', width: 120 },
         { title: 'Order Value', dataIndex: 'order_value', align: 'right', width: 140, render: (value) => <Money value={value} /> },
         canManageVisits ? {
-            title: '',
+            title: 'Action',
             width: 112,
             render: (_, record) => (
                 <Space>
@@ -212,7 +213,7 @@ export function MrPerformancePage() {
                 description={`Target, visit, order and invoiced value tracking for ${summary.data?.period || 'current period'}`}
                 actions={(
                     <Space wrap>
-                        <DatePicker.RangePicker value={summaryRange} onChange={setSummaryRange} />
+                        <SmartDatePicker.RangePicker value={summaryRange} onChange={setSummaryRange} />
                         {canManageRepresentatives && <Button icon={<PlusOutlined />} onClick={() => openRepresentative()}>New MR</Button>}
                         {canManageVisits && <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit()}>New Visit</Button>}
                     </Space>
@@ -339,7 +340,7 @@ export function MrPerformancePage() {
                         <Select allowClear options={customers.map((item) => ({ value: item.id, label: item.name }))} />
                     </Form.Item>
                     <div className="form-grid">
-                        <Form.Item name="visit_date" label="Visit Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
+                        <Form.Item name="visit_date" label="Visit Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
                         <Form.Item name="status" label="Status" rules={[{ required: true }]}><Select options={mrVisitStatusOptions} /></Form.Item>
                     </div>
                     <Form.Item name="order_value" label="Order Value"><InputNumber min={0} className="full-width" /></Form.Item>

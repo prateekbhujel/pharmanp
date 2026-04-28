@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { App, Button, Card, Form, Input, Modal, Radio, Space, Switch, Table, Tag, Upload } from 'antd';
+import { App, Button, Card, Form, Input, Modal, Radio, Space, Switch, Table, Upload } from 'antd';
 import { BankOutlined, DeleteOutlined, EditOutlined, PlusOutlined, QrcodeOutlined, WalletOutlined } from '@ant-design/icons';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
+import { StatusToggle } from '../../core/components/StatusToggle';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
@@ -36,8 +38,8 @@ function paymentModePayload(values, method = null) {
 
 function ModeIcon({ type }) {
     if (type === 'bank') return <BankOutlined />;
-    if (type === 'wallet' || type === 'qr') return <WalletOutlined />;
-    return <Tag color="green">Cash</Tag>;
+    if (type === 'wallet') return <WalletOutlined />;
+    return <WalletOutlined />;
 }
 
 export function PaymentModePanel() {
@@ -111,7 +113,7 @@ export function PaymentModePanel() {
                 <Space>
                     <ModeIcon type={row.data} />
                     <strong>{text}</strong>
-                    {row.meta?.qr_url && <Tag icon={<QrcodeOutlined />} color="cyan">QR</Tag>}
+                    {row.meta?.qr_url && <PharmaBadge tone="info" icon={<QrcodeOutlined />}>QR</PharmaBadge>}
                 </Space>
             ),
         },
@@ -119,7 +121,7 @@ export function PaymentModePanel() {
             title: 'Type',
             dataIndex: 'data',
             width: 150,
-            render: (type) => <Tag>{paymentModeTypeOptions.find((item) => item.value === type)?.label || type || '-'}</Tag>,
+            render: (type) => <PharmaBadge tone={type === 'cash' ? 'success' : 'info'}>{paymentModeTypeOptions.find((item) => item.value === type)?.label || type || '-'}</PharmaBadge>,
         },
         {
             title: 'Instructions',
@@ -130,8 +132,8 @@ export function PaymentModePanel() {
         {
             title: 'Status',
             dataIndex: 'is_active',
-            width: 110,
-            render: (active) => <Tag color={active ? 'green' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag>,
+            width: 150,
+            render: (active, record) => <StatusToggle value={active} id={record.id} endpoint={endpoints.dropdownOptions} />,
         },
         {
             title: 'Action',
@@ -153,6 +155,8 @@ export function PaymentModePanel() {
             <Table rowKey="id" dataSource={rows} columns={columns} pagination={false} />
 
             <Modal
+                centered
+                className="intent-modal"
                 title={editing ? 'Edit Payment Mode' : 'New Payment Mode'}
                 open={modalOpen}
                 onCancel={() => setModalOpen(false)}
@@ -165,7 +169,7 @@ export function PaymentModePanel() {
                     <Form.Item name="name" label="Display Name" rules={[{ required: true }]}>
                         <Input placeholder="Cash, FonePay QR, Nabil Bank" />
                     </Form.Item>
-                    <Form.Item name="type" label="Settlement Type" rules={[{ required: true }]}>
+                    <Form.Item name="type" label="Ledger Route" rules={[{ required: true }]}>
                         <Radio.Group optionType="button" buttonStyle="solid" options={paymentModeTypeOptions} />
                     </Form.Item>
                     <Form.Item name="instructions" label="Payment Instructions">

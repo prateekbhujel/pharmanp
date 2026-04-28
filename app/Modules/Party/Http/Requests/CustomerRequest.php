@@ -14,6 +14,7 @@ class CustomerRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'party_type_id' => ['nullable', 'integer', 'exists:party_types,id'],
             'name' => ['required', 'string', 'max:180'],
             'contact_person' => ['nullable', 'string', 'max:180'],
             'phone' => ['nullable', 'string', 'max:40'],

@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { App, Badge, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space, Table } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Table } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { DateText } from '../../core/components/DateText';
 import { Money } from '../../core/components/Money';
-import { FormDrawer } from '../../core/components/FormDrawer';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
+import { FormModal } from '../../core/components/FormModal';
 import { QuickDropdownOptionModal } from '../../core/components/QuickDropdownOptionModal';
+import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
+import { dateRangeParams } from '../../core/utils/dateFilters';
 
 export function PaymentsPanel() {
     const { notification } = App.useApp();
@@ -17,7 +21,7 @@ export function PaymentsPanel() {
     const [loading, setLoading] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [range, setRange] = useState([]);
     const [direction, setDirection] = useState(undefined);
     const [outstandingBills, setOutstandingBills] = useState([]);
     const [allocations, setAllocations] = useState([]);
@@ -43,8 +47,7 @@ export function PaymentsPanel() {
             const { data } = await http.get(endpoints.payments, {
                 params: {
                     page, per_page: meta.per_page, direction,
-                    from: range?.[0]?.format('YYYY-MM-DD'),
-                    to: range?.[1]?.format('YYYY-MM-DD'),
+                    ...dateRangeParams(range),
                 },
             });
             setRows(data.data || []);
@@ -101,6 +104,18 @@ export function PaymentsPanel() {
         }
     }
 
+    function deletePayment(record) {
+        confirmDelete({
+            title: `Delete ${record.payment_no}?`,
+            content: 'Linked bill allocations and accounting postings for this payment will be reversed.',
+            onOk: async () => {
+                await http.delete(`${endpoints.payments}/${record.id}`);
+                notification.success({ message: 'Payment deleted' });
+                loadPayments(meta.current_page);
+            },
+        });
+    }
+
     const partyType = Form.useWatch('party_type', form);
     const partyOptions = partyType === 'customer'
         ? customers.map((c) => ({ value: c.id, label: c.name }))
@@ -108,15 +123,18 @@ export function PaymentsPanel() {
 
     const columns = [
         { title: 'No', dataIndex: 'payment_no', width: 120 },
-        { title: 'Date', dataIndex: 'payment_date_display', width: 130 },
-        { title: 'Direction', dataIndex: 'direction_label', width: 120, render: (v, r) => <Badge status={r.direction === 'in' ? 'success' : 'warning'} text={v} /> },
+        { title: 'Date', dataIndex: 'payment_date', width: 130, render: (value) => <DateText value={value} style="compact" /> },
+        { title: 'Direction', dataIndex: 'direction_label', width: 130, render: (v, r) => <PharmaBadge tone={r.direction === 'in' ? 'success' : 'warning'} dot>{v}</PharmaBadge> },
         { title: 'Party', dataIndex: 'party_name' },
         { title: 'Mode', dataIndex: 'payment_mode', width: 120 },
         { title: 'Amount', dataIndex: 'amount', align: 'right', width: 140, render: (v) => <Money value={v} /> },
         { title: 'Bills', dataIndex: 'linked_bills', width: 70, align: 'center' },
         {
-            title: '', width: 80, render: (_, record) => (
-                <Button size="small" onClick={() => openDrawer(record)}>Edit</Button>
+            title: 'Action', width: 112, fixed: 'right', render: (_, record) => (
+                <Space className="table-action-buttons">
+                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openDrawer(record)} />
+                    <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => deletePayment(record)} />
+                </Space>
             ),
         },
     ];
@@ -125,8 +143,17 @@ export function PaymentsPanel() {
         <div className="page-stack">
             <Card>
                 <div className="table-toolbar table-toolbar-payments">
-                    <Select allowClear placeholder="Direction" value={direction} onChange={setDirection} style={{ width: 140 }} options={[{ value: 'in', label: 'Payment In' }, { value: 'out', label: 'Payment Out' }]} />
-                    <DatePicker.RangePicker value={range} onChange={setRange} />
+                    <Segmented
+                        className="payment-direction-segmented"
+                        value={direction || 'all'}
+                        onChange={(value) => setDirection(value === 'all' ? undefined : value)}
+                        options={[
+                            { value: 'all', label: 'All' },
+                            { value: 'in', label: 'In' },
+                            { value: 'out', label: 'Out' },
+                        ]}
+                    />
+                    <SmartDatePicker.RangePicker value={range} onChange={setRange} />
                     <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()}>New Payment</Button>
                 </div>
                 <Table rowKey="id" loading={loading} dataSource={rows} columns={columns}
@@ -134,12 +161,14 @@ export function PaymentsPanel() {
                     scroll={{ x: 'max-content' }}
                 />
             </Card>
-            <FormDrawer
+            <FormModal
                 title={editingId ? 'Edit Payment' : 'New Payment'}
                 open={drawerOpen}
-                onClose={() => setDrawerOpen(false)}
-                width={580}
-                footer={<Button type="primary" onClick={() => form.submit()} block>Save Payment</Button>}
+                onCancel={() => setDrawerOpen(false)}
+                onOk={() => form.submit()}
+                okText="Save Payment"
+                width={860}
+                destroyOnHidden
             >
                 <Form form={form} layout="vertical" onFinish={submit}>
                     <Form.Item name="direction" label="Direction" rules={[{ required: true }]}>
@@ -179,7 +208,7 @@ export function PaymentsPanel() {
                         <Table rowKey="bill_id" dataSource={outstandingBills} pagination={false} size="small"
                             columns={[
                                 { title: 'Bill', dataIndex: 'bill_number', width: 120 },
-                                { title: 'Date', dataIndex: 'bill_date', width: 110 },
+                                { title: 'Date', dataIndex: 'bill_date', width: 110, render: (value) => <DateText value={value} style="compact" /> },
                                 { title: 'Total', dataIndex: 'net_amount', align: 'right', width: 100, render: (v) => <Money value={v} /> },
                                 { title: 'Outstanding', dataIndex: 'outstanding', align: 'right', width: 110, render: (v) => <Money value={v} /> },
                                 {
@@ -194,7 +223,7 @@ export function PaymentsPanel() {
                         />
                     </Card>
                 )}
-            </FormDrawer>
+            </FormModal>
             <QuickDropdownOptionModal
                 alias="payment_mode"
                 open={quickPaymentModeOpen}

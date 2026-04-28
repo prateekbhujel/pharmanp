@@ -12,6 +12,7 @@ use App\Modules\Setup\Http\Requests\UserUpdateRequest;
 use App\Modules\Setup\Http\Resources\UserResource;
 use App\Modules\Setup\Services\UserManagementService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 
 class UserManagementController extends Controller
@@ -41,6 +42,17 @@ class UserManagementController extends Controller
     public function update(UserUpdateRequest $request, User $user, UserManagementService $service): UserResource
     {
         return new UserResource($service->update($user, $request->validated(), $request->user()));
+    }
+
+    public function toggleStatus(Request $request, User $user, UserManagementService $service): UserResource
+    {
+        abort_unless((bool) $request->user()?->is_owner || (bool) $request->user()?->can('users.manage'), 403);
+
+        $validated = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        return new UserResource($service->toggleStatus($user, (bool) $validated['is_active'], $request->user()));
     }
 
     public function destroy(User $user, UserManagementService $service): JsonResponse

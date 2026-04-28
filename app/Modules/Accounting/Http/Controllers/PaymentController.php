@@ -277,6 +277,24 @@ class PaymentController
         return response()->json(['data' => $bills]);
     }
 
+    public function destroy(Payment $payment): JsonResponse
+    {
+        DB::transaction(function () use ($payment) {
+            $payment->load('allocations');
+            $this->reversePaymentEffects($payment);
+
+            PaymentBillAllocation::query()->where('payment_id', $payment->id)->delete();
+            AccountTransaction::query()
+                ->where('source_type', 'Payment')
+                ->where('source_id', $payment->id)
+                ->delete();
+
+            $payment->delete();
+        });
+
+        return response()->json(['message' => 'Payment deleted successfully.']);
+    }
+
     private function postEntry(Payment $payment, string $side, string $accountType, string $notes, int $userId): void
     {
         AccountTransaction::query()->create([

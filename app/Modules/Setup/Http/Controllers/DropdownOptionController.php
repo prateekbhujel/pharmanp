@@ -72,6 +72,24 @@ class DropdownOptionController
         ]);
     }
 
+    public function toggleStatus(Request $request, DropdownOption $dropdownOption): JsonResponse
+    {
+        abort_unless((bool) $request->user()?->is_owner || (bool) $request->user()?->can('settings.manage'), 403);
+
+        $validated = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        $dropdownOption->update([
+            'status' => (int) $validated['is_active'],
+        ]);
+
+        return response()->json([
+            'message' => $dropdownOption->alias_label.' status updated successfully.',
+            'data' => $this->rowPayload($dropdownOption->fresh()),
+        ]);
+    }
+
     // Delete only when the option is not already linked anywhere.
     public function destroy(DropdownOption $dropdownOption): JsonResponse
     {

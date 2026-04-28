@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Switch } from 'antd';
 import { CopyOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UndoOutlined } from '@ant-design/icons';
+import { DateText } from '../../core/components/DateText';
 import { ExportButtons, ImportButton } from '../../core/components/ListToolbarActions';
 import { ServerTable } from '../../core/components/ServerTable';
 import { StatusTag } from '../../core/components/StatusTag';
@@ -20,7 +21,7 @@ const configs = {
             { title: 'Company Name', dataIndex: 'name', field: 'name', sorter: true, width: 260 },
             { title: 'Type', dataIndex: 'company_type', width: 140, render: (value) => labelFor(companyTypeOptions, value) },
             { title: 'Default CC Rate', dataIndex: 'default_cc_rate', align: 'right', width: 150, render: (value) => `${Number(value || 0).toFixed(2)}%` },
-            { title: 'Added At', dataIndex: 'created_at', width: 130 },
+            { title: 'Added At', dataIndex: 'created_at', width: 130, render: (value) => <DateText value={value} style="compact" /> },
         ],
     },
     units: {
@@ -32,7 +33,7 @@ const configs = {
             { title: 'Unit Name', dataIndex: 'name', field: 'name', sorter: true, width: 220 },
             { title: 'Usage Type', dataIndex: 'type', width: 140, render: (value) => labelFor(unitTypeOptions, value) },
             { title: 'Description', dataIndex: 'description', width: 320, render: (value) => value || '-' },
-            { title: 'Added At', dataIndex: 'created_at', width: 130 },
+            { title: 'Added At', dataIndex: 'created_at', width: 130, render: (value) => <DateText value={value} style="compact" /> },
         ],
     },
     categories: {
@@ -42,7 +43,7 @@ const configs = {
         columns: [
             { title: 'Name', dataIndex: 'name', field: 'name', sorter: true },
             { title: 'Code', dataIndex: 'code', width: 160 },
-            { title: 'Added At', dataIndex: 'created_at', width: 130 },
+            { title: 'Added At', dataIndex: 'created_at', width: 130, render: (value) => <DateText value={value} style="compact" /> },
         ],
     },
 };
@@ -74,7 +75,7 @@ export function InventoryMasterTable({ master }) {
 
     const columns = useMemo(() => [
         ...config.columns,
-        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value, record) => record.deleted_at ? <StatusTag active={false} falseText="Deleted" /> : <StatusToggle value={value} id={record.id} endpoint={endpoints.inventoryMaster(master)} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 150, render: (value, record) => record.deleted_at ? <StatusTag active={false} falseText="Deleted" /> : <StatusToggle value={value} id={record.id} endpoint={endpoints.inventoryMaster(master)} /> },
         {
             title: 'Action',
             key: 'actions',

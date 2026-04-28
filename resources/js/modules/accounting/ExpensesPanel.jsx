@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Badge, Button, Card, Col, Form, Input, InputNumber, Row, Select, Space, Statistic, Table } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { App, Button, Card, Col, Form, Input, InputNumber, Row, Select, Space, Statistic, Table } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Money } from '../../core/components/Money';
-import { FormDrawer } from '../../core/components/FormDrawer';
+import { FormModal } from '../../core/components/FormModal';
 import { QuickDropdownOptionModal } from '../../core/components/QuickDropdownOptionModal';
+import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { dateRangeParams } from '../../core/utils/dateFilters';
 
 export function ExpensesPanel() {
     const { notification } = App.useApp();
@@ -19,7 +21,7 @@ export function ExpensesPanel() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [quickAlias, setQuickAlias] = useState(null);
-    const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [range, setRange] = useState([]);
     const [form] = Form.useForm();
 
     useEffect(() => { loadExpenses(1); }, [range]);
@@ -31,8 +33,7 @@ export function ExpensesPanel() {
                 params: {
                     page,
                     per_page: meta.per_page,
-                    from: range?.[0]?.format('YYYY-MM-DD'),
-                    to: range?.[1]?.format('YYYY-MM-DD'),
+                    ...dateRangeParams(range),
                 },
             });
             setRows(data.data || []);
@@ -73,13 +74,15 @@ export function ExpensesPanel() {
     }
 
     async function deleteExpense(record) {
-        try {
-            await http.delete(`${endpoints.expenses}/${record.id}`);
-            notification.success({ message: 'Expense deleted' });
-            loadExpenses(meta.current_page);
-        } catch (error) {
-            notification.error({ message: error?.response?.data?.message || 'Delete failed' });
-        }
+        confirmDelete({
+            title: 'Delete expense?',
+            content: 'The expense and its accounting postings will be removed.',
+            onOk: async () => {
+                await http.delete(`${endpoints.expenses}/${record.id}`);
+                notification.success({ message: 'Expense deleted' });
+                loadExpenses(meta.current_page);
+            },
+        });
     }
 
     const columns = [
@@ -90,10 +93,10 @@ export function ExpensesPanel() {
         { title: 'Amount', dataIndex: 'amount', align: 'right', width: 140, render: (v) => <Money value={v} /> },
         { title: 'Notes', dataIndex: 'notes', ellipsis: true },
         {
-            title: '', width: 80, render: (_, record) => (
-                <Space>
-                    <Button size="small" onClick={() => openDrawer(record)}>Edit</Button>
-                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => deleteExpense(record)} />
+            title: 'Action', width: 112, fixed: 'right', render: (_, record) => (
+                <Space className="table-action-buttons">
+                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openDrawer(record)} />
+                    <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => deleteExpense(record)} />
                 </Space>
             ),
         },
@@ -120,11 +123,14 @@ export function ExpensesPanel() {
                     scroll={{ x: 'max-content' }}
                 />
             </Card>
-            <FormDrawer
+            <FormModal
                 title={editingId ? 'Edit Expense' : 'New Expense'}
                 open={drawerOpen}
-                onClose={() => setDrawerOpen(false)}
-                footer={<Button type="primary" onClick={() => form.submit()} block>Save Expense</Button>}
+                onCancel={() => setDrawerOpen(false)}
+                onOk={() => form.submit()}
+                okText="Save Expense"
+                width={680}
+                destroyOnHidden
             >
                 <Form form={form} layout="vertical" onFinish={submit}>
                     <Form.Item name="expense_date" label="Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
@@ -158,7 +164,7 @@ export function ExpensesPanel() {
                     <Form.Item name="amount" label="Amount" rules={[{ required: true }]}><InputNumber min={0.01} className="full-width" /></Form.Item>
                     <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
                 </Form>
-            </FormDrawer>
+            </FormModal>
             <QuickDropdownOptionModal
                 alias={quickAlias || 'payment_mode'}
                 open={Boolean(quickAlias)}

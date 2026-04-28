@@ -17,8 +17,8 @@ class MrBranchSalesController
         $user   = $request->user();
         $params = $request->query();
 
-        $from   = $params['from'] ?? now()->startOfMonth()->toDateString();
-        $to     = $params['to']   ?? now()->toDateString();
+        $from   = ! empty($params['from']) ? (string) $params['from'] : null;
+        $to     = ! empty($params['to']) ? (string) $params['to'] : null;
         $branchId     = isset($params['branch_id'])   ? (int) $params['branch_id']   : null;
         $representativeId = isset($params['mr_id']) ? (int) $params['mr_id']   : null;
         $productId    = isset($params['product_id']) ? (int) $params['product_id'] : null;
@@ -35,7 +35,8 @@ class MrBranchSalesController
             ->leftJoin('medical_representatives as mr', 'mr.id', '=', 'si.medical_representative_id')
             ->leftJoin('branches as b', 'b.id', '=', 'mr.branch_id')
             ->whereNull('si.deleted_at')
-            ->whereBetween('si.invoice_date', [$from, $to])
+            ->when($from, fn ($q) => $q->whereDate('si.invoice_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('si.invoice_date', '<=', $to))
             ->when($branchId, fn ($q) => $q->where('b.id', $branchId))
             ->when($representativeId, fn ($q) => $q->where('mr.id', $representativeId))
             ->when($productId, fn ($q) => $q->where('p.id', $productId))
@@ -87,7 +88,7 @@ class MrBranchSalesController
 
         return response()->json([
             'data' => [
-                'period'         => $from . ' – ' . $to,
+                'period'         => $from || $to ? (($from ?: 'Start') . ' – ' . ($to ?: 'Today')) : 'All time',
                 'grand_total'    => (float) $rows->sum('total_value'),
                 'branch_summary' => $branchSummary,
                 'mr_summary'     => $mrSummary,

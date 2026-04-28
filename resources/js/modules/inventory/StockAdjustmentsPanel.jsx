@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { QuickDropdownOptionModal } from '../../core/components/QuickDropdownOptionModal';
 import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { ServerTable } from '../../core/components/ServerTable';
@@ -145,7 +146,16 @@ export function StockAdjustmentsPanel() {
         { title: 'Date', dataIndex: 'adjustment_date', width: 130 },
         { title: 'Product', dataIndex: ['product', 'name'], width: 260 },
         { title: 'Batch', dataIndex: ['batch', 'batch_no'], width: 150 },
-        { title: 'Type', dataIndex: 'adjustment_type', width: 170, render: (value) => <Tag>{adjustmentTypes.find((item) => item.value === value)?.label || defaultAdjustmentTypes.find((item) => item.value === value)?.label || value}</Tag> },
+        {
+            title: 'Type',
+            dataIndex: 'adjustment_type',
+            width: 180,
+            render: (value) => (
+                <PharmaBadge tone={String(value || '').includes('out') || String(value || '').includes('loss') || String(value || '').includes('subtract') ? 'warning' : 'info'}>
+                    {adjustmentTypes.find((item) => item.value === value)?.label || defaultAdjustmentTypes.find((item) => item.value === value)?.label || value}
+                </PharmaBadge>
+            ),
+        },
         { title: 'Qty', dataIndex: 'quantity', align: 'right', width: 110 },
         { title: 'Reason', dataIndex: 'reason', width: 300 },
         { title: 'By', dataIndex: ['adjusted_by', 'name'], width: 150 },

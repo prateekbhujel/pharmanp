@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { PlusOutlined, SendOutlined, UserOutlined } from '@ant-design/icons';
-import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Table, Tabs, Tag, Upload } from 'antd';
+import { SendOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Table, Tabs } from 'antd';
+import { BrandAssetUploadField } from '../../core/components/BrandAssetUploadField';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { countryOptions, countries } from '../../core/utils/countries';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
@@ -9,10 +11,6 @@ import { useApi } from '../../core/hooks/useApi';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { useBranding } from '../../core/context/BrandingContext';
 import { FiscalYearPanel } from './FiscalYearPanel';
-
-function normalizeFile(event) {
-    return Array.isArray(event) ? event : event?.fileList;
-}
 
 function brandingPayload(values) {
     const payload = new FormData();
@@ -42,52 +40,16 @@ function brandingPayload(values) {
     return payload;
 }
 
-function BrandingUploadField({ form, name, label, url, hint }) {
-    const fileList = Form.useWatch(name, form) || [];
-    const selectedFileName = fileList?.[0]?.name;
-
-    return (
-        <div className="branding-box">
-            <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 600 }}>{label}</div>
-            <Form.Item name={name} valuePropName="fileList" getValueFromEvent={normalizeFile} noStyle>
-                <Upload
-                    beforeUpload={() => false}
-                    maxCount={1}
-                    accept={name === 'favicon_upload' ? '.ico,image/*' : 'image/*'}
-                    showUploadList={false}
-                >
-                    <div className="smart-image-upload-wrapper">
-                        {url ? (
-                            <>
-                                <img src={url} alt="preview" className="smart-image-preview" />
-                                <div className="smart-image-overlay">
-                                    <PlusOutlined />
-                                    <span>Change Asset</span>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="smart-image-placeholder">
-                                <PlusOutlined />
-                                <span>Upload</span>
-                            </div>
-                        )}
-                    </div>
-                </Upload>
-            </Form.Item>
-            {selectedFileName && <div className="upload-file-name" title={selectedFileName}>{selectedFileName}</div>}
-            <div style={{ marginTop: 8, fontSize: 11, color: '#94a3b8' }}>{hint}</div>
-        </div>
-    );
-}
-
 export function SettingsPage() {
     const { notification } = App.useApp();
-    const { user } = useAuth();
+    const { user, reload: reloadAuth } = useAuth();
     const { data: features } = useApi(endpoints.featureCatalog);
-    const { data: branding, reload: reloadBranding } = useBranding();
+    const { branding, loading: brandingLoading, reload: reloadBranding } = useBranding();
+    const { data: profile, reload: reloadProfile } = useApi(endpoints.profile);
 
     const [brandingForm] = Form.useForm();
     const [adminForm] = Form.useForm();
+    const [profileForm] = Form.useForm();
     const [adminSettingsLoading, setAdminSettingsLoading] = useState(false);
 
     useEffect(() => {
@@ -95,6 +57,19 @@ export function SettingsPage() {
             brandingForm.setFieldsValue(branding);
         }
     }, [branding, brandingForm]);
+
+    useEffect(() => {
+        if (profile) {
+            profileForm.setFieldsValue({
+                name: profile.name,
+                email: profile.email,
+                phone: profile.phone,
+                current_password: '',
+                password: '',
+                password_confirmation: '',
+            });
+        }
+    }, [profile, profileForm]);
 
     useEffect(() => {
         loadAdminSettings();
@@ -105,10 +80,28 @@ export function SettingsPage() {
         try {
             const { data } = await http.get(endpoints.settingsAdmin);
             adminForm.setFieldsValue(data.data || {});
-        } catch (e) {
-            // Silently handle — form stays empty
+        } catch {
+            // Leave the form empty if the endpoint is not ready yet.
         }
         setAdminSettingsLoading(false);
+    }
+
+    async function saveProfile(values) {
+        try {
+            await http.put(endpoints.profile, values);
+            notification.success({ message: 'Profile updated' });
+            reloadProfile?.();
+            reloadAuth?.();
+            profileForm.setFieldsValue({
+                ...values,
+                current_password: '',
+                password: '',
+                password_confirmation: '',
+            });
+        } catch (error) {
+            profileForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
+            notification.error({ message: 'Profile update failed', description: error?.response?.data?.message || error.message });
+        }
     }
 
     async function saveBranding(values) {
@@ -116,6 +109,7 @@ export function SettingsPage() {
             await http.post(endpoints.branding, brandingPayload(values));
             notification.success({ message: 'Application branding saved' });
             reloadBranding?.();
+            reloadAuth?.();
         } catch (error) {
             brandingForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
             notification.error({ message: 'Branding save failed' });
@@ -146,8 +140,9 @@ export function SettingsPage() {
 
     const featureRows = useMemo(() => {
         if (!features) return [];
+
         return Object.entries(features).flatMap(([module, data]) =>
-            data.map(feature => ({ ...feature, module }))
+            data.map((feature) => ({ ...feature, module })),
         );
     }, [features]);
 
@@ -155,49 +150,109 @@ export function SettingsPage() {
         <div className="page-stack">
             <PageHeader
                 title="Settings"
-                actions={<Tag icon={<UserOutlined />}>{user?.name}</Tag>}
+                description="Profile, branding, fiscal year and operational configuration."
+                actions={<PharmaBadge tone="info" icon={<UserOutlined />}>{user?.name}</PharmaBadge>}
             />
 
             <Tabs items={[
                 {
+                    key: 'profile',
+                    label: 'My Profile',
+                    children: (
+                        <Card title="Personal Access" loading={!profile}>
+                            <Form form={profileForm} layout="vertical" onFinish={saveProfile}>
+                                <div className="form-grid">
+                                    <Form.Item name="name" label="Full Name" rules={[{ required: true }]}>
+                                        <Input size="large" />
+                                    </Form.Item>
+                                    <Form.Item name="email" label="Login Email" rules={[{ required: true, type: 'email' }]}>
+                                        <Input size="large" />
+                                    </Form.Item>
+                                </div>
+                                <Form.Item name="phone" label="Phone">
+                                    <Input size="large" />
+                                </Form.Item>
+                                <div className="form-grid">
+                                    <Form.Item
+                                        name="current_password"
+                                        label="Current Password"
+                                        dependencies={['password']}
+                                        rules={[
+                                            ({ getFieldValue }) => ({
+                                                validator(_, value) {
+                                                    if (!getFieldValue('password') || value) {
+                                                        return Promise.resolve();
+                                                    }
+
+                                                    return Promise.reject(new Error('Current password is required to change password.'));
+                                                },
+                                            }),
+                                        ]}
+                                    >
+                                        <Input.Password size="large" autoComplete="current-password" />
+                                    </Form.Item>
+                                    <Form.Item name="password" label="New Password">
+                                        <Input.Password size="large" autoComplete="new-password" />
+                                    </Form.Item>
+                                </div>
+                                <Form.Item
+                                    name="password_confirmation"
+                                    label="Confirm New Password"
+                                    dependencies={['password']}
+                                    rules={[
+                                        ({ getFieldValue }) => ({
+                                            validator(_, value) {
+                                                if (!getFieldValue('password') || value === getFieldValue('password')) {
+                                                    return Promise.resolve();
+                                                }
+
+                                                return Promise.reject(new Error('Password confirmation must match the new password.'));
+                                            },
+                                        }),
+                                    ]}
+                                >
+                                    <Input.Password size="large" autoComplete="new-password" />
+                                </Form.Item>
+                                <Button type="primary" htmlType="submit">Update Profile</Button>
+                            </Form>
+                        </Card>
+                    ),
+                },
+                {
                     key: 'branding',
                     label: 'Branding',
                     children: (
-                        <Card title="Application Identity" description="Customize how your pharmacy app looks to staff and customers">
+                        <Card title="Application Identity" loading={brandingLoading}>
                             <Form form={brandingForm} layout="vertical" onFinish={saveBranding}>
                                 <div className="form-grid">
-                                    <Form.Item name="app_name" label="Pharmacy Name" rules={[{ required: true }]}><Input size="large" /></Form.Item>
-                                    <Form.Item name="layout" label="Navigation Layout" rules={[{ required: true }]}>
-                                        <Select size="large" options={[
-                                            { value: 'vertical', label: 'Vertical Sidebar (Modern)' },
-                                            { value: 'horizontal', label: 'Horizontal Menu (Traditional)' },
-                                        ]} />
+                                    <Form.Item name="app_name" label="Pharmacy Name" rules={[{ required: true }]}>
+                                        <Input size="large" />
                                     </Form.Item>
                                     <Form.Item name="country_code" label="Country" rules={[{ required: true }]}>
-                                        <Select 
-                                            size="large" 
-                                            showSearch 
-                                            optionFilterProp="label" 
-                                            options={countryOptions} 
+                                        <Select
+                                            size="large"
+                                            showSearch
+                                            optionFilterProp="label"
+                                            options={countryOptions}
                                             onChange={(code) => {
-                                                const country = countries.find(c => c.code === code);
-                                                if (country) {
-                                                    brandingForm.setFieldValue('currency_symbol', country.symbol);
-                                                }
+                                                const country = countries.find((item) => item.code === code);
+                                                if (!country) return;
+                                                brandingForm.setFieldValue('currency_symbol', country.symbol);
+                                                brandingForm.setFieldValue('calendar_type', code === 'NP' ? 'bs' : 'ad');
                                             }}
                                         />
                                     </Form.Item>
                                     <Form.Item name="currency_symbol" label="Currency Symbol" rules={[{ required: true }]}>
-                                        <Input size="large" placeholder="e.g. Rs. or $" />
+                                        <Input size="large" placeholder="Rs." />
                                     </Form.Item>
                                     <Form.Item name="calendar_type" label="Preferred Calendar System" rules={[{ required: true }]}>
-                                        <Segmented 
-                                            block 
+                                        <Segmented
+                                            block
                                             size="large"
                                             options={[
                                                 { label: 'AD (Gregorian)', value: 'ad' },
                                                 { label: 'BS (Nepali)', value: 'bs' },
-                                            ]} 
+                                            ]}
                                         />
                                     </Form.Item>
                                 </div>
@@ -205,17 +260,27 @@ export function SettingsPage() {
                                     {[
                                         ['logo_upload', 'Main Logo', branding?.logo_url, 'Best for light headers'],
                                         ['sidebar_logo_upload', 'Sidebar Logo', branding?.sidebar_logo_url, 'Compact sidebar icon'],
-                                        ['app_icon_upload', 'App Icon', branding?.app_icon_url, 'Desktop/Mobile icon'],
+                                        ['app_icon_upload', 'App Icon', branding?.app_icon_url, 'Desktop and mobile icon'],
                                         ['favicon_upload', 'Favicon', branding?.favicon_url, 'Browser tab icon'],
-                                    ].map(([name, label, url, hint]) => <BrandingUploadField key={name} form={brandingForm} name={name} label={label} url={url} hint={hint} />)}
+                                    ].map(([name, label, url, hint]) => (
+                                        <BrandAssetUploadField
+                                            key={name}
+                                            form={brandingForm}
+                                            name={name}
+                                            label={label}
+                                            url={url}
+                                            hint={hint}
+                                            accept={name === 'favicon_upload' ? '.ico,image/*' : 'image/*'}
+                                        />
+                                    ))}
                                 </div>
                                 <Space>
                                     <Button type="primary" size="large" htmlType="submit">Apply Branding</Button>
-                                    <Button size="large" onClick={() => reloadBranding()}>Discard Changes</Button>
+                                    <Button size="large" onClick={() => reloadBranding?.()}>Discard Changes</Button>
                                 </Space>
                             </Form>
                         </Card>
-                    )
+                    ),
                 },
                 {
                     key: 'general',
@@ -228,10 +293,9 @@ export function SettingsPage() {
                                     <Form.Item name="company_phone" label="Company Phone"><Input /></Form.Item>
                                 </div>
                                 <Form.Item name="company_address" label="Company Address"><Input.TextArea rows={2} /></Form.Item>
-                                <div className="form-grid">
-                                    <Form.Item name="currency_symbol" label="Currency Symbol"><Input /></Form.Item>
-                                    <Form.Item name="low_stock_threshold" label="Low Stock Threshold"><InputNumber min={1} className="full-width" /></Form.Item>
-                                </div>
+                                <Form.Item name="low_stock_threshold" label="Low Stock Threshold">
+                                    <InputNumber min={1} className="full-width" />
+                                </Form.Item>
                                 <Card size="small" title="SMTP / Mail Settings" style={{ marginBottom: 16 }}>
                                     <div className="form-grid">
                                         <Form.Item name="smtp_host" label="SMTP Host"><Input /></Form.Item>
@@ -254,12 +318,12 @@ export function SettingsPage() {
                                 <Button type="primary" htmlType="submit">Save Configuration</Button>
                             </Form>
                         </Card>
-                    )
+                    ),
                 },
                 {
                     key: 'fiscal-years',
                     label: 'Fiscal Years',
-                    children: <FiscalYearPanel />
+                    children: <FiscalYearPanel />,
                 },
                 {
                     key: 'features',
@@ -273,13 +337,13 @@ export function SettingsPage() {
                                 columns={[
                                     { title: 'Module', dataIndex: 'module', width: 150 },
                                     { title: 'Feature', dataIndex: 'name', width: 240 },
-                                    { title: 'Status', dataIndex: 'status', width: 130, render: (value) => <Tag color={value === 'foundation' ? 'green' : 'gold'}>{value}</Tag> },
+                                    { title: 'Status', dataIndex: 'status', width: 130, render: (value) => <PharmaBadge tone={value === 'ready' ? 'success' : 'warning'}>{value}</PharmaBadge> },
                                     { title: 'Use Case', dataIndex: 'description' },
                                 ]}
                             />
                         </Card>
-                    )
-                }
+                    ),
+                },
             ]} />
         </div>
     );

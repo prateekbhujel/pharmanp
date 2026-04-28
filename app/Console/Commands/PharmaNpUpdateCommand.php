@@ -25,7 +25,7 @@ class PharmaNpUpdateCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->warn('This command is intentionally non-destructive in the foundation pass.');
+        $this->warn('This command is intentionally non-destructive.');
 
         return self::SUCCESS;
     }

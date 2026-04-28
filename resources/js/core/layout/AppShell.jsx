@@ -15,7 +15,6 @@ import {
     SafetyCertificateOutlined,
     ShopOutlined,
     ShoppingCartOutlined,
-    SyncOutlined,
     TeamOutlined,
     UserSwitchOutlined,
     WarningOutlined,
@@ -35,6 +34,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useApi } from '../hooks/useApi';
 import { GlobalSearch } from '../components/GlobalSearch';
 import { useBranding } from '../context/BrandingContext';
+import { formatCalendarDate } from '../utils/calendar';
 
 const { Header, Sider, Content } = Layout;
 
@@ -43,7 +43,6 @@ const ProductsPage = React.lazy(() => import('../../modules/inventory/ProductsPa
 const SalesPage = React.lazy(() => import('../../modules/sales/SalesPage').then((module) => ({ default: module.SalesPage })));
 const ImportWizardPage = React.lazy(() => import('../../modules/imports/ImportWizardPage').then((module) => ({ default: module.ImportWizardPage })));
 const OcrImportPage = React.lazy(() => import('../../modules/imports/OcrImportPage').then((module) => ({ default: module.OcrImportPage })));
-const SystemUpdatePage = React.lazy(() => import('../../modules/system/SystemUpdatePage').then((module) => ({ default: module.SystemUpdatePage })));
 const OnboardingPage = React.lazy(() => import('../../modules/onboarding/OnboardingPage').then((module) => ({ default: module.OnboardingPage })));
 const MrTrackingPage = React.lazy(() => import('../../modules/mr/MrTrackingPage').then((module) => ({ default: module.MrTrackingPage })));
 const SettingsPage = React.lazy(() => import('../../modules/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
@@ -86,12 +85,12 @@ const routes = {
     [appUrl('/app/field-force/branches')]: MrTrackingPage,
     [appUrl('/app/accounting')]: AccountingPage,
     [appUrl('/app/accounting/vouchers')]: AccountingPage,
-    [appUrl('/app/accounting/day-book')]: AccountingPage,
-    [appUrl('/app/accounting/cash-book')]: AccountingPage,
-    [appUrl('/app/accounting/bank-book')]: AccountingPage,
-    [appUrl('/app/accounting/ledgers')]: AccountingPage,
-    [appUrl('/app/accounting/ledger')]: AccountingPage,
-    [appUrl('/app/accounting/trial-balance')]: AccountingPage,
+    [appUrl('/app/accounting/day-book')]: ReportsPage,
+    [appUrl('/app/accounting/cash-book')]: ReportsPage,
+    [appUrl('/app/accounting/bank-book')]: ReportsPage,
+    [appUrl('/app/accounting/ledgers')]: ReportsPage,
+    [appUrl('/app/accounting/ledger')]: ReportsPage,
+    [appUrl('/app/accounting/trial-balance')]: ReportsPage,
     [appUrl('/app/accounting/payments')]: AccountingPage,
     [appUrl('/app/accounting/expenses')]: AccountingPage,
     [appUrl('/app/party/management')]: PartiesPage,
@@ -114,7 +113,6 @@ const routes = {
     [appUrl('/app/administration/roles')]: RolesPage,
     [appUrl('/app/administration/data-lookup')]: DataLookupPage,
     [appUrl('/app/settings')]: SettingsPage,
-    [appUrl('/app/system/update-check')]: SystemUpdatePage,
 };
 
 function currentAppPath() {
@@ -264,8 +262,14 @@ export function AppShell() {
                 label: 'Accounting & Finance',
                 show: canAccounting,
                 children: [
+                    child('accounting-vouchers', 'Vouchers', appUrl('/app/accounting/vouchers')),
                     child('accounting-payments', 'Payments', appUrl('/app/accounting/payments')),
                     child('accounting-expenses', 'Expenses', appUrl('/app/accounting/expenses')),
+                    child('accounting-day-book', 'Day Book', appUrl('/app/accounting/day-book')),
+                    child('accounting-cash-book', 'Cash Book', appUrl('/app/accounting/cash-book')),
+                    child('accounting-bank-book', 'Bank Book', appUrl('/app/accounting/bank-book')),
+                    child('accounting-ledger', 'Ledger', appUrl('/app/accounting/ledger')),
+                    child('accounting-trial-balance', 'Trial Balance', appUrl('/app/accounting/trial-balance')),
                 ],
             },
             {
@@ -295,7 +299,6 @@ export function AppShell() {
                 ],
             },
             { key: register('settings', appUrl('/app/settings')), icon: <SettingOutlined />, label: 'Settings', show: canSetup },
-            { key: register('system-update', appUrl('/app/system/update-check')), icon: <SyncOutlined />, label: 'System Update', show: user?.is_owner },
         ];
 
         const flatItems = items.filter(i => i.show !== false).map(i => {
@@ -410,7 +413,9 @@ export function AppShell() {
                         <div className="notification-row">
                             <div className="notification-content">
                                 <span className="notification-subject">{item.name}</span>
-                                <span className="notification-meta">Batch {item.batch_no || '-'} expires {item.expires_at}</span>
+                                <span className="notification-meta">
+                                    Batch {item.batch_no || '-'} expires {formatCalendarDate(item.expires_at, brandingData?.calendar_type || 'ad', { style: 'compact' })}
+                                </span>
                             </div>
                         </div>
                     ),
@@ -452,14 +457,11 @@ export function AppShell() {
         { type: 'divider' },
         { key: 'logout', label: 'Sign Out', danger: true, onClick: logout },
     ];
-    const timeLabel = new Intl.DateTimeFormat(undefined, {
-        weekday: 'short',
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-    }).format(now);
+    const timeLabel = formatCalendarDate(now, brandingData?.calendar_type || 'ad', {
+        style: 'medium',
+        includeWeekday: true,
+        includeTime: true,
+    });
 
     return (
         <Layout className={`app-shell app-shell-${layout}`}>

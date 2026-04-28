@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space, Statistic, Switch } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Select, Space, Statistic, Switch } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
+import { DateText } from '../../core/components/DateText';
 import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { Money } from '../../core/components/Money';
 import { ServerTable } from '../../core/components/ServerTable';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { StatusTag } from '../../core/components/StatusTag';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -123,7 +125,7 @@ export function InventoryBatchesPanel() {
         { title: 'Batch', dataIndex: 'batch_no', field: 'batch_no', sorter: true, width: 150 },
         { title: 'Product', dataIndex: ['product', 'name'], width: 260 },
         { title: 'Supplier', dataIndex: ['supplier', 'name'], width: 180 },
-        { title: 'Expiry', dataIndex: 'expires_at', field: 'expires_at', sorter: true, width: 130 },
+        { title: 'Expiry', dataIndex: 'expires_at', field: 'expires_at', sorter: true, width: 130, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'Storage', dataIndex: 'storage_location', width: 140, render: (value) => value || '-' },
         { title: 'Available', dataIndex: 'quantity_available', field: 'quantity_available', sorter: true, align: 'right', width: 120 },
         { title: 'Received', dataIndex: 'quantity_received', align: 'right', width: 120 },
@@ -146,7 +148,7 @@ export function InventoryBatchesPanel() {
     const summary = table.extra.summary || {};
 
     return (
-        <div className="page-stack">s
+        <div className="page-stack">
             <Card
                 title="Batch List"
                 extra={(
@@ -205,8 +207,8 @@ export function InventoryBatchesPanel() {
                     </div>
                     <Form.Item name="storage_location" label="Storage"><Input placeholder="Rack A-1" /></Form.Item>
                     <div className="form-grid">
-                        <Form.Item name="manufactured_at" label="Manufactured"><DatePicker className="full-width" /></Form.Item>
-                        <Form.Item name="expires_at" label="Expiry" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
+                        <Form.Item name="manufactured_at" label="Manufactured"><SmartDatePicker className="full-width" /></Form.Item>
+                        <Form.Item name="expires_at" label="Expiry" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
                     </div>
                     <div className="form-grid">
                         <Form.Item name="quantity_received" label="Received Qty" rules={[{ required: true }]}><InputNumber min={0} className="full-width" /></Form.Item>

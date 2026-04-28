@@ -1,6 +1,8 @@
 import React from 'react';
-import { Tag } from 'antd';
+import { StatusBadge } from './PharmaBadge';
 
 export function StatusTag({ active, trueText = 'Active', falseText = 'Inactive' }) {
-    return <Tag color={active ? 'green' : 'default'}>{active ? trueText : falseText}</Tag>;
+    const deleted = !active && String(falseText).toLowerCase() === 'deleted';
+
+    return <StatusBadge value={active} trueText={trueText} falseText={falseText} deleted={deleted} />;
 }

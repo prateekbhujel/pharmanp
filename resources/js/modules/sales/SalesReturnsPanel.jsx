@@ -1,16 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, PrinterOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
+import { DateText } from '../../core/components/DateText';
 import { Money } from '../../core/components/Money';
 import { ServerTable } from '../../core/components/ServerTable';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
 import { appUrl } from '../../core/utils/url';
+import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
 const emptyReturnItem = {
     sales_invoice_item_id: null,
@@ -72,14 +75,10 @@ export function SalesReturnsPanel() {
     const [saving, setSaving] = useState(false);
     const [view, setView] = useState('list');
     const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
-    const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [range, setRange] = useState([]);
     const table = useServerTable({
         endpoint: endpoints.salesReturns,
         defaultSort: { field: 'return_date', order: 'desc' },
-        defaultFilters: {
-            from: range[0].format('YYYY-MM-DD'),
-            to: range[1].format('YYYY-MM-DD'),
-        },
     });
     const customerId = Form.useWatch('customer_id', form);
     const returnMode = Form.useWatch('return_mode', form) || 'invoice';
@@ -99,11 +98,7 @@ export function SalesReturnsPanel() {
     }, [customerId]);
 
     useEffect(() => {
-        table.setFilters((filters) => ({
-            ...filters,
-            from: range?.[0]?.format('YYYY-MM-DD'),
-            to: range?.[1]?.format('YYYY-MM-DD'),
-        }));
+        table.setFilters((filters) => applyDateRangeFilter(filters, range));
     }, [range]);
 
     async function loadCustomers() {
@@ -376,7 +371,7 @@ export function SalesReturnsPanel() {
 
     const listColumns = [
         { title: 'Return No', dataIndex: 'return_no', field: 'return_no', sorter: true, width: 170 },
-        { title: 'Date', dataIndex: 'return_date', field: 'return_date', sorter: true, width: 130, render: (v) => v || '—' },
+        { title: 'Date', dataIndex: 'return_date', field: 'return_date', sorter: true, width: 130, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'Customer', dataIndex: 'customer_name', width: 220, render: (v, row) => v || row.customer?.name || 'Walk-in' },
         { title: 'Invoice', dataIndex: 'invoice_no', width: 180, render: (v, row) => v || row.sales_invoice?.invoice_no || 'Manual' },
         { title: 'Items', dataIndex: 'items_count', width: 80, align: 'center' },
@@ -388,7 +383,7 @@ export function SalesReturnsPanel() {
             width: 240,
             render: (_, row) => (
                 <Space>
-                    <Button icon={<EditOutlined />} onClick={() => editReturn(row)}>Edit</Button>
+                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => editReturn(row)} />
                     <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/sales/returns/${row.id}/print`), '_blank')}>Print</Button>
                     <Button danger icon={<DeleteOutlined />} onClick={() => deleteReturn(row)} />
                 </Space>
@@ -422,7 +417,7 @@ export function SalesReturnsPanel() {
                                 ]} />
                             </Form.Item>
                             <Form.Item name="return_date" label="Return Date" rules={[{ required: true }]}>
-                                <DatePicker className="full-width" />
+                                <SmartDatePicker className="full-width" />
                             </Form.Item>
                             <Form.Item name="reason" label="Reason"><Input /></Form.Item>
                         </div>
@@ -477,7 +472,7 @@ export function SalesReturnsPanel() {
                             options={customers.map((item) => ({ value: item.id, label: item.name }))}
                             onChange={(customer_id) => table.setFilters((filters) => ({ ...filters, customer_id }))}
                         />
-                        <DatePicker.RangePicker value={range} onChange={setRange} />
+                        <SmartDatePicker.RangePicker value={range} onChange={setRange} />
                         <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                     </div>
                     <ServerTable table={table} columns={listColumns} />

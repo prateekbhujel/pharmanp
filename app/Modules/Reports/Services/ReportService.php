@@ -17,8 +17,8 @@ class ReportService
 
     public function run(string $report, Request $request): array
     {
-        $from = $request->query('from', now()->startOfMonth()->toDateString());
-        $to = $request->query('to', now()->toDateString());
+        $from = $request->filled('from') ? (string) $request->query('from') : null;
+        $to = $request->filled('to') ? (string) $request->query('to') : null;
         $perPage = min((int) $request->query('per_page', 20), 100);
 
         return match ($report) {
@@ -26,7 +26,7 @@ class ReportService
             'purchase' => $this->purchase($request, $from, $to, $perPage),
             'stock' => $this->stock($request, $perPage),
             'low-stock' => $this->lowStock($request, $perPage),
-            'expiry' => $this->expiry($request, $request->query('to', now()->addMonths(3)->toDateString()), $perPage),
+            'expiry' => $this->expiry($request, $from, $to, $perPage),
             'day-book' => $this->accountBook($request, $from, $to, $perPage),
             'cash-book' => $this->accountBook($request, $from, $to, $perPage, 'cash'),
             'bank-book' => $this->accountBook($request, $from, $to, $perPage, 'bank'),
@@ -41,23 +41,24 @@ class ReportService
         };
     }
 
-    private function sales(Request $request, string $from, string $to, int $perPage): array
+    private function sales(Request $request, ?string $from, ?string $to, int $perPage): array
     {
         $query = DB::table('sales_invoices')
             ->leftJoin('customers', 'customers.id', '=', 'sales_invoices.customer_id')
             ->leftJoin('medical_representatives', 'medical_representatives.id', '=', 'sales_invoices.medical_representative_id')
             ->whereNull('sales_invoices.deleted_at')
-            ->whereBetween('sales_invoices.invoice_date', [$from, $to])
             ->when($request->filled('customer_id'), fn ($builder) => $builder->where('sales_invoices.customer_id', $request->integer('customer_id')))
             ->when($request->filled('payment_status'), fn ($builder) => $builder->where('sales_invoices.payment_status', $request->query('payment_status')))
             ->when($request->filled('medical_representative_id'), fn ($builder) => $builder->where('sales_invoices.medical_representative_id', $request->integer('medical_representative_id')))
             ->orderByDesc('sales_invoices.invoice_date')
             ->selectRaw("sales_invoices.id, sales_invoices.invoice_no, sales_invoices.invoice_date, COALESCE(customers.name, 'Walk-in') as customer, COALESCE(medical_representatives.name, '-') as mr_name, sales_invoices.payment_status, sales_invoices.grand_total, sales_invoices.paid_amount");
 
+        $this->applyDateRange($query, 'sales_invoices.invoice_date', $from, $to);
+
         return $this->paged($query, $perPage);
     }
 
-    private function accountBook(Request $request, string $from, string $to, int $perPage, ?string $accountType = null): array
+    private function accountBook(Request $request, ?string $from, ?string $to, int $perPage, ?string $accountType = null): array
     {
         $query = DB::table('account_transactions')
             ->leftJoin('customers', function ($join) {
@@ -68,13 +69,14 @@ class ReportService
                 $join->on('suppliers.id', '=', 'account_transactions.party_id')
                     ->where('account_transactions.party_type', '=', 'supplier');
             })
-            ->whereBetween('transaction_date', [$from, $to])
             ->when($accountType, fn ($builder) => $builder->where('account_type', $accountType))
             ->when($request->filled('party_type'), fn ($builder) => $builder->where('party_type', $request->query('party_type')))
             ->when($request->filled('party_id'), fn ($builder) => $builder->where('party_id', $request->integer('party_id')))
             ->orderBy('transaction_date')
             ->orderBy('id')
             ->selectRaw("transaction_date as date, account_type, party_type, party_id, COALESCE(customers.name, suppliers.name, '-') as party_name, source_type, source_id, debit, credit, notes");
+
+        $this->applyDateRange($query, 'transaction_date', $from, $to);
 
         $page = $this->paged($query, $perPage);
         $labels = AccountCatalog::labels();
@@ -86,20 +88,14 @@ class ReportService
         })->all();
 
         $page['summary'] = [
-            'debit' => round((float) DB::table('account_transactions')
-                ->whereBetween('transaction_date', [$from, $to])
-                ->when($accountType, fn ($builder) => $builder->where('account_type', $accountType))
-                ->sum('debit'), 2),
-            'credit' => round((float) DB::table('account_transactions')
-                ->whereBetween('transaction_date', [$from, $to])
-                ->when($accountType, fn ($builder) => $builder->where('account_type', $accountType))
-                ->sum('credit'), 2),
+            'debit' => round((float) $this->accountTransactionSummaryQuery($from, $to, $accountType)->sum('debit'), 2),
+            'credit' => round((float) $this->accountTransactionSummaryQuery($from, $to, $accountType)->sum('credit'), 2),
         ];
 
         return $page;
     }
 
-    private function accountLedger(Request $request, ?string $accountType, string $from, string $to, int $perPage): array
+    private function accountLedger(Request $request, ?string $accountType, ?string $from, ?string $to, int $perPage): array
     {
         if (! $accountType) {
             throw ValidationException::withMessages(['account_type' => 'Account type is required for ledger.']);
@@ -108,21 +104,22 @@ class ReportService
         return $this->accountBook($request, $from, $to, $perPage, $accountType);
     }
 
-    private function purchase(Request $request, string $from, string $to, int $perPage): array
+    private function purchase(Request $request, ?string $from, ?string $to, int $perPage): array
     {
         $query = DB::table('purchases')
             ->join('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
             ->whereNull('purchases.deleted_at')
-            ->whereBetween('purchases.purchase_date', [$from, $to])
             ->when($request->filled('supplier_id'), fn ($builder) => $builder->where('purchases.supplier_id', $request->integer('supplier_id')))
             ->when($request->filled('payment_status'), fn ($builder) => $builder->where('purchases.payment_status', $request->query('payment_status')))
             ->orderByDesc('purchases.purchase_date')
             ->selectRaw('purchases.id, purchases.purchase_no, purchases.purchase_date, purchases.supplier_invoice_no, suppliers.name as supplier, purchases.payment_status, purchases.grand_total, purchases.paid_amount');
 
+        $this->applyDateRange($query, 'purchases.purchase_date', $from, $to);
+
         return $this->paged($query, $perPage);
     }
 
-    private function supplierLedger(int $supplierId, string $from, string $to, int $perPage): array
+    private function supplierLedger(int $supplierId, ?string $from, ?string $to, int $perPage): array
     {
         if ($supplierId < 1) {
             throw ValidationException::withMessages(['supplier_id' => 'Supplier is required for supplier ledger.']);
@@ -131,10 +128,11 @@ class ReportService
         $query = DB::table('purchases')
             ->where('supplier_id', $supplierId)
             ->whereNull('deleted_at')
-            ->whereBetween('purchase_date', [$from, $to])
             ->orderBy('purchase_date')
             ->orderBy('id')
             ->selectRaw('purchase_date as date, purchase_no as reference, grand_total as credit, paid_amount as debit, payment_status');
+
+        $this->applyDateRange($query, 'purchase_date', $from, $to);
 
         return $this->paged($query, $perPage);
     }
@@ -177,27 +175,29 @@ class ReportService
         return $this->paged($query, $perPage);
     }
 
-    private function expiry(Request $request, string $to, int $perPage): array
+    private function expiry(Request $request, ?string $from, ?string $to, int $perPage): array
     {
         $query = DB::table('batches')
             ->join('products', 'products.id', '=', 'batches.product_id')
             ->whereNull('batches.deleted_at')
             ->where('batches.quantity_available', '>', 0)
             ->when($request->filled('product_id'), fn ($builder) => $builder->where('batches.product_id', $request->integer('product_id')))
-            ->whereDate('batches.expires_at', '<=', $to)
             ->orderBy('batches.expires_at')
             ->selectRaw('products.id as product_id, products.name as product, batches.batch_no, batches.expires_at, batches.quantity_available, batches.mrp');
+
+        $this->applyDateRange($query, 'batches.expires_at', $from, $to);
 
         return $this->paged($query, $perPage);
     }
 
-    private function supplierPerformance(Request $request, string $from, string $to, int $perPage): array
+    private function supplierPerformance(Request $request, ?string $from, ?string $to, int $perPage): array
     {
         $query = DB::table('suppliers')
             ->leftJoin('purchases', function ($join) use ($from, $to) {
                 $join->on('purchases.supplier_id', '=', 'suppliers.id')
                     ->whereNull('purchases.deleted_at')
-                    ->whereBetween('purchases.purchase_date', [$from, $to]);
+                    ->when($from, fn ($builder) => $builder->where('purchases.purchase_date', '>=', $from))
+                    ->when($to, fn ($builder) => $builder->where('purchases.purchase_date', '<=', $to));
             })
             ->whereNull('suppliers.deleted_at')
             ->groupBy('suppliers.id', 'suppliers.name', 'suppliers.current_balance')
@@ -207,14 +207,15 @@ class ReportService
         return $this->paged($query, $perPage);
     }
 
-    private function trialBalance(Request $request, string $from, string $to, int $perPage): array
+    private function trialBalance(Request $request, ?string $from, ?string $to, int $perPage): array
     {
         $summary = DB::table('account_transactions')
-            ->whereBetween('transaction_date', [$from, $to])
             ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
-            ->groupBy('account_type')
-            ->get()
-            ->keyBy('account_type');
+            ->groupBy('account_type');
+
+        $this->applyDateRange($summary, 'transaction_date', $from, $to);
+
+        $summary = $summary->get()->keyBy('account_type');
 
         $rows = collect(AccountCatalog::all())
             ->map(function (array $account) use ($summary) {
@@ -273,7 +274,7 @@ class ReportService
         ];
     }
 
-    private function customerLedger(int $customerId, string $from, string $to, int $perPage): array
+    private function customerLedger(int $customerId, ?string $from, ?string $to, int $perPage): array
     {
         if ($customerId < 1) {
             throw ValidationException::withMessages(['customer_id' => 'Customer is required for customer ledger.']);
@@ -282,14 +283,15 @@ class ReportService
         $query = DB::table('sales_invoices')
             ->where('customer_id', $customerId)
             ->whereNull('deleted_at')
-            ->whereBetween('invoice_date', [$from, $to])
             ->orderBy('invoice_date')
             ->selectRaw('invoice_date as date, invoice_no as reference, grand_total as debit, paid_amount as credit, payment_status');
+
+        $this->applyDateRange($query, 'invoice_date', $from, $to);
 
         return $this->paged($query, $perPage);
     }
 
-    private function productMovement(int $productId, string $from, string $to, int $perPage): array
+    private function productMovement(int $productId, ?string $from, ?string $to, int $perPage): array
     {
         if ($productId < 1) {
             throw ValidationException::withMessages(['product_id' => 'Product is required for product movement.']);
@@ -298,12 +300,34 @@ class ReportService
         $query = DB::table('stock_movements')
             ->leftJoin('batches', 'batches.id', '=', 'stock_movements.batch_id')
             ->where('stock_movements.product_id', $productId)
-            ->whereBetween('stock_movements.movement_date', [$from, $to])
             ->orderBy('stock_movements.movement_date')
             ->orderBy('stock_movements.id')
             ->selectRaw('stock_movements.movement_date, stock_movements.movement_type, batches.batch_no, stock_movements.quantity_in, stock_movements.quantity_out, stock_movements.notes');
 
+        $this->applyDateRange($query, 'stock_movements.movement_date', $from, $to);
+
         return $this->paged($query, $perPage);
+    }
+
+    private function accountTransactionSummaryQuery(?string $from, ?string $to, ?string $accountType = null)
+    {
+        $query = DB::table('account_transactions')
+            ->when($accountType, fn ($builder) => $builder->where('account_type', $accountType));
+
+        $this->applyDateRange($query, 'transaction_date', $from, $to);
+
+        return $query;
+    }
+
+    private function applyDateRange($query, string $column, ?string $from, ?string $to): void
+    {
+        if ($from) {
+            $query->whereDate($column, '>=', $from);
+        }
+
+        if ($to) {
+            $query->whereDate($column, '<=', $to);
+        }
     }
 
     private function paged($query, int $perPage): array

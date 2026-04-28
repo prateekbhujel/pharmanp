@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Card, DatePicker, Input, Select, Statistic, Tag } from 'antd';
-import dayjs from 'dayjs';
+import { Button, Card, Input, Select, Statistic } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
+import { DateText } from '../../core/components/DateText';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { ServerTable } from '../../core/components/ServerTable';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
 const movementTypes = [
     { value: 'purchase_receive', label: 'Purchase Receive' },
@@ -19,14 +22,10 @@ const movementTypes = [
 
 export function StockMovementsPanel() {
     const [products, setProducts] = useState([]);
-    const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [range, setRange] = useState([]);
     const table = useServerTable({
         endpoint: endpoints.stockMovements,
         defaultSort: { field: 'movement_date', order: 'desc' },
-        defaultFilters: {
-            from: range[0].format('YYYY-MM-DD'),
-            to: range[1].format('YYYY-MM-DD'),
-        },
     });
 
     useEffect(() => {
@@ -34,11 +33,7 @@ export function StockMovementsPanel() {
     }, []);
 
     useEffect(() => {
-        table.setFilters((filters) => ({
-            ...filters,
-            from: range?.[0]?.format('YYYY-MM-DD'),
-            to: range?.[1]?.format('YYYY-MM-DD'),
-        }));
+        table.setFilters((filters) => applyDateRangeFilter(filters, range));
     }, [range]);
 
     async function searchProducts(q) {
@@ -47,10 +42,10 @@ export function StockMovementsPanel() {
     }
 
     const columns = [
-        { title: 'Date', dataIndex: 'movement_date', field: 'movement_date', sorter: true, width: 130 },
+        { title: 'Date', dataIndex: 'movement_date', field: 'movement_date', sorter: true, width: 130, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'Product', dataIndex: ['product', 'name'], width: 260 },
         { title: 'Batch', dataIndex: ['batch', 'batch_no'], width: 150 },
-        { title: 'Movement', dataIndex: 'movement_type', field: 'movement_type', sorter: true, width: 170, render: (value) => <Tag>{String(value || '').replaceAll('_', ' ')}</Tag> },
+        { title: 'Movement', dataIndex: 'movement_type', field: 'movement_type', sorter: true, width: 180, render: (value) => <PharmaBadge tone={String(value || '').includes('_out') ? 'warning' : 'info'}>{String(value || '').replaceAll('_', ' ')}</PharmaBadge> },
         { title: 'In', dataIndex: 'quantity_in', field: 'quantity_in', sorter: true, align: 'right', width: 110 },
         { title: 'Out', dataIndex: 'quantity_out', field: 'quantity_out', sorter: true, align: 'right', width: 110 },
         { title: 'Reference', width: 180, render: (_, row) => row.reference_type ? `${row.reference_type} #${row.reference_id}` : '-' },
@@ -79,7 +74,7 @@ export function StockMovementsPanel() {
                         options={movementTypes}
                         onChange={(movement_type) => table.setFilters((filters) => ({ ...filters, movement_type }))}
                     />
-                    <DatePicker.RangePicker value={range} onChange={setRange} />
+                    <SmartDatePicker.RangePicker value={range} onChange={setRange} />
                     <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                 </div>
                 <ServerTable table={table} columns={columns} />

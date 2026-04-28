@@ -14,6 +14,7 @@ class SupplierRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'supplier_type_id' => ['nullable', 'integer', 'exists:supplier_types,id'],
             'name' => ['required', 'string', 'max:180'],
             'contact_person' => ['nullable', 'string', 'max:180'],
             'phone' => ['nullable', 'string', 'max:40'],

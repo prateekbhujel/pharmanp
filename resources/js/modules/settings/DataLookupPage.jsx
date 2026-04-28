@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Badge, Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tabs } from 'antd';
+import { Button, Card, Form, Input, Modal, Select, Space, Switch, Table, Tabs } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
+import { StatusToggle } from '../../core/components/StatusToggle';
+import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
@@ -59,8 +61,14 @@ export function DataLookupPage() {
     };
 
     const deleteDropdownOption = async (record) => {
-        await http.delete(endpoints.dropdownOptions + '/' + record.id);
-        reloadDropdowns();
+        confirmDelete({
+            title: `Delete ${record.name}?`,
+            content: 'Options already used in transactions are protected by the backend.',
+            onOk: async () => {
+                await http.delete(endpoints.dropdownOptions + '/' + record.id);
+                reloadDropdowns();
+            },
+        });
     };
 
     const openPartyType = (record = null) => {
@@ -78,8 +86,14 @@ export function DataLookupPage() {
     };
 
     const deletePartyType = async (record) => {
-        await http.delete(endpoints.partyTypes + '/' + record.id);
-        reloadPartyTypes();
+        confirmDelete({
+            title: `Delete ${record.name}?`,
+            content: 'This removes the party type from future selection lists.',
+            onOk: async () => {
+                await http.delete(endpoints.partyTypes + '/' + record.id);
+                reloadPartyTypes();
+            },
+        });
     };
 
     const openSupplierType = (record = null) => {
@@ -97,20 +111,27 @@ export function DataLookupPage() {
     };
 
     const deleteSupplierType = async (record) => {
-        await http.delete(endpoints.supplierTypes + '/' + record.id);
-        reloadSupplierTypes();
+        confirmDelete({
+            title: `Delete ${record.name}?`,
+            content: 'This removes the supplier type from future selection lists.',
+            onOk: async () => {
+                await http.delete(endpoints.supplierTypes + '/' + record.id);
+                reloadSupplierTypes();
+            },
+        });
     };
 
     return (
         <div className="page-stack">
             <PageHeader
-                title="Dropdown Masters"
+                title="Master Data"
+                description="Manage payment modes and reusable lookup values used across the app."
             />
 
             <Tabs items={[
                 {
                     key: 'payment-modes',
-                    label: 'Payment Modes / QR',
+                    label: 'Payment Modes',
                     children: <PaymentModePanel />,
                 },
                 {
@@ -142,12 +163,12 @@ export function DataLookupPage() {
                                         dataIndex: 'data',
                                         render: (v) => v || '-',
                                     },
-                                    { title: 'Status', dataIndex: 'is_active', width: 100, render: (v) => <Badge status={v ? 'success' : 'default'} text={v ? 'Active' : 'Inactive'} /> },
+                                    { title: 'Status', dataIndex: 'is_active', width: 150, render: (v, record) => <StatusToggle value={v} id={record.id} endpoint={endpoints.dropdownOptions} /> },
                                     {
-                                        title: '', width: 112, render: (_, record) => (
+                                        title: 'Action', width: 112, render: (_, record) => (
                                             <Space>
                                                 <Button icon={<EditOutlined />} onClick={() => openDropdownOption(record)} />
-                                                <Popconfirm title="Delete this option?" onConfirm={() => deleteDropdownOption(record)} okText="Delete" okType="danger"><Button danger icon={<DeleteOutlined />} /></Popconfirm>
+                                                <Button danger icon={<DeleteOutlined />} onClick={() => deleteDropdownOption(record)} />
                                             </Space>
                                         ),
                                     },
@@ -169,10 +190,10 @@ export function DataLookupPage() {
                                     { title: 'Name', dataIndex: 'name' },
                                     { title: 'Code', dataIndex: 'code', render: (v) => v || '-' },
                                     {
-                                        title: '', width: 112, render: (_, record) => (
+                                        title: 'Action', width: 112, render: (_, record) => (
                                             <Space>
                                                 <Button icon={<EditOutlined />} onClick={() => openPartyType(record)} />
-                                                <Popconfirm title="Delete?" onConfirm={() => deletePartyType(record)} okText="Delete" okType="danger"><Button danger icon={<DeleteOutlined />} /></Popconfirm>
+                                                <Button danger icon={<DeleteOutlined />} onClick={() => deletePartyType(record)} />
                                             </Space>
                                         ),
                                     },
@@ -194,10 +215,10 @@ export function DataLookupPage() {
                                     { title: 'Name', dataIndex: 'name' },
                                     { title: 'Code', dataIndex: 'code', render: (v) => v || '-' },
                                     {
-                                        title: '', width: 112, render: (_, record) => (
+                                        title: 'Action', width: 112, render: (_, record) => (
                                             <Space>
                                                 <Button icon={<EditOutlined />} onClick={() => openSupplierType(record)} />
-                                                <Popconfirm title="Delete?" onConfirm={() => deleteSupplierType(record)} okText="Delete" okType="danger"><Button danger icon={<DeleteOutlined />} /></Popconfirm>
+                                                <Button danger icon={<DeleteOutlined />} onClick={() => deleteSupplierType(record)} />
                                             </Space>
                                         ),
                                     },
@@ -209,7 +230,7 @@ export function DataLookupPage() {
             ]} />
 
             {/* Modals */}
-            <Modal title={editingOption ? 'Edit Option' : 'New Option'} open={dropdownModalOpen} onCancel={() => setDropdownModalOpen(false)} onOk={() => dropdownForm.submit()} destroyOnHidden>
+            <Modal centered className="intent-modal" title={editingOption ? 'Edit Option' : 'New Option'} open={dropdownModalOpen} onCancel={() => setDropdownModalOpen(false)} onOk={() => dropdownForm.submit()} destroyOnHidden>
                 <Form form={dropdownForm} layout="vertical" onFinish={saveDropdownOption}>
                     <Form.Item name="alias" label="Alias" rules={[{ required: true }]}><Select options={aliasOptions} /></Form.Item>
                     <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
@@ -225,14 +246,14 @@ export function DataLookupPage() {
                 </Form>
             </Modal>
 
-            <Modal title={editingPartyType ? 'Edit Party Type' : 'New Party Type'} open={partyTypeModalOpen} onCancel={() => setPartyTypeModalOpen(false)} onOk={() => partyTypeForm.submit()} destroyOnHidden>
+            <Modal centered className="intent-modal" title={editingPartyType ? 'Edit Party Type' : 'New Party Type'} open={partyTypeModalOpen} onCancel={() => setPartyTypeModalOpen(false)} onOk={() => partyTypeForm.submit()} destroyOnHidden>
                 <Form form={partyTypeForm} layout="vertical" onFinish={savePartyType}>
                     <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
                     <Form.Item name="code" label="Code"><Input /></Form.Item>
                 </Form>
             </Modal>
 
-            <Modal title={editingSupplierType ? 'Edit Supplier Type' : 'New Supplier Type'} open={supplierTypeModalOpen} onCancel={() => setSupplierTypeModalOpen(false)} onOk={() => supplierTypeForm.submit()} destroyOnHidden>
+            <Modal centered className="intent-modal" title={editingSupplierType ? 'Edit Supplier Type' : 'New Supplier Type'} open={supplierTypeModalOpen} onCancel={() => setSupplierTypeModalOpen(false)} onOk={() => supplierTypeForm.submit()} destroyOnHidden>
                 <Form form={supplierTypeForm} layout="vertical" onFinish={saveSupplierType}>
                     <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
                     <Form.Item name="code" label="Code"><Input /></Form.Item>

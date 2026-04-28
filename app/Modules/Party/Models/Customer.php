@@ -3,6 +3,7 @@
 namespace App\Modules\Party\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Modules\Setup\Models\PartyType;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Customer extends Model
@@ -12,6 +13,7 @@ class Customer extends Model
     protected $fillable = [
         'tenant_id',
         'company_id',
+        'party_type_id',
         'name',
         'contact_person',
         'phone',
@@ -34,5 +36,10 @@ class Customer extends Model
             'current_balance' => 'decimal:2',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function partyType()
+    {
+        return $this->belongsTo(PartyType::class, 'party_type_id');
     }
 }

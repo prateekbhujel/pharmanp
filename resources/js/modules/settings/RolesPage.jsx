@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { App, Button, Card, Checkbox, Form, Input, Modal, Space, Table, Tag } from 'antd';
+import { App, Button, Card, Checkbox, Form, Input, Modal, Space, Table } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
@@ -123,14 +124,14 @@ export function RolesPage() {
                         { title: 'Role', dataIndex: 'name', width: 200 },
                         {
                             title: 'Permissions', dataIndex: 'permissions', render: (permissions) => (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                    {(permissions || []).slice(0, 10).map((name) => <Tag key={name}>{permissionLabel(name)}</Tag>)}
-                                    {(permissions?.length || 0) > 10 && <Tag>+{permissions.length - 10} more</Tag>}
+                                <div className="badge-row">
+                                    {(permissions || []).slice(0, 10).map((name) => <PharmaBadge key={name} tone="neutral">{permissionLabel(name)}</PharmaBadge>)}
+                                    {(permissions?.length || 0) > 10 && <PharmaBadge tone="info">+{permissions.length - 10} more</PharmaBadge>}
                                 </div>
                             )
                         },
                         {
-                            title: '',
+                            title: 'Action',
                             width: 112,
                             render: (_, role) => (
                                 <Space>
@@ -144,6 +145,8 @@ export function RolesPage() {
             </Card>
 
             <Modal
+                centered
+                className="intent-modal role-permission-modal"
                 title={editingRole ? `Edit Role: ${editingRole.name}` : 'New Role'}
                 open={roleModalOpen}
                 onCancel={() => setRoleModalOpen(false)}
@@ -160,7 +163,7 @@ export function RolesPage() {
                             onChange={(event) => setPermissionSearch(event.target.value)}
                             placeholder="Search permissions by module or action"
                         />
-                        <Tag color="processing">{selectedPermissions.length} selected</Tag>
+                        <PharmaBadge tone="info">{selectedPermissions.length} selected</PharmaBadge>
                     </div>
                     <div className="permission-matrix">
                         {visiblePermissionGroups.map(([group, permissions]) => {

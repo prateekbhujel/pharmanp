@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
 import { PlusOutlined, PrinterOutlined, QrcodeOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
+import { DateText } from '../../core/components/DateText';
+import { PaymentStatusBadge, PharmaBadge, StatusBadge } from '../../core/components/PharmaBadge';
 import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
 import { QuickProductModal } from '../../core/components/QuickProductModal';
@@ -15,6 +17,7 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 import { itemFreeGoodsValue, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl } from '../../core/utils/url';
+import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 import { SalesReturnsPanel } from './SalesReturnsPanel';
 
 function salesSection() {
@@ -43,7 +46,7 @@ export function SalesPage() {
     const [customerId, setCustomerId] = useState(null);
     const [medicalRepresentativeId, setMedicalRepresentativeId] = useState(undefined);
     const [invoiceDate, setInvoiceDate] = useState(dayjs());
-    const [invoiceRange, setInvoiceRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [invoiceRange, setInvoiceRange] = useState([]);
     const [paidAmount, setPaidAmount] = useState(0);
     const [lastPrintUrl, setLastPrintUrl] = useState(null);
     const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
@@ -53,10 +56,6 @@ export function SalesPage() {
     const invoiceTable = useServerTable({
         endpoint: endpoints.salesInvoices,
         defaultSort: { field: 'invoice_date', order: 'desc' },
-        defaultFilters: {
-            from: invoiceRange[0].format('YYYY-MM-DD'),
-            to: invoiceRange[1].format('YYYY-MM-DD'),
-        },
     });
 
     useEffect(() => {
@@ -113,11 +112,7 @@ export function SalesPage() {
     }, [section]);
 
     useEffect(() => {
-        invoiceTable.setFilters((current) => ({
-            ...current,
-            from: invoiceRange?.[0]?.format('YYYY-MM-DD'),
-            to: invoiceRange?.[1]?.format('YYYY-MM-DD'),
-        }));
+        invoiceTable.setFilters((current) => applyDateRangeFilter(current, invoiceRange));
     }, [invoiceRange]);
 
     async function loadCustomers() {
@@ -236,7 +231,7 @@ export function SalesPage() {
             render: (row) => (
                 <div>
                     <strong>{row.name}</strong>
-                    <span className="line-muted-note">Batch {row.batch_no || '-'} | Expiry {row.expires_at || '-'} | Stock {row.stock_on_hand}</span>
+                    <span className="line-muted-note">Batch {row.batch_no || '-'} | Expiry <DateText value={row.expires_at} style="compact" /> | Stock {row.stock_on_hand}</span>
                 </div>
             ),
         },
@@ -251,14 +246,14 @@ export function SalesPage() {
     ];
     const invoiceColumns = [
         { title: 'Invoice', dataIndex: 'invoice_no', field: 'invoice_no', sorter: true },
-        { title: 'Date', dataIndex: 'invoice_date', field: 'invoice_date', sorter: true, width: 130 },
+        { title: 'Date', dataIndex: 'invoice_date', field: 'invoice_date', sorter: true, width: 130, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'Customer', dataIndex: ['customer', 'name'], render: (value) => value || 'Walk-in' },
         { title: 'MR', dataIndex: ['medical_representative', 'name'], render: (value) => value || '-' },
-        { title: 'Payment', dataIndex: 'payment_status', width: 120, render: (v) => <Tag color={v === 'paid' ? 'success' : v === 'partial' ? 'warning' : 'error'}>{v.toUpperCase()}</Tag> },
+        { title: 'Payment', dataIndex: 'payment_status', width: 130, render: (v) => <PaymentStatusBadge value={v} /> },
         { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 140, render: (v) => <Money value={v} /> },
-        { title: 'Status', dataIndex: 'is_active', width: 100, render: (v, row) => <StatusToggle value={v} id={row.id} endpoint={endpoints.salesInvoices} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 110, render: (v) => <StatusBadge value={v} /> },
         {
-            title: '',
+            title: 'Action',
             width: 150,
             render: (_, row) => (
                 <Space>
@@ -311,7 +306,7 @@ export function SalesPage() {
                         <InputNumber id="pos-paid-amount" min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
                     </div>
                     <div className="pos-walkin-strip">
-                        <Tag color={customerId ? 'blue' : 'default'} icon={<UserOutlined />}>{customerId ? `Customer #${customerId}` : 'Walk-in customer'}</Tag>
+                        <PharmaBadge tone={customerId ? 'info' : 'neutral'} icon={<UserOutlined />}>{customerId ? `Customer #${customerId}` : 'Walk-in customer'}</PharmaBadge>
                         <Button size="small" onClick={() => setCustomerId(null)}>Use Walk-in</Button>
                     </div>
                     <Select
@@ -391,7 +386,7 @@ export function SalesPage() {
                             onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, medical_representative_id: value }))}
                             options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
                         />
-                        <DatePicker.RangePicker value={invoiceRange} onChange={setInvoiceRange} />
+                        <SmartDatePicker.RangePicker value={invoiceRange} onChange={setInvoiceRange} />
                         <Button onClick={invoiceTable.reload}>Refresh</Button>
                     </div>
                     <ServerTable table={invoiceTable} columns={invoiceColumns} />

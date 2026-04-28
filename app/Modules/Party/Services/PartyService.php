@@ -22,12 +22,12 @@ class PartyService
 
     public function suppliers(TableQueryData $table): LengthAwarePaginator
     {
-        return $this->paginate(Supplier::query(), $table);
+        return $this->paginate(Supplier::query()->with('supplierType:id,name'), $table, 'supplierType');
     }
 
     public function customers(TableQueryData $table): LengthAwarePaginator
     {
-        return $this->paginate(Customer::query(), $table);
+        return $this->paginate(Customer::query()->with('partyType:id,name'), $table, 'partyType');
     }
 
     public function createSupplier(array $data, User $user): Supplier
@@ -50,19 +50,23 @@ class PartyService
         return $this->update($customer, $data, $user);
     }
 
-    private function paginate(Builder $query, TableQueryData $table): LengthAwarePaginator
+    private function paginate(Builder $query, TableQueryData $table, ?string $typeRelation = null): LengthAwarePaginator
     {
         $query
             ->select('*')
             ->when((bool) ($table->filters['deleted'] ?? false), fn (Builder $builder) => $builder->onlyTrashed());
 
-        $query->when($table->search, function (Builder $builder, string $search) {
-            $builder->where(function (Builder $inner) use ($search) {
+        $query->when($table->search, function (Builder $builder, string $search) use ($typeRelation) {
+            $builder->where(function (Builder $inner) use ($search, $typeRelation) {
                 $inner->where('name', 'like', '%'.$search.'%')
                     ->orWhere('contact_person', 'like', '%'.$search.'%')
                     ->orWhere('phone', 'like', '%'.$search.'%')
                     ->orWhere('email', 'like', '%'.$search.'%')
                     ->orWhere('pan_number', 'like', '%'.$search.'%');
+
+                if ($typeRelation) {
+                    $inner->orWhereHas($typeRelation, fn (Builder $typeQuery) => $typeQuery->where('name', 'like', '%'.$search.'%'));
+                }
             });
         });
 

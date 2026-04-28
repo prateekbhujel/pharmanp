@@ -14,8 +14,10 @@ class VoucherResource extends JsonResource
             'voucher_no' => $this->voucher_no,
             'voucher_date' => $this->voucher_date?->toDateString(),
             'voucher_type' => $this->voucher_type,
+            'voucher_type_label' => str($this->voucher_type)->replace('_', ' ')->title()->toString(),
             'total_amount' => (float) $this->total_amount,
             'notes' => $this->notes,
+            'entries_count' => (int) ($this->entries_count ?? $this->entries?->count() ?? 0),
             'entries' => $this->whenLoaded('entries', fn () => $this->entries->map(fn ($entry) => [
                 'line_no' => $entry->line_no,
                 'account_type' => $entry->account_type,

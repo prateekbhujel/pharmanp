@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { App, Badge, Button, Card, Col, DatePicker, Drawer, Form, Input, InputNumber, Row, Select, Space, Statistic, Switch, Table, Tag, Tooltip } from 'antd';
+import { App, Button, Card, Col, Drawer, Form, Input, InputNumber, Row, Select, Space, Statistic, Switch, Table, Tooltip } from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { DateText } from '../../core/components/DateText';
+import { PharmaBadge, StatusBadge } from '../../core/components/PharmaBadge';
 import { PageHeader } from '../../core/components/PageHeader';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { ServerTable } from '../../core/components/ServerTable';
@@ -14,11 +16,6 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { can } from '../../core/utils/permissions';
 import { mrVisitStatusOptions } from '../../core/utils/accountCatalog';
-
-// ─── tiny status badge ───────────────────────────────────────────────────────
-function StatusBadge({ active }) {
-    return <Badge status={active ? 'success' : 'default'} text={active ? 'Active' : 'Inactive'} />;
-}
 
 // ─── section routing ─────────────────────────────────────────────────────────
 const fieldForceSections = {
@@ -44,7 +41,7 @@ export function MrTrackingPage() {
     const [customers, setCustomers] = useState([]);
 
     // ── filter bar state ─────────────────────────────────────────────────────
-    const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [dateRange, setDateRange] = useState([]);
     const [branchId, setBranchId] = useState(undefined);
     const [mrId, setMrId] = useState(undefined);
 
@@ -123,7 +120,7 @@ export function MrTrackingPage() {
         setPerfLoading(true);
         try {
             const { data } = await http.get(endpoints.mrPerformance, {
-                params: { from: fromDate, to: toDate, medical_representative_id: mrId },
+                params: { ...(fromDate ? { from: fromDate } : {}), ...(toDate ? { to: toDate } : {}), medical_representative_id: mrId },
             });
             setPerfData(data.data);
         } finally { setPerfLoading(false); }
@@ -133,7 +130,7 @@ export function MrTrackingPage() {
         setSalesLoading(true);
         try {
             const { data } = await http.get(endpoints.mrBranchSales, {
-                params: { from: fromDate, to: toDate, branch_id: branchId, mr_id: mrId },
+                params: { ...(fromDate ? { from: fromDate } : {}), ...(toDate ? { to: toDate } : {}), branch_id: branchId, mr_id: mrId },
             });
             setSalesData(data.data);
         } finally { setSalesLoading(false); }
@@ -275,12 +272,12 @@ export function MrTrackingPage() {
     const branchColumns = [
         { title: 'Name', dataIndex: 'name', sorter: true, field: 'name' },
         { title: 'Code', dataIndex: 'code', width: 110 },
-        { title: 'Type', dataIndex: 'type', width: 110, render: (v) => <Tag color={v === 'hq' ? 'blue' : 'default'}>{v?.toUpperCase()}</Tag> },
+        { title: 'Type', dataIndex: 'type', width: 110, render: (v) => <PharmaBadge tone={v === 'hq' ? 'info' : 'neutral'}>{v?.toUpperCase()}</PharmaBadge> },
         { title: 'Parent HQ', dataIndex: ['parent', 'name'], render: (v) => v || '—' },
         { title: 'Address', dataIndex: 'address' },
-        { title: 'Status', dataIndex: 'is_active', width: 100, render: (v) => <StatusBadge active={v} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 120, render: (v) => <StatusBadge value={v} /> },
         canManage ? {
-            title: '', width: 96,
+            title: 'Action', width: 96,
             render: (_, r) => (
                 <Space>
                     <Button size="small" icon={<EditOutlined />} onClick={() => openBranch(r)} />
@@ -296,9 +293,9 @@ export function MrTrackingPage() {
         { title: 'Branch', dataIndex: ['branch', 'name'], render: (v) => v || <span style={{ color: '#aaa' }}>—</span> },
         { title: 'Territory', dataIndex: 'territory', width: 140 },
         { title: 'Target', dataIndex: 'monthly_target', align: 'right', width: 130, render: (v) => <Money value={v} /> },
-        { title: 'Status', dataIndex: 'is_active', width: 100, render: (v) => <StatusBadge active={v} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 120, render: (v) => <StatusBadge value={v} /> },
         canManage ? {
-            title: '', width: 96,
+            title: 'Action', width: 96,
             render: (_, r) => (
                 <Space>
                     <Button size="small" icon={<EditOutlined />} onClick={() => openMr(r)} />
@@ -309,10 +306,10 @@ export function MrTrackingPage() {
     ].filter(Boolean);
 
     const visitColumns = [
-        { title: 'Date', dataIndex: 'visit_date', width: 110, sorter: true, field: 'visit_date' },
+        { title: 'Date', dataIndex: 'visit_date', width: 110, sorter: true, field: 'visit_date', render: (value) => <DateText value={value} style="compact" /> },
         { title: 'MR', dataIndex: ['medical_representative', 'name'], render: (v) => v || '—' },
         { title: 'Customer', dataIndex: ['customer', 'name'], render: (v) => v || '—' },
-        { title: 'Status', dataIndex: 'status', width: 110, render: (v) => <Tag>{v}</Tag> },
+        { title: 'Status', dataIndex: 'status', width: 120, render: (v) => <PharmaBadge tone={v} dot>{v}</PharmaBadge> },
         { title: 'Order Value', dataIndex: 'order_value', align: 'right', width: 130, render: (v) => <Money value={v} /> },
         {
             title: 'Location', width: 90, align: 'center',
@@ -327,7 +324,7 @@ export function MrTrackingPage() {
             ) : <span style={{ color: '#ccc' }}>—</span>,
         },
         canVisits ? {
-            title: '', width: 96,
+            title: 'Action', width: 96,
             render: (_, r) => (
                 <Space>
                     <Button size="small" icon={<EditOutlined />} onClick={() => openVisit(r)} />
@@ -380,7 +377,7 @@ export function MrTrackingPage() {
             {(section === 'dashboard' || section === 'performance') && (
                 <Card size="small" style={{ marginBottom: 16 }}>
                     <Space wrap>
-                        <DatePicker.RangePicker value={dateRange} onChange={setDateRange} />
+                        <SmartDatePicker.RangePicker value={dateRange} onChange={setDateRange} />
                         <Select
                             allowClear placeholder="All Branches" value={branchId}
                             onChange={setBranchId} style={{ minWidth: 180 }}
@@ -427,7 +424,7 @@ export function MrTrackingPage() {
                             <Card
                                 title="Product Sales by Branch & MR"
                                 loading={salesLoading}
-                                extra={<Tag color="blue">{salesData?.period}</Tag>}
+                                extra={<PharmaBadge tone="info">{salesData?.period}</PharmaBadge>}
                             >
                                 <Table
                                     rowKey={(_, i) => i}

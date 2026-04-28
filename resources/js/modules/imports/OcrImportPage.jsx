@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Alert, App, Button, Card, Descriptions, Input, Space, Table, Tag, Upload } from 'antd';
+import { Alert, App, Button, Card, Descriptions, Input, Space, Table, Upload } from 'antd';
 import { CloseCircleOutlined, FileTextOutlined, InboxOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
+import { PaymentStatusBadge, PharmaBadge } from '../../core/components/PharmaBadge';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { appUrl } from '../../core/utils/url';
@@ -97,9 +98,9 @@ export function OcrImportPage() {
                         title="OCR Summary"
                         extra={
                             <Space>
-                                <Tag color={result.extraction_status === 'success' ? 'success' : 'warning'}>
+                                <PharmaBadge tone={result.extraction_status === 'success' ? 'success' : 'warning'} dot>
                                     {result.analysis?.next_action || 'manual_review'}
-                                </Tag>
+                                </PharmaBadge>
                                 <Button type="primary" onClick={loadIntoPurchase}>Load Into Purchase Entry</Button>
                             </Space>
                         }
@@ -125,7 +126,7 @@ export function OcrImportPage() {
                                 { title: 'Supplier', dataIndex: 'supplier_name' },
                                 { title: 'Date', dataIndex: 'purchase_date' },
                                 { title: 'Total', dataIndex: 'grand_total' },
-                                { title: 'Payment', dataIndex: 'payment_status' },
+                                { title: 'Payment', dataIndex: 'payment_status', render: (value) => <PaymentStatusBadge value={value} /> },
                             ]}
                             locale={{ emptyText: 'No close purchase bills found' }}
                         />

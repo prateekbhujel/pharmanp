@@ -58,7 +58,6 @@ export const endpoints = {
     users: appUrl('/api/v1/setup/users'),
     setupStatus: appUrl('/setup/status'),
     setupComplete: appUrl('/setup/complete'),
-    updateCheck: appUrl('/api/v1/system/update-check'),
 
     // Accounting — Expenses
     expenses: appUrl('/api/v1/accounting/expenses'),

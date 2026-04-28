@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Switch, App } from 'antd';
 import { http } from '../api/http';
+import { StatusBadge } from './PharmaBadge';
 
-export function StatusToggle({ value, id, endpoint, onChange }) {
+export function StatusToggle({ value, id, endpoint, onChange, trueText = 'Active', falseText = 'Inactive', compact = false }) {
     const [loading, setLoading] = useState(false);
     const [currentValue, setCurrentValue] = useState(Boolean(value));
     const { notification } = App.useApp();
@@ -34,14 +35,15 @@ export function StatusToggle({ value, id, endpoint, onChange }) {
     };
 
     return (
-        <Switch 
-            size="small" 
-            checked={currentValue} 
-            loading={loading} 
-            onChange={handleToggle}
-            style={{ 
-                backgroundColor: currentValue ? 'var(--primary-color)' : '#cbd5e1',
-            }}
-        />
+        <span className={compact ? 'status-toggle-control status-toggle-compact' : 'status-toggle-control'}>
+            <Switch
+                size="small"
+                checked={currentValue}
+                loading={loading}
+                onChange={handleToggle}
+                aria-label={currentValue ? trueText : falseText}
+            />
+            {!compact && <StatusBadge value={currentValue} trueText={trueText} falseText={falseText} />}
+        </span>
     );
 }

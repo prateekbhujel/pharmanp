@@ -92,6 +92,21 @@ class UserManagementService
         });
     }
 
+    public function toggleStatus(User $user, bool $active, User $actor): User
+    {
+        if ($actor->id === $user->id && ! $active) {
+            throw ValidationException::withMessages([
+                'is_active' => 'You cannot deactivate your own account.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($user, $active) {
+            $user->update(['is_active' => $active]);
+
+            return $user->fresh(['roles:id,name', 'medicalRepresentative:id,name']);
+        });
+    }
+
     public function delete(User $user, User $actor): void
     {
         if ($actor->id === $user->id) {

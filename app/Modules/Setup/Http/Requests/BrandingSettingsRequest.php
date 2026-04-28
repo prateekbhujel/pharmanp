@@ -24,7 +24,6 @@ class BrandingSettingsRequest extends FormRequest
             'app_icon_file' => ['nullable', 'image', 'max:2048'],
             'favicon_file' => ['nullable', 'mimes:ico,png,jpg,jpeg,svg,webp', 'max:1024'],
             'accent_color' => ['nullable', 'string', 'max:20'],
-            'layout' => ['required', 'in:vertical,horizontal'],
             'sidebar_default_collapsed' => ['sometimes', 'boolean'],
             'country_code' => ['nullable', 'string', 'size:2'],
             'currency_symbol' => ['nullable', 'string', 'max:20'],

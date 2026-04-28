@@ -859,6 +859,40 @@ body {
     align-items: center;
 }
 
+.table-toolbar-vouchers {
+    grid-template-columns: minmax(260px, 1fr) 320px auto;
+    gap: 16px;
+    align-items: center;
+}
+
+.payment-direction-segmented.ant-segmented {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    color: #1e3a8a;
+    padding: 3px;
+}
+
+.payment-direction-segmented .ant-segmented-item {
+    border-radius: 8px;
+    color: #1e40af;
+    font-weight: 700;
+}
+
+.payment-direction-segmented .ant-segmented-item-selected {
+    background: #1d4ed8;
+    box-shadow: 0 8px 18px rgb(29 78 216 / 22%);
+    color: #ffffff;
+}
+
+.payment-direction-segmented .ant-segmented-thumb {
+    background: #1d4ed8;
+}
+
+.table-action-buttons {
+    gap: 8px !important;
+}
+
 .pos-toolbar-wide {
     grid-template-columns: minmax(220px, 1.2fr) 220px 180px 160px 140px;
 }
@@ -1843,4 +1877,325 @@ body {
     text-align: center;
     color: #94a3b8;
     font-size: 13px;
+}
+
+/* PharmaNP design primitives */
+.badge-row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.pharma-badge {
+    --badge-bg: #f8fafc;
+    --badge-border: #e2e8f0;
+    --badge-color: #475569;
+    align-items: center;
+    background: var(--badge-bg);
+    border: 1px solid var(--badge-border);
+    border-radius: 999px;
+    color: var(--badge-color);
+    display: inline-flex;
+    font-size: 11.5px;
+    font-weight: 700;
+    gap: 6px;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    min-height: 24px;
+    padding: 5px 9px;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+.pharma-badge-success {
+    --badge-bg: #ecfdf5;
+    --badge-border: #bbf7d0;
+    --badge-color: #047857;
+}
+
+.pharma-badge-info {
+    --badge-bg: #eff6ff;
+    --badge-border: #bfdbfe;
+    --badge-color: #1d4ed8;
+}
+
+.pharma-badge-warning {
+    --badge-bg: #fffbeb;
+    --badge-border: #fde68a;
+    --badge-color: #b45309;
+}
+
+.pharma-badge-danger {
+    --badge-bg: #fef2f2;
+    --badge-border: #fecaca;
+    --badge-color: #dc2626;
+}
+
+.pharma-badge-neutral {
+    --badge-bg: #f8fafc;
+    --badge-border: #e2e8f0;
+    --badge-color: #64748b;
+}
+
+.pharma-badge-primary {
+    --badge-bg: #f0fdfa;
+    --badge-border: #99f6e4;
+    --badge-color: #0f766e;
+}
+
+.pharma-badge-hero {
+    --badge-bg: rgba(255, 255, 255, 0.18);
+    --badge-border: rgba(255, 255, 255, 0.28);
+    --badge-color: #ffffff;
+    backdrop-filter: blur(10px);
+}
+
+.pharma-badge-dot {
+    background: currentColor;
+    border-radius: 999px;
+    height: 6px;
+    width: 6px;
+}
+
+.pharma-badge-icon {
+    align-items: center;
+    display: inline-flex;
+    font-size: 12px;
+}
+
+.pharma-badge-pulse .pharma-badge-dot {
+    animation: pharmaBadgePulse 1.8s ease-in-out infinite;
+}
+
+.tab-alert-badge,
+.qty-alert-badge {
+    margin-left: 8px;
+    min-width: 32px;
+    justify-content: center;
+}
+
+.hero-badge {
+    margin-bottom: 12px;
+}
+
+@keyframes pharmaBadgePulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.45;
+        transform: scale(1.35);
+    }
+}
+
+.status-toggle-control {
+    align-items: center;
+    display: inline-flex;
+    gap: 8px;
+    min-width: 132px;
+}
+
+.status-toggle-compact {
+    min-width: auto;
+}
+
+.status-toggle-control .ant-switch {
+    background: #cbd5e1;
+    box-shadow: inset 0 0 0 1px rgb(15 23 42 / 7%);
+}
+
+.status-toggle-control .ant-switch.ant-switch-checked,
+.ant-switch.ant-switch-checked {
+    background: var(--primary-color) !important;
+}
+
+.ant-switch:hover:not(.ant-switch-disabled) {
+    filter: saturate(1.08);
+}
+
+.ant-btn {
+    align-items: center;
+    border-radius: 8px;
+    box-shadow: none;
+    display: inline-flex;
+    font-weight: 650;
+    justify-content: center;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.ant-btn:not(.ant-btn-link):not(.ant-btn-text):hover {
+    transform: translateY(-1px);
+}
+
+.ant-btn-primary,
+.btn-intent-primary {
+    background: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 8px 18px rgb(var(--primary-color-rgb) / 18%);
+}
+
+.ant-btn-primary:hover,
+.btn-intent-primary:hover {
+    background: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
+    box-shadow: 0 10px 22px rgb(var(--primary-color-rgb) / 22%);
+}
+
+.ant-btn-dangerous,
+.btn-intent-danger {
+    color: #dc2626;
+}
+
+.ant-btn-primary.ant-btn-dangerous,
+.btn-intent-danger {
+    background: #dc2626 !important;
+    border-color: #dc2626 !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 18px rgb(220 38 38 / 16%);
+}
+
+.btn-intent-secondary {
+    border-color: #dbe4ef !important;
+    color: #475569 !important;
+}
+
+.ant-table-cell .ant-btn-icon-only {
+    border-color: #dbe4ef;
+    height: 34px;
+    width: 34px;
+}
+
+.ant-table-cell .ant-btn-icon-only:hover {
+    border-color: rgba(var(--primary-color-rgb), 0.42);
+    color: var(--primary-color);
+}
+
+.ant-table-cell .ant-btn-dangerous.ant-btn-icon-only:hover {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+.ant-modal:not(.global-search-modal) .ant-modal-content,
+.intent-modal .ant-modal-content {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgb(15 23 42 / 16%);
+    overflow: hidden;
+    padding: 0;
+}
+
+.ant-modal:not(.global-search-modal) .ant-modal-header,
+.intent-modal .ant-modal-header {
+    border-bottom: 1px solid #eef2f7;
+    margin: 0;
+    padding: 18px 22px 14px;
+}
+
+.ant-modal:not(.global-search-modal) .ant-modal-title,
+.intent-modal .ant-modal-title,
+.intent-drawer .ant-drawer-title {
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.ant-modal:not(.global-search-modal) .ant-modal-body,
+.intent-modal .ant-modal-body {
+    padding: 18px 22px;
+}
+
+.ant-modal:not(.global-search-modal) .ant-modal-footer,
+.intent-modal .ant-modal-footer {
+    background: #f8fafc;
+    border-top: 1px solid #eef2f7;
+    margin: 0;
+    padding: 14px 18px;
+}
+
+.confirm-intent-modal .ant-modal-confirm-body-wrapper {
+    padding: 18px 22px;
+}
+
+.confirm-intent-icon,
+.confirm-intent-icon-danger {
+    color: var(--primary-color) !important;
+    font-size: 20px !important;
+}
+
+.confirm-intent-icon-danger {
+    color: #dc2626 !important;
+}
+
+.intent-drawer .ant-drawer-content {
+    border-left: 1px solid #e2e8f0;
+}
+
+.intent-drawer .ant-drawer-header {
+    background: #ffffff;
+    border-bottom: 1px solid #eef2f7;
+    padding: 18px 22px;
+}
+
+.intent-drawer .ant-drawer-body {
+    background: #fbfdff;
+    padding: 18px 22px;
+}
+
+.intent-drawer .ant-drawer-footer {
+    background: #ffffff;
+    border-top: 1px solid #eef2f7;
+    padding: 14px 18px;
+}
+
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-picker,
+.ant-select-selector,
+.ant-upload,
+.ant-radio-button-wrapper {
+    border-color: #dbe4ef !important;
+}
+
+.ant-input:hover,
+.ant-input-affix-wrapper:hover,
+.ant-input-number:hover,
+.ant-picker:hover,
+.ant-select:not(.ant-select-disabled):hover .ant-select-selector,
+.ant-upload:hover,
+.ant-radio-button-wrapper:hover {
+    border-color: rgba(var(--primary-color-rgb), 0.42) !important;
+}
+
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input-number-focused,
+.ant-picker-focused,
+.ant-select-focused .ant-select-selector {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px rgb(var(--primary-color-rgb) / 12%) !important;
+}
+
+.ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    background: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+
+.hero-gradient-card .ant-btn-primary {
+    background: #ffffff !important;
+    border-color: #ffffff !important;
+    color: #0f766e !important;
+    box-shadow: 0 12px 30px rgb(15 23 42 / 16%);
+}
+
+.hero-gradient-card .ant-btn-primary:hover {
+    background: #f8fafc !important;
+    border-color: #f8fafc !important;
+    color: #115e59 !important;
 }

@@ -3,6 +3,7 @@
 namespace App\Modules\Party\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Modules\Setup\Models\SupplierType;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Supplier extends Model
@@ -12,6 +13,7 @@ class Supplier extends Model
     protected $fillable = [
         'tenant_id',
         'company_id',
+        'supplier_type_id',
         'name',
         'contact_person',
         'phone',
@@ -32,5 +34,10 @@ class Supplier extends Model
             'current_balance' => 'decimal:2',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function supplierType()
+    {
+        return $this->belongsTo(SupplierType::class, 'supplier_type_id');
     }
 }

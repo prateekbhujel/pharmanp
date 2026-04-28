@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Col, DatePicker, Empty, Row, Segmented, Select, Space, Statistic, Table } from 'antd';
+import { Button, Card, Col, Empty, Row, Segmented, Select, Space, Statistic, Table } from 'antd';
+import { DateText } from '../../core/components/DateText';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
-import dayjs from 'dayjs';
 import { BarChart, DonutChart } from '../../core/components/Charts';
 import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { accountCatalog, paymentStatusOptions } from '../../core/utils/accountCatalog';
+import { isLikelyDateValue } from '../../core/utils/calendar';
+import { dateRangeParams } from '../../core/utils/dateFilters';
 import { appUrl } from '../../core/utils/url';
 
 const reportOptions = [
@@ -96,7 +98,7 @@ export function ReportsPage() {
     const initialReport = reportFromPath();
     const [report, setReport] = useState(initialReport);
     const [group, setGroup] = useState(inferGroup(initialReport));
-    const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [range, setRange] = useState([]);
     const [filters, setFilters] = useState({});
     const [rows, setRows] = useState([]);
     const [summary, setSummary] = useState(null);
@@ -148,8 +150,7 @@ export function ReportsPage() {
                 params: {
                     page,
                     per_page: meta.per_page,
-                    from: range?.[0]?.format('YYYY-MM-DD'),
-                    to: range?.[1]?.format('YYYY-MM-DD'),
+                    ...dateRangeParams(range),
                     ...filters,
                 },
             });
@@ -164,7 +165,17 @@ export function ReportsPage() {
     const columns = useMemo(() => Object.keys(rows[0] || {}).map((key) => ({
         title: labelForKey(key),
         dataIndex: key,
-        render: (value) => typeof value === 'number' ? value.toLocaleString() : value,
+        render: (value) => {
+            if (typeof value === 'number') {
+                return value.toLocaleString();
+            }
+
+            if (isLikelyDateValue(key, value)) {
+                return <DateText value={value} style="compact" />;
+            }
+
+            return value;
+        },
     })), [rows]);
     const visibleReportOptions = useMemo(
         () => reportOptions.filter((item) => (reportGroups[group] || []).includes(item.value)),
@@ -206,7 +217,7 @@ export function ReportsPage() {
                 title="Reports"
                 actions={
                     <Space wrap>
-                        <ExportButtons basePath={endpoints.reportExport(report)} params={{ from: range?.[0]?.format('YYYY-MM-DD'), to: range?.[1]?.format('YYYY-MM-DD'), ...filters }} />
+                        <ExportButtons basePath={endpoints.reportExport(report)} params={{ ...dateRangeParams(range), ...filters }} />
                         {report === 'day-book' && (
                             <Button type="primary" onClick={() => window.location.href = appUrl('/app/accounting/vouchers')}>New Voucher</Button>
                         )}

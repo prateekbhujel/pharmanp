@@ -61,7 +61,8 @@ class DemoSeeder extends Seeder
             ['alias' => 'payment_mode', 'name' => 'Cash',          'data' => 'cash'],
             ['alias' => 'payment_mode', 'name' => 'Bank Transfer',  'data' => 'bank'],
             ['alias' => 'payment_mode', 'name' => 'Cheque',         'data' => 'bank'],
-            ['alias' => 'payment_mode', 'name' => 'Credit Card',    'data' => 'card'],
+            ['alias' => 'payment_mode', 'name' => 'FonePay QR',     'data' => 'bank'],
+            ['alias' => 'payment_mode', 'name' => 'eSewa Wallet',   'data' => 'bank'],
             // Expense categories
             ['alias' => 'expense_category', 'name' => 'Rent',          'data' => null],
             ['alias' => 'expense_category', 'name' => 'Utilities',      'data' => null],

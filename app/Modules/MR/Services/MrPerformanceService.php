@@ -10,9 +10,8 @@ class MrPerformanceService
 {
     public function monthly(?User $user = null, array $filters = []): array
     {
-        $today = CarbonImmutable::today();
-        $from = CarbonImmutable::parse($filters['from'] ?? $today->startOfMonth()->toDateString())->toDateString();
-        $to = CarbonImmutable::parse($filters['to'] ?? $today->endOfMonth()->toDateString())->toDateString();
+        $from = ! empty($filters['from']) ? CarbonImmutable::parse($filters['from'])->toDateString() : null;
+        $to = ! empty($filters['to']) ? CarbonImmutable::parse($filters['to'])->toDateString() : null;
         $representativeId = isset($filters['medical_representative_id']) ? (int) $filters['medical_representative_id'] : null;
 
         if ($user && $user->hasRole('MR') && (int) $user->medical_representative_id > 0) {
@@ -21,14 +20,16 @@ class MrPerformanceService
 
         $visitTotals = DB::table('representative_visits')
             ->whereNull('deleted_at')
-            ->whereBetween('visit_date', [$from, $to])
+            ->when($from, fn ($query) => $query->whereDate('visit_date', '>=', $from))
+            ->when($to, fn ($query) => $query->whereDate('visit_date', '<=', $to))
             ->when($representativeId, fn ($query) => $query->where('medical_representative_id', $representativeId))
             ->groupBy('medical_representative_id')
             ->selectRaw('medical_representative_id, COUNT(*) as visits, COALESCE(SUM(order_value), 0) as visit_order_value');
 
         $invoiceTotals = DB::table('sales_invoices')
             ->whereNull('deleted_at')
-            ->whereBetween('invoice_date', [$from, $to])
+            ->when($from, fn ($query) => $query->whereDate('invoice_date', '>=', $from))
+            ->when($to, fn ($query) => $query->whereDate('invoice_date', '<=', $to))
             ->when($representativeId, fn ($query) => $query->where('medical_representative_id', $representativeId))
             ->groupBy('medical_representative_id')
             ->selectRaw('medical_representative_id, COUNT(*) as invoices, COALESCE(SUM(grand_total), 0) as invoiced_value');
@@ -68,7 +69,7 @@ class MrPerformanceService
             ->all();
 
         return [
-            'period' => CarbonImmutable::parse($from)->format('j M Y').' - '.CarbonImmutable::parse($to)->format('j M Y'),
+            'period' => $this->periodLabel($from, $to),
             'filters' => [
                 'from' => $from,
                 'to' => $to,
@@ -83,5 +84,17 @@ class MrPerformanceService
             ],
             'rows' => $rows,
         ];
+    }
+
+    private function periodLabel(?string $from, ?string $to): string
+    {
+        if (! $from && ! $to) {
+            return 'All time';
+        }
+
+        $fromLabel = $from ? CarbonImmutable::parse($from)->format('j M Y') : 'Start';
+        $toLabel = $to ? CarbonImmutable::parse($to)->format('j M Y') : 'Today';
+
+        return $fromLabel.' - '.$toLabel;
     }
 }

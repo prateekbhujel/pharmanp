@@ -9,7 +9,7 @@ use App\Modules\Setup\Http\Requests\BrandingSettingsRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class BrandingController extends Controller
 {
@@ -22,11 +22,12 @@ class BrandingController extends Controller
 
     public function update(BrandingSettingsRequest $request): JsonResponse
     {
-        $current = $this->branding();
+        $current = $this->storedBranding();
         $data = $request->validated();
         $payload = [
             ...$current,
             ...Arr::except($data, ['logo_file', 'sidebar_logo_file', 'app_icon_file', 'favicon_file']),
+            'layout' => 'vertical',
             'sidebar_default_collapsed' => array_key_exists('sidebar_default_collapsed', $data)
                 ? (bool) $data['sidebar_default_collapsed']
                 : (bool) ($current['sidebar_default_collapsed'] ?? true),
@@ -53,6 +54,17 @@ class BrandingController extends Controller
 
     private function branding(): array
     {
+        $branding = $this->storedBranding();
+
+        foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {
+            $branding[$key] = AssetUrl::resolve($branding[$key] ?? null);
+        }
+
+        return $branding;
+    }
+
+    private function storedBranding(): array
+    {
         $branding = Setting::getValue('app.branding', [
             'app_name' => config('app.name', 'PharmaNP'),
             'logo_url' => null,
@@ -63,15 +75,30 @@ class BrandingController extends Controller
             'layout' => 'vertical',
             'sidebar_default_collapsed' => true,
             'country_code' => 'NP',
-            'currency_symbol' => 'NPR',
-            'calendar_type' => 'ad',
+            'currency_symbol' => 'Rs.',
+            'calendar_type' => 'bs',
         ]);
 
         foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {
-            $branding[$key] = AssetUrl::resolve($branding[$key] ?? null);
+            $branding[$key] = $this->normalizeStoredAssetPath($branding[$key] ?? null);
         }
 
         return $branding;
+    }
+
+    private function normalizeStoredAssetPath(?string $value): ?string
+    {
+        if (! filled($value)) {
+            return null;
+        }
+
+        $path = parse_url($value, PHP_URL_PATH) ?: null;
+
+        if ($path && Str::startsWith($path, '/storage/')) {
+            return ltrim($path, '/');
+        }
+
+        return $value;
     }
 
     private function storeBrandAsset(UploadedFile $file): string

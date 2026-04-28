@@ -2,6 +2,7 @@
 
 namespace App\Modules\Setup\Services;
 
+use App\Core\Support\AssetUrl;
 use App\Core\Services\InstallationService;
 use App\Models\User;
 use App\Models\Setting;
@@ -13,6 +14,7 @@ use App\Modules\Setup\Models\FiscalYear;
 use App\Modules\Setup\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
@@ -39,6 +41,7 @@ class SetupService
         }
 
         return DB::transaction(function () use ($data) {
+            $storeData = $data['store'] ?? [];
             $tenant = Tenant::query()->create([
                 'name' => $data['company']['name'],
                 'slug' => $this->uniqueTenantSlug($data['company']['name']),
@@ -61,10 +64,10 @@ class SetupService
             $store = Store::query()->create([
                 'tenant_id' => $tenant->id,
                 'company_id' => $company->id,
-                'name' => $data['store']['name'],
+                'name' => $storeData['name'] ?? 'Main Store',
                 'code' => 'MAIN',
-                'phone' => $data['store']['phone'] ?? null,
-                'address' => $data['store']['address'] ?? null,
+                'phone' => $storeData['phone'] ?? null,
+                'address' => $storeData['address'] ?? null,
                 'is_default' => true,
                 'is_active' => true,
             ]);
@@ -151,19 +154,49 @@ class SetupService
 
     private function storeBranding(array $data, int $tenantId, int $companyId, int $storeId): void
     {
+        $branding = $data['branding'];
+        $logoUrl = $this->storeBrandAsset(
+            $branding['logo_file'] ?? null,
+            $branding['logo_url'] ?? null,
+        );
+        $sidebarLogoUrl = $this->storeBrandAsset(
+            $branding['sidebar_logo_file'] ?? null,
+            $branding['sidebar_logo_url'] ?? null,
+        ) ?? $logoUrl;
+        $appIconUrl = $this->storeBrandAsset(
+            $branding['app_icon_file'] ?? null,
+            $branding['app_icon_url'] ?? null,
+        );
+        $faviconUrl = $this->storeBrandAsset(
+            $branding['favicon_file'] ?? null,
+            $branding['favicon_url'] ?? null,
+        ) ?? $appIconUrl;
+
         Setting::putValue('app.branding', [
-            'app_name' => $data['branding']['app_name'],
-            'logo_url' => $data['branding']['logo_url'] ?? null,
-            'sidebar_logo_url' => $data['branding']['sidebar_logo_url'] ?? null,
-            'app_icon_url' => $data['branding']['app_icon_url'] ?? null,
-            'favicon_url' => $data['branding']['favicon_url'] ?? null,
-            'accent_color' => $data['branding']['accent_color'] ?? '#0f766e',
-            'layout' => $data['branding']['layout'],
-            'sidebar_default_collapsed' => (bool) ($data['branding']['sidebar_default_collapsed'] ?? true),
+            'app_name' => $branding['app_name'],
+            'logo_url' => $logoUrl,
+            'sidebar_logo_url' => $sidebarLogoUrl,
+            'app_icon_url' => $appIconUrl,
+            'favicon_url' => $faviconUrl,
+            'accent_color' => $branding['accent_color'] ?? '#0f766e',
+            'layout' => 'vertical',
+            'sidebar_default_collapsed' => (bool) ($branding['sidebar_default_collapsed'] ?? true),
+            'country_code' => $branding['country_code'] ?? 'NP',
+            'currency_symbol' => $branding['currency_symbol'] ?? 'Rs.',
+            'calendar_type' => $branding['calendar_type'] ?? 'bs',
             'tenant_id' => $tenantId,
             'company_id' => $companyId,
             'store_id' => $storeId,
         ]);
+    }
+
+    private function storeBrandAsset(mixed $file, ?string $path = null): ?string
+    {
+        if ($file instanceof UploadedFile) {
+            return AssetUrl::publicStorage($file->store('settings/branding', 'public'));
+        }
+
+        return filled($path) ? $path : null;
     }
 
     private function uniqueTenantSlug(string $name): string

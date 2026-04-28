@@ -251,7 +251,7 @@ export function ProductsPage() {
         { title: 'Stock Qty', dataIndex: 'stock_on_hand', field: 'stock_on_hand', sorter: true, align: 'right', width: 120 },
         { title: 'MRP', dataIndex: 'mrp', field: 'mrp', sorter: true, align: 'right', width: 120, render: (value) => <Money value={value} /> },
         { title: 'CC Rate', dataIndex: 'cc_rate', align: 'right', width: 110, render: (value) => `${Number(value || 0).toFixed(2)}%` },
-        { title: 'Status', dataIndex: 'is_active', width: 110, render: (value, row) => row.deleted_at ? <StatusTag active={false} falseText="Deleted" /> : <StatusToggle value={value} id={row.id} endpoint={endpoints.products} /> },
+        { title: 'Status', dataIndex: 'is_active', width: 150, render: (value, row) => row.deleted_at ? <StatusTag active={false} falseText="Deleted" /> : <StatusToggle value={value} id={row.id} endpoint={endpoints.products} /> },
         {
             title: 'Action',
             key: 'actions',

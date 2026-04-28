@@ -2,5 +2,5 @@ import React from 'react';
 import { Modal } from 'antd';
 
 export function FormModal(props) {
-    return <Modal destroyOnHidden {...props} />;
+    return <Modal centered className="intent-modal" destroyOnHidden {...props} />;
 }

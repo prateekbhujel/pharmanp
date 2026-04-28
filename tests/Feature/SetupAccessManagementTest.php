@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\MR\Models\MedicalRepresentative;
+use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -40,7 +41,7 @@ class SetupAccessManagementTest extends TestCase
             'permissions' => ['dashboard.view', 'reports.view'],
         ])->assertCreated();
 
-        $this->actingAs($owner)->postJson('/api/v1/setup/users', [
+        $createUserResponse = $this->actingAs($owner)->postJson('/api/v1/setup/users', [
             'name' => 'Store Manager',
             'email' => 'manager@example.com',
             'phone' => '9800000000',
@@ -51,16 +52,48 @@ class SetupAccessManagementTest extends TestCase
         ])->assertCreated()
             ->assertJsonPath('data.medical_representative.id', $mr->id);
 
+        $managerId = $createUserResponse->json('data.id');
+
+        $this->actingAs($owner)->patchJson("/api/v1/setup/users/{$managerId}/status", [
+            'is_active' => false,
+        ])->assertOk()
+            ->assertJsonPath('data.is_active', false);
+
         $this->actingAs($owner)->putJson('/api/v1/profile', [
             'name' => 'Owner Updated',
             'email' => $owner->email,
             'phone' => '9811111111',
             'current_password' => 'secret12345',
             'password' => 'secret67890',
+            'password_confirmation' => 'secret67890',
         ])->assertOk()
             ->assertJsonPath('data.name', 'Owner Updated');
 
         $this->assertTrue(password_verify('secret67890', $owner->fresh()->password));
+    }
+
+    public function test_owner_can_toggle_managed_dropdown_status(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $company = Company::query()->create(['name' => 'Dropdown Pharma']);
+        $owner = User::factory()->create([
+            'company_id' => $company->id,
+            'is_owner' => true,
+        ]);
+
+        $option = DropdownOption::query()->create([
+            'alias' => 'payment_mode',
+            'name' => 'Counter QR',
+            'data' => 'wallet',
+            'status' => true,
+        ]);
+
+        $this->actingAs($owner)->patchJson("/api/v1/settings/dropdown-options/{$option->id}/status", [
+            'is_active' => false,
+        ])->assertOk()
+            ->assertJsonPath('data.is_active', false);
+
+        $this->assertFalse($option->fresh()->status);
     }
 
     public function test_owner_can_manage_fiscal_years(): void

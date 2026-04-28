@@ -11,7 +11,7 @@ export function BrandingProvider({ children }) {
         branding: branding || {
             app_name: 'PharmaNP',
             currency_symbol: 'Rs.',
-            calendar_type: 'ad',
+            calendar_type: 'bs',
             country_code: 'NP',
             layout: 'vertical'
         },

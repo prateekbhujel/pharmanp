@@ -1,145 +1,105 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Button, Calendar, Card, Dropdown, Input, Space, Typography } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Button, Card, Dropdown, Input, Typography } from 'antd';
 import { CalendarOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import {
+    adToBs,
+    bsData,
+    bsToAd,
+    formatBsDate,
+    nepaliDaysShort,
+    nepaliMonthsFull,
+} from '../utils/calendar';
 
-/**
- * Nepali Date Logic & Mapping
- * (Standard BS to AD conversion logic for years 2000 - 2100)
- */
-const bsData = {
-    2075: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
-    2076: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
-    2077: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
-    2078: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
-    2079: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
-    2080: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
-    2081: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
-    2082: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
-    2083: [31, 31, 32, 31, 32, 30, 30, 29, 30, 29, 30, 30],
-    2084: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
-    2085: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
-};
-
-const nepaliMonths = [
-    'Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin',
-    'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
-];
-
-const nepaliDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-// Reference date: 2075-01-01 BS = 2018-04-14 AD
-const refBsYear = 2075;
-const refBsMonth = 0; // 0-indexed
-const refBsDay = 1;
-const refAdDate = dayjs('2018-04-14');
-
-function bsToAd(yy, mm, dd) {
-    let totalDays = 0;
-    for (let y = refBsYear; y < yy; y++) {
-        totalDays += (bsData[y] || []).reduce((a, b) => a + b, 0);
-    }
-    for (let m = 0; m < mm; m++) {
-        totalDays += (bsData[yy] || [])[m] || 0;
-    }
-    totalDays += (dd - refBsDay);
-    return refAdDate.add(totalDays, 'day');
-}
-
-function adToBs(adDate) {
-    let diff = dayjs(adDate).diff(refAdDate, 'day');
-    let yy = refBsYear;
-    let mm = refBsMonth;
-    let dd = refBsDay;
-
-    if (diff >= 0) {
-        while (diff > 0) {
-            let daysInMonth = (bsData[yy] || [])[mm] || 30;
-            if (diff >= daysInMonth) {
-                diff -= daysInMonth;
-                mm++;
-                if (mm > 11) {
-                    mm = 0;
-                    yy++;
-                }
-            } else {
-                dd += diff;
-                diff = 0;
-            }
-        }
-    } else {
-        // Handle dates before 2075 if needed
-    }
-
-    return { yy, mm, dd };
-}
-
-export function NepaliDatePicker({ value, onChange, placeholder = 'Select Nepali Date', className }) {
+export function NepaliDatePicker({
+    value,
+    onChange,
+    placeholder = 'Select Nepali Date',
+    className,
+    disabled = false,
+}) {
     const [open, setOpen] = useState(false);
     const [viewDate, setViewDate] = useState(() => {
-        const bs = adToBs(value ? dayjs(value) : dayjs());
-        return { yy: bs.yy, mm: bs.mm };
+        const bs = adToBs(value ? dayjs(value) : dayjs()) || adToBs(dayjs());
+
+        return {
+            year: bs?.year || 2083,
+            month: bs?.month || 0,
+        };
     });
 
     const selectedBs = value ? adToBs(dayjs(value)) : null;
 
     function handlePrevMonth() {
-        setViewDate(prev => {
-            let nextMm = prev.mm - 1;
-            let nextYy = prev.yy;
-            if (nextMm < 0) {
-                nextMm = 11;
-                nextYy--;
+        setViewDate((prev) => {
+            let month = prev.month - 1;
+            let year = prev.year;
+
+            if (month < 0) {
+                month = 11;
+                year -= 1;
             }
-            return { yy: nextYy, mm: nextMm };
+
+            return { year, month };
         });
     }
 
     function handleNextMonth() {
-        setViewDate(prev => {
-            let nextMm = prev.mm + 1;
-            let nextYy = prev.yy;
-            if (nextMm > 11) {
-                nextMm = 0;
-                nextYy++;
+        setViewDate((prev) => {
+            let month = prev.month + 1;
+            let year = prev.year;
+
+            if (month > 11) {
+                month = 0;
+                year += 1;
             }
-            return { yy: nextYy, mm: nextMm };
+
+            return { year, month };
         });
     }
 
-    const daysInMonth = (bsData[viewDate.yy] || [])[viewDate.mm] || 30;
-    const startAd = bsToAd(viewDate.yy, viewDate.mm, 1);
-    const startDayOfWeek = startAd.day(); // 0 (Sun) to 6 (Sat)
+    const calendarGrid = useMemo(() => {
+        const daysInMonth = (bsData[viewDate.year] || [])[viewDate.month] || 30;
+        const startAd = bsToAd(viewDate.year, viewDate.month, 1);
+        const startDayOfWeek = startAd.day();
+        const grid = [];
 
-    const calendarGrid = [];
-    // Padding for start day
-    for (let i = 0; i < startDayOfWeek; i++) calendarGrid.push(null);
-    // Days of month
-    for (let i = 1; i <= daysInMonth; i++) calendarGrid.push(i);
+        for (let index = 0; index < startDayOfWeek; index += 1) {
+            grid.push(null);
+        }
+
+        for (let day = 1; day <= daysInMonth; day += 1) {
+            grid.push(day);
+        }
+
+        return grid;
+    }, [viewDate]);
 
     const dropdownContent = (
         <Card className="nepali-datepicker-card" size="small" style={{ width: 280, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
             <div className="calendar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Button type="text" size="small" icon={<LeftOutlined />} onClick={handlePrevMonth} />
-                <Typography.Text strong>{nepaliMonths[viewDate.mm]} {viewDate.yy}</Typography.Text>
+                <Typography.Text strong>{nepaliMonthsFull[viewDate.month]} {viewDate.year}</Typography.Text>
                 <Button type="text" size="small" icon={<RightOutlined />} onClick={handleNextMonth} />
             </div>
-            
+
             <div className="calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-                {nepaliDays.map(d => (
-                    <div key={d} style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8', padding: '4px 0' }}>{d}</div>
+                {nepaliDaysShort.map((dayLabel) => (
+                    <div key={dayLabel} style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8', padding: '4px 0' }}>{dayLabel}</div>
                 ))}
                 {calendarGrid.map((day, idx) => {
-                    if (day === null) return <div key={`empty-${idx}`} />;
-                    
-                    const isSelected = selectedBs?.yy === viewDate.yy && selectedBs?.mm === viewDate.mm && selectedBs?.dd === day;
-                    
+                    if (day === null) {
+                        return <div key={`empty-${idx}`} />;
+                    }
+
+                    const isSelected = selectedBs?.year === viewDate.year && selectedBs?.month === viewDate.month && selectedBs?.day === day;
+
                     return (
-                        <div 
+                        <div
                             key={day}
                             onClick={() => {
-                                const ad = bsToAd(viewDate.yy, viewDate.mm, day);
-                                onChange(ad);
+                                const ad = bsToAd(viewDate.year, viewDate.month, day);
+                                onChange?.(ad);
                                 setOpen(false);
                             }}
                             className={`calendar-day ${isSelected ? 'selected' : ''}`}
@@ -151,7 +111,7 @@ export function NepaliDatePicker({ value, onChange, placeholder = 'Select Nepali
                                 fontSize: 13,
                                 background: isSelected ? '#1e3a8a' : 'transparent',
                                 color: isSelected ? '#fff' : '#1e293b',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
                             }}
                         >
                             {day}
@@ -160,32 +120,38 @@ export function NepaliDatePicker({ value, onChange, placeholder = 'Select Nepali
                 })}
             </div>
             <div style={{ marginTop: 12, textAlign: 'center' }}>
-                <Button type="link" size="small" onClick={() => {
-                    const todayAd = dayjs();
-                    onChange(todayAd);
-                    setOpen(false);
-                }}>Today</Button>
+                <Button
+                    type="link"
+                    size="small"
+                    onClick={() => {
+                        onChange?.(dayjs());
+                        setOpen(false);
+                    }}
+                >
+                    Today
+                </Button>
             </div>
         </Card>
     );
 
-    const displayValue = selectedBs ? `${selectedBs.yy}-${String(selectedBs.mm + 1).padStart(2, '0')}-${String(selectedBs.dd).padStart(2, '0')} BS` : '';
+    const displayValue = selectedBs ? formatBsDate(value, { style: 'compact' }) : '';
 
     return (
-        <Dropdown 
-            open={open} 
-            onOpenChange={setOpen} 
-            dropdownRender={() => dropdownContent} 
+        <Dropdown
+            open={disabled ? false : open}
+            onOpenChange={(nextOpen) => !disabled && setOpen(nextOpen)}
+            dropdownRender={() => dropdownContent}
             trigger={['click']}
             placement="bottomLeft"
         >
-            <Input 
-                className={className}
+            <Input
+                className={`full-width ${className || ''}`}
                 placeholder={placeholder}
                 value={displayValue}
                 readOnly
+                disabled={disabled}
                 suffix={<CalendarOutlined style={{ color: '#94a3b8' }} />}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
             />
         </Dropdown>
     );

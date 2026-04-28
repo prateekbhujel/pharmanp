@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { App, Badge, Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Space, Table, Descriptions } from 'antd';
+import { App, Button, Card, Drawer, Form, Input, InputNumber, Modal, Select, Space, Table, Descriptions } from 'antd';
 import { CheckCircleOutlined, DollarOutlined, EyeOutlined, PlusOutlined, TruckOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { DateText } from '../../core/components/DateText';
 import { Money } from '../../core/components/Money';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { ServerTable } from '../../core/components/ServerTable';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
+import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
 const emptyOrderItem = {
     product_id: null,
@@ -26,15 +30,11 @@ export function PurchaseOrdersPanel() {
     const [orderItems, setOrderItems] = useState([{ ...emptyOrderItem }]);
     const [orderLineErrors, setOrderLineErrors] = useState({});
     const [orderForm] = Form.useForm();
-    const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [range, setRange] = useState([]);
 
     const table = useServerTable({
         endpoint: endpoints.purchaseOrders,
         defaultSort: { field: 'order_date', order: 'desc' },
-        defaultFilters: {
-            from: range[0].format('YYYY-MM-DD'),
-            to: range[1].format('YYYY-MM-DD'),
-        },
     });
 
     useEffect(() => {
@@ -43,11 +43,7 @@ export function PurchaseOrdersPanel() {
     }, []);
 
     useEffect(() => {
-        table.setFilters((current) => ({
-            ...current,
-            from: range?.[0]?.format('YYYY-MM-DD'),
-            to: range?.[1]?.format('YYYY-MM-DD'),
-        }));
+        table.setFilters((current) => applyDateRangeFilter(current, range));
     }, [range]);
 
     async function loadSuppliers() {
@@ -156,17 +152,12 @@ export function PurchaseOrdersPanel() {
 
     const listColumns = [
         { title: 'Order No', dataIndex: 'order_no', field: 'order_no', sorter: true, width: 150 },
-        { title: 'Date', dataIndex: 'order_date', field: 'order_date', sorter: true, width: 130 },
+        { title: 'Date', dataIndex: 'order_date', field: 'order_date', sorter: true, width: 130, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'Supplier', dataIndex: ['supplier', 'name'] },
-        {
-            title: 'Status', dataIndex: 'status', width: 120, render: (val) => {
-                const color = val === 'ordered' ? 'blue' : val === 'approved' ? 'cyan' : val === 'received' ? 'green' : val === 'paid' ? 'gold' : 'default';
-                return <Badge status="processing" color={color} text={val.toUpperCase()} />;
-            },
-        },
+        { title: 'Status', dataIndex: 'status', width: 130, render: (val) => <PharmaBadge tone={val} dot>{String(val || '-').toUpperCase()}</PharmaBadge> },
         { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 140, render: (value) => <Money value={value} /> },
         {
-            title: '', width: 80, render: (_, row) => (
+            title: 'Action', width: 80, render: (_, row) => (
                 <Button icon={<EyeOutlined />} onClick={() => viewOrder(row)}>View</Button>
             ),
         },
@@ -196,7 +187,7 @@ export function PurchaseOrdersPanel() {
                             { value: 'paid', label: 'Paid' },
                         ]}
                     />
-                    <DatePicker.RangePicker value={range} onChange={setRange} />
+                    <SmartDatePicker.RangePicker value={range} onChange={setRange} />
                     <Button type="primary" icon={<PlusOutlined />} onClick={openNewOrder}>New Order</Button>
                 </div>
                 <ServerTable table={table} columns={listColumns} />
@@ -218,8 +209,8 @@ export function PurchaseOrdersPanel() {
                                 options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
                             />
                         </Form.Item>
-                        <Form.Item name="order_date" label="Order Date" rules={[{ required: true }]}><DatePicker className="full-width" /></Form.Item>
-                        <Form.Item name="expected_date" label="Expected Date"><DatePicker className="full-width" /></Form.Item>
+                        <Form.Item name="order_date" label="Order Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
+                        <Form.Item name="expected_date" label="Expected Date"><SmartDatePicker className="full-width" /></Form.Item>
                     </div>
                     <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
 
@@ -253,10 +244,10 @@ export function PurchaseOrdersPanel() {
                     <div className="page-stack">
                         <Descriptions bordered size="small" column={2}>
                             <Descriptions.Item label="Supplier">{viewingOrder.supplier?.name}</Descriptions.Item>
-                            <Descriptions.Item label="Date">{viewingOrder.order_date}</Descriptions.Item>
-                            <Descriptions.Item label="Expected">{viewingOrder.expected_date || '-'}</Descriptions.Item>
+                            <Descriptions.Item label="Date"><DateText value={viewingOrder.order_date} style="compact" /></Descriptions.Item>
+                            <Descriptions.Item label="Expected"><DateText value={viewingOrder.expected_date} style="compact" /></Descriptions.Item>
                             <Descriptions.Item label="Status">
-                                <Badge status="processing" text={viewingOrder.status.toUpperCase()} />
+                                <PharmaBadge tone={viewingOrder.status} dot>{viewingOrder.status.toUpperCase()}</PharmaBadge>
                             </Descriptions.Item>
                             <Descriptions.Item label="Total"><Money value={viewingOrder.grand_total} /></Descriptions.Item>
                             <Descriptions.Item label="Notes">{viewingOrder.notes || '-'}</Descriptions.Item>

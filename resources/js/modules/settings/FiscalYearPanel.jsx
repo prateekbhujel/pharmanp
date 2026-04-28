@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Button, Card, DatePicker, Form, Input, Select, Space, Switch, Tag } from 'antd';
+import { Button, Card, Form, Input, Select, Space, Switch } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { DateText } from '../../core/components/DateText';
 import { FormDrawer } from '../../core/components/FormDrawer';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { ServerTable } from '../../core/components/ServerTable';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -60,12 +63,12 @@ export function FiscalYearPanel() {
 
     const columns = [
         { title: 'Fiscal Year Name', dataIndex: 'name', field: 'name', sorter: true },
-        { title: 'Start Date', dataIndex: 'starts_on', field: 'starts_on', sorter: true, width: 150 },
-        { title: 'End Date', dataIndex: 'ends_on', field: 'ends_on', sorter: true, width: 150 },
-        { title: 'Status', dataIndex: 'status', field: 'status', sorter: true, width: 120, render: (value) => <Tag color={value === 'open' ? 'green' : 'default'}>{value === 'open' ? 'Open' : 'Closed'}</Tag> },
-        { title: 'Current', dataIndex: 'is_current', width: 110, render: (value) => value ? <Tag color="blue">Current</Tag> : <Tag>Archive</Tag> },
+        { title: 'Start Date', dataIndex: 'starts_on', field: 'starts_on', sorter: true, width: 150, render: (value) => <DateText value={value} style="compact" /> },
+        { title: 'End Date', dataIndex: 'ends_on', field: 'ends_on', sorter: true, width: 150, render: (value) => <DateText value={value} style="compact" /> },
+        { title: 'Status', dataIndex: 'status', field: 'status', sorter: true, width: 120, render: (value) => <PharmaBadge tone={value} dot>{value === 'open' ? 'Open' : 'Closed'}</PharmaBadge> },
+        { title: 'Current', dataIndex: 'is_current', width: 110, render: (value) => value ? <PharmaBadge tone="current" dot>Current</PharmaBadge> : <PharmaBadge tone="archive">Archive</PharmaBadge> },
         {
-            title: '',
+            title: 'Action',
             width: 120,
             render: (_, record) => (
                 <Space>
@@ -98,10 +101,10 @@ export function FiscalYearPanel() {
                     </Form.Item>
                     <div className="form-grid">
                         <Form.Item name="starts_on" label="Start Date" rules={[{ required: true }]}>
-                            <DatePicker className="full-width" />
+                            <SmartDatePicker className="full-width" />
                         </Form.Item>
                         <Form.Item name="ends_on" label="End Date" rules={[{ required: true }]}>
-                            <DatePicker className="full-width" />
+                            <SmartDatePicker className="full-width" />
                         </Form.Item>
                     </div>
                     <div className="form-grid">

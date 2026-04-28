@@ -1,15 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Statistic, Table } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Select, Space, Table } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../core/components/PageHeader';
 import { Money } from '../../core/components/Money';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
+import { DateText } from '../../core/components/DateText';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
+import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { accountCatalog, voucherTypeOptions } from '../../core/utils/accountCatalog';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
 import { appUrl } from '../../core/utils/url';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
+import { dateRangeParams } from '../../core/utils/dateFilters';
 import { ExpensesPanel } from './ExpensesPanel';
 import { PaymentsPanel } from './PaymentsPanel';
 
@@ -34,7 +39,7 @@ function accountingRouteState() {
         return { tab: 'voucher', book: 'day-book' };
     }
 
-    return { tab: 'books', book: 'day-book' };
+    return { tab: 'voucher', book: 'day-book' };
 }
 
 function goToAccounting(path) {
@@ -42,36 +47,61 @@ function goToAccounting(path) {
     window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
+function defaultVoucherEntries() {
+    return [{ ...emptyEntry }, { account_type: 'sales', entry_type: 'credit', amount: 0 }];
+}
+
 export function AccountingPage() {
     const { notification } = App.useApp();
-    const routeState = accountingRouteState();
-    const [entries, setEntries] = useState([{ ...emptyEntry }, { account_type: 'sales', entry_type: 'credit', amount: 0 }]);
+    const [routeKey, setRouteKey] = useState(0);
+    const routeState = useMemo(() => accountingRouteState(), [routeKey]);
+    const [entries, setEntries] = useState(defaultVoucherEntries());
     const [entryErrors, setEntryErrors] = useState({});
     const [customers, setCustomers] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
+    const [voucherMode, setVoucherMode] = useState('list');
+    const [editingVoucher, setEditingVoucher] = useState(null);
+    const [voucherRows, setVoucherRows] = useState([]);
+    const [voucherMeta, setVoucherMeta] = useState({ current_page: 1, per_page: 15, total: 0 });
+    const [voucherLoading, setVoucherLoading] = useState(false);
+    const [voucherSearch, setVoucherSearch] = useState('');
+    const [voucherRange, setVoucherRange] = useState([]);
     const [form] = Form.useForm();
 
     useEffect(() => {
+        const handleRoute = () => setRouteKey((value) => value + 1);
+        window.addEventListener('popstate', handleRoute);
+
+        return () => window.removeEventListener('popstate', handleRoute);
+    }, []);
+
+    useEffect(() => {
         loadParties();
-        const handleKeys = (e) => {
-            if (e.altKey && e.key === 's') {
-                e.preventDefault();
+        const handleKeys = (event) => {
+            if (event.altKey && event.key === 's' && routeState.tab === 'voucher' && voucherMode === 'form') {
+                event.preventDefault();
                 form.submit();
             }
-            if (e.altKey && e.key === 'n') {
-                e.preventDefault();
+            if (event.altKey && event.key === 'n') {
+                event.preventDefault();
                 goToAccounting('/app/accounting/vouchers');
+                openVoucher();
             }
-            if (e.altKey && e.key === 'a') {
-                e.preventDefault();
-                if (routeState.tab === 'voucher') {
-                    setEntries(prev => [...prev, { ...emptyEntry }]);
-                }
+            if (event.altKey && event.key === 'a' && routeState.tab === 'voucher' && voucherMode === 'form') {
+                event.preventDefault();
+                setEntries((current) => [...current, { ...emptyEntry }]);
             }
         };
         window.addEventListener('keydown', handleKeys);
+
         return () => window.removeEventListener('keydown', handleKeys);
-    }, [routeState.tab]);
+    }, [routeState.tab, voucherMode]);
+
+    useEffect(() => {
+        if (routeState.tab === 'voucher') {
+            loadVouchers(1);
+        }
+    }, [routeState.tab, voucherSearch, voucherRange]);
 
     async function loadParties() {
         const [{ data: customerData }, { data: supplierData }] = await Promise.all([
@@ -82,21 +112,90 @@ export function AccountingPage() {
         setSuppliers(supplierData.data || []);
     }
 
+    async function loadVouchers(page = 1) {
+        setVoucherLoading(true);
+        try {
+            const { data } = await http.get(endpoints.vouchers, {
+                params: {
+                    page,
+                    per_page: voucherMeta.per_page,
+                    search: voucherSearch || undefined,
+                    ...dateRangeParams(voucherRange),
+                },
+            });
+            setVoucherRows(data.data || []);
+            setVoucherMeta(data.meta || voucherMeta);
+        } catch (error) {
+            notification.error({ message: 'Voucher list failed', description: error?.response?.data?.message || error.message });
+        } finally {
+            setVoucherLoading(false);
+        }
+    }
+
     function updateEntry(index, patch) {
         setEntries(entries.map((entry, rowIndex) => rowIndex === index ? { ...entry, ...patch } : entry));
     }
 
+    function resetVoucherForm() {
+        setEntryErrors({});
+        setEditingVoucher(null);
+        setEntries(defaultVoucherEntries());
+        form.resetFields();
+        form.setFieldsValue({ voucher_date: dayjs(), voucher_type: 'journal' });
+    }
+
+    async function openVoucher(record = null) {
+        resetVoucherForm();
+
+        if (record?.id) {
+            setVoucherLoading(true);
+            try {
+                const { data } = await http.get(`${endpoints.vouchers}/${record.id}`);
+                const voucher = data.data;
+                setEditingVoucher(voucher);
+                form.setFieldsValue({
+                    voucher_date: voucher.voucher_date ? dayjs(voucher.voucher_date) : dayjs(),
+                    voucher_type: voucher.voucher_type || 'journal',
+                    notes: voucher.notes,
+                });
+                setEntries((voucher.entries || []).map((entry) => ({
+                    account_type: entry.account_type,
+                    party_type: entry.party_type,
+                    party_id: entry.party_id,
+                    entry_type: entry.entry_type,
+                    amount: entry.amount,
+                    notes: entry.notes,
+                })));
+            } catch (error) {
+                notification.error({ message: 'Voucher load failed', description: error?.response?.data?.message || error.message });
+                return;
+            } finally {
+                setVoucherLoading(false);
+            }
+        }
+
+        setVoucherMode('form');
+    }
+
     async function submit(values) {
         try {
-            await http.post(endpoints.vouchers, {
+            const payload = {
                 ...values,
                 voucher_date: values.voucher_date.format('YYYY-MM-DD'),
                 entries,
-            });
-            notification.success({ message: 'Voucher posted' });
-            form.resetFields();
-            setEntries([{ ...emptyEntry }, { account_type: 'sales', entry_type: 'credit', amount: 0 }]);
-            setEntryErrors({});
+            };
+
+            if (editingVoucher) {
+                await http.put(`${endpoints.vouchers}/${editingVoucher.id}`, payload);
+                notification.success({ message: 'Voucher updated' });
+            } else {
+                await http.post(endpoints.vouchers, payload);
+                notification.success({ message: 'Voucher posted' });
+            }
+
+            resetVoucherForm();
+            setVoucherMode('list');
+            loadVouchers(1);
         } catch (error) {
             const errors = validationErrors(error);
             setEntryErrors(validationErrorsByLine(errors, 'entries'));
@@ -104,10 +203,23 @@ export function AccountingPage() {
             notification.error({ message: 'Voucher failed', description: error?.response?.data?.message || error.message });
         }
     }
+
+    function deleteVoucher(record) {
+        confirmDelete({
+            title: `Delete ${record.voucher_no}?`,
+            content: 'The voucher and its accounting ledger postings will be removed.',
+            onOk: async () => {
+                await http.delete(`${endpoints.vouchers}/${record.id}`);
+                notification.success({ message: 'Voucher deleted' });
+                loadVouchers(voucherMeta.current_page);
+            },
+        });
+    }
+
     const debit = useMemo(() => entries.filter((entry) => entry.entry_type === 'debit').reduce((sum, entry) => sum + Number(entry.amount || 0), 0), [entries]);
     const credit = useMemo(() => entries.filter((entry) => entry.entry_type === 'credit').reduce((sum, entry) => sum + Number(entry.amount || 0), 0), [entries]);
 
-    const voucherColumns = [
+    const voucherEntryColumns = [
         {
             key: 'account',
             title: 'Account',
@@ -144,6 +256,8 @@ export function AccountingPage() {
                 row.party_type === 'customer' ? (
                     <Select
                         allowClear
+                        showSearch
+                        optionFilterProp="label"
                         value={row.party_id}
                         onChange={(party_id) => updateEntry(index, { party_id })}
                         options={customers.map((item) => ({ value: item.id, label: item.name }))}
@@ -151,6 +265,8 @@ export function AccountingPage() {
                 ) : row.party_type === 'supplier' ? (
                     <Select
                         allowClear
+                        showSearch
+                        optionFilterProp="label"
                         value={row.party_id}
                         onChange={(party_id) => updateEntry(index, { party_id })}
                         options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
@@ -165,17 +281,33 @@ export function AccountingPage() {
         { key: 'notes', title: 'Notes', render: (row, index) => <Input value={row.notes} onChange={(event) => updateEntry(index, { notes: event.target.value })} />, width: 220 },
     ];
 
-    const pageTitle = routeState.tab === 'payments'
-        ? 'Payments'
-        : routeState.tab === 'expenses'
-            ? 'Expenses'
-            : routeState.tab === 'books'
-                ? 'Books'
-                : 'Voucher Entry';
+    const voucherListColumns = [
+        { title: 'Voucher No', dataIndex: 'voucher_no', width: 160 },
+        { title: 'Date', dataIndex: 'voucher_date', width: 130, render: (value) => <DateText value={value} style="compact" /> },
+        { title: 'Type', dataIndex: 'voucher_type_label', width: 160, render: (value) => <PharmaBadge tone="info">{value}</PharmaBadge> },
+        { title: 'Entries', dataIndex: 'entries_count', width: 90, align: 'center' },
+        { title: 'Amount', dataIndex: 'total_amount', width: 150, align: 'right', render: (value) => <Money value={value} /> },
+        { title: 'Notes', dataIndex: 'notes', ellipsis: true, render: (value) => value || '-' },
+        {
+            title: 'Action',
+            key: 'actions',
+            fixed: 'right',
+            width: 112,
+            render: (_, record) => (
+                <Space className="table-action-buttons">
+                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openVoucher(record)} />
+                    <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => deleteVoucher(record)} />
+                </Space>
+            ),
+        },
+    ];
 
-    function renderVoucher() {
+    function renderVoucherForm() {
         return (
-            <Card title="Voucher Entry">
+            <Card
+                title={editingVoucher ? `Edit ${editingVoucher.voucher_no}` : 'New Voucher Entry'}
+                extra={<Button icon={<RollbackOutlined />} onClick={() => { resetVoucherForm(); setVoucherMode('list'); }}>Back to List</Button>}
+            >
                 <Form form={form} layout="vertical" onFinish={submit} initialValues={{ voucher_date: dayjs(), voucher_type: 'journal' }}>
                     <div className="form-grid">
                         <Form.Item name="voucher_date" label="Voucher Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
@@ -183,10 +315,10 @@ export function AccountingPage() {
                             <Select options={voucherTypeOptions} />
                         </Form.Item>
                     </div>
-                    <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
+                    <Form.Item name="notes" label="Narration"><Input.TextArea rows={2} /></Form.Item>
                     <TransactionLineItems
                         rows={entries}
-                        columns={voucherColumns}
+                        columns={voucherEntryColumns}
                         errors={entryErrors}
                         addLabel="Add Entry"
                         minRows={2}
@@ -197,28 +329,60 @@ export function AccountingPage() {
                             { label: 'Credit', value: <Money value={credit} /> },
                             { label: 'Difference', value: <Money value={Math.abs(debit - credit)} />, strong: true },
                         ]}
-                        actions={<Button type="primary" htmlType="submit" disabled={debit !== credit || debit <= 0}>Post Voucher</Button>}
+                        actions={<Button type="primary" htmlType="submit" disabled={debit !== credit || debit <= 0}>{editingVoucher ? 'Update Voucher' : 'Post Voucher'}</Button>}
                     />
                 </Form>
             </Card>
         );
     }
 
+    function renderVoucherList() {
+        return (
+            <Card title="Voucher List">
+                <div className="table-toolbar table-toolbar-vouchers">
+                    <Input.Search value={voucherSearch} onChange={(event) => setVoucherSearch(event.target.value)} placeholder="Search voucher no, type or narration" allowClear />
+                    <SmartDatePicker.RangePicker value={voucherRange} onChange={(range) => setVoucherRange(range || [])} />
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => openVoucher()}>New Voucher</Button>
+                </div>
+                <Table
+                    rowKey="id"
+                    loading={voucherLoading}
+                    dataSource={voucherRows}
+                    columns={voucherListColumns}
+                    pagination={{
+                        current: voucherMeta.current_page,
+                        pageSize: voucherMeta.per_page,
+                        total: voucherMeta.total,
+                        onChange: loadVouchers,
+                    }}
+                    scroll={{ x: 'max-content' }}
+                />
+            </Card>
+        );
+    }
 
     function renderContent() {
         if (routeState.tab === 'payments') return <PaymentsPanel />;
         if (routeState.tab === 'expenses') return <ExpensesPanel />;
         if (routeState.tab === 'books') return <div className="screen-center">Redirecting to Unified Reports...</div>;
 
-        return renderVoucher();
+        return voucherMode === 'form' ? renderVoucherForm() : renderVoucherList();
     }
+
+    const pageTitle = routeState.tab === 'payments'
+        ? 'Payments'
+        : routeState.tab === 'expenses'
+            ? 'Expenses'
+            : routeState.tab === 'books'
+                ? 'Books'
+                : 'Vouchers';
 
     return (
         <div className="page-stack">
             <PageHeader
                 title={pageTitle}
                 actions={routeState.tab === 'books' && (
-                    <Button type="primary" onClick={() => goToAccounting('/app/accounting/vouchers')}>New Voucher</Button>
+                    <Button type="primary" onClick={() => goToAccounting('/app/accounting/vouchers')}>Vouchers</Button>
                 )}
             />
             {renderContent()}

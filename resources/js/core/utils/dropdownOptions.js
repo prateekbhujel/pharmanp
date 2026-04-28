@@ -1,9 +1,6 @@
 export const paymentModeTypeOptions = [
     { value: 'cash', label: 'Cash' },
-    { value: 'bank', label: 'Bank / Transfer' },
-    { value: 'qr', label: 'QR Payment' },
-    { value: 'wallet', label: 'Digital Wallet' },
-    { value: 'card', label: 'Card' },
+    { value: 'bank', label: 'Bank / QR / Wallet' },
 ];
 
 export const fallbackDropdownAliases = {

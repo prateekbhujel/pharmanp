@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { App, Button, Card, Col, DatePicker, Empty, Row, Select, Segmented, Space, Statistic, Table, Tag, Tabs } from 'antd';
+import { App, Button, Card, Col, Empty, Row, Select, Segmented, Space, Statistic, Table, Tabs } from 'antd';
 import { AlertOutlined, LineChartOutlined, PlusOutlined, ReloadOutlined, ShopOutlined, WarningOutlined, DollarCircleOutlined, ShoppingCartOutlined, WalletOutlined, MedicineBoxOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import { DateText } from '../../core/components/DateText';
 import { Money } from '../../core/components/Money';
+import { PaymentStatusBadge, PharmaBadge } from '../../core/components/PharmaBadge';
 import { BarChart, DonutChart, MiniBar } from '../../core/components/Charts';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { appUrl } from '../../core/utils/url';
+import { dateRangeParams } from '../../core/utils/dateFilters';
 
 // ── Stat card with subtle trend arrow ────────────────────────────────────────
 function StatCard({ title, value, suffix, tone, loading, icon }) {
@@ -44,7 +47,7 @@ const TONES = {
 export function DashboardPage() {
     const { notification } = App.useApp();
     const { user, branding } = useAuth();
-    const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [range, setRange] = useState([]);
     const [medicalRepresentativeId, setMedicalRepresentativeId] = useState(undefined);
     const [medicalRepresentatives, setMedicalRepresentatives] = useState([]);
     const [state, setState] = useState({ loading: true, data: null });
@@ -65,8 +68,7 @@ export function DashboardPage() {
         try {
             const { data } = await http.get(endpoints.dashboard, {
                 params: {
-                    from: range?.[0]?.format('YYYY-MM-DD'),
-                    to:   range?.[1]?.format('YYYY-MM-DD'),
+                    ...dateRangeParams(range),
                     medical_representative_id: medicalRepresentativeId,
                 },
             });
@@ -171,9 +173,7 @@ export function DashboardPage() {
                                         {
                                             title: 'Status', dataIndex: 'payment_status', width: 100,
                                             render: (v) => (
-                                                <Tag color={v === 'paid' ? 'success' : v === 'partial' ? 'warning' : 'error'} style={{ borderRadius: 12, padding: '0 8px' }}>
-                                                    {v?.toUpperCase()}
-                                                </Tag>
+                                                <PaymentStatusBadge value={v} />
                                             ),
                                         },
                                         { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 120, render: (v) => <Money value={v} /> },
@@ -196,9 +196,7 @@ export function DashboardPage() {
                                             {
                                                 title: 'Status', dataIndex: 'payment_status', width: 100,
                                                 render: (v) => (
-                                                    <Tag color={v === 'paid' ? 'success' : v === 'partial' ? 'warning' : 'error'} style={{ borderRadius: 12, padding: '0 8px' }}>
-                                                        {v?.toUpperCase()}
-                                                    </Tag>
+                                                    <PaymentStatusBadge value={v} />
                                                 ),
                                             },
                                             { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 120, render: (v) => <Money value={v} /> },
@@ -292,14 +290,14 @@ export function DashboardPage() {
             key: 'alerts',
             label: (
                 <span style={{ fontWeight: 600, color: isAlertsHigh ? '#ef4444' : undefined }}>
-                    <AlertOutlined /> Alerts {isAlertsHigh && <Tag color="error" style={{ marginLeft: 8, borderRadius: 12 }}>!</Tag>}
+                    <AlertOutlined /> Alerts {isAlertsHigh && <PharmaBadge tone="danger" className="tab-alert-badge">!</PharmaBadge>}
                 </span>
             ),
             children: (
                 <div className="page-stack" style={{ marginTop: 16 }}>
                     <Row gutter={[16, 16]}>
                         <Col xs={24} xl={12}>
-                            <Card title="Low Stock Lines" loading={loading} extra={<Tag color="error" style={{ borderRadius: 12 }}>{stats.low_stock || 0} items</Tag>}>
+                            <Card title="Low Stock Lines" loading={loading} extra={<PharmaBadge tone="danger">{stats.low_stock || 0} items</PharmaBadge>}>
                                 <Table
                                     rowKey="id"
                                     size="small"
@@ -312,7 +310,7 @@ export function DashboardPage() {
                                             title: 'Stock vs Reorder', dataIndex: 'stock_on_hand', width: 220,
                                             render: (v, r) => (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                    <Tag color="error" style={{ borderRadius: 12, minWidth: 40, textAlign: 'center' }}>{(+v).toFixed(0)}</Tag>
+                                                    <PharmaBadge tone="danger" className="qty-alert-badge">{(+v).toFixed(0)}</PharmaBadge>
                                                     <span style={{ color: '#64748b', fontSize: 12 }}>/ {(+r.reorder_level).toFixed(0)} min</span>
                                                 </div>
                                             ),
@@ -323,7 +321,7 @@ export function DashboardPage() {
                             </Card>
                         </Col>
                         <Col xs={24} xl={12}>
-                            <Card title="Expiry Watch (next 90 days)" loading={loading} extra={<Tag color="warning" style={{ borderRadius: 12 }}>{stats.expiring_batches || 0} batches</Tag>}>
+                            <Card title="Expiry Watch (next 90 days)" loading={loading} extra={<PharmaBadge tone="warning">{stats.expiring_batches || 0} batches</PharmaBadge>}>
                                 <Table
                                     rowKey="id"
                                     size="small"
@@ -333,7 +331,7 @@ export function DashboardPage() {
                                     columns={[
                                         { title: 'Product', dataIndex: 'name', render: (v) => <strong style={{color: '#1e293b'}}>{v}</strong> },
                                         { title: 'Batch', dataIndex: 'batch_no', width: 110 },
-                                        { title: 'Expires', dataIndex: 'expires_at', width: 120, render: (v) => <span style={{ color: '#f59e0b', fontWeight: 600 }}>{v}</span> },
+                                        { title: 'Expires', dataIndex: 'expires_at', width: 120, render: (value) => <span style={{ color: '#f59e0b', fontWeight: 600 }}><DateText value={value} style="compact" /></span> },
                                         { title: 'Qty', dataIndex: 'quantity_available', align: 'right', width: 80 },
                                     ]}
                                     locale={{ emptyText: <Empty description="No batches expiring soon" /> }}
@@ -367,21 +365,9 @@ export function DashboardPage() {
 
                 <Row align="middle" gutter={[16, 16]}>
                     <Col xs={24} lg={14} style={{ zIndex: 1 }}>
-                        <Tag
-                            color="cyan"
-                            style={{
-                                marginBottom: 12,
-                                border: 0,
-                                background: 'rgba(255,255,255,0.2)',
-                                color: '#fff',
-                                borderRadius: 8,
-                                padding: '2px 10px',
-                                fontSize: 12,
-                                fontWeight: 600,
-                            }}
-                        >
+                        <PharmaBadge tone="hero" className="hero-badge">
                             <ShopOutlined /> Overview
-                        </Tag>
+                        </PharmaBadge>
                         <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px 0', color: '#fff', letterSpacing: '-0.01em' }}>
                             {appName}
                         </h1>
@@ -482,7 +468,7 @@ export function DashboardPage() {
                             options={medicalRepresentatives.map((m) => ({ value: m.id, label: m.name }))}
                         />
                     )}
-                    <DatePicker.RangePicker value={range} onChange={setRange} />
+                    <SmartDatePicker.RangePicker value={range} onChange={setRange} />
                     <Button icon={<ReloadOutlined />} onClick={loadSummary}>Refresh</Button>
                 </Space>
             </div>

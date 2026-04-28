@@ -1,6 +1,7 @@
 import React from 'react';
-import { Alert, Card, Col, Row, Steps, Tag, Timeline } from 'antd';
+import { Alert, Card, Col, Row, Steps, Timeline } from 'antd';
 import { PageHeader } from '../../core/components/PageHeader';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { endpoints } from '../../core/api/endpoints';
 import { useApi } from '../../core/hooks/useApi';
 
@@ -40,13 +41,15 @@ export function OnboardingPage() {
                         <Card title={module} className="feature-card">
                             <Timeline
                                 items={items.map((item) => ({
-                                    color: item.status === 'foundation' ? 'green' : 'blue',
+                                    color: item.status === 'ready' ? 'green' : 'blue',
                                     children: (
                                         <div>
                                             <strong>{item.name}</strong>
                                             <p>{item.description}</p>
-                                            <Tag color={item.status === 'foundation' ? 'green' : 'default'}>{item.status}</Tag>
-                                            {item.is_billable && <Tag color="gold">billable</Tag>}
+                                            <div className="badge-row">
+                                                <PharmaBadge tone={item.status === 'ready' ? 'success' : 'info'}>{item.status}</PharmaBadge>
+                                                {item.is_billable && <PharmaBadge tone="warning">billable</PharmaBadge>}
+                                            </div>
                                         </div>
                                     ),
                                 }))}

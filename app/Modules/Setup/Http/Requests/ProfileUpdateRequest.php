@@ -18,8 +18,8 @@ class ProfileUpdateRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->user()?->id)],
             'phone' => ['nullable', 'string', 'max:40'],
-            'current_password' => ['nullable', 'string'],
-            'password' => ['nullable', 'string', 'min:8', 'max:255'],
+            'current_password' => ['required_with:password', 'nullable', 'string'],
+            'password' => ['nullable', 'string', 'min:8', 'max:255', 'confirmed'],
         ];
     }
 }

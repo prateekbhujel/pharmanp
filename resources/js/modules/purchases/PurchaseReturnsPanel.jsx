@@ -1,16 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Radio, Select, Space } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Modal, Radio, Select, Space } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, PrinterOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
+import { DateText } from '../../core/components/DateText';
 import { Money } from '../../core/components/Money';
 import { ServerTable } from '../../core/components/ServerTable';
+import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
 import { appUrl } from '../../core/utils/url';
+import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
 const emptyReturnItem = {
     purchase_item_id: null,
@@ -71,14 +74,10 @@ export function PurchaseReturnsPanel() {
     const [saving, setSaving] = useState(false);
     const [view, setView] = useState('list');
     const [quickSupplierOpen, setQuickSupplierOpen] = useState(false);
-    const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
+    const [range, setRange] = useState([]);
     const table = useServerTable({
         endpoint: endpoints.purchaseReturns,
         defaultSort: { field: 'return_date', order: 'desc' },
-        defaultFilters: {
-            from: range[0].format('YYYY-MM-DD'),
-            to: range[1].format('YYYY-MM-DD'),
-        },
     });
     const supplierId = Form.useWatch('supplier_id', form);
     const returnMode = Form.useWatch('return_mode', form) || 'bill';
@@ -98,11 +97,7 @@ export function PurchaseReturnsPanel() {
     }, [supplierId]);
 
     useEffect(() => {
-        table.setFilters((filters) => ({
-            ...filters,
-            from: range?.[0]?.format('YYYY-MM-DD'),
-            to: range?.[1]?.format('YYYY-MM-DD'),
-        }));
+        table.setFilters((filters) => applyDateRangeFilter(filters, range));
     }, [range]);
 
     async function loadSuppliers() {
@@ -346,7 +341,7 @@ export function PurchaseReturnsPanel() {
 
     const listColumns = [
         { title: 'Return No', dataIndex: 'return_no', field: 'return_no', sorter: true, width: 170 },
-        { title: 'Date', dataIndex: 'return_date', field: 'return_date', sorter: true, width: 130 },
+        { title: 'Date', dataIndex: 'return_date', field: 'return_date', sorter: true, width: 130, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'Supplier', dataIndex: ['supplier', 'name'], width: 220 },
         { title: 'Purchase', dataIndex: ['purchase', 'purchase_no'], width: 180, render: (value) => value || 'Manual' },
         { title: 'Total', dataIndex: 'grand_total', field: 'grand_total', sorter: true, align: 'right', width: 130, render: (value) => <Money value={value} /> },
@@ -356,7 +351,7 @@ export function PurchaseReturnsPanel() {
             width: 240,
             render: (_, row) => (
                 <Space>
-                    <Button icon={<EditOutlined />} onClick={() => editReturn(row)}>Edit</Button>
+                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => editReturn(row)} />
                     <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/purchase-returns/${row.id}/print`), '_blank')}>Print</Button>
                     <Button danger icon={<DeleteOutlined />} onClick={() => deleteReturn(row)} />
                 </Space>
@@ -390,7 +385,7 @@ export function PurchaseReturnsPanel() {
                                 ]} />
                             </Form.Item>
                             <Form.Item name="return_date" label="Return Date" rules={[{ required: true }]}>
-                                <DatePicker className="full-width" />
+                                <SmartDatePicker className="full-width" />
                             </Form.Item>
                             <Form.Item name="notes" label="Notes"><Input /></Form.Item>
                         </div>
@@ -444,7 +439,7 @@ export function PurchaseReturnsPanel() {
                             ]}
                             onChange={(return_mode) => table.setFilters((filters) => ({ ...filters, return_mode }))}
                         />
-                        <DatePicker.RangePicker value={range} onChange={setRange} />
+                        <SmartDatePicker.RangePicker value={range} onChange={setRange} />
                         <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                     </div>
                     <ServerTable table={table} columns={listColumns} />

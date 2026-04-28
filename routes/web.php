@@ -7,7 +7,6 @@ use App\Modules\Accounting\Http\Controllers\ExpenseController;
 use App\Modules\Accounting\Http\Controllers\PaymentController;
 use App\Modules\Accounting\Http\Controllers\VoucherController;
 use App\Modules\Core\Http\Controllers\DashboardController;
-use App\Modules\Core\Http\Controllers\SystemUpdateController;
 use App\Modules\ImportExport\Http\Controllers\ExportController;
 use App\Modules\ImportExport\Http\Controllers\ImportWizardController;
 use App\Modules\ImportExport\Http\Controllers\PurchaseOcrController;
@@ -74,7 +73,6 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/me', CurrentUserController::class)->name('me');
         Route::get('/dashboard/summary', DashboardController::class)->name('dashboard.summary');
         Route::get('/search', \App\Modules\Core\Http\Controllers\GlobalSearchController::class)->name('search');
-        Route::get('/system/update-check', SystemUpdateController::class)->name('system.update-check');
         Route::get('/setup/features', FeatureCatalogController::class)->name('setup.features');
         Route::get('/setup/branding', [BrandingController::class, 'show'])->name('setup.branding.show');
         Route::post('/setup/branding', [BrandingController::class, 'update'])->name('setup.branding.store');
@@ -88,6 +86,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/setup/users', [UserManagementController::class, 'index'])->name('setup.users.index');
         Route::post('/setup/users', [UserManagementController::class, 'store'])->name('setup.users.store');
         Route::put('/setup/users/{user}', [UserManagementController::class, 'update'])->name('setup.users.update');
+        Route::patch('/setup/users/{user}/status', [UserManagementController::class, 'toggleStatus'])->name('setup.users.status');
         Route::delete('/setup/users/{user}', [UserManagementController::class, 'destroy'])->name('setup.users.destroy');
 
         Route::get('/inventory/products/meta', [ProductController::class, 'meta'])->name('inventory.products.meta');
@@ -144,7 +143,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
 
         // MR branch-level product sales breakdown
         Route::get('/mr/branch-sales', MrBranchSalesController::class)->name('mr.branch-sales');
-        Route::apiResource('accounting/vouchers', VoucherController::class)->only(['index', 'store']);
+        Route::apiResource('accounting/vouchers', VoucherController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
 
         Route::get('/accounting/expenses', [ExpenseController::class, 'index'])->name('accounting.expenses.index');
         Route::post('/accounting/expenses', [ExpenseController::class, 'store'])->name('accounting.expenses.store');
@@ -152,6 +151,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
 
         Route::get('/accounting/payments', [PaymentController::class, 'index'])->name('accounting.payments.index');
         Route::post('/accounting/payments', [PaymentController::class, 'store'])->name('accounting.payments.store');
+        Route::delete('/accounting/payments/{payment}', [PaymentController::class, 'destroy'])->name('accounting.payments.destroy');
         Route::get('/accounting/payments/outstanding-bills', [PaymentController::class, 'outstandingBills'])->name('accounting.payments.outstanding-bills');
 
         Route::get('/sales/returns', [SalesReturnController::class, 'index'])->name('sales.returns.index');
@@ -165,6 +165,7 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::get('/settings/dropdown-options', [DropdownOptionController::class, 'index'])->name('settings.dropdown-options.index');
         Route::post('/settings/dropdown-options', [DropdownOptionController::class, 'store'])->name('settings.dropdown-options.store');
         Route::put('/settings/dropdown-options/{dropdownOption}', [DropdownOptionController::class, 'update'])->name('settings.dropdown-options.update');
+        Route::patch('/settings/dropdown-options/{dropdownOption}/status', [DropdownOptionController::class, 'toggleStatus'])->name('settings.dropdown-options.status');
         Route::delete('/settings/dropdown-options/{dropdownOption}', [DropdownOptionController::class, 'destroy'])->name('settings.dropdown-options.destroy');
 
         Route::get('/settings/admin', [SettingsAdminController::class, 'show'])->name('settings.admin.show');
@@ -213,6 +214,5 @@ Route::middleware(['installed', 'auth'])->group(function () {
     Route::get('/sales/invoices/{invoice}/print', [SalesInvoiceController::class, 'print'])->name('sales.invoices.print');
     Route::get('/sales/invoices/{invoice}/pdf', [SalesInvoiceController::class, 'pdf'])->name('sales.invoices.pdf');
 
-    Route::get('/admin/system/update-check', SpaController::class)->name('system.update-check');
     Route::get('/app/{any?}', SpaController::class)->where('any', '.*')->name('app');
 });

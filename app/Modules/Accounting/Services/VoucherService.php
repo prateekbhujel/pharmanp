@@ -14,7 +14,30 @@ class VoucherService
 {
     public function create(array $data, User $user): Voucher
     {
-        return DB::transaction(function () use ($data, $user) {
+        return $this->persist($data, $user);
+    }
+
+    public function update(Voucher $voucher, array $data, User $user): Voucher
+    {
+        return $this->persist($data, $user, $voucher);
+    }
+
+    public function delete(Voucher $voucher): void
+    {
+        DB::transaction(function () use ($voucher) {
+            AccountTransaction::query()
+                ->where('source_type', 'voucher')
+                ->where('source_id', $voucher->id)
+                ->delete();
+
+            $voucher->entries()->delete();
+            $voucher->delete();
+        });
+    }
+
+    private function persist(array $data, User $user, ?Voucher $voucher = null): Voucher
+    {
+        return DB::transaction(function () use ($data, $user, $voucher) {
             $debit = collect($data['entries'])->where('entry_type', 'debit')->sum(fn ($entry) => (float) $entry['amount']);
             $credit = collect($data['entries'])->where('entry_type', 'credit')->sum(fn ($entry) => (float) $entry['amount']);
 
@@ -22,17 +45,33 @@ class VoucherService
                 throw ValidationException::withMessages(['entries' => 'Voucher debit and credit totals must match.']);
             }
 
-            $voucher = Voucher::query()->create([
-                'tenant_id' => $user->tenant_id,
-                'company_id' => $user->company_id,
-                'voucher_no' => $this->nextNumber(),
-                'voucher_date' => $data['voucher_date'],
-                'voucher_type' => $data['voucher_type'],
-                'total_amount' => round($debit, 2),
-                'notes' => $data['notes'] ?? null,
-                'created_by' => $user->id,
-                'updated_by' => $user->id,
-            ]);
+            if ($voucher) {
+                AccountTransaction::query()
+                    ->where('source_type', 'voucher')
+                    ->where('source_id', $voucher->id)
+                    ->delete();
+
+                $voucher->entries()->delete();
+                $voucher->update([
+                    'voucher_date' => $data['voucher_date'],
+                    'voucher_type' => $data['voucher_type'],
+                    'total_amount' => round($debit, 2),
+                    'notes' => $data['notes'] ?? null,
+                    'updated_by' => $user->id,
+                ]);
+            } else {
+                $voucher = Voucher::query()->create([
+                    'tenant_id' => $user->tenant_id,
+                    'company_id' => $user->company_id,
+                    'voucher_no' => $this->nextNumber(),
+                    'voucher_date' => $data['voucher_date'],
+                    'voucher_type' => $data['voucher_type'],
+                    'total_amount' => round($debit, 2),
+                    'notes' => $data['notes'] ?? null,
+                    'created_by' => $user->id,
+                    'updated_by' => $user->id,
+                ]);
+            }
 
             foreach (array_values($data['entries']) as $index => $entry) {
                 $this->assertParty($entry['party_type'] ?? null, $entry['party_id'] ?? null);

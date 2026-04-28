@@ -9,15 +9,22 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
     const [state, setState] = useState({ loading: true, user: null, branding: null });
 
-    useEffect(() => {
+    const load = () => {
         http.get(endpoints.me)
             .then(({ data }) => setState({ loading: false, user: data.data, branding: data.branding }))
             .catch(() => {
                 window.location.href = appUrl('/login');
             });
+    };
+
+    useEffect(() => {
+        load();
     }, []);
 
-    const value = useMemo(() => state, [state]);
+    const value = useMemo(() => ({
+        ...state,
+        reload: load,
+    }), [state]);
 
     if (state.loading) {
         return (
