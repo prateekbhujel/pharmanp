@@ -2,12 +2,17 @@
 
 namespace App\Modules\Purchase\Services;
 
+use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Purchase\Models\PurchaseOrder;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseOrderService
 {
+    public function __construct(
+        private readonly DocumentNumberService $numbers,
+    ) {}
+
     public function create(array $data, User $user): PurchaseOrder
     {
         return DB::transaction(function () use ($data, $user) {
@@ -69,8 +74,6 @@ class PurchaseOrderService
 
     private function nextNumber(): string
     {
-        $nextId = ((int) DB::table('purchase_orders')->lockForUpdate()->max('id')) + 1;
-
-        return 'PO-'.now()->format('Ymd').'-'.str_pad((string) $nextId, 5, '0', STR_PAD_LEFT);
+        return $this->numbers->next('purchase_order', 'purchase_orders');
     }
 }

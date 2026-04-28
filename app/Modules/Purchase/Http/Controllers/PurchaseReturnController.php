@@ -34,6 +34,7 @@ class PurchaseReturnController extends Controller
         $query = PurchaseReturn::query()
             ->with(['supplier:id,name', 'purchase:id,purchase_no,supplier_invoice_no'])
             ->withCount('items')
+            ->when(request()->boolean('deleted'), fn (Builder $builder) => $builder->onlyTrashed())
             ->when($search !== '', function (Builder $builder) use ($search) {
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('return_no', 'like', '%'.$search.'%')

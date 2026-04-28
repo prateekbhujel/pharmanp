@@ -2,6 +2,7 @@
 
 namespace App\Modules\Purchase\Services;
 
+use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Models\Batch;
@@ -17,6 +18,7 @@ class PurchaseEntryService
     public function __construct(
         private readonly StockMovementService $stock,
         private readonly AccountTransactionPostingService $accounts,
+        private readonly DocumentNumberService $numbers,
     ) {}
 
     public function create(array $data, User $user): Purchase
@@ -193,9 +195,7 @@ class PurchaseEntryService
 
     private function nextNumber(): string
     {
-        $nextId = ((int) DB::table('purchases')->lockForUpdate()->max('id')) + 1;
-
-        return 'PUR-'.now()->format('Ymd').'-'.str_pad((string) $nextId, 5, '0', STR_PAD_LEFT);
+        return $this->numbers->next('purchase', 'purchases');
     }
 
     private function journalEntries(Purchase $purchase, float $paidAmount): array

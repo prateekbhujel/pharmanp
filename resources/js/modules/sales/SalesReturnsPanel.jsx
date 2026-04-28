@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Switch } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, PrinterOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { DateText } from '../../core/components/DateText';
 import { Money } from '../../core/components/Money';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { ServerTable } from '../../core/components/ServerTable';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
@@ -82,6 +83,7 @@ export function SalesReturnsPanel() {
     });
     const customerId = Form.useWatch('customer_id', form);
     const returnMode = Form.useWatch('return_mode', form) || 'invoice';
+    const deletedMode = Boolean(table.filters.deleted);
 
     useEffect(() => {
         form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice' });
@@ -382,11 +384,15 @@ export function SalesReturnsPanel() {
             fixed: 'right',
             width: 240,
             render: (_, row) => (
-                <Space>
-                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => editReturn(row)} />
-                    <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/sales/returns/${row.id}/print`), '_blank')}>Print</Button>
-                    <Button danger icon={<DeleteOutlined />} onClick={() => deleteReturn(row)} />
-                </Space>
+                row.deleted_at ? (
+                    <PharmaBadge tone="deleted">Deleted</PharmaBadge>
+                ) : (
+                    <Space>
+                        <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => editReturn(row)} />
+                        <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/sales/returns/${row.id}/print`), '_blank')}>Print</Button>
+                        <Button danger icon={<DeleteOutlined />} onClick={() => deleteReturn(row)} />
+                    </Space>
+                )
             ),
         },
     ];
@@ -468,11 +474,20 @@ export function SalesReturnsPanel() {
                         <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search return, customer or invoice" allowClear />
                         <Select
                             allowClear
+                            showSearch
+                            optionFilterProp="label"
                             placeholder="Customer"
                             options={customers.map((item) => ({ value: item.id, label: item.name }))}
                             onChange={(customer_id) => table.setFilters((filters) => ({ ...filters, customer_id }))}
                         />
                         <SmartDatePicker.RangePicker value={range} onChange={setRange} />
+                        <label className="table-switch">
+                            <Switch
+                                checked={deletedMode}
+                                onChange={(deleted) => table.setFilters((filters) => ({ ...filters, deleted: deleted ? 1 : undefined }))}
+                            />
+                            <span>View Deleted</span>
+                        </label>
                         <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                     </div>
                     <ServerTable table={table} columns={listColumns} />

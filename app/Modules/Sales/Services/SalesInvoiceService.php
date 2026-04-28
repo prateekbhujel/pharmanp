@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sales\Services;
 
+use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Models\Batch;
@@ -17,6 +18,7 @@ class SalesInvoiceService
     public function __construct(
         private readonly StockMovementService $stock,
         private readonly AccountTransactionPostingService $accounts,
+        private readonly DocumentNumberService $numbers,
     ) {}
 
     public function create(array $data, User $user): SalesInvoice
@@ -170,9 +172,7 @@ class SalesInvoiceService
 
     private function nextNumber(): string
     {
-        $nextId = ((int) DB::table('sales_invoices')->lockForUpdate()->max('id')) + 1;
-
-        return 'SI-'.now()->format('Ymd').'-'.str_pad((string) $nextId, 5, '0', STR_PAD_LEFT);
+        return $this->numbers->next('sales_invoice', 'sales_invoices');
     }
 
     private function journalEntries(SalesInvoice $invoice, float $paidAmount): array

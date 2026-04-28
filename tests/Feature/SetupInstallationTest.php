@@ -41,8 +41,8 @@ class SetupInstallationTest extends TestCase
             'admin' => [
                 'name' => 'Pratik Admin',
                 'email' => 'pratik@admin.com',
-                'password' => 'done',
-                'password_confirmation' => 'done',
+                'password' => 'Done@12345',
+                'password_confirmation' => 'Done@12345',
             ],
         ];
 
@@ -103,8 +103,8 @@ class SetupInstallationTest extends TestCase
             'admin' => [
                 'name' => 'Upload Admin',
                 'email' => 'upload@admin.com',
-                'password' => 'done',
-                'password_confirmation' => 'done',
+                'password' => 'Done@12345',
+                'password_confirmation' => 'Done@12345',
             ],
         ], [
             'Accept' => 'application/json',

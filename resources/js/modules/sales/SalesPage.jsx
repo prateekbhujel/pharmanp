@@ -51,8 +51,10 @@ export function SalesPage() {
     const [lastPrintUrl, setLastPrintUrl] = useState(null);
     const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
     const [quickProductOpen, setQuickProductOpen] = useState(false);
+    const [quickMrOpen, setQuickMrOpen] = useState(false);
     const [qrVisible, setQrVisible] = useState(false);
     const [customerForm] = Form.useForm();
+    const [mrForm] = Form.useForm();
     const invoiceTable = useServerTable({
         endpoint: endpoints.salesInvoices,
         defaultSort: { field: 'invoice_date', order: 'desc' },
@@ -223,6 +225,20 @@ export function SalesPage() {
         }
     }
 
+    async function submitMr(values) {
+        try {
+            const { data } = await http.post(endpoints.mrRepresentatives, { ...values, is_active: true });
+            await loadMedicalRepresentatives();
+            setMedicalRepresentativeId(data.data.id);
+            mrForm.resetFields();
+            setQuickMrOpen(false);
+            notification.success({ message: 'MR added' });
+        } catch (error) {
+            mrForm.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name, errors })));
+            notification.error({ message: 'MR save failed', description: error?.response?.data?.message || error.message });
+        }
+    }
+
     const columns = [
         {
             key: 'product',
@@ -284,6 +300,8 @@ export function SalesPage() {
                         <BarcodeInput id="pos-barcode-input" value={barcode} onChange={setBarcode} onScan={scan} />
                         <Select
                             allowClear
+                            showSearch
+                            optionFilterProp="label"
                             placeholder="Walk-in Customer"
                             value={customerId}
                             onChange={setCustomerId}
@@ -297,10 +315,18 @@ export function SalesPage() {
                         />
                         <Select
                             allowClear
+                            showSearch
+                            optionFilterProp="label"
                             placeholder="MR"
                             value={medicalRepresentativeId}
                             onChange={setMedicalRepresentativeId}
                             options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
+                            dropdownRender={(menu) => (
+                                <>
+                                    {menu}
+                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickMrOpen(true)}>Quick add MR</Button>
+                                </>
+                            )}
                         />
                         <SmartDatePicker value={invoiceDate} onChange={setInvoiceDate} className="full-width" placeholder="Invoice Date" />
                         <InputNumber id="pos-paid-amount" min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
@@ -367,6 +393,8 @@ export function SalesPage() {
                         <Input.Search value={invoiceTable.search} onChange={(event) => invoiceTable.setSearch(event.target.value)} placeholder="Search invoice or customer" allowClear />
                         <Select
                             allowClear
+                            showSearch
+                            optionFilterProp="label"
                             placeholder="Payment"
                             value={invoiceTable.filters.payment_status}
                             onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, payment_status: value }))}
@@ -374,6 +402,8 @@ export function SalesPage() {
                         />
                         <Select
                             allowClear
+                            showSearch
+                            optionFilterProp="label"
                             placeholder="Customer"
                             value={invoiceTable.filters.customer_id}
                             onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, customer_id: value }))}
@@ -381,6 +411,8 @@ export function SalesPage() {
                         />
                         <Select
                             allowClear
+                            showSearch
+                            optionFilterProp="label"
                             placeholder="MR"
                             value={invoiceTable.filters.medical_representative_id}
                             onChange={(value) => invoiceTable.setFilters((current) => ({ ...current, medical_representative_id: value }))}
@@ -415,6 +447,26 @@ export function SalesPage() {
                         <Form.Item name="email" label="Email"><Input /></Form.Item>
                     </div>
                     <Form.Item name="address" label="Address"><Input /></Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title="Quick Add MR"
+                open={quickMrOpen}
+                onCancel={() => setQuickMrOpen(false)}
+                onOk={() => mrForm.submit()}
+                destroyOnClose
+            >
+                <Form form={mrForm} layout="vertical" onFinish={submitMr}>
+                    <Form.Item name="name" label="MR Name" rules={[{ required: true }]}><Input autoFocus /></Form.Item>
+                    <div className="form-grid">
+                        <Form.Item name="territory" label="Territory"><Input /></Form.Item>
+                        <Form.Item name="monthly_target" label="Monthly Target"><InputNumber min={0} className="full-width" /></Form.Item>
+                    </div>
+                    <div className="form-grid">
+                        <Form.Item name="phone" label="Phone"><Input /></Form.Item>
+                        <Form.Item name="email" label="Email"><Input /></Form.Item>
+                    </div>
                 </Form>
             </Modal>
 

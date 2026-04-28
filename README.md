@@ -31,12 +31,7 @@ For a one-command local install after cloning into `htdocs/pharmanp`:
 bash scripts/install-local.sh
 ```
 
-Default setup form values are filled for local speed:
-
-- Admin email: `pratik@admin.com`
-- Admin password: `done`
-
-Change them before production handover.
+The setup wizard asks for the first admin account during installation. Do not ship a fixed admin password with a production handover.
 
 ## Frontend Development
 

@@ -77,7 +77,7 @@ function RootApp() {
     };
 
     return (
-        <ConfigProvider theme={dynamicTheme}>
+        <ConfigProvider theme={dynamicTheme} select={{ showSearch: true }}>
             <AntApp>
                 {mode === 'setup' ? (
                     <SetupWizard />

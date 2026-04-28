@@ -459,9 +459,11 @@ export function AppShell() {
         { key: 'logout', label: 'Sign Out', danger: true, onClick: logout },
     ];
     const timeLabel = formatCalendarDate(now, brandingData?.calendar_type || 'ad', {
-        style: 'medium',
+        style: brandingData?.calendar_type === 'bs' ? 'medium-long' : 'medium',
         includeWeekday: true,
         includeTime: true,
+        includeSeconds: false,
+        includeEra: false,
     });
 
     return (

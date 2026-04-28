@@ -12,6 +12,27 @@ import { useAuth } from '../../core/auth/AuthProvider';
 import { useBranding } from '../../core/context/BrandingContext';
 import { FiscalYearPanel } from './FiscalYearPanel';
 
+const documentNumberTypes = [
+    ['purchase_order', 'Purchase Order'],
+    ['purchase', 'Purchase Bill'],
+    ['sales_invoice', 'Sales Invoice'],
+    ['voucher', 'Accounting Voucher'],
+];
+
+const documentDateFormatOptions = [
+    { value: 'Ymd', label: 'Daily: 20260428' },
+    { value: 'Ym', label: 'Monthly: 202604' },
+    { value: 'Y', label: 'Yearly: 2026' },
+    { value: 'none', label: 'No date' },
+];
+
+const documentSeparatorOptions = [
+    { value: '-', label: 'Dash (-)' },
+    { value: '/', label: 'Slash (/)' },
+    { value: '.', label: 'Dot (.)' },
+    { value: '', label: 'None' },
+];
+
 function brandingPayload(values) {
     const payload = new FormData();
 
@@ -250,8 +271,8 @@ export function SettingsPage() {
                                             block
                                             size="large"
                                             options={[
-                                                { label: 'AD (Gregorian)', value: 'ad' },
-                                                { label: 'BS (Nepali)', value: 'bs' },
+                                                { label: 'Gregorian', value: 'ad' },
+                                                { label: 'Nepali', value: 'bs' },
                                             ]}
                                         />
                                     </Form.Item>
@@ -296,6 +317,30 @@ export function SettingsPage() {
                                 <Form.Item name="low_stock_threshold" label="Low Stock Threshold">
                                     <InputNumber min={1} className="full-width" />
                                 </Form.Item>
+                                <Card size="small" title="Document Numbering" style={{ marginBottom: 16 }}>
+                                    <div className="document-number-grid">
+                                        {documentNumberTypes.map(([key, label]) => (
+                                            <Card size="small" key={key} title={label} className="document-number-card">
+                                                <div className="form-grid">
+                                                    <Form.Item name={['document_numbering', key, 'prefix']} label="Prefix">
+                                                        <Input maxLength={12} placeholder="PO" />
+                                                    </Form.Item>
+                                                    <Form.Item name={['document_numbering', key, 'date_format']} label="Date Part">
+                                                        <Select options={documentDateFormatOptions} />
+                                                    </Form.Item>
+                                                </div>
+                                                <div className="form-grid">
+                                                    <Form.Item name={['document_numbering', key, 'separator']} label="Separator">
+                                                        <Select options={documentSeparatorOptions} />
+                                                    </Form.Item>
+                                                    <Form.Item name={['document_numbering', key, 'padding']} label="Sequence Padding">
+                                                        <InputNumber min={1} max={12} className="full-width" />
+                                                    </Form.Item>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </Card>
                                 <Card size="small" title="SMTP / Mail Settings" style={{ marginBottom: 16 }}>
                                     <div className="form-grid">
                                         <Form.Item name="smtp_host" label="SMTP Host"><Input /></Form.Item>
@@ -303,7 +348,13 @@ export function SettingsPage() {
                                     </div>
                                     <div className="form-grid">
                                         <Form.Item name="smtp_username" label="Username"><Input /></Form.Item>
-                                        <Form.Item name="smtp_password" label="Password"><Input.Password /></Form.Item>
+                                        <Form.Item
+                                            name="smtp_password"
+                                            label="Password"
+                                            extra={adminForm.getFieldValue('smtp_password_set') ? 'Password is saved. Type a new one only if you want to replace it.' : undefined}
+                                        >
+                                            <Input.Password autoComplete="new-password" placeholder={adminForm.getFieldValue('smtp_password_set') ? 'Saved password hidden' : undefined} />
+                                        </Form.Item>
                                     </div>
                                     <div className="form-grid">
                                         <Form.Item name="smtp_encryption" label="Encryption"><Select allowClear options={[{ value: 'tls', label: 'TLS' }, { value: 'ssl', label: 'SSL' }]} /></Form.Item>

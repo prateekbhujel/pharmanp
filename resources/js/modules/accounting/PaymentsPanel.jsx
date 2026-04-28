@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Table } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Switch, Table } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DateText } from '../../core/components/DateText';
@@ -23,6 +23,7 @@ export function PaymentsPanel() {
     const [editingId, setEditingId] = useState(null);
     const [range, setRange] = useState([]);
     const [direction, setDirection] = useState(undefined);
+    const [deletedMode, setDeletedMode] = useState(false);
     const [outstandingBills, setOutstandingBills] = useState([]);
     const [allocations, setAllocations] = useState([]);
     const [customers, setCustomers] = useState([]);
@@ -30,7 +31,7 @@ export function PaymentsPanel() {
     const [quickPaymentModeOpen, setQuickPaymentModeOpen] = useState(false);
     const [form] = Form.useForm();
 
-    useEffect(() => { loadPayments(1); loadParties(); }, [range, direction]);
+    useEffect(() => { loadPayments(1); loadParties(); }, [range, direction, deletedMode]);
 
     async function loadParties() {
         const [{ data: c }, { data: s }] = await Promise.all([
@@ -47,6 +48,7 @@ export function PaymentsPanel() {
             const { data } = await http.get(endpoints.payments, {
                 params: {
                     page, per_page: meta.per_page, direction,
+                    deleted: deletedMode ? 1 : undefined,
                     ...dateRangeParams(range),
                 },
             });
@@ -131,10 +133,14 @@ export function PaymentsPanel() {
         { title: 'Bills', dataIndex: 'linked_bills', width: 70, align: 'center' },
         {
             title: 'Action', width: 112, fixed: 'right', render: (_, record) => (
-                <Space className="table-action-buttons">
-                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openDrawer(record)} />
-                    <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => deletePayment(record)} />
-                </Space>
+                record.deleted_at ? (
+                    <PharmaBadge tone="deleted">Deleted</PharmaBadge>
+                ) : (
+                    <Space className="table-action-buttons">
+                        <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openDrawer(record)} />
+                        <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => deletePayment(record)} />
+                    </Space>
+                )
             ),
         },
     ];
@@ -154,6 +160,10 @@ export function PaymentsPanel() {
                         ]}
                     />
                     <SmartDatePicker.RangePicker value={range} onChange={setRange} />
+                    <label className="table-switch">
+                        <Switch checked={deletedMode} onChange={setDeletedMode} />
+                        <span>View Deleted</span>
+                    </label>
                     <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()}>New Payment</Button>
                 </div>
                 <Table rowKey="id" loading={loading} dataSource={rows} columns={columns}

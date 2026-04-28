@@ -2,9 +2,11 @@
 
 namespace App\Modules\Setup\Http\Controllers;
 
+use App\Core\Services\DocumentNumberService;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
@@ -23,11 +25,13 @@ class SettingsAdminController
                 'smtp_host' => Setting::getValue('smtp_host', config('mail.mailers.smtp.host')),
                 'smtp_port' => Setting::getValue('smtp_port', config('mail.mailers.smtp.port')),
                 'smtp_username' => Setting::getValue('smtp_username'),
-                'smtp_password' => Setting::getValue('smtp_password'),
+                'smtp_password' => '',
+                'smtp_password_set' => Setting::hasValue('smtp_password'),
                 'smtp_encryption' => Setting::getValue('smtp_encryption', config('mail.mailers.smtp.encryption')),
                 'mail_from_address' => Setting::getValue('mail_from_address', config('mail.from.address')),
                 'mail_from_name' => Setting::getValue('mail_from_name', config('mail.from.name')),
                 'notification_email' => Setting::getValue('notification_email'),
+                'document_numbering' => DocumentNumberService::mergedSettings(),
             ],
         ]);
     }
@@ -49,7 +53,25 @@ class SettingsAdminController
             'mail_from_address' => ['nullable', 'email'],
             'mail_from_name' => ['nullable', 'string', 'max:255'],
             'notification_email' => ['nullable', 'email'],
+            'document_numbering' => ['nullable', 'array'],
+            'document_numbering.*.prefix' => ['nullable', 'string', 'max:12'],
+            'document_numbering.*.date_format' => ['nullable', 'in:Ymd,Ym,Y,none'],
+            'document_numbering.*.separator' => ['nullable', Rule::in(['-', '/', '.', ''])],
+            'document_numbering.*.padding' => ['nullable', 'integer', 'min:1', 'max:12'],
         ]);
+
+        if (array_key_exists('smtp_password', $validated)) {
+            if (! empty($validated['smtp_password'])) {
+                Setting::putSecretValue('smtp_password', $validated['smtp_password']);
+            }
+
+            unset($validated['smtp_password']);
+        }
+
+        if (isset($validated['document_numbering'])) {
+            Setting::putValue('document_numbering', $this->normalizeDocumentNumbering($validated['document_numbering']));
+            unset($validated['document_numbering']);
+        }
 
         foreach ($validated as $key => $value) {
             Setting::putValue($key, $value);
@@ -92,5 +114,21 @@ class SettingsAdminController
         return response()->json([
             'message' => 'Test mail sent to ' . $recipient . '.',
         ]);
+    }
+
+    private function normalizeDocumentNumbering(array $rows): array
+    {
+        return collect(DocumentNumberService::defaults())
+            ->mapWithKeys(function (array $defaults, string $key) use ($rows) {
+                $row = is_array($rows[$key] ?? null) ? $rows[$key] : [];
+
+                return [$key => [
+                    'prefix' => $row['prefix'] ?? $defaults['prefix'],
+                    'date_format' => $row['date_format'] ?? $defaults['date_format'],
+                    'separator' => $row['separator'] ?? $defaults['separator'],
+                    'padding' => (int) ($row['padding'] ?? $defaults['padding']),
+                ]];
+            })
+            ->all();
     }
 }

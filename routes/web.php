@@ -154,11 +154,13 @@ Route::middleware(['installed', 'auth'])->group(function () {
         Route::delete('/accounting/payments/{payment}', [PaymentController::class, 'destroy'])->name('accounting.payments.destroy');
         Route::get('/accounting/payments/outstanding-bills', [PaymentController::class, 'outstandingBills'])->name('accounting.payments.outstanding-bills');
 
-        Route::get('/sales/returns', [SalesReturnController::class, 'index'])->name('sales.returns.index');
-        Route::post('/sales/returns', [SalesReturnController::class, 'store'])->name('sales.returns.store');
-        Route::delete('/sales/returns/{salesReturn}', [SalesReturnController::class, 'destroy'])->name('sales.returns.destroy');
         Route::get('/sales/returns/invoice-options', [SalesReturnController::class, 'invoiceOptions'])->name('sales.returns.invoice-options');
         Route::get('/sales/returns/invoices/{invoice}/items', [SalesReturnController::class, 'invoiceItems'])->name('sales.returns.invoice-items');
+        Route::get('/sales/returns', [SalesReturnController::class, 'index'])->name('sales.returns.index');
+        Route::post('/sales/returns', [SalesReturnController::class, 'store'])->name('sales.returns.store');
+        Route::get('/sales/returns/{salesReturn}', [SalesReturnController::class, 'show'])->name('sales.returns.show');
+        Route::put('/sales/returns/{salesReturn}', [SalesReturnController::class, 'update'])->name('sales.returns.update');
+        Route::delete('/sales/returns/{salesReturn}', [SalesReturnController::class, 'destroy'])->name('sales.returns.destroy');
 
         Route::get('/customers/{customer}/ledger', [CustomerLedgerController::class, 'show'])->name('customers.ledger');
 

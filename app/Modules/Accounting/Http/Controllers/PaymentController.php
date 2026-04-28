@@ -23,6 +23,7 @@ class PaymentController
     {
         $query = Payment::query()
             ->with(['customer', 'supplier', 'allocations', 'paymentModeOption:id,name,data'])
+            ->when($request->boolean('deleted'), fn ($builder) => $builder->onlyTrashed())
             ->latest('payment_date')
             ->latest('id');
 
@@ -73,6 +74,7 @@ class PaymentController
                 'reference_no' => $payment->reference_no,
                 'notes' => $payment->notes,
                 'linked_bills' => $payment->allocations->count(),
+                'deleted_at' => $payment->deleted_at?->toISOString(),
             ]),
             'meta' => [
                 'current_page' => $paginated->currentPage(),
@@ -323,7 +325,7 @@ class PaymentController
                 number_format((float) $allocation->allocated_amount, 2, '.', ''),
                 2
             );
-            $bill->paid_amount    = max('0.00', $newPaid);
+            $bill->paid_amount    = number_format(max(0, (float) $newPaid), 2, '.', '');
             $bill->payment_status = $this->resolveBillPaymentStatus($bill, $allocation->bill_type);
             $bill->save();
         }

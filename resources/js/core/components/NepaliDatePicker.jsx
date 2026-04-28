@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Button, Card, Dropdown, Input, Typography } from 'antd';
+import { Button, Card, Dropdown, Input, Select } from 'antd';
 import { CalendarOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -7,6 +7,7 @@ import {
     bsData,
     bsToAd,
     formatBsDate,
+    isNepaliHolidayDate,
     nepaliDaysShort,
     nepaliMonthsFull,
 } from '../utils/calendar';
@@ -29,6 +30,15 @@ export function NepaliDatePicker({
     });
 
     const selectedBs = value ? adToBs(dayjs(value)) : null;
+    const supportedYears = useMemo(() => Object.keys(bsData).map(Number), []);
+    const monthOptions = useMemo(
+        () => nepaliMonthsFull.map((label, index) => ({ value: index, label })),
+        [],
+    );
+    const yearOptions = useMemo(
+        () => supportedYears.map((year) => ({ value: year, label: String(year) })),
+        [supportedYears],
+    );
 
     function handlePrevMonth() {
         setViewDate((prev) => {
@@ -38,6 +48,10 @@ export function NepaliDatePicker({
             if (month < 0) {
                 month = 11;
                 year -= 1;
+            }
+
+            if (!bsData[year]) {
+                return prev;
             }
 
             return { year, month };
@@ -52,6 +66,10 @@ export function NepaliDatePicker({
             if (month > 11) {
                 month = 0;
                 year += 1;
+            }
+
+            if (!bsData[year]) {
+                return prev;
             }
 
             return { year, month };
@@ -75,51 +93,79 @@ export function NepaliDatePicker({
         return grid;
     }, [viewDate]);
 
+    const viewAdRange = useMemo(() => {
+        const daysInMonth = (bsData[viewDate.year] || [])[viewDate.month] || 30;
+        const startAd = bsToAd(viewDate.year, viewDate.month, 1);
+        const endAd = bsToAd(viewDate.year, viewDate.month, daysInMonth);
+
+        return `${startAd.format('MMM D')} - ${endAd.format('MMM D, YYYY')}`;
+    }, [viewDate]);
+
     const dropdownContent = (
-        <Card className="nepali-datepicker-card" size="small" style={{ width: 280, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-            <div className="calendar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <Card className="nepali-datepicker-card" size="small">
+            <div className="nepali-calendar-header">
                 <Button type="text" size="small" icon={<LeftOutlined />} onClick={handlePrevMonth} />
-                <Typography.Text strong>{nepaliMonthsFull[viewDate.month]} {viewDate.year}</Typography.Text>
+                <Select
+                    size="small"
+                    value={viewDate.month}
+                    options={monthOptions}
+                    onChange={(month) => setViewDate((current) => ({ ...current, month }))}
+                />
+                <Select
+                    size="small"
+                    showSearch
+                    optionFilterProp="label"
+                    value={viewDate.year}
+                    options={yearOptions}
+                    onChange={(year) => setViewDate((current) => ({ ...current, year }))}
+                />
                 <Button type="text" size="small" icon={<RightOutlined />} onClick={handleNextMonth} />
             </div>
+            <div className="nepali-calendar-subtitle">{viewAdRange}</div>
 
-            <div className="calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-                {nepaliDaysShort.map((dayLabel) => (
-                    <div key={dayLabel} style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8', padding: '4px 0' }}>{dayLabel}</div>
+            <div className="nepali-calendar-grid">
+                {nepaliDaysShort.map((dayLabel, index) => (
+                    <div
+                        key={dayLabel}
+                        className={`nepali-calendar-weekday ${index === 6 ? 'nepali-calendar-weekday-holiday' : ''}`}
+                    >
+                        {dayLabel}
+                    </div>
                 ))}
                 {calendarGrid.map((day, idx) => {
                     if (day === null) {
-                        return <div key={`empty-${idx}`} />;
+                        return <div key={`empty-${idx}`} className="nepali-calendar-empty-day" />;
                     }
 
                     const isSelected = selectedBs?.year === viewDate.year && selectedBs?.month === viewDate.month && selectedBs?.day === day;
+                    const isHoliday = isNepaliHolidayDate(viewDate.year, viewDate.month, day);
+                    const adDate = bsToAd(viewDate.year, viewDate.month, day);
+                    const isToday = adDate.isSame(dayjs(), 'day');
+                    const dayClassName = [
+                        'nepali-calendar-day',
+                        isSelected ? 'nepali-calendar-day-selected' : '',
+                        isHoliday ? 'nepali-calendar-day-holiday' : '',
+                        isToday ? 'nepali-calendar-day-today' : '',
+                    ].filter(Boolean).join(' ');
 
                     return (
-                        <div
+                        <button
+                            type="button"
                             key={day}
                             onClick={() => {
-                                const ad = bsToAd(viewDate.year, viewDate.month, day);
-                                onChange?.(ad);
+                                onChange?.(adDate);
                                 setOpen(false);
                             }}
-                            className={`calendar-day ${isSelected ? 'selected' : ''}`}
-                            style={{
-                                textAlign: 'center',
-                                padding: '6px 0',
-                                borderRadius: 4,
-                                cursor: 'pointer',
-                                fontSize: 13,
-                                background: isSelected ? '#1e3a8a' : 'transparent',
-                                color: isSelected ? '#fff' : '#1e293b',
-                                transition: 'all 0.2s',
-                            }}
+                            className={dayClassName}
+                            title={isHoliday ? 'Weekly public holiday' : undefined}
                         >
-                            {day}
-                        </div>
+                            <span className="nepali-calendar-bs-day">{day}</span>
+                            <span className="nepali-calendar-ad-day">{adDate.format('MMM D')}</span>
+                        </button>
                     );
                 })}
             </div>
-            <div style={{ marginTop: 12, textAlign: 'center' }}>
+            <div className="nepali-calendar-footer">
                 <Button
                     type="link"
                     size="small"

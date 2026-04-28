@@ -11,6 +11,7 @@ use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
+use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -59,6 +60,65 @@ class TransactionPostingTest extends TestCase
         $this->assertDatabaseHas('sales_invoice_items', ['product_id' => $product->id, 'batch_id' => $batch->id]);
         $this->assertDatabaseHas('stock_movements', ['movement_type' => 'sales_issue', 'quantity_out' => 2]);
         $this->assertSame('8.00', (string) $customer->fresh()->current_balance);
+    }
+
+    public function test_sales_return_posts_stock_movement_and_delete_reverses_it(): void
+    {
+        [$user, $product, $supplier, $customer] = $this->fixture();
+
+        $this->actingAs($user)->postJson('/api/v1/purchases', [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => '2026-04-25',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_no' => 'SR-LEDGER-001',
+                'expires_at' => '2027-04-25',
+                'quantity' => 10,
+                'free_quantity' => 2,
+                'purchase_price' => 5,
+                'mrp' => 8,
+            ]],
+        ])->assertCreated();
+
+        $batch = Batch::query()->where('batch_no', 'SR-LEDGER-001')->firstOrFail();
+
+        $invoiceResponse = $this->actingAs($user)->postJson('/api/v1/sales/invoices', [
+            'customer_id' => $customer->id,
+            'invoice_date' => '2026-04-25',
+            'sale_type' => 'pos',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_id' => $batch->id,
+                'quantity' => 2,
+                'unit_price' => 8,
+            ]],
+        ])->assertCreated();
+
+        $this->assertSame('10.000', (string) $batch->fresh()->quantity_available);
+
+        $returnResponse = $this->actingAs($user)->postJson('/api/v1/sales/returns', [
+            'customer_id' => $customer->id,
+            'sales_invoice_id' => $invoiceResponse->json('data.id'),
+            'return_date' => '2026-04-26',
+            'reason' => 'Customer returned item',
+            'items' => [[
+                'sales_invoice_item_id' => $invoiceResponse->json('data.items.0.id'),
+                'product_id' => $product->id,
+                'batch_id' => $batch->id,
+                'quantity' => 1,
+                'unit_price' => 8,
+            ]],
+        ])->assertOk();
+
+        $this->assertSame('11.000', (string) $batch->fresh()->quantity_available);
+        $this->assertDatabaseHas('stock_movements', ['movement_type' => 'sales_return_in', 'quantity_in' => 1]);
+
+        $this->actingAs($user)->deleteJson('/api/v1/sales/returns/'.$returnResponse->json('data.id'))->assertOk();
+
+        $this->assertSame('10.000', (string) $batch->fresh()->quantity_available);
+        $this->assertDatabaseHas('stock_movements', ['movement_type' => 'sales_return_reverse', 'quantity_out' => 1]);
     }
 
     public function test_unbalanced_voucher_is_rejected(): void
@@ -121,6 +181,55 @@ class TransactionPostingTest extends TestCase
 
         $this->assertSame('12.000', (string) $batch->fresh()->quantity_available);
         $this->assertSame('50.00', (string) $supplier->fresh()->current_balance);
+    }
+
+    public function test_payment_delete_soft_deletes_and_reverses_allocated_bill_balance(): void
+    {
+        [$user, $product, $supplier] = $this->fixture();
+        $paymentMode = DropdownOption::query()->where('alias', 'payment_mode')->where('name', 'Cash')->firstOrFail();
+
+        $purchaseResponse = $this->actingAs($user)->postJson('/api/v1/purchases', [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => '2026-04-25',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_no' => 'PAY-DEL-001',
+                'expires_at' => '2027-04-25',
+                'quantity' => 10,
+                'purchase_price' => 5,
+                'mrp' => 8,
+            ]],
+        ])->assertCreated();
+
+        $purchaseId = $purchaseResponse->json('data.id');
+
+        $paymentResponse = $this->actingAs($user)->postJson('/api/v1/accounting/payments', [
+            'direction' => 'out',
+            'party_type' => 'supplier',
+            'party_id' => $supplier->id,
+            'payment_date' => '2026-04-26',
+            'amount' => 20,
+            'payment_mode_id' => $paymentMode->id,
+            'allocations' => [[
+                'bill_id' => $purchaseId,
+                'bill_type' => 'purchase',
+                'allocated_amount' => 20,
+            ]],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('purchases', ['id' => $purchaseId, 'paid_amount' => 20, 'payment_status' => 'partial']);
+
+        $paymentId = $paymentResponse->json('data.id');
+        $this->actingAs($user)->deleteJson('/api/v1/accounting/payments/'.$paymentId)->assertOk();
+
+        $this->assertSoftDeleted('payments', ['id' => $paymentId]);
+        $this->assertDatabaseHas('purchases', ['id' => $purchaseId, 'paid_amount' => 0, 'payment_status' => 'unpaid']);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/accounting/payments?deleted=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $paymentId);
     }
 
     private function fixture(): array

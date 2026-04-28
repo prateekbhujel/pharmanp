@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Core\Services\DocumentNumberService;
 use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Inventory\Models\Company;
@@ -130,5 +131,52 @@ class SetupAccessManagementTest extends TestCase
 
         $this->actingAs($owner)->deleteJson("/api/v1/settings/fiscal-years/{$fiscalYearId}")
             ->assertOk();
+    }
+
+    public function test_owner_can_configure_document_numbering_without_exposing_smtp_password(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $owner = User::factory()->create(['is_owner' => true]);
+
+        $this->actingAs($owner)->putJson('/api/v1/settings/admin', [
+            'smtp_password' => 'SuperSecretMailPass',
+            'document_numbering' => [
+                'purchase_order' => [
+                    'prefix' => 'MPO',
+                    'date_format' => 'none',
+                    'separator' => '/',
+                    'padding' => 3,
+                ],
+                'purchase' => [
+                    'prefix' => 'PB',
+                    'date_format' => 'Y',
+                    'separator' => '-',
+                    'padding' => 4,
+                ],
+                'sales_invoice' => [
+                    'prefix' => 'SA',
+                    'date_format' => 'Ym',
+                    'separator' => '-',
+                    'padding' => 5,
+                ],
+                'voucher' => [
+                    'prefix' => 'JV',
+                    'date_format' => 'Ymd',
+                    'separator' => '-',
+                    'padding' => 5,
+                ],
+            ],
+        ])->assertOk();
+
+        $this->actingAs($owner)->getJson('/api/v1/settings/admin')
+            ->assertOk()
+            ->assertJsonPath('data.smtp_password', '')
+            ->assertJsonPath('data.smtp_password_set', true)
+            ->assertJsonPath('data.document_numbering.purchase_order.prefix', 'MPO');
+
+        $this->assertSame(
+            'MPO/001',
+            app(DocumentNumberService::class)->next('purchase_order', 'purchase_orders')
+        );
     }
 }

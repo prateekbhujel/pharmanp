@@ -111,7 +111,7 @@ class DemoSeeder extends Seeder
             'name'              => 'Pratik Admin',
             'email'             => 'pratik@admin.com',
             'email_verified_at' => $this->now,
-            'password'          => Hash::make('done'),
+            'password'          => Hash::make('Done@12345'),
             'is_owner'          => 1,
             'created_at'        => $this->now,
             'updated_at'        => $this->now,

@@ -461,6 +461,8 @@ export function DashboardPage() {
                     {!user?.medical_representative_id && medicalRepresentatives.length > 0 && (
                         <Select
                             allowClear
+                            showSearch
+                            optionFilterProp="label"
                             placeholder="All MRs"
                             style={{ minWidth: 200 }}
                             value={medicalRepresentativeId}

@@ -854,7 +854,7 @@ body {
 }
 
 .table-toolbar-payments {
-    grid-template-columns: 180px 320px auto;
+    grid-template-columns: 180px minmax(260px, 320px) auto auto;
     gap: 16px;
     align-items: center;
 }
@@ -880,13 +880,13 @@ body {
 }
 
 .payment-direction-segmented .ant-segmented-item-selected {
-    background: #1d4ed8;
-    box-shadow: 0 8px 18px rgb(29 78 216 / 22%);
+    background: #1e3a8a;
+    box-shadow: 0 8px 18px rgb(30 58 138 / 24%);
     color: #ffffff;
 }
 
 .payment-direction-segmented .ant-segmented-thumb {
-    background: #1d4ed8;
+    background: #1e3a8a;
 }
 
 .table-action-buttons {
@@ -2017,7 +2017,17 @@ body {
 
 .status-toggle-control .ant-switch.ant-switch-checked,
 .ant-switch.ant-switch-checked {
-    background: var(--primary-color) !important;
+    background: #1e3a8a !important;
+}
+
+.ant-segmented .ant-segmented-item-selected,
+.ant-segmented .ant-segmented-thumb {
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+}
+
+.ant-segmented .ant-segmented-item-selected .ant-segmented-item-label {
+    color: #ffffff !important;
 }
 
 .ant-switch:hover:not(.ant-switch-disabled) {
@@ -2205,4 +2215,357 @@ body {
     background: #f8fafc !important;
     border-color: #f8fafc !important;
     color: #115e59 !important;
+}
+
+.document-number-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.document-number-card {
+    background: #fbfdff;
+    border-color: #e2e8f0;
+}
+
+.document-number-card .ant-card-head {
+    min-height: 42px;
+}
+
+.document-number-card .ant-card-head-title {
+    color: #334155;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.nepali-datepicker-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 20px 50px rgb(15 23 42 / 16%);
+    width: min(372px, calc(100vw - 32px));
+}
+
+.nepali-datepicker-card .ant-card-body {
+    padding: 12px;
+}
+
+.nepali-calendar-header {
+    align-items: center;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 32px minmax(0, 1fr) 96px 32px;
+}
+
+.nepali-calendar-header .ant-btn {
+    border-radius: 8px;
+}
+
+.nepali-calendar-subtitle {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0;
+    margin: 8px 0 10px;
+    text-align: center;
+}
+
+.nepali-calendar-grid {
+    display: grid;
+    gap: 4px;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.nepali-calendar-weekday {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 0;
+    text-align: center;
+}
+
+.nepali-calendar-weekday-holiday {
+    color: #dc2626;
+}
+
+.nepali-calendar-empty-day {
+    min-height: 46px;
+}
+
+.nepali-calendar-day {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 46px;
+    padding: 5px 0;
+    transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.nepali-calendar-day:hover {
+    background: #ecfdf5;
+    border-color: #99f6e4;
+    transform: translateY(-1px);
+}
+
+.nepali-calendar-bs-day {
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.nepali-calendar-ad-day {
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1;
+    margin-top: 4px;
+}
+
+.nepali-calendar-day-holiday .nepali-calendar-bs-day,
+.nepali-calendar-day-holiday .nepali-calendar-ad-day {
+    color: #dc2626;
+}
+
+.nepali-calendar-day-today:not(.nepali-calendar-day-selected) {
+    background: #f0fdfa;
+    border-color: #0f766e;
+}
+
+.nepali-calendar-day-selected,
+.nepali-calendar-day-selected:hover {
+    background: #1e3a8a;
+    border-color: #1e3a8a;
+    box-shadow: 0 8px 18px rgb(30 58 138 / 22%);
+    transform: none;
+}
+
+.nepali-calendar-day-selected .nepali-calendar-bs-day,
+.nepali-calendar-day-selected .nepali-calendar-ad-day {
+    color: #ffffff;
+}
+
+.nepali-calendar-footer {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.nepali-range-picker {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #dbe4ef;
+    border-radius: 8px;
+    cursor: pointer;
+    display: grid;
+    gap: 4px;
+    grid-template-columns: auto minmax(106px, 1fr) auto minmax(106px, 1fr) auto;
+    min-height: 40px;
+    padding: 0 8px;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+    width: 100%;
+}
+
+.nepali-range-picker:hover,
+.nepali-range-picker-open {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgb(var(--primary-color-rgb) / 12%);
+}
+
+.nepali-range-picker-disabled {
+    background: #f8fafc;
+    cursor: not-allowed;
+}
+
+.nepali-range-icon,
+.nepali-range-separator {
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.nepali-range-input.ant-input {
+    background: transparent !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    padding-inline: 2px;
+}
+
+.nepali-range-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 24px 56px rgb(15 23 42 / 18%);
+    width: min(760px, calc(100vw - 32px));
+}
+
+.nepali-range-card .ant-card-body {
+    padding: 0;
+}
+
+.nepali-range-card-body {
+    display: grid;
+    gap: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nepali-range-month {
+    padding: 14px 16px 12px;
+}
+
+.nepali-range-month + .nepali-range-month {
+    border-left: 1px solid #eef2f7;
+}
+
+.nepali-range-month-header {
+    align-items: center;
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+    margin-bottom: 10px;
+}
+
+.nepali-range-month-title {
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.nepali-range-grid {
+    display: grid;
+    column-gap: 0;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    row-gap: 5px;
+}
+
+.nepali-range-weekday {
+    color: #475569;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 0;
+    text-align: center;
+}
+
+.nepali-range-weekday-holiday {
+    color: #dc2626;
+}
+
+.nepali-range-empty-day {
+    min-height: 42px;
+}
+
+.nepali-range-day {
+    align-items: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 42px;
+    padding: 4px 0;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.nepali-range-day:hover {
+    background: #ecfdf5;
+    border-color: #99f6e4;
+    border-radius: 8px;
+}
+
+.nepali-range-day-in-range {
+    background: #dbeafe;
+    border-color: #dbeafe;
+}
+
+.nepali-range-day-in-range.nepali-range-day-week-start {
+    border-bottom-left-radius: 8px;
+    border-top-left-radius: 8px;
+}
+
+.nepali-range-day-in-range.nepali-range-day-week-end {
+    border-bottom-right-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.nepali-range-day-start,
+.nepali-range-day-end,
+.nepali-range-day-start:hover,
+.nepali-range-day-end:hover {
+    background: #1e3a8a;
+    border-color: #1e3a8a;
+    box-shadow: 0 8px 18px rgb(30 58 138 / 20%);
+}
+
+.nepali-range-day-start,
+.nepali-range-day-start:hover {
+    border-bottom-left-radius: 8px;
+    border-top-left-radius: 8px;
+}
+
+.nepali-range-day-end,
+.nepali-range-day-end:hover {
+    border-bottom-right-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.nepali-range-day-start.nepali-range-day-end,
+.nepali-range-day-start.nepali-range-day-end:hover {
+    border-radius: 8px;
+}
+
+.nepali-range-day-today:not(.nepali-range-day-start):not(.nepali-range-day-end) {
+    border-color: #0f766e;
+}
+
+.nepali-range-bs-day {
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.nepali-range-ad-day {
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1;
+    margin-top: 4px;
+}
+
+.nepali-range-day-holiday .nepali-range-bs-day,
+.nepali-range-day-holiday .nepali-range-ad-day {
+    color: #dc2626;
+}
+
+.nepali-range-day-start .nepali-range-bs-day,
+.nepali-range-day-start .nepali-range-ad-day,
+.nepali-range-day-end .nepali-range-bs-day,
+.nepali-range-day-end .nepali-range-ad-day {
+    color: #ffffff;
+}
+
+.nepali-range-footer {
+    align-items: center;
+    background: #f8fafc;
+    border-top: 1px solid #eef2f7;
+    color: #64748b;
+    display: flex;
+    font-size: 12px;
+    font-weight: 700;
+    justify-content: space-between;
+    padding: 9px 16px;
+}
+
+@media (max-width: 720px) {
+    .nepali-range-card-body {
+        grid-template-columns: 1fr;
+    }
+
+    .nepali-range-month + .nepali-range-month {
+        border-left: 0;
+        border-top: 1px solid #eef2f7;
+    }
 }

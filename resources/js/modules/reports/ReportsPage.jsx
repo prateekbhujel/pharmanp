@@ -38,6 +38,11 @@ const reportGroups = {
     mr: ['mr-performance'],
 };
 
+const searchableSelectProps = {
+    showSearch: true,
+    optionFilterProp: 'label',
+};
+
 function reportFromPath() {
     const section = window.location.pathname.split('/').filter(Boolean).pop();
 
@@ -245,6 +250,7 @@ export function ReportsPage() {
                         />
                     </div>
                     <Select
+                        {...searchableSelectProps}
                         value={report}
                         onChange={switchReport}
                         options={visibleReportOptions}
@@ -294,25 +300,26 @@ export function ReportsPage() {
                 <div className="report-filter-grid">
                     {report === 'sales' && (
                         <>
-                            <Select allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />
-                            <Select allowClear placeholder="Payment" value={filters.payment_status} onChange={(value) => updateFilter('payment_status', value)} options={paymentStatusOptions} />
-                            <Select allowClear placeholder="MR" value={filters.medical_representative_id} onChange={(value) => updateFilter('medical_representative_id', value)} options={lookups.medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))} />
+                            <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />
+                            <Select {...searchableSelectProps} allowClear placeholder="Payment" value={filters.payment_status} onChange={(value) => updateFilter('payment_status', value)} options={paymentStatusOptions} />
+                            <Select {...searchableSelectProps} allowClear placeholder="MR" value={filters.medical_representative_id} onChange={(value) => updateFilter('medical_representative_id', value)} options={lookups.medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))} />
                         </>
                     )}
                     {report === 'purchase' && (
                         <>
-                            <Select allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />
-                            <Select allowClear placeholder="Payment" value={filters.payment_status} onChange={(value) => updateFilter('payment_status', value)} options={paymentStatusOptions} />
+                            <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />
+                            <Select {...searchableSelectProps} allowClear placeholder="Payment" value={filters.payment_status} onChange={(value) => updateFilter('payment_status', value)} options={paymentStatusOptions} />
                         </>
                     )}
                     {['stock', 'low-stock', 'smart-inventory'].includes(report) && (
                         <>
-                            <Select allowClear placeholder="Company" value={filters.company_id} onChange={(value) => updateFilter('company_id', value)} options={lookups.companies.map((item) => ({ value: item.id, label: item.name }))} />
-                            <Select allowClear placeholder="Category" value={filters.category_id} onChange={(value) => updateFilter('category_id', value)} options={lookups.categories.map((item) => ({ value: item.id, label: item.name }))} />
+                            <Select {...searchableSelectProps} allowClear placeholder="Company" value={filters.company_id} onChange={(value) => updateFilter('company_id', value)} options={lookups.companies.map((item) => ({ value: item.id, label: item.name }))} />
+                            <Select {...searchableSelectProps} allowClear placeholder="Category" value={filters.category_id} onChange={(value) => updateFilter('category_id', value)} options={lookups.categories.map((item) => ({ value: item.id, label: item.name }))} />
                         </>
                     )}
                     {report === 'smart-inventory' && (
                         <Select
+                            {...searchableSelectProps}
                             allowClear
                             placeholder="Signal"
                             value={filters.signal}
@@ -328,8 +335,8 @@ export function ReportsPage() {
                             ]}
                         />
                     )}
-                    {report === 'supplier-ledger' && <Select allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
-                    {report === 'customer-ledger' && <Select allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}
+                    {report === 'supplier-ledger' && <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
+                    {report === 'customer-ledger' && <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}
                     {report === 'product-movement' && (
                         <Select
                             showSearch
@@ -345,13 +352,13 @@ export function ReportsPage() {
                     )}
                     {report === 'ledger' && (
                         <>
-                            <Select allowClear placeholder="Account" value={filters.account_type} onChange={(value) => updateFilter('account_type', value)} options={accountCatalog} />
-                            <Select allowClear placeholder="Party Type" value={filters.party_type} onChange={(value) => updateFilter('party_type', value)} options={[
+                            <Select {...searchableSelectProps} allowClear placeholder="Account" value={filters.account_type} onChange={(value) => updateFilter('account_type', value)} options={accountCatalog} />
+                            <Select {...searchableSelectProps} allowClear placeholder="Party Type" value={filters.party_type} onChange={(value) => updateFilter('party_type', value)} options={[
                                 { value: 'customer', label: 'Customer' },
                                 { value: 'supplier', label: 'Supplier' },
                             ]} />
-                            {filters.party_type === 'customer' && <Select allowClear placeholder="Customer" value={filters.party_id} onChange={(value) => updateFilter('party_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}
-                            {filters.party_type === 'supplier' && <Select allowClear placeholder="Supplier" value={filters.party_id} onChange={(value) => updateFilter('party_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
+                            {filters.party_type === 'customer' && <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.party_id} onChange={(value) => updateFilter('party_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}
+                            {filters.party_type === 'supplier' && <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.party_id} onChange={(value) => updateFilter('party_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
                         </>
                     )}
                 </div>

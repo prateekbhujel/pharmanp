@@ -43,7 +43,7 @@ class CompleteSetupRequest extends FormRequest
             'fiscal_year.ends_on' => ['required', 'date', 'after:fiscal_year.starts_on'],
             'admin.name' => ['required', 'string', 'max:180'],
             'admin.email' => ['required', 'email', 'max:180', 'unique:users,email'],
-            'admin.password' => ['required', 'confirmed', Password::min(4)],
+            'admin.password' => ['required', 'confirmed', Password::min(8)],
             'seed_demo' => ['sometimes', 'boolean'],
         ];
     }

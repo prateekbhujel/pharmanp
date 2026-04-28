@@ -2,6 +2,7 @@
 
 namespace App\Modules\Accounting\Services;
 
+use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Models\Voucher;
@@ -12,6 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class VoucherService
 {
+    public function __construct(
+        private readonly DocumentNumberService $numbers,
+    ) {}
+
     public function create(array $data, User $user): Voucher
     {
         return $this->persist($data, $user);
@@ -108,9 +113,7 @@ class VoucherService
 
     private function nextNumber(): string
     {
-        $nextId = ((int) DB::table('vouchers')->lockForUpdate()->max('id')) + 1;
-
-        return 'VCH-'.now()->format('Ymd').'-'.str_pad((string) $nextId, 5, '0', STR_PAD_LEFT);
+        return $this->numbers->next('voucher', 'vouchers');
     }
 
     private function assertParty(?string $partyType, ?int $partyId): void

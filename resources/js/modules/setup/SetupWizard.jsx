@@ -146,8 +146,8 @@ export function SetupWizard() {
                         admin: {
                             name: 'Pratik Admin',
                             email: 'pratik@admin.com',
-                            password: 'done',
-                            password_confirmation: 'done',
+                            password: '',
+                            password_confirmation: '',
                         },
                     }}
                 >
@@ -200,8 +200,8 @@ export function SetupWizard() {
                             <Segmented
                                 block
                                 options={[
-                                    { label: 'AD', value: 'ad' },
-                                    { label: 'BS', value: 'bs' },
+                                    { label: 'Gregorian', value: 'ad' },
+                                    { label: 'Nepali', value: 'bs' },
                                 ]}
                             />
                         </Form.Item>
@@ -248,7 +248,7 @@ export function SetupWizard() {
                         </Form.Item>
                     </div>
                     <div className="form-grid">
-                        <Form.Item name={['admin', 'password']} label="Password" rules={[{ required: true }]}>
+                        <Form.Item name={['admin', 'password']} label="Password" rules={[{ required: true }, { min: 8 }]}>
                             <Input.Password />
                         </Form.Item>
                         <Form.Item

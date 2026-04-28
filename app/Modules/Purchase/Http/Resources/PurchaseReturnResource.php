@@ -20,6 +20,7 @@ class PurchaseReturnResource extends JsonResource
             'discount_total' => (float) $this->discount_total,
             'grand_total' => (float) $this->grand_total,
             'notes' => $this->notes,
+            'deleted_at' => $this->deleted_at?->toISOString(),
             'supplier' => $this->whenLoaded('supplier', fn () => [
                 'id' => $this->supplier?->id,
                 'name' => $this->supplier?->name,

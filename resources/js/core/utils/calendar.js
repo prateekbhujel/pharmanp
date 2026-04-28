@@ -113,7 +113,9 @@ export function adToBs(value) {
 export function formatBsDate(value, {
     style = 'medium',
     includeTime = false,
+    includeSeconds = false,
     includeWeekday = false,
+    includeEra = false,
     fallback = '-',
 } = {}) {
     const date = dayjs(value);
@@ -125,26 +127,26 @@ export function formatBsDate(value, {
     const bs = adToBs(date);
 
     if (!bs) {
-        return formatAdDate(value, { style, includeTime, includeWeekday, fallback });
+        return formatAdDate(value, { style, includeTime, includeSeconds, includeWeekday, fallback });
     }
 
     const monthLabel = style === 'compact'
         ? pad(bs.month + 1)
-        : style === 'long'
+        : style === 'long' || style === 'medium-long'
             ? nepaliMonthsFull[bs.month]
             : nepaliMonthsShort[bs.month];
     const dayLabel = pad(bs.day);
 
     let label = style === 'compact'
-        ? `${bs.year}-${monthLabel}-${dayLabel} BS`
-        : `${dayLabel} ${monthLabel} ${bs.year} BS`;
+        ? `${bs.year}-${monthLabel}-${dayLabel}`
+        : `${dayLabel} ${monthLabel} ${bs.year}`;
 
     if (includeWeekday) {
         label = `${nepaliDaysShort[date.day()]} ${label}`;
     }
 
     if (includeTime) {
-        label = `${label} ${date.format('HH:mm:ss')}`;
+        label = `${label} ${date.format(includeSeconds ? 'h:mm:ss A' : 'h:mm A').toLowerCase()}`;
     }
 
     return label;
@@ -153,6 +155,7 @@ export function formatBsDate(value, {
 export function formatAdDate(value, {
     style = 'medium',
     includeTime = false,
+    includeSeconds = false,
     includeWeekday = false,
     fallback = '-',
 } = {}) {
@@ -173,12 +176,18 @@ export function formatAdDate(value, {
     }
 
     if (includeTime) {
-        options.hour = '2-digit';
+        options.hour = 'numeric';
         options.minute = '2-digit';
-        options.second = '2-digit';
+        options.hour12 = true;
+
+        if (includeSeconds) {
+            options.second = '2-digit';
+        }
     }
 
-    return new Intl.DateTimeFormat('en-NP', options).format(date.toDate());
+    return new Intl.DateTimeFormat('en-NP', options)
+        .format(date.toDate())
+        .replace(/\b(AM|PM)\b/g, (match) => match.toLowerCase());
 }
 
 export function formatCalendarDate(value, calendarType = 'ad', options = {}) {
@@ -202,4 +211,16 @@ export function isLikelyDateValue(key, value) {
 
     return /(date|_at|starts_on|ends_on|expires_on|expires_at)$/i.test(key)
         || /^\d{4}-\d{2}-\d{2}(?:[ T].*)?$/.test(value);
+}
+
+export function isNepaliHolidayDate(year, month, day) {
+    const date = bsToAd(year, month, day);
+
+    if (!date?.isValid?.()) {
+        return false;
+    }
+
+    // Nepal's official public holidays are year-specific. This marks the
+    // recurring weekly public holiday without pretending to be a full gazette.
+    return date.day() === 6;
 }

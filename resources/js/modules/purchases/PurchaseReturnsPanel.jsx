@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Form, Input, InputNumber, Modal, Radio, Select, Space } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Modal, Radio, Select, Space, Switch } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, PrinterOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { DateText } from '../../core/components/DateText';
 import { Money } from '../../core/components/Money';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { ServerTable } from '../../core/components/ServerTable';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
@@ -81,6 +82,7 @@ export function PurchaseReturnsPanel() {
     });
     const supplierId = Form.useWatch('supplier_id', form);
     const returnMode = Form.useWatch('return_mode', form) || 'bill';
+    const deletedMode = Boolean(table.filters.deleted);
 
     useEffect(() => {
         form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill' });
@@ -350,11 +352,15 @@ export function PurchaseReturnsPanel() {
             fixed: 'right',
             width: 240,
             render: (_, row) => (
-                <Space>
-                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => editReturn(row)} />
-                    <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/purchase-returns/${row.id}/print`), '_blank')}>Print</Button>
-                    <Button danger icon={<DeleteOutlined />} onClick={() => deleteReturn(row)} />
-                </Space>
+                row.deleted_at ? (
+                    <PharmaBadge tone="deleted">Deleted</PharmaBadge>
+                ) : (
+                    <Space>
+                        <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => editReturn(row)} />
+                        <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/purchase-returns/${row.id}/print`), '_blank')}>Print</Button>
+                        <Button danger icon={<DeleteOutlined />} onClick={() => deleteReturn(row)} />
+                    </Space>
+                )
             ),
         },
     ];
@@ -392,7 +398,11 @@ export function PurchaseReturnsPanel() {
                         {returnMode === 'bill' && (
                             <div className="form-grid">
                                 <Form.Item name="purchase_id" label="Purchase Bill" rules={[{ required: returnMode === 'bill' }]}>
-                                    <Select options={purchases.map((item) => ({ value: item.id, label: item.label }))} />
+                                    <Select
+                                        showSearch
+                                        optionFilterProp="label"
+                                        options={purchases.map((item) => ({ value: item.id, label: item.label }))}
+                                    />
                                 </Form.Item>
                                 <Form.Item label=" "><Button icon={<ReloadOutlined />} onClick={loadBillItems}>Load Bill Items</Button></Form.Item>
                             </div>
@@ -426,12 +436,16 @@ export function PurchaseReturnsPanel() {
                         <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search return, supplier or purchase" allowClear />
                         <Select
                             allowClear
+                            showSearch
+                            optionFilterProp="label"
                             placeholder="Supplier"
                             options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
                             onChange={(supplier_id) => table.setFilters((filters) => ({ ...filters, supplier_id }))}
                         />
                         <Select
                             allowClear
+                            showSearch
+                            optionFilterProp="label"
                             placeholder="Mode"
                             options={[
                                 { value: 'bill', label: 'Bill' },
@@ -440,6 +454,13 @@ export function PurchaseReturnsPanel() {
                             onChange={(return_mode) => table.setFilters((filters) => ({ ...filters, return_mode }))}
                         />
                         <SmartDatePicker.RangePicker value={range} onChange={setRange} />
+                        <label className="table-switch">
+                            <Switch
+                                checked={deletedMode}
+                                onChange={(deleted) => table.setFilters((filters) => ({ ...filters, deleted: deleted ? 1 : undefined }))}
+                            />
+                            <span>View Deleted</span>
+                        </label>
                         <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                     </div>
                     <ServerTable table={table} columns={listColumns} />
