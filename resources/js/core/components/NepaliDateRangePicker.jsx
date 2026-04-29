@@ -317,7 +317,7 @@ export function NepaliDateRangePicker({
 
                 setOpen(nextOpen);
             }}
-            dropdownRender={() => dropdownContent}
+            popupRender={() => dropdownContent}
             trigger={['click']}
             placement="bottomLeft"
         >
