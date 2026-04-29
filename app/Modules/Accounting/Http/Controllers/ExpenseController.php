@@ -17,6 +17,7 @@ class ExpenseController
     {
         $query = Expense::query()
             ->with(['expenseCategory', 'paymentModeOption', 'creator'])
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
             ->latest('expense_date')
             ->latest('id');
 
@@ -52,7 +53,8 @@ class ExpenseController
         // Summary for all expenses (unfiltered).
         $cashModeIds = DropdownOption::query()->forAlias('payment_mode')->where('data', 'cash')->pluck('id');
         $bankModeIds = DropdownOption::query()->forAlias('payment_mode')->where('data', 'bank')->pluck('id');
-        $allExpenses = Expense::query();
+        $allExpenses = Expense::query()
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId));
 
         $summary = [
             'this_month' => (clone $allExpenses)

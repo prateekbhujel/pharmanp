@@ -20,6 +20,7 @@ class SalesReturnController
     {
         $query = SalesReturn::query()
             ->with(['invoice', 'customer', 'items.product'])
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($request->boolean('deleted'), fn ($builder) => $builder->onlyTrashed())
             ->latest('return_date')
             ->latest('id');

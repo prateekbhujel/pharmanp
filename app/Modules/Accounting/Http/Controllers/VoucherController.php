@@ -16,6 +16,7 @@ class VoucherController extends Controller
     {
         $vouchers = Voucher::query()
             ->withCount('entries')
+            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
             ->when($request->filled('search'), function ($query) use ($request) {
                 $keyword = trim((string) $request->query('search'));
                 $query->where(function ($builder) use ($keyword) {

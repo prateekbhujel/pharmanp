@@ -26,6 +26,7 @@ class PaymentController
     {
         $query = Payment::query()
             ->with(['customer', 'supplier', 'allocations', 'paymentModeOption:id,name,data'])
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($request->boolean('deleted'), fn ($builder) => $builder->onlyTrashed())
             ->latest('payment_date')
             ->latest('id');

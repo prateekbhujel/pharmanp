@@ -20,10 +20,11 @@ class UserManagementService
         'created_at' => 'users.created_at',
     ];
 
-    public function paginate(TableQueryData $table): LengthAwarePaginator
+    public function paginate(TableQueryData $table, ?User $actor = null): LengthAwarePaginator
     {
         $query = User::query()
             ->with(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name'])
+            ->when($actor?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('users.tenant_id', $tenantId))
             ->when($table->search, function (Builder $builder, string $search) {
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('users.name', 'like', '%'.$search.'%')
