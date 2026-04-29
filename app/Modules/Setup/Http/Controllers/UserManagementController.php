@@ -20,7 +20,7 @@ class UserManagementController extends Controller
 {
     public function index(UserIndexRequest $request, UserManagementService $service): JsonResponse
     {
-        $users = $service->paginate(TableQueryData::fromRequest($request, ['is_active', 'role_name']));
+        $users = $service->paginate(TableQueryData::fromRequest($request, ['is_active', 'role_name']), $request->user());
         $payload = UserResource::collection($users)->response()->getData(true);
         $payload['lookups'] = [
             'roles' => Role::query()->where('guard_name', 'web')->orderBy('name')->get(['id', 'name']),

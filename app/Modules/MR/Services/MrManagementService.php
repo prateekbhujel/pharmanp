@@ -31,6 +31,7 @@ class MrManagementService
     {
         $query = MedicalRepresentative::query()
             ->with(['branch:id,name,type'])
+            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($user && $this->isRepresentativeUser($user), fn (Builder $builder) => $builder->whereKey($user->medical_representative_id))
             ->when($table->search, function (Builder $builder, string $search) {
                 $builder->where(function (Builder $inner) use ($search) {
@@ -51,6 +52,7 @@ class MrManagementService
     {
         $query = RepresentativeVisit::query()
             ->with(['medicalRepresentative:id,name', 'customer:id,name'])
+            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->whereHas('medicalRepresentative', fn (Builder $mrQuery) => $mrQuery->where('tenant_id', $tenantId)))
             ->when($user && $this->isRepresentativeUser($user), fn (Builder $builder) => $builder->where('medical_representative_id', $user->medical_representative_id))
             ->when($table->search, function (Builder $builder, string $search) {
                 $builder->where(function (Builder $inner) use ($search) {
