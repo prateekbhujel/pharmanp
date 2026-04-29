@@ -20,14 +20,14 @@ class PartyService
         'created_at' => 'created_at',
     ];
 
-    public function suppliers(TableQueryData $table): LengthAwarePaginator
+    public function suppliers(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
-        return $this->paginate(Supplier::query()->with('supplierType:id,name'), $table, 'supplierType');
+        return $this->paginate(Supplier::query()->with('supplierType:id,name'), $table, 'supplierType', $user);
     }
 
-    public function customers(TableQueryData $table): LengthAwarePaginator
+    public function customers(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
-        return $this->paginate(Customer::query()->with('partyType:id,name'), $table, 'partyType');
+        return $this->paginate(Customer::query()->with('partyType:id,name'), $table, 'partyType', $user);
     }
 
     public function createSupplier(array $data, User $user): Supplier
@@ -50,10 +50,11 @@ class PartyService
         return $this->update($customer, $data, $user);
     }
 
-    private function paginate(Builder $query, TableQueryData $table, ?string $typeRelation = null): LengthAwarePaginator
+    private function paginate(Builder $query, TableQueryData $table, ?string $typeRelation = null, ?User $user = null): LengthAwarePaginator
     {
         $query
             ->select('*')
+            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when((bool) ($table->filters['deleted'] ?? false), fn (Builder $builder) => $builder->onlyTrashed());
 
         $query->when($table->search, function (Builder $builder, string $search) use ($typeRelation) {

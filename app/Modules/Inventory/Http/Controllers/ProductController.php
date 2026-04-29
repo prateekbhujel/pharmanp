@@ -28,7 +28,7 @@ class ProductController extends Controller
             'category_id',
             'is_active',
             'deleted',
-        ]));
+        ]), $request->user());
 
         return ProductResource::collection($products);
     }

@@ -28,6 +28,7 @@ class PurchaseController extends Controller
 
         $purchases = Purchase::query()
             ->with('supplier:id,name')
+            ->when(request()->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('purchase_no', 'like', '%'.$search.'%')

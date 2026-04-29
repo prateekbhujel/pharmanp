@@ -28,6 +28,7 @@ class BatchController extends Controller
 
         $query = Batch::query()
             ->with(['product.company', 'supplier'])
+            ->when(request()->user()?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($search !== '', function (Builder $builder) use ($search) {
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('batch_no', 'like', '%'.$search.'%')
@@ -68,6 +69,7 @@ class BatchController extends Controller
     {
         $batches = Batch::query()
             ->with('product:id,name')
+            ->when(request()->user()?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->where('is_active', true)
             ->where('quantity_available', '>', 0)
             ->when(request()->filled('product_id'), fn (Builder $builder) => $builder->where('product_id', request()->integer('product_id')))

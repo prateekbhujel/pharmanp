@@ -18,6 +18,7 @@ class StockAdjustmentController extends Controller
 
         $query = StockAdjustment::query()
             ->with(['product:id,name', 'batch:id,batch_no,quantity_available', 'adjustedBy:id,name'])
+            ->when(request()->user()?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($search !== '', function (Builder $builder) use ($search) {
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('adjustment_type', 'like', '%'.$search.'%')

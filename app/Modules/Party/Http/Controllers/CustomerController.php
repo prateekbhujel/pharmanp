@@ -16,7 +16,7 @@ class CustomerController extends Controller
 {
     public function index(PartyIndexRequest $request, PartyService $service)
     {
-        return PartyResource::collection($service->customers(TableQueryData::fromRequest($request, ['is_active', 'deleted'])));
+        return PartyResource::collection($service->customers(TableQueryData::fromRequest($request, ['is_active', 'deleted']), $request->user()));
     }
 
     public function store(CustomerRequest $request, PartyService $service): JsonResponse
@@ -66,6 +66,7 @@ class CustomerController extends Controller
         return response()->json([
             'data' => Customer::query()
                 ->where('is_active', true)
+                ->when(request()->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
                 ->orderBy('name')
                 ->limit(50)
                 ->get(['id', 'name', 'phone', 'current_balance', 'credit_limit']),

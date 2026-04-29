@@ -25,6 +25,7 @@ class StockMovementController extends Controller
 
         $query = StockMovement::query()
             ->with(['product:id,name,sku,company_id', 'batch:id,batch_no,expires_at', 'creator:id,name'])
+            ->when(request()->user()?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($search !== '', function (Builder $builder) use ($search) {
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('movement_type', 'like', '%'.$search.'%')
