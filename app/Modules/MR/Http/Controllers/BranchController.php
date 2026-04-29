@@ -9,9 +9,11 @@ use Illuminate\Http\Request;
 class BranchController
 {
     // Return flat list with optional hierarchy info, used for selects and management.
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $branches = Branch::query()
+            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->orderByRaw("CASE WHEN type = 'hq' THEN 0 ELSE 1 END")
             ->orderBy('name')
             ->get()
@@ -25,7 +27,12 @@ class BranchController
     {
         $validated = $this->validatedPayload($request);
 
-        $branch = Branch::query()->create($validated);
+        $branch = Branch::query()->create([
+            ...$validated,
+            'tenant_id' => $request->user()?->tenant_id,
+            'company_id' => $request->user()?->company_id,
+            'store_id' => $request->user()?->store_id,
+        ]);
 
         return response()->json([
             'message' => "Branch '{$branch->name}' created.",
@@ -61,10 +68,12 @@ class BranchController
     }
 
     // Lightweight options list for Select dropdowns.
-    public function options(): JsonResponse
+    public function options(Request $request): JsonResponse
     {
         $options = Branch::query()
             ->where('is_active', true)
+            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->orderByRaw("CASE WHEN type = 'hq' THEN 0 ELSE 1 END")
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'type'])

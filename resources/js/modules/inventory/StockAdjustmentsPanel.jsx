@@ -11,6 +11,7 @@ import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
 const defaultAdjustmentTypes = [
     { value: 'add', label: 'Add Stock' },
@@ -31,6 +32,7 @@ export function StockAdjustmentsPanel() {
     const [adjustmentTypes, setAdjustmentTypes] = useState(defaultAdjustmentTypes);
     const [quickProductOpen, setQuickProductOpen] = useState(false);
     const [quickAdjustmentOpen, setQuickAdjustmentOpen] = useState(false);
+    const [range, setRange] = useState([]);
     const table = useServerTable({ endpoint: endpoints.stockAdjustments });
     const productId = Form.useWatch('product_id', form);
 
@@ -47,6 +49,10 @@ export function StockAdjustmentsPanel() {
             form.setFieldValue('batch_id', null);
         }
     }, [productId]);
+
+    useEffect(() => {
+        table.setFilters((filters) => applyDateRangeFilter(filters, range));
+    }, [range]);
 
     async function searchProducts(q) {
         const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
@@ -178,7 +184,7 @@ export function StockAdjustmentsPanel() {
                 title="Recent Adjustments"
                 extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Adjustment</Button>}
             >
-                <div className="table-toolbar">
+                <div className="table-toolbar table-toolbar-wide">
                     <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search product, batch, type or reason" allowClear />
                     <Select
                         allowClear
@@ -186,6 +192,7 @@ export function StockAdjustmentsPanel() {
                         options={adjustmentTypes}
                         onChange={(adjustment_type) => table.setFilters((filters) => ({ ...filters, adjustment_type }))}
                     />
+                    <SmartDatePicker.RangePicker value={range} onChange={setRange} placeholder={['Adjusted from', 'Adjusted to']} />
                     <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                 </div>
                 <ServerTable table={table} columns={columns} />

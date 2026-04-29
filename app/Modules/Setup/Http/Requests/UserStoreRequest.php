@@ -21,6 +21,7 @@ class UserStoreRequest extends FormRequest
             'password' => ['required', 'string', 'min:8', 'max:255'],
             'role_names' => ['required', 'array', 'min:1'],
             'role_names.*' => ['string', Rule::exists('roles', 'name')->where('guard_name', 'web')],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'medical_representative_id' => ['nullable', 'integer', 'exists:medical_representatives,id'],
             'is_active' => ['nullable', 'boolean'],
             'is_owner' => ['nullable', 'boolean'],

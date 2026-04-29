@@ -19,6 +19,13 @@ class UserResource extends JsonResource
             'tenant_id' => $this->tenant_id,
             'company_id' => $this->company_id,
             'store_id' => $this->store_id,
+            'branch_id' => $this->branch_id,
+            'branch' => $this->whenLoaded('branch', fn () => [
+                'id' => $this->branch?->id,
+                'name' => $this->branch?->name,
+                'code' => $this->branch?->code,
+                'type' => $this->branch?->type,
+            ]),
             'medical_representative_id' => $this->medical_representative_id,
             'medical_representative' => $this->whenLoaded('medicalRepresentative', fn () => [
                 'id' => $this->medicalRepresentative?->id,

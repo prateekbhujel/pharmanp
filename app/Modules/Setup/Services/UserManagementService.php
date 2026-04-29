@@ -23,7 +23,7 @@ class UserManagementService
     public function paginate(TableQueryData $table): LengthAwarePaginator
     {
         $query = User::query()
-            ->with(['roles:id,name', 'medicalRepresentative:id,name'])
+            ->with(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name'])
             ->when($table->search, function (Builder $builder, string $search) {
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('users.name', 'like', '%'.$search.'%')
@@ -48,6 +48,7 @@ class UserManagementService
                 'tenant_id' => $actor->tenant_id,
                 'company_id' => $actor->company_id,
                 'store_id' => $actor->store_id,
+                'branch_id' => $data['branch_id'] ?? $actor->branch_id,
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? null,
@@ -59,7 +60,7 @@ class UserManagementService
 
             $user->syncRoles($data['role_names']);
 
-            return $user->load(['roles:id,name', 'medicalRepresentative:id,name']);
+            return $user->load(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name']);
         });
     }
 
@@ -76,6 +77,7 @@ class UserManagementService
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? null,
+                'branch_id' => $data['branch_id'] ?? $user->branch_id,
                 'medical_representative_id' => $data['medical_representative_id'] ?? null,
                 'is_active' => (bool) ($data['is_active'] ?? $user->is_active),
                 'is_owner' => (bool) ($data['is_owner'] ?? $user->is_owner),
@@ -88,7 +90,7 @@ class UserManagementService
             $user->update($payload);
             $user->syncRoles($data['role_names']);
 
-            return $user->fresh(['roles:id,name', 'medicalRepresentative:id,name']);
+            return $user->fresh(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name']);
         });
     }
 
@@ -103,7 +105,7 @@ class UserManagementService
         return DB::transaction(function () use ($user, $active) {
             $user->update(['is_active' => $active]);
 
-            return $user->fresh(['roles:id,name', 'medicalRepresentative:id,name']);
+            return $user->fresh(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name']);
         });
     }
 

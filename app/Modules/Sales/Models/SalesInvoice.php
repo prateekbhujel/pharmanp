@@ -17,6 +17,7 @@ class SalesInvoice extends Model
         'tenant_id',
         'company_id',
         'store_id',
+        'branch_id',
         'customer_id',
         'medical_representative_id',
         'invoice_no',

@@ -1,32 +1,31 @@
-# PharmaNP Roadmap
+# PharmaNP Delivery Status
 
-## Foundation
+This document tracks production parity against the legacy `pharmacyfyp` workflow. It is not shown inside the application.
 
-- Setup wizard with installed lock.
-- Branding, sidebar layout and fiscal year setup.
-- Application setup and feature catalog foundation.
-- Session auth and protected API.
-- Inventory tabs for product, company, unit and category masters.
-- Product quick-create support for company, unit and category.
-- Import wizard preview and mapping.
-- Dashboard summary.
-- MR performance tracking foundation.
-- Barcode scan input for product and sales skeleton.
-- Shared-hosting safe update-check skeleton.
+## Built In Current Foundation
 
-## Phase 2
+- Inventory masters: products, companies/manufacturers, units, categories, batches, stock adjustment and case movement.
+- Purchase workflow: purchase orders, purchase entry, receive support, batch creation, stock movement posting, invoice print/PDF path and purchase returns.
+- Sales workflow: POS/sales invoice, walk-in customer support, barcode-assisted item selection, batch/expiry-aware deduction, payment update, print/PDF path and sales returns.
+- Party workflow: supplier/customer CRUD, quick add support, server-side lists and ledger/report integration.
+- Accounting workflow: vouchers, payments, expenses, day book, cash book, bank book, ledger, account tree and trial balance report structure.
+- Reports: sales, purchase, stock, low stock, expiry, supplier performance, customer ledger, supplier ledger, product movement and MR performance.
+- Import/export: upload, mapping, validation preview, confirmed import, rejected-row download and core exports.
+- OCR purchase helper: document upload, extraction foundation and draft handoff path.
+- Administration: users, roles, permissions, dropdown/data lookup, fiscal years, branding and operational settings.
+- Calendar: AD/BS display support through shared date components.
 
-- Purchase entry with batch creation, stock movement posting and purchase invoice print/PDF.
-- Sales invoice/POS with batch selection, stock deduction and invoice print/PDF.
-- Purchase returns and sales returns.
-- Supplier/customer ledgers.
-- Voucher posting and finance books.
-- Role/permission management UI.
-- Import commit actions with chunking and rejected-row export.
+## Remaining Production Hardening
 
-## Phase 3
+- Broaden export/PDF formatting coverage so every report and invoice format matches final customer templates.
+- Add background worker paths for very large imports while keeping the current shared-hosting sync fallback.
+- Add notification delivery scheduling for expiry/low stock/email digest behavior.
+- Expand automated tests around purchase receive, returns, voucher posting, report exports and OCR draft conversion.
+- Add deployment-specific scripts for shared hosting release backup, asset publishing and rollback.
 
-- Report exports, PDF packs, and scheduled backup workflow.
-- MR visit/order workflow and performance reports.
-- Queue-ready import/export workers with sync fallback.
-- OpenAPI package integration.
+## Design Direction
+
+- Keep the legacy workflow shape so existing users do not lose feature familiarity.
+- Use React + Ant Design for modern tables, drawers, modals and full-page transaction forms.
+- Keep date filters empty by default; reports should only filter by date when the user chooses a range.
+- Keep settings split by task: branding, company details, operating defaults, numbering, SMTP and fiscal years.

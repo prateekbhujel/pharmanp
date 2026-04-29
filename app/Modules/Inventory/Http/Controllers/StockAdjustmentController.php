@@ -29,6 +29,8 @@ class StockAdjustmentController extends Controller
             ->when(request()->filled('product_id'), fn (Builder $builder) => $builder->where('product_id', request()->integer('product_id')))
             ->when(request()->filled('batch_id'), fn (Builder $builder) => $builder->where('batch_id', request()->integer('batch_id')))
             ->when(request()->filled('adjustment_type'), fn (Builder $builder) => $builder->where('adjustment_type', request('adjustment_type')))
+            ->when(request()->filled('from'), fn (Builder $builder) => $builder->whereDate('adjustment_date', '>=', request('from')))
+            ->when(request()->filled('to'), fn (Builder $builder) => $builder->whereDate('adjustment_date', '<=', request('to')))
             ->orderByDesc('adjustment_date')
             ->orderByDesc('id')
             ->paginate(min(100, max(5, request()->integer('per_page', 15))));

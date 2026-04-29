@@ -1,23 +1,19 @@
 # Foundation Review
 
-## What Is Good
+## Current Shape
 
-- The application is now a Laravel-served React SPA, which matches shared-hosting deployment and avoids a production Node server.
-- Backend code is modular enough for growth without becoming enterprise-heavy too early.
-- Product master already demonstrates the right API pattern: FormRequest, DTO, service, resource, policy and server-side table.
-- The schema avoids database-level foreign keys but keeps indexed relationship columns for performance.
-- Spatie permission is installed and setup seeds a broad owner permission set.
-- Setup now captures company, store, branding, fiscal year and owner details.
-- Import/export, MR and feature catalog foundations are present.
+- PharmaNP is a Laravel-served React SPA, which matches shared-hosting deployment and avoids a production Node server.
+- Backend code is modular enough for growth without turning into enterprise-heavy boilerplate.
+- Transaction workflows use services/actions and database transactions where stock or accounting state changes.
+- The schema avoids database-level foreign keys while keeping indexed relationship columns for shared-hosting-friendly migration safety.
+- Spatie permissions, setup, branding, fiscal years, users, roles and dropdown management are wired.
 
-## What Is Still Foundation, Not Complete ERP
+## Legacy Parity Position
 
-- Returns, payment allocation and report exports are still foundation-level.
-- Supplier, customer, role/permission and accounting UIs have first-pass CRUD/API implementation and need deeper workflow polish.
-- Import preview and confirmed chunked import exist; large-file background workers are a later hardening task.
-- Installation-scoped columns exist, but this product is currently positioned as a standalone per-pharmacy install.
-- Report pages have dedicated first-pass query services and need export formats before they are production-ready.
+- Inventory, purchase, sales/POS, returns, parties, accounting books, reports, import/export and OCR foundations are now represented in the React application.
+- The application should preserve the legacy workflow sequence while upgrading UI structure, server-side tables and validation feedback.
+- Remaining parity work is mostly depth and polish: exact print layouts, export templates, notification scheduling and stronger edge-case tests.
 
 ## Next Engineering Focus
 
-Build purchase and sales transaction engines first. They create the real ERP core because they touch stock, batch, expiry, supplier/customer balance, payment and reporting data.
+Harden the operational flows that touch money and stock: purchase receive, sales payment update, returns, voucher posting, ledger history, report exports and import rollback behavior.

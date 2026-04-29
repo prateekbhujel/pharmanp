@@ -5,6 +5,7 @@ namespace App\Modules\Setup\Http\Controllers;
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Modules\MR\Models\Branch;
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\Setup\Http\Requests\UserIndexRequest;
 use App\Modules\Setup\Http\Requests\UserStoreRequest;
@@ -23,6 +24,13 @@ class UserManagementController extends Controller
         $payload = UserResource::collection($users)->response()->getData(true);
         $payload['lookups'] = [
             'roles' => Role::query()->where('guard_name', 'web')->orderBy('name')->get(['id', 'name']),
+            'branches' => Branch::query()
+                ->where('is_active', true)
+                ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+                ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
+                ->orderByRaw("CASE WHEN type = 'hq' THEN 0 ELSE 1 END")
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'type']),
             'medical_representatives' => MedicalRepresentative::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ];
 

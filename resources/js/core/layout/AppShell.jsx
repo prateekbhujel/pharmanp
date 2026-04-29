@@ -43,7 +43,6 @@ const ProductsPage = React.lazy(() => import('../../modules/inventory/ProductsPa
 const SalesPage = React.lazy(() => import('../../modules/sales/SalesPage').then((module) => ({ default: module.SalesPage })));
 const ImportWizardPage = React.lazy(() => import('../../modules/imports/ImportWizardPage').then((module) => ({ default: module.ImportWizardPage })));
 const OcrImportPage = React.lazy(() => import('../../modules/imports/OcrImportPage').then((module) => ({ default: module.OcrImportPage })));
-const OnboardingPage = React.lazy(() => import('../../modules/onboarding/OnboardingPage').then((module) => ({ default: module.OnboardingPage })));
 const MrTrackingPage = React.lazy(() => import('../../modules/mr/MrTrackingPage').then((module) => ({ default: module.MrTrackingPage })));
 const SettingsPage = React.lazy(() => import('../../modules/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const PurchasesPage = React.lazy(() => import('../../modules/purchases/PurchasesPage').then((module) => ({ default: module.PurchasesPage })));
@@ -59,7 +58,6 @@ const SIDEBAR_COLLAPSE_STORAGE_KEY = 'pharmanp-sidebar-collapsed';
 
 const routes = {
     [appUrl('/app')]: DashboardPage,
-    [appUrl('/app/onboarding')]: OnboardingPage,
     [appUrl('/app/inventory/products')]: ProductsPage,
     [appUrl('/app/inventory/companies')]: ProductsPage,
     [appUrl('/app/inventory/units')]: ProductsPage,
@@ -304,11 +302,17 @@ export function AppShell() {
             { key: register('settings', appUrl('/app/settings')), icon: <SettingOutlined />, label: 'Settings', show: canSetup },
         ];
 
-        const flatItems = items.filter(i => i.show !== false).map(i => {
-            if (i.children) {
-                i.children = i.children.filter(c => c.show !== false);
+        const flatItems = items.filter((item) => item.show !== false).map(({ show, children, ...item }) => {
+            if (!children) {
+                return item;
             }
-            return i;
+
+            return {
+                ...item,
+                children: children
+                    .filter((childItem) => childItem.show !== false)
+                    .map(({ show: childShow, ...childItem }) => childItem),
+            };
         });
 
         const sortedRouteKeys = Object.entries(routeMap).sort((a, b) => b[1].length - a[1].length);

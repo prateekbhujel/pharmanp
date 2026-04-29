@@ -1,16 +1,27 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { SendOutlined, UserOutlined } from '@ant-design/icons';
-import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Table, Tabs } from 'antd';
+import React, { useEffect, useState } from 'react';
+import {
+    ApartmentOutlined,
+    CalendarOutlined,
+    IdcardOutlined,
+    MailOutlined,
+    NumberOutlined,
+    SendOutlined,
+    ShopOutlined,
+    UserOutlined,
+} from '@ant-design/icons';
+import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Typography } from 'antd';
 import { BrandAssetUploadField } from '../../core/components/BrandAssetUploadField';
 import { PharmaBadge } from '../../core/components/PharmaBadge';
-import { countryOptions, countries } from '../../core/utils/countries';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { useBranding } from '../../core/context/BrandingContext';
+import { countryOptions, countries } from '../../core/utils/countries';
 import { FiscalYearPanel } from './FiscalYearPanel';
+
+const { Text } = Typography;
 
 const documentNumberTypes = [
     ['purchase_order', 'Purchase Order'],
@@ -32,6 +43,27 @@ const documentSeparatorOptions = [
     { value: '.', label: 'Dot (.)' },
     { value: '', label: 'None' },
 ];
+
+const settingsNavigation = [
+    { id: 'settings-profile', label: 'Profile', icon: <UserOutlined /> },
+    { id: 'settings-branding', label: 'Branding', icon: <IdcardOutlined /> },
+    { id: 'settings-company', label: 'Company Details', icon: <ShopOutlined /> },
+    { id: 'settings-numbering', label: 'Document Numbering', icon: <NumberOutlined /> },
+    { id: 'settings-mail', label: 'SMTP & Notifications', icon: <MailOutlined /> },
+    { id: 'settings-fiscal-years', label: 'Fiscal Years', icon: <CalendarOutlined /> },
+];
+
+const defaultSettingsSection = 'settings-profile';
+
+function currentSettingsSection() {
+    if (typeof window === 'undefined') {
+        return defaultSettingsSection;
+    }
+
+    const hashSection = window.location.hash.replace('#', '');
+
+    return settingsNavigation.some((item) => item.id === hashSection) ? hashSection : defaultSettingsSection;
+}
 
 function brandingPayload(values) {
     const payload = new FormData();
@@ -61,17 +93,52 @@ function brandingPayload(values) {
     return payload;
 }
 
+function fieldErrors(error) {
+    return Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages }));
+}
+
+function SettingsSection({ id, title, description, icon, children }) {
+    return (
+        <section data-settings-section={id} className="settings-section">
+            <Card
+                title={(
+                    <Space size={10}>
+                        <span className="settings-section-icon">{icon}</span>
+                        <span>{title}</span>
+                    </Space>
+                )}
+            >
+                {description ? <Text className="settings-section-description">{description}</Text> : null}
+                <div className="settings-section-body">
+                    {children}
+                </div>
+            </Card>
+        </section>
+    );
+}
+
 export function SettingsPage() {
     const { notification } = App.useApp();
     const { user, reload: reloadAuth } = useAuth();
-    const { data: features } = useApi(endpoints.featureCatalog);
     const { branding, loading: brandingLoading, reload: reloadBranding } = useBranding();
     const { data: profile, reload: reloadProfile } = useApi(endpoints.profile);
 
-    const [brandingForm] = Form.useForm();
-    const [adminForm] = Form.useForm();
     const [profileForm] = Form.useForm();
+    const [brandingForm] = Form.useForm();
+    const [companyForm] = Form.useForm();
+    const [numberingForm] = Form.useForm();
+    const [mailForm] = Form.useForm();
     const [adminSettingsLoading, setAdminSettingsLoading] = useState(false);
+    const [smtpPasswordSet, setSmtpPasswordSet] = useState(false);
+    const [activeSection, setActiveSection] = useState(currentSettingsSection);
+
+    useEffect(() => {
+        const syncHashSection = () => setActiveSection(currentSettingsSection());
+
+        window.addEventListener('hashchange', syncHashSection);
+
+        return () => window.removeEventListener('hashchange', syncHashSection);
+    }, []);
 
     useEffect(() => {
         if (branding) {
@@ -100,11 +167,33 @@ export function SettingsPage() {
         setAdminSettingsLoading(true);
         try {
             const { data } = await http.get(endpoints.settingsAdmin);
-            adminForm.setFieldsValue(data.data || {});
+            const settings = data.data || {};
+
+            companyForm.setFieldsValue({
+                company_email: settings.company_email,
+                company_phone: settings.company_phone,
+                company_address: settings.company_address,
+                low_stock_threshold: settings.low_stock_threshold,
+            });
+            numberingForm.setFieldsValue({
+                document_numbering: settings.document_numbering,
+            });
+            mailForm.setFieldsValue({
+                smtp_host: settings.smtp_host,
+                smtp_port: settings.smtp_port,
+                smtp_username: settings.smtp_username,
+                smtp_password: '',
+                smtp_encryption: settings.smtp_encryption,
+                mail_from_address: settings.mail_from_address,
+                mail_from_name: settings.mail_from_name,
+                notification_email: settings.notification_email,
+            });
+            setSmtpPasswordSet(Boolean(settings.smtp_password_set));
         } catch {
-            // Leave the form empty if the endpoint is not ready yet.
+            // Settings can be empty on a fresh local install.
+        } finally {
+            setAdminSettingsLoading(false);
         }
-        setAdminSettingsLoading(false);
     }
 
     async function saveProfile(values) {
@@ -120,7 +209,7 @@ export function SettingsPage() {
                 password_confirmation: '',
             });
         } catch (error) {
-            profileForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
+            profileForm.setFields(fieldErrors(error));
             notification.error({ message: 'Profile update failed', description: error?.response?.data?.message || error.message });
         }
     }
@@ -132,18 +221,19 @@ export function SettingsPage() {
             reloadBranding?.();
             reloadAuth?.();
         } catch (error) {
-            brandingForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
-            notification.error({ message: 'Branding save failed' });
+            brandingForm.setFields(fieldErrors(error));
+            notification.error({ message: 'Branding save failed', description: error?.response?.data?.message || error.message });
         }
     }
 
-    async function saveAdminSettings(values) {
+    async function saveAdminSection(form, values, message) {
         try {
             await http.put(endpoints.settingsAdmin, values);
-            notification.success({ message: 'Configuration saved' });
+            notification.success({ message });
             loadAdminSettings();
+            reloadBranding?.();
         } catch (error) {
-            adminForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
+            form.setFields(fieldErrors(error));
             notification.error({ message: 'Configuration save failed', description: error?.response?.data?.message || error.message });
         }
     }
@@ -151,7 +241,7 @@ export function SettingsPage() {
     async function sendTestMail() {
         try {
             const { data } = await http.post(endpoints.settingsTestMail, {
-                email: adminForm.getFieldValue('notification_email') || adminForm.getFieldValue('mail_from_address'),
+                email: mailForm.getFieldValue('notification_email') || mailForm.getFieldValue('mail_from_address'),
             });
             notification.success({ message: data.message || 'Test email sent' });
         } catch (error) {
@@ -159,28 +249,50 @@ export function SettingsPage() {
         }
     }
 
-    const featureRows = useMemo(() => {
-        if (!features) return [];
-
-        return Object.entries(features).flatMap(([module, data]) =>
-            data.map((feature) => ({ ...feature, module })),
-        );
-    }, [features]);
+    function selectSettingsSection(sectionId) {
+        setActiveSection(sectionId);
+        window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}#${sectionId}`);
+    }
 
     return (
-        <div className="page-stack">
+        <div className="page-stack settings-page">
             <PageHeader
                 title="Settings"
-                description="Profile, branding, fiscal year and operational configuration."
+                description="Company identity, fiscal year, mail delivery and operating controls."
                 actions={<PharmaBadge tone="info" icon={<UserOutlined />}>{user?.name}</PharmaBadge>}
             />
 
-            <Tabs items={[
-                {
-                    key: 'profile',
-                    label: 'My Profile',
-                    children: (
-                        <Card title="Personal Access" loading={!profile}>
+            <div className="settings-layout">
+                <aside className="settings-sidebar">
+                    <div className="settings-sidebar-title">Configuration</div>
+                    <nav className="settings-nav">
+                        {settingsNavigation.map((item) => (
+                            <a
+                                key={item.id}
+                                href={`#${item.id}`}
+                                className={`settings-nav-item ${activeSection === item.id ? 'settings-nav-item-active' : ''}`}
+                                aria-current={activeSection === item.id ? 'page' : undefined}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    selectSettingsSection(item.id);
+                                }}
+                            >
+                                {item.icon}
+                                <span>{item.label}</span>
+                            </a>
+                        ))}
+                    </nav>
+                </aside>
+
+                <div className="settings-content">
+                    {activeSection === 'settings-profile' ? (
+                        <SettingsSection
+                        id="settings-profile"
+                        title="My Profile"
+                        icon={<UserOutlined />}
+                        description="Personal account details and password."
+                    >
+                        <Card title="Personal Access" loading={!profile} className="settings-inner-card">
                             <Form form={profileForm} layout="vertical" onFinish={saveProfile}>
                                 <div className="form-grid">
                                     <Form.Item name="name" label="Full Name" rules={[{ required: true }]}>
@@ -237,13 +349,17 @@ export function SettingsPage() {
                                 <Button type="primary" htmlType="submit">Update Profile</Button>
                             </Form>
                         </Card>
-                    ),
-                },
-                {
-                    key: 'branding',
-                    label: 'Branding',
-                    children: (
-                        <Card title="Application Identity" loading={brandingLoading}>
+                        </SettingsSection>
+                    ) : null}
+
+                    {activeSection === 'settings-branding' ? (
+                        <SettingsSection
+                        id="settings-branding"
+                        title="Branding"
+                        icon={<IdcardOutlined />}
+                        description="Application name, calendar preference and uploaded brand assets."
+                    >
+                        <Card title="Application Identity" loading={brandingLoading} className="settings-inner-card">
                             <Form form={brandingForm} layout="vertical" onFinish={saveBranding}>
                                 <div className="form-grid">
                                     <Form.Item name="app_name" label="Pharmacy Name" rules={[{ required: true }]}>
@@ -295,107 +411,172 @@ export function SettingsPage() {
                                         />
                                     ))}
                                 </div>
-                                <Space>
+                                <Space wrap>
                                     <Button type="primary" size="large" htmlType="submit">Apply Branding</Button>
                                     <Button size="large" onClick={() => reloadBranding?.()}>Discard Changes</Button>
                                 </Space>
                             </Form>
                         </Card>
-                    ),
-                },
-                {
-                    key: 'general',
-                    label: 'General Settings',
-                    children: (
-                        <Card title="Company & SMTP Configuration" loading={adminSettingsLoading}>
-                            <Form form={adminForm} layout="vertical" onFinish={saveAdminSettings}>
+                        </SettingsSection>
+                    ) : null}
+
+                    {activeSection === 'settings-company' ? (
+                        <SettingsSection
+                        id="settings-company"
+                        title="Company Details"
+                        icon={<ShopOutlined />}
+                        description="Contact details used on invoices, reports, notifications and stock alerts."
+                    >
+                        <Card title="Company Contact" loading={adminSettingsLoading} className="settings-inner-card">
+                            <Form
+                                form={companyForm}
+                                layout="vertical"
+                                onFinish={(values) => saveAdminSection(companyForm, values, 'Company details saved')}
+                            >
                                 <div className="form-grid">
-                                    <Form.Item name="company_email" label="Company Email"><Input /></Form.Item>
-                                    <Form.Item name="company_phone" label="Company Phone"><Input /></Form.Item>
+                                    <Form.Item name="company_email" label="Company Email" rules={[{ type: 'email' }]}>
+                                        <Input size="large" />
+                                    </Form.Item>
+                                    <Form.Item name="company_phone" label="Company Phone">
+                                        <Input size="large" />
+                                    </Form.Item>
                                 </div>
-                                <Form.Item name="company_address" label="Company Address"><Input.TextArea rows={2} /></Form.Item>
-                                <Form.Item name="low_stock_threshold" label="Low Stock Threshold">
-                                    <InputNumber min={1} className="full-width" />
+                                <Form.Item name="company_address" label="Company Address">
+                                    <Input.TextArea rows={3} />
                                 </Form.Item>
-                                <Card size="small" title="Document Numbering" style={{ marginBottom: 16 }}>
-                                    <div className="document-number-grid">
-                                        {documentNumberTypes.map(([key, label]) => (
-                                            <Card size="small" key={key} title={label} className="document-number-card">
-                                                <div className="form-grid">
-                                                    <Form.Item name={['document_numbering', key, 'prefix']} label="Prefix">
-                                                        <Input maxLength={12} placeholder="PO" />
-                                                    </Form.Item>
-                                                    <Form.Item name={['document_numbering', key, 'date_format']} label="Date Part">
-                                                        <Select options={documentDateFormatOptions} />
-                                                    </Form.Item>
-                                                </div>
-                                                <div className="form-grid">
-                                                    <Form.Item name={['document_numbering', key, 'separator']} label="Separator">
-                                                        <Select options={documentSeparatorOptions} />
-                                                    </Form.Item>
-                                                    <Form.Item name={['document_numbering', key, 'padding']} label="Sequence Padding">
-                                                        <InputNumber min={1} max={12} className="full-width" />
-                                                    </Form.Item>
-                                                </div>
-                                            </Card>
-                                        ))}
-                                    </div>
+                                <Card size="small" title="Stock Defaults" className="settings-sub-card">
+                                    <Form.Item name="low_stock_threshold" label="Low Stock Threshold">
+                                        <InputNumber min={1} className="full-width" size="large" />
+                                    </Form.Item>
                                 </Card>
-                                <Card size="small" title="SMTP / Mail Settings" style={{ marginBottom: 16 }}>
-                                    <div className="form-grid">
-                                        <Form.Item name="smtp_host" label="SMTP Host"><Input /></Form.Item>
-                                        <Form.Item name="smtp_port" label="SMTP Port"><Input /></Form.Item>
-                                    </div>
-                                    <div className="form-grid">
-                                        <Form.Item name="smtp_username" label="Username"><Input /></Form.Item>
-                                        <Form.Item
-                                            name="smtp_password"
-                                            label="Password"
-                                            extra={adminForm.getFieldValue('smtp_password_set') ? 'Password is saved. Type a new one only if you want to replace it.' : undefined}
-                                        >
-                                            <Input.Password autoComplete="new-password" placeholder={adminForm.getFieldValue('smtp_password_set') ? 'Saved password hidden' : undefined} />
-                                        </Form.Item>
-                                    </div>
-                                    <div className="form-grid">
-                                        <Form.Item name="smtp_encryption" label="Encryption"><Select allowClear options={[{ value: 'tls', label: 'TLS' }, { value: 'ssl', label: 'SSL' }]} /></Form.Item>
-                                        <Form.Item name="mail_from_address" label="From Address"><Input /></Form.Item>
-                                    </div>
-                                    <div className="form-grid">
-                                        <Form.Item name="mail_from_name" label="From Name"><Input /></Form.Item>
-                                        <Form.Item name="notification_email" label="Notification Email"><Input /></Form.Item>
-                                    </div>
-                                    <Button icon={<SendOutlined />} onClick={sendTestMail}>Send Test Mail</Button>
-                                </Card>
-                                <Button type="primary" htmlType="submit">Save Configuration</Button>
+                                <Button type="primary" htmlType="submit">Save Company Details</Button>
                             </Form>
                         </Card>
-                    ),
-                },
-                {
-                    key: 'fiscal-years',
-                    label: 'Fiscal Years',
-                    children: <FiscalYearPanel />,
-                },
-                {
-                    key: 'features',
-                    label: 'Feature Roadmap',
-                    children: (
-                        <Card title="Feature Roadmap">
-                            <Table
-                                rowKey="code"
-                                dataSource={featureRows}
-                                pagination={{ pageSize: 15 }}
-                                columns={[
-                                    { title: 'Module', dataIndex: 'module', width: 150 },
-                                    { title: 'Feature', dataIndex: 'name', width: 240 },
-                                    { title: 'Status', dataIndex: 'status', width: 130, render: (value) => <PharmaBadge tone={value === 'ready' ? 'success' : 'warning'}>{value}</PharmaBadge> },
-                                    { title: 'Use Case', dataIndex: 'description' },
-                                ]}
-                            />
+                        </SettingsSection>
+                    ) : null}
+
+                    {activeSection === 'settings-numbering' ? (
+                        <SettingsSection
+                        id="settings-numbering"
+                        title="Document Numbering"
+                        icon={<NumberOutlined />}
+                        description="Invoice, bill, purchase order and voucher code rules."
+                    >
+                        <Card title="Numbering Rules" loading={adminSettingsLoading} className="settings-inner-card">
+                            <Form
+                                form={numberingForm}
+                                layout="vertical"
+                                onFinish={(values) => saveAdminSection(numberingForm, values, 'Document numbering saved')}
+                            >
+                                <div className="document-number-grid">
+                                    {documentNumberTypes.map(([key, label]) => (
+                                        <Card size="small" key={key} title={label} className="document-number-card">
+                                            <div className="form-grid">
+                                                <Form.Item name={['document_numbering', key, 'prefix']} label="Prefix">
+                                                    <Input maxLength={12} placeholder="PO" />
+                                                </Form.Item>
+                                                <Form.Item name={['document_numbering', key, 'date_format']} label="Date Part">
+                                                    <Select options={documentDateFormatOptions} />
+                                                </Form.Item>
+                                            </div>
+                                            <div className="form-grid">
+                                                <Form.Item name={['document_numbering', key, 'separator']} label="Separator">
+                                                    <Select options={documentSeparatorOptions} />
+                                                </Form.Item>
+                                                <Form.Item name={['document_numbering', key, 'padding']} label="Sequence Padding">
+                                                    <InputNumber min={1} max={12} className="full-width" />
+                                                </Form.Item>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                                <Button type="primary" htmlType="submit">Save Numbering Rules</Button>
+                            </Form>
                         </Card>
-                    ),
-                },
-            ]} />
+                        </SettingsSection>
+                    ) : null}
+
+                    {activeSection === 'settings-mail' ? (
+                        <SettingsSection
+                        id="settings-mail"
+                        title="SMTP & Notifications"
+                        icon={<MailOutlined />}
+                        description="Mail server and notification sender used by system alerts."
+                    >
+                        <Card title="Mail Delivery" loading={adminSettingsLoading} className="settings-inner-card">
+                            <Form
+                                form={mailForm}
+                                layout="vertical"
+                                onFinish={(values) => saveAdminSection(mailForm, values, 'Mail configuration saved')}
+                            >
+                                <div className="form-grid">
+                                    <Form.Item name="smtp_host" label="SMTP Host">
+                                        <Input size="large" />
+                                    </Form.Item>
+                                    <Form.Item name="smtp_port" label="SMTP Port">
+                                        <Input size="large" />
+                                    </Form.Item>
+                                </div>
+                                <div className="form-grid">
+                                    <Form.Item name="smtp_username" label="Username">
+                                        <Input size="large" />
+                                    </Form.Item>
+                                    <Form.Item
+                                        name="smtp_password"
+                                        label="Password"
+                                        extra={smtpPasswordSet ? 'Password is saved. Type a new one only if you want to replace it.' : undefined}
+                                    >
+                                        <Input.Password
+                                            size="large"
+                                            autoComplete="new-password"
+                                            placeholder={smtpPasswordSet ? 'Saved password hidden' : undefined}
+                                        />
+                                    </Form.Item>
+                                </div>
+                                <div className="form-grid">
+                                    <Form.Item name="smtp_encryption" label="Encryption">
+                                        <Select
+                                            size="large"
+                                            allowClear
+                                            options={[
+                                                { value: 'tls', label: 'TLS' },
+                                                { value: 'ssl', label: 'SSL' },
+                                            ]}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item name="mail_from_address" label="From Address" rules={[{ type: 'email' }]}>
+                                        <Input size="large" />
+                                    </Form.Item>
+                                </div>
+                                <div className="form-grid">
+                                    <Form.Item name="mail_from_name" label="From Name">
+                                        <Input size="large" />
+                                    </Form.Item>
+                                    <Form.Item name="notification_email" label="Notification Email" rules={[{ type: 'email' }]}>
+                                        <Input size="large" />
+                                    </Form.Item>
+                                </div>
+                                <Space wrap>
+                                    <Button type="primary" htmlType="submit">Save Mail Settings</Button>
+                                    <Button icon={<SendOutlined />} onClick={sendTestMail}>Send Test Mail</Button>
+                                </Space>
+                            </Form>
+                        </Card>
+                        </SettingsSection>
+                    ) : null}
+
+                    {activeSection === 'settings-fiscal-years' ? (
+                        <SettingsSection
+                        id="settings-fiscal-years"
+                        title="Fiscal Years"
+                        icon={<ApartmentOutlined />}
+                        description="Nepali fiscal year windows and active accounting period."
+                    >
+                        <FiscalYearPanel />
+                        </SettingsSection>
+                    ) : null}
+                </div>
+            </div>
         </div>
     );
 }

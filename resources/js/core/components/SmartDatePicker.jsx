@@ -23,5 +23,8 @@ SmartDatePicker.RangePicker = (props) => {
         return <NepaliDateRangePicker {...props} />;
     }
 
-    return <DatePicker.RangePicker {...props} className={`full-width ${props.className || ''}`} />;
+    const { value, className, ...rest } = props;
+    const normalizedValue = Array.isArray(value) && value.length === 0 ? null : value;
+
+    return <DatePicker.RangePicker {...rest} value={normalizedValue} className={`full-width smart-date-range ${className || ''}`} />;
 };

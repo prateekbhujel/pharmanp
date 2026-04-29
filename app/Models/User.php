@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Modules\MR\Models\MedicalRepresentative;
+use App\Modules\MR\Models\Branch;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,6 +30,7 @@ class User extends Authenticatable
         'tenant_id',
         'company_id',
         'store_id',
+        'branch_id',
         'medical_representative_id',
         'is_owner',
         'is_active',
@@ -64,5 +66,10 @@ class User extends Authenticatable
     public function medicalRepresentative(): BelongsTo
     {
         return $this->belongsTo(MedicalRepresentative::class, 'medical_representative_id');
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 }

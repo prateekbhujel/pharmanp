@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Button, Card, Dropdown, Input } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Button, Card, Dropdown, Select } from 'antd';
 import { CalendarOutlined, CloseCircleOutlined, LeftOutlined, RightOutlined, SwapRightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -13,6 +13,10 @@ import {
 } from '../utils/calendar';
 
 function normalizeDate(value) {
+    if (!value) {
+        return null;
+    }
+
     const date = dayjs(value);
 
     return date.isValid() ? date.startOf('day') : null;
@@ -67,7 +71,10 @@ function MonthPanel({
     viewDate,
     start,
     end,
+    monthOptions,
+    yearOptions,
     onSelect,
+    onViewDateChange,
     showPrev,
     showNext,
     onPrev,
@@ -79,8 +86,25 @@ function MonthPanel({
         <div className="nepali-range-month">
             <div className="nepali-range-month-header">
                 {showPrev ? <Button type="text" size="small" icon={<LeftOutlined />} onClick={onPrev} /> : <span />}
-                <div className="nepali-range-month-title">
-                    {nepaliMonthsFull[viewDate.month]} {viewDate.year}
+                <div className="nepali-range-month-controls">
+                    <Select
+                        size="small"
+                        value={viewDate.month}
+                        options={monthOptions}
+                        className="nepali-range-month-select"
+                        popupMatchSelectWidth={false}
+                        onChange={(month) => onViewDateChange({ ...viewDate, month })}
+                    />
+                    <Select
+                        size="small"
+                        showSearch
+                        optionFilterProp="label"
+                        value={viewDate.year}
+                        options={yearOptions}
+                        className="nepali-range-year-select"
+                        popupMatchSelectWidth={false}
+                        onChange={(year) => onViewDateChange({ ...viewDate, year })}
+                    />
                 </div>
                 {showNext ? <Button type="text" size="small" icon={<RightOutlined />} onClick={onNext} /> : <span />}
             </div>
@@ -150,7 +174,16 @@ export function NepaliDateRangePicker({
     const [startValue, endValue] = Array.isArray(value) ? value : [];
     const start = normalizeDate(startValue);
     const end = normalizeDate(endValue);
-    const initialBs = adToBs(start || dayjs()) || adToBs(dayjs());
+    const initialBs = adToBs(start || end || dayjs()) || adToBs(dayjs());
+    const supportedYears = useMemo(() => Object.keys(bsData).map(Number), []);
+    const monthOptions = useMemo(
+        () => nepaliMonthsFull.map((label, index) => ({ value: index, label })),
+        [],
+    );
+    const yearOptions = useMemo(
+        () => supportedYears.map((year) => ({ value: year, label: String(year) })),
+        [supportedYears],
+    );
     const [viewDate, setViewDate] = useState({
         year: initialBs?.year || 2083,
         month: initialBs?.month || 0,
@@ -165,10 +198,25 @@ export function NepaliDateRangePicker({
     const displayEnd = end ? formatBsDate(end, { style: 'compact', includeEra: false }) : '';
     const panelClassName = [
         'nepali-range-picker',
+        'smart-date-range',
         className || '',
         disabled ? 'nepali-range-picker-disabled' : '',
         open ? 'nepali-range-picker-open' : '',
     ].filter(Boolean).join(' ');
+
+    useEffect(() => {
+        setDraftRange([start, end]);
+
+        const anchor = start || end;
+        if (!anchor || open) {
+            return;
+        }
+
+        const bsDate = adToBs(anchor);
+        if (bsDate) {
+            setViewDate({ year: bsDate.year, month: bsDate.month });
+        }
+    }, [startValue, endValue, open]);
 
     function emit(nextStart, nextEnd) {
         if (!nextStart && !nextEnd) {
@@ -203,6 +251,13 @@ export function NepaliDateRangePicker({
         setSelecting('start');
     }
 
+    function handleRightPanelViewChange(nextRightViewDate) {
+        const previousMonth = addBsMonths(nextRightViewDate, -1);
+        setViewDate(previousMonth.year === nextRightViewDate.year && previousMonth.month === nextRightViewDate.month
+            ? nextRightViewDate
+            : previousMonth);
+    }
+
     const dropdownContent = (
         <Card className="nepali-range-card" size="small">
             <div className="nepali-range-card-body">
@@ -210,7 +265,10 @@ export function NepaliDateRangePicker({
                     viewDate={viewDate}
                     start={activeStart}
                     end={activeEnd}
+                    monthOptions={monthOptions}
+                    yearOptions={yearOptions}
                     onSelect={handleSelect}
+                    onViewDateChange={setViewDate}
                     showPrev
                     onPrev={() => setViewDate((current) => addBsMonths(current, -1))}
                 />
@@ -218,7 +276,10 @@ export function NepaliDateRangePicker({
                     viewDate={nextViewDate}
                     start={activeStart}
                     end={activeEnd}
+                    monthOptions={monthOptions}
+                    yearOptions={yearOptions}
                     onSelect={handleSelect}
+                    onViewDateChange={handleRightPanelViewChange}
                     showNext
                     onNext={() => setViewDate((current) => addBsMonths(current, 1))}
                 />
@@ -262,23 +323,13 @@ export function NepaliDateRangePicker({
         >
             <div className={panelClassName} role="button" tabIndex={disabled ? -1 : 0}>
                 <CalendarOutlined className="nepali-range-icon" />
-                <Input
-                    value={displayStart}
-                    placeholder={placeholder?.[0] || 'Start date'}
-                    readOnly
-                    disabled={disabled}
-                    variant="borderless"
-                    className="nepali-range-input"
-                />
+                <span className={`nepali-range-value ${displayStart ? '' : 'nepali-range-placeholder'}`}>
+                    {displayStart || placeholder?.[0] || 'Start date'}
+                </span>
                 <SwapRightOutlined className="nepali-range-separator" />
-                <Input
-                    value={displayEnd}
-                    placeholder={placeholder?.[1] || 'End date'}
-                    readOnly
-                    disabled={disabled}
-                    variant="borderless"
-                    className="nepali-range-input"
-                />
+                <span className={`nepali-range-value ${displayEnd ? '' : 'nepali-range-placeholder'}`}>
+                    {displayEnd || placeholder?.[1] || 'End date'}
+                </span>
                 {allowClear && hasValue && !disabled ? (
                     <Button
                         type="text"

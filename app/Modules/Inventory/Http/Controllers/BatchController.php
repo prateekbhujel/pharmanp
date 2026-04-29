@@ -43,6 +43,8 @@ class BatchController extends Controller
             ->when(request()->filled('product_id'), fn (Builder $builder) => $builder->where('product_id', request()->integer('product_id')))
             ->when(request()->filled('supplier_id'), fn (Builder $builder) => $builder->where('supplier_id', request()->integer('supplier_id')))
             ->when(request()->filled('expiry_status'), fn (Builder $builder) => $this->expiryFilter($builder, request('expiry_status')))
+            ->when(request()->filled('from'), fn (Builder $builder) => $builder->whereDate('expires_at', '>=', request('from')))
+            ->when(request()->filled('to'), fn (Builder $builder) => $builder->whereDate('expires_at', '<=', request('to')))
             ->when(request()->filled('is_active'), fn (Builder $builder) => $builder->where('is_active', request()->boolean('is_active')))
             ->orderBy($sortField, $sortOrder)
             ->orderBy('id');

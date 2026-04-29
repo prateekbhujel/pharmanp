@@ -10,6 +10,7 @@ use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Store;
 use App\Modules\Inventory\Models\Unit;
+use App\Modules\MR\Models\Branch;
 use App\Modules\Setup\Models\FiscalYear;
 use App\Modules\Setup\Models\Tenant;
 use Illuminate\Support\Facades\DB;
@@ -72,10 +73,21 @@ class SetupService
                 'is_active' => true,
             ]);
 
+            $branch = Branch::query()->create([
+                'tenant_id' => $tenant->id,
+                'company_id' => $company->id,
+                'store_id' => $store->id,
+                'name' => $store->name,
+                'code' => $store->code ?: 'HQ',
+                'type' => 'hq',
+                'is_active' => true,
+            ]);
+
             $admin = User::query()->create([
                 'tenant_id' => $tenant->id,
                 'company_id' => $company->id,
                 'store_id' => $store->id,
+                'branch_id' => $branch->id,
                 'name' => $data['admin']['name'],
                 'email' => $data['admin']['email'],
                 'password' => Hash::make($data['admin']['password']),

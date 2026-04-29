@@ -11,7 +11,7 @@ class CurrentUserController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        $user = $request->user()->loadMissing(['roles:id,name', 'medicalRepresentative:id,name']);
+        $user = $request->user()->loadMissing(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name']);
         $branding = Setting::getValue('app.branding', [
             'app_name' => config('app.name', 'PharmaNP'),
             'logo_url' => null,
@@ -39,6 +39,13 @@ class CurrentUserController extends Controller
                 'roles' => $user->roles->pluck('name')->values(),
                 'company_id' => $user->company_id,
                 'store_id' => $user->store_id,
+                'branch_id' => $user->branch_id,
+                'branch' => $user->branch ? [
+                    'id' => $user->branch->id,
+                    'name' => $user->branch->name,
+                    'code' => $user->branch->code,
+                    'type' => $user->branch->type,
+                ] : null,
                 'medical_representative_id' => $user->medical_representative_id,
                 'medical_representative' => $user->medicalRepresentative ? [
                     'id' => $user->medicalRepresentative->id,

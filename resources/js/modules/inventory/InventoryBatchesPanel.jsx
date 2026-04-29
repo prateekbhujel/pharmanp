@@ -13,6 +13,7 @@ import { StatusTag } from '../../core/components/StatusTag';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
 const expiryOptions = [
     { value: 'available', label: 'Available Stock' },
@@ -29,6 +30,7 @@ export function InventoryBatchesPanel() {
     const [saving, setSaving] = useState(false);
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
+    const [expiryRange, setExpiryRange] = useState([]);
     const table = useServerTable({
         endpoint: endpoints.inventoryBatches,
         defaultSort: { field: 'expires_at', order: 'asc' },
@@ -39,6 +41,10 @@ export function InventoryBatchesPanel() {
         loadSuppliers();
         searchProducts('');
     }, []);
+
+    useEffect(() => {
+        table.setFilters((filters) => applyDateRangeFilter(filters, expiryRange));
+    }, [expiryRange]);
 
     async function loadSuppliers() {
         const { data } = await http.get(endpoints.supplierOptions);
@@ -181,6 +187,7 @@ export function InventoryBatchesPanel() {
                         options={expiryOptions}
                         onChange={(expiry_status) => table.setFilters((filters) => ({ ...filters, expiry_status }))}
                     />
+                    <SmartDatePicker.RangePicker value={expiryRange} onChange={setExpiryRange} placeholder={['Expiry from', 'Expiry to']} />
                     <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                 </div>
                 <ServerTable table={table} columns={columns} />
