@@ -17,6 +17,7 @@ class PurchaseOrderController extends Controller
     {
         $orders = PurchaseOrder::query()
             ->with('supplier:id,name')
+            ->when(request()->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
             ->latest('order_date')
             ->latest('id')
             ->paginate(request()->integer('per_page', 15));

@@ -31,6 +31,7 @@ class SalesInvoiceController extends Controller
 
         $invoices = SalesInvoice::query()
             ->with(['customer:id,name', 'medicalRepresentative:id,name'])
+            ->when(request()->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('invoice_no', 'like', '%'.$search.'%')

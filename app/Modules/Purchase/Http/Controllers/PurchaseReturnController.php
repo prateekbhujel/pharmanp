@@ -34,6 +34,7 @@ class PurchaseReturnController extends Controller
         $query = PurchaseReturn::query()
             ->with(['supplier:id,name', 'purchase:id,purchase_no,supplier_invoice_no'])
             ->withCount('items')
+            ->when(request()->user()?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when(request()->boolean('deleted'), fn (Builder $builder) => $builder->onlyTrashed())
             ->when($search !== '', function (Builder $builder) use ($search) {
                 $builder->where(function (Builder $inner) use ($search) {
@@ -90,6 +91,7 @@ class PurchaseReturnController extends Controller
     public function purchases(): JsonResponse
     {
         $purchases = Purchase::query()
+            ->when(request()->user()?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->where('supplier_id', request()->integer('supplier_id'))
             ->latest('purchase_date')
             ->limit(100)
