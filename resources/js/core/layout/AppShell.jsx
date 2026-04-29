@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { Avatar, Badge, Button, Dropdown, Layout, Menu, Space, Spin, Typography } from 'antd';
+import { Avatar, Badge, Button, Drawer, Dropdown, Layout, Menu, Space, Spin, Typography } from 'antd';
 import {
     BarChartOutlined,
     BellOutlined,
@@ -125,6 +125,7 @@ export function AppShell() {
     const { colorPrimary } = useTheme();
 
     const [collapsed, setCollapsed] = useState(true);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isCompactViewport, setIsCompactViewport] = useState(false);
     const [pathname, setPathname] = useState(currentAppPath);
     const [alerts, setAlerts] = useState({ loading: true, lowStockRows: [], expiryRows: [], count: 0 });
@@ -445,7 +446,12 @@ export function AppShell() {
         setPathname(currentAppPath());
     }
 
-    function navigate({ key }) { goTo(routesByKey[key]); }
+    function navigate({ key }) {
+        goTo(routesByKey[key]);
+        if (isCompactViewport) {
+            setMobileMenuOpen(false);
+        }
+    }
 
     function handleNotificationClick({ key }) {
         if (key.startsWith('low-stock')) goTo(appUrl('/app/reports/low-stock'));
@@ -473,13 +479,13 @@ export function AppShell() {
 
     return (
         <Layout className={`app-shell app-shell-${layout}`}>
-            {layout === 'vertical' && (
+            {layout === 'vertical' && !isCompactViewport && (
                 <Sider
                     width={260}
                     collapsed={collapsed}
                     className="app-sidebar"
                     breakpoint="lg"
-                    collapsedWidth={72}
+                    collapsedWidth={isCompactViewport ? 0 : 72}
                     trigger={null}
                 >
                     <div className="main-sidebar-header">
@@ -501,6 +507,33 @@ export function AppShell() {
                 </Sider>
 
             )}
+            {layout === 'vertical' && isCompactViewport && (
+                <Drawer
+                    className="mobile-nav-drawer"
+                    placement="left"
+                    width={280}
+                    open={mobileMenuOpen}
+                    onClose={() => setMobileMenuOpen(false)}
+                    destroyOnHidden
+                    title={(
+                        <a href={appUrl('/app')} className="header-logo">
+                            {logo ? <img src={logo} alt={appName} className="brand-logo" /> : <div className="brand-mark"><SafetyCertificateOutlined /></div>}
+                            <strong>{appName}</strong>
+                        </a>
+                    )}
+                >
+                    <div className="main-sidebar mobile-sidebar-menu">
+                        <Menu
+                            mode="inline"
+                            selectedKeys={[selectedMenuKey]}
+                            defaultOpenKeys={openKeys}
+                            items={menuItems}
+                            onClick={navigate}
+                            className="app-menu"
+                        />
+                    </div>
+                </Drawer>
+            )}
             <Layout>
                 <Header className="app-topbar">
                     <Space className="header-content-left">
@@ -509,7 +542,14 @@ export function AppShell() {
                                 type="text"
                                 className="sidebar-toggle-btn"
                                 icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                                onClick={() => setCollapsed((value) => !value)}
+                                onClick={() => {
+                                    if (isCompactViewport) {
+                                        setMobileMenuOpen(true);
+                                        return;
+                                    }
+
+                                    setCollapsed((value) => !value);
+                                }}
                             />
                         )}
                         <div className="search-wrapper" onClick={() => setSearchVisible(true)}>

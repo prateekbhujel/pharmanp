@@ -355,6 +355,25 @@ body {
     margin-inline-start: 0 !important;
 }
 
+.mobile-nav-drawer .ant-drawer-header {
+    border-bottom: 1px solid #edf2f7;
+    min-height: 64px;
+    padding: 12px 16px;
+}
+
+.mobile-nav-drawer .ant-drawer-body {
+    background: #ffffff;
+    padding: 0;
+}
+
+.mobile-nav-drawer .ant-menu {
+    border-inline-end: 0 !important;
+}
+
+.mobile-sidebar-menu {
+    max-height: calc(100vh - 64px);
+}
+
 .app-content {
     overflow-x: hidden;
     padding: 16px 20px;
@@ -2827,5 +2846,153 @@ body {
     .nepali-range-month + .nepali-range-month {
         border-left: 0;
         border-top: 1px solid #eef2f7;
+    }
+}
+
+/* Shared responsive safeguards for dense ERP screens. */
+.ant-layout,
+.ant-layout-content,
+.ant-card,
+.ant-card-body,
+.ant-table-wrapper,
+.table-toolbar,
+.table-toolbar-wide {
+    min-width: 0;
+}
+
+.ant-table-wrapper {
+    max-width: 100%;
+    width: 100%;
+}
+
+.ant-table-wrapper .ant-table-container,
+.ant-table-wrapper .ant-table-content {
+    max-width: 100%;
+}
+
+.table-toolbar > *,
+.table-toolbar-wide > * {
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .table-toolbar,
+    .table-toolbar-legacy,
+    .table-toolbar-products,
+    .table-toolbar-payments,
+    .table-toolbar-vouchers,
+    .pos-toolbar,
+    .pos-toolbar-wide {
+        align-items: stretch;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .table-toolbar-wide {
+        align-items: stretch;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .table-toolbar-wide > .ant-input-search,
+    .table-toolbar-wide > .ant-select,
+    .table-toolbar-wide > .smart-date-range,
+    .table-toolbar-wide > .ant-btn,
+    .table-toolbar-wide > .ant-space,
+    .table-toolbar-wide > .table-switch,
+    .table-toolbar > .ant-input-search,
+    .table-toolbar > .ant-select,
+    .table-toolbar > .smart-date-range,
+    .table-toolbar > .ant-btn,
+    .table-toolbar > .ant-space,
+    .table-toolbar > .table-switch {
+        flex: 1 1 auto;
+        min-width: 0;
+        width: 100% !important;
+    }
+
+    .table-toolbar .ant-space,
+    .table-toolbar-wide .ant-space {
+        justify-content: flex-start;
+    }
+
+    .table-toolbar .ant-btn,
+    .table-toolbar-wide .ant-btn {
+        width: 100%;
+    }
+
+    .page-header > .ant-space {
+        justify-content: flex-start;
+        width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .app-topbar {
+        align-items: center;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 8px;
+        min-height: 56px;
+        padding: 8px 10px;
+    }
+
+    .header-content-left {
+        flex: 0 0 auto;
+        width: auto;
+    }
+
+    .header-content-right {
+        flex: 1 1 auto;
+        gap: 8px !important;
+        justify-content: flex-end;
+        min-width: 0;
+        width: auto;
+    }
+
+    .search-wrapper {
+        display: none;
+    }
+
+    .topbar-clock {
+        flex: 0 1 auto;
+        font-size: 11px;
+        gap: 4px;
+        line-height: 1.15;
+        max-width: min(42vw, 170px);
+    }
+
+    .topbar-clock .anticon {
+        display: none;
+    }
+
+    .app-content {
+        padding: 12px 10px;
+    }
+
+    .ant-card-body {
+        padding: 16px;
+    }
+
+    .page-header h2.ant-typography {
+        font-size: 19px;
+    }
+
+    .app-footer-premium {
+        display: none;
+    }
+}
+
+@media (max-width: 430px) {
+    .topbar-clock {
+        max-width: 138px;
+    }
+
+    .ant-card-body {
+        padding: 12px;
+    }
+
+    .ant-table-wrapper .ant-table-pagination {
+        justify-content: flex-start;
     }
 }
