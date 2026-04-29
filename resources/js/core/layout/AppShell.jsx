@@ -283,7 +283,6 @@ export function AppShell() {
                     child('field-force-performance', 'Performance', appUrl('/app/field-force/performance')),
                     child('field-force-representatives', 'Representatives', appUrl('/app/field-force/representatives')),
                     child('field-force-visits', 'Visits', appUrl('/app/field-force/visits')),
-                    child('field-force-branches', 'Branches', appUrl('/app/field-force/branches')),
                 ],
             },
             { key: register('reports', appUrl('/app/reports')), icon: <BarChartOutlined />, label: 'Reports', show: canReports },
@@ -296,7 +295,7 @@ export function AppShell() {
                 children: [
                     child('admin-users', 'Users', appUrl('/app/administration/users')),
                     child('admin-roles', 'Roles & Permissions', appUrl('/app/administration/roles')),
-                    child('admin-data', 'Dropdown Masters', appUrl('/app/administration/data-lookup')),
+                    child('admin-data', 'Master Data', appUrl('/app/administration/data-lookup')),
                 ],
             },
             { key: register('settings', appUrl('/app/settings')), icon: <SettingOutlined />, label: 'Settings', show: canSetup },
