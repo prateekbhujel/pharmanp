@@ -79,15 +79,15 @@ function RootApp() {
     return (
         <ConfigProvider theme={dynamicTheme} select={{ showSearch: true }}>
             <AntApp>
-                {mode === 'setup' ? (
-                    <SetupWizard />
-                ) : (
-                    <BrandingProvider>
+                <BrandingProvider>
+                    {mode === 'setup' ? (
+                        <SetupWizard />
+                    ) : (
                         <AuthProvider>
                             <AppShell />
                         </AuthProvider>
-                    </BrandingProvider>
-                )}
+                    )}
+                </BrandingProvider>
             </AntApp>
         </ConfigProvider>
     );
