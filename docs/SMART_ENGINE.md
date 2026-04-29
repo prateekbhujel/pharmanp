@@ -38,7 +38,7 @@ This is not an LLM, chatbot, or AGI system. For PharmaNP, the strongest first la
 PharmaNP accepts OCR uploads based on `OCR_UPLOAD_MAX_KB`, but OCR.space also has provider limits. The default `.env.example` keeps `OCR_SPACE_MAX_KB=1024` for the free key. With a paid OCR.space key, raise `OCR_SPACE_MAX_KB` according to the plan.
 
 ```env
-OCR_SPACE_API_KEY=helloworld
+OCR_SPACE_API_KEY=
 OCR_UPLOAD_MAX_KB=10240
 OCR_SPACE_MAX_KB=1024
 ```
