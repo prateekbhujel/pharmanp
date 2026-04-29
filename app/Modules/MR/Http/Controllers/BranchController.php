@@ -74,7 +74,7 @@ class BranchController extends Controller
 
         return response()->json([
             'message' => "Branch '{$branch->name}' created.",
-            'data'    => $this->rowPayload($branch),
+            'data'    => $this->rowPayload($branch->load('parent')),
         ], 201);
     }
 
@@ -89,7 +89,7 @@ class BranchController extends Controller
 
         return response()->json([
             'message' => "Branch '{$branch->name}' updated.",
-            'data'    => $this->rowPayload($branch->fresh()),
+            'data'    => $this->rowPayload($branch->fresh('parent')),
         ]);
     }
 
@@ -106,7 +106,7 @@ class BranchController extends Controller
 
         return response()->json([
             'message' => 'Branch status updated.',
-            'data' => $this->rowPayload($branch->fresh()),
+            'data' => $this->rowPayload($branch->fresh('parent')),
         ]);
     }
 
@@ -153,7 +153,7 @@ class BranchController extends Controller
 
         return response()->json([
             'message' => 'Branch restored.',
-            'data' => $this->rowPayload($branch->fresh()),
+            'data' => $this->rowPayload($branch->fresh('parent')),
         ]);
     }
 
