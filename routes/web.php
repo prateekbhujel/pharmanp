@@ -142,6 +142,8 @@ Route::middleware(['installed', 'auth'])->group(function () {
 
         // Branches
         Route::get('/mr/branches/options', [BranchController::class, 'options'])->name('mr.branches.options');
+        Route::patch('/mr/branches/{branch}/status', [BranchController::class, 'toggleStatus'])->name('mr.branches.status');
+        Route::post('/mr/branches/{id}/restore', [BranchController::class, 'restore'])->name('mr.branches.restore');
         Route::apiResource('mr/branches', BranchController::class)->only(['index', 'store', 'update', 'destroy'])->parameter('branches', 'branch');
 
         // MR branch-level product sales breakdown

@@ -47,6 +47,7 @@ export const endpoints = {
     mrPerformance: appUrl('/api/v1/mr/performance'),
     mrBranches: appUrl('/api/v1/mr/branches'),
     mrBranchOptions: appUrl('/api/v1/mr/branches/options'),
+    mrBranchRestore: (id) => appUrl(`/api/v1/mr/branches/${id}/restore`),
     mrBranchSales: appUrl('/api/v1/mr/branch-sales'),
     vouchers: appUrl('/api/v1/accounting/vouchers'),
     reports: appUrl('/api/v1/reports'),

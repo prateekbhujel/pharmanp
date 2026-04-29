@@ -43,7 +43,7 @@ use Spatie\Permission\Models\Role;
 
 class DemoSeeder extends Seeder
 {
-    private const VERSION = '2026-04-29-realistic-v2';
+    private const VERSION = '2026-04-29-realistic-v3';
 
     private Carbon $today;
 
@@ -494,7 +494,7 @@ class DemoSeeder extends Seeder
             };
 
             $customers->push([
-                'name' => $this->personName($i).' '.$place.' '.$suffix,
+                'name' => $this->personName($i).' '.$place.' '.$suffix.' '.str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT),
                 'place' => $place,
                 'type' => $i % 4 === 0 ? 'institution' : ($i % 3 === 0 ? 'wholesale' : 'retail'),
             ]);
