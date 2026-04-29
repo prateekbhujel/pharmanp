@@ -35,6 +35,7 @@ class SalesInvoiceService
                 'tenant_id' => $user->tenant_id,
                 'company_id' => $user->company_id,
                 'store_id' => $user->store_id,
+                'branch_id' => $user->branch_id,
                 'customer_id' => $data['customer_id'] ?? null,
                 'medical_representative_id' => $data['medical_representative_id'] ?? null,
                 'invoice_no' => $this->nextNumber(),
