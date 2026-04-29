@@ -6,6 +6,7 @@ use App\Core\Services\DocumentNumberService;
 use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Inventory\Models\Company;
+use App\Modules\MR\Models\Branch;
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -131,6 +132,60 @@ class SetupAccessManagementTest extends TestCase
 
         $this->actingAs($owner)->deleteJson("/api/v1/settings/fiscal-years/{$fiscalYearId}")
             ->assertOk();
+    }
+
+    public function test_owner_can_manage_branches_as_master_data(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $company = Company::query()->create(['name' => 'Branch Pharma']);
+        $owner = User::factory()->create([
+            'company_id' => $company->id,
+            'is_owner' => true,
+        ]);
+
+        $hqResponse = $this->actingAs($owner)->postJson('/api/v1/mr/branches', [
+            'name' => 'Kathmandu Head Office',
+            'code' => 'KTM-HQ',
+            'type' => 'hq',
+            'address' => 'Baneshwor, Kathmandu',
+            'phone' => '01-5000000',
+            'is_active' => true,
+        ])->assertCreated()
+            ->assertJsonPath('data.code', 'KTM-HQ');
+
+        $hqId = $hqResponse->json('data.id');
+
+        $branchResponse = $this->actingAs($owner)->postJson('/api/v1/mr/branches', [
+            'name' => 'Pokhara Branch',
+            'code' => 'PKR-BR',
+            'type' => 'branch',
+            'parent_id' => $hqId,
+            'address' => 'Lakeside, Pokhara',
+            'phone' => '061-500000',
+            'is_active' => true,
+        ])->assertCreated()
+            ->assertJsonPath('data.parent.id', $hqId);
+
+        $branchId = $branchResponse->json('data.id');
+
+        $this->actingAs($owner)->getJson('/api/v1/mr/branches?search=Pokhara')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.address', 'Lakeside, Pokhara');
+
+        $this->actingAs($owner)->patchJson("/api/v1/mr/branches/{$branchId}/status", [
+            'is_active' => false,
+        ])->assertOk()
+            ->assertJsonPath('data.is_active', false);
+
+        $this->actingAs($owner)->deleteJson("/api/v1/mr/branches/{$branchId}")
+            ->assertOk();
+
+        $this->assertSoftDeleted(Branch::class, ['id' => $branchId]);
+
+        $this->actingAs($owner)->postJson("/api/v1/mr/branches/{$branchId}/restore")
+            ->assertOk()
+            ->assertJsonPath('data.is_active', true);
     }
 
     public function test_owner_can_configure_document_numbering_without_exposing_smtp_password(): void
