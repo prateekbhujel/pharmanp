@@ -25,10 +25,11 @@ class ProductService
         'created_at' => 'products.created_at',
     ];
 
-    public function paginate(TableQueryData $table): LengthAwarePaginator
+    public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
         $query = Product::query()
             ->select('products.*')
+            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('products.tenant_id', $tenantId))
             ->when((bool) ($table->filters['deleted'] ?? false), fn (Builder $builder) => $builder->onlyTrashed())
             ->with(['company:id,name', 'unit:id,name', 'category:id,name'])
             ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available');

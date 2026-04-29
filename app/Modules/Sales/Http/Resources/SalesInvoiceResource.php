@@ -11,6 +11,10 @@ class SalesInvoiceResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'tenant_id' => $this->tenant_id,
+            'company_id' => $this->company_id,
+            'store_id' => $this->store_id,
+            'branch_id' => $this->branch_id,
             'invoice_no' => $this->invoice_no,
             'invoice_date' => $this->invoice_date?->toDateString(),
             'sale_type' => $this->sale_type,

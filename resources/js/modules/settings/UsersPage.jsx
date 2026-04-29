@@ -117,6 +117,7 @@ export function UsersPage() {
                                 </div>
                             ),
                         },
+                        { title: 'Branch', dataIndex: ['branch', 'name'], render: (value) => value || '-' },
                         { title: 'MR Link', dataIndex: ['medical_representative', 'name'], render: (value) => value || '-' },
                         {
                             title: 'Status',
@@ -162,9 +163,27 @@ export function UsersPage() {
                     <Form.Item name="role_names" label="Roles" rules={[{ required: true }]}>
                         <Select mode="multiple" options={(userLookups.roles || []).map((role) => ({ value: role.name, label: role.name }))} />
                     </Form.Item>
-                    <Form.Item name="medical_representative_id" label="Linked MR">
-                        <Select allowClear options={(userLookups.medical_representatives || []).map((item) => ({ value: item.id, label: item.name }))} />
-                    </Form.Item>
+                    <div className="form-grid">
+                        <Form.Item name="branch_id" label="Branch">
+                            <Select
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                options={(userLookups.branches || []).map((item) => ({
+                                    value: item.id,
+                                    label: `${item.name}${item.code ? ` (${item.code})` : ''}`,
+                                }))}
+                            />
+                        </Form.Item>
+                        <Form.Item name="medical_representative_id" label="Linked MR">
+                            <Select
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                options={(userLookups.medical_representatives || []).map((item) => ({ value: item.id, label: item.name }))}
+                            />
+                        </Form.Item>
+                    </div>
                     <div className="switch-row">
                         <Form.Item name="is_active" valuePropName="checked" label="Active"><Switch /></Form.Item>
                         <Form.Item name="is_owner" valuePropName="checked" label="Owner Access"><Switch /></Form.Item>
