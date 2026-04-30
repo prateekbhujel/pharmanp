@@ -1,4 +1,4 @@
-import React from 'react';
+import { createElement } from 'react';
 import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Modal } from 'antd';
 
@@ -12,11 +12,9 @@ export function confirmDelete({
     Modal.confirm({
         centered: true,
         className: 'intent-modal confirm-intent-modal',
-        icon: (
-            <ExclamationCircleFilled
-                className={danger ? 'confirm-intent-icon-danger' : 'confirm-intent-icon'}
-            />
-        ),
+        icon: createElement(ExclamationCircleFilled, {
+            className: danger ? 'confirm-intent-icon-danger' : 'confirm-intent-icon',
+        }),
         title,
         content,
         okText,
