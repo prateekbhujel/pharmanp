@@ -35,6 +35,25 @@ CACHE_STORE=database
 
 Do not commit `.env` or `database/database.sqlite`.
 
+## MySQL Demo/Production Env
+
+For the current cPanel account, a named demo database can be provisioned through SSH using `uapi`. The active generated credentials are stored on the server only:
+
+```bash
+ssh pratiknp
+cat ~/.pharmanp-db.env
+```
+
+Use those values in the live `.env` for `pharmanp.pratikbhujel.com.np`. Do not paste the password into GitHub, docs, screenshots, or commits.
+
+Local development can use the same remote database through an SSH tunnel:
+
+```bash
+ssh -N -L 3307:127.0.0.1:3306 pratiknp
+```
+
+Then set local `.env` to `DB_HOST=127.0.0.1` and `DB_PORT=3307`. This is useful for live-like demos, but normal feature work should still use local SQLite/MySQL so test data does not pollute the shared demo database.
+
 ## GitHub Actions Deployment
 
 The workflow in `.github/workflows/deploy-shared-hosting.yml` builds Composer dependencies and frontend assets, uploads a tar release archive over SSH, then extracts and runs Laravel finalize commands remotely. This avoids requiring `rsync` on shared hosting.

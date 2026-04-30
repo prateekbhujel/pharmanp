@@ -26,6 +26,8 @@ PharmaNP is built as a standalone product first. The current tenant scope repres
 
 Full multi-tenant SaaS is a separate operating model. Before selling a shared hosted instance to unrelated firms, every write/read path must be audited for tenant scope, background jobs must carry tenant context, file storage must be tenant isolated, and admin tools must prevent cross-tenant access.
 
+Dashboard, report, inventory, party, MR and transaction APIs must scope by the authenticated user's `tenant_id` and `company_id` before applying filters. Tests cover dashboard isolation because summary widgets are one of the easiest places to accidentally leak cross-tenant totals.
+
 ## Frontend Layout
 
 - `resources/js/core`: API client, auth provider, layout, shared components, hooks, utilities.
@@ -50,6 +52,8 @@ Laravel/PHP is not the limiting factor for pharmacy ERP workloads. The limiting 
 - File imports must validate in chunks and store rejected rows without holding the full workbook in memory.
 
 A 100-million-row dataset is an infrastructure and data-lifecycle project, not a shared-hosting promise. That scale needs MySQL/MariaDB tuning, slow-query review, summary tables, archival/partition strategy for ledgers and stock movements, queue workers, backup/restore rehearsals, and realistic load tests before it is sold as supported.
+
+Use `php artisan pharmanp:demo-load` to create repeatable chunked demo data. `tiny` is for local smoke tests, `showcase` is for a sales demo database, and `stress` is for controlled infrastructure testing only. The command uses direct chunked inserts so it can generate large datasets without going through slow browser workflows.
 
 ## Change Boundaries
 
