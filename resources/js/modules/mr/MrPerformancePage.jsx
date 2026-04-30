@@ -209,8 +209,6 @@ export function MrPerformancePage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title="MR Tracking"
-                description={`Target, visit, order and invoiced value tracking for ${summary.data?.period || 'current period'}`}
                 actions={(
                     <Space wrap>
                         <SmartDatePicker.RangePicker value={summaryRange} onChange={setSummaryRange} />

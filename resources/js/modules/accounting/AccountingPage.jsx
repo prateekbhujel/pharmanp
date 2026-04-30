@@ -389,18 +389,9 @@ export function AccountingPage() {
         return voucherMode === 'form' ? renderVoucherForm() : renderVoucherList();
     }
 
-    const pageTitle = routeState.tab === 'payments'
-        ? 'Payments'
-        : routeState.tab === 'expenses'
-            ? 'Expenses'
-            : routeState.tab === 'books'
-                ? 'Books'
-                : 'Vouchers';
-
     return (
         <div className="page-stack">
             <PageHeader
-                title={pageTitle}
                 actions={routeState.tab === 'books' && (
                     <Button type="primary" onClick={() => goToAccounting('/app/accounting/vouchers')}>Vouchers</Button>
                 )}

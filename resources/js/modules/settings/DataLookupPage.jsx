@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { App, AutoComplete, Button, Card, Form, Input, Modal, Select, Space, Switch, Table, Tabs } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UndoOutlined } from '@ant-design/icons';
-import { PageHeader } from '../../core/components/PageHeader';
 import { StatusToggle } from '../../core/components/StatusToggle';
 import { StatusTag } from '../../core/components/StatusTag';
 import { ServerTable } from '../../core/components/ServerTable';
@@ -133,11 +132,6 @@ export function DataLookupPage() {
 
     return (
         <div className="page-stack">
-            <PageHeader
-                title="Master Data"
-                description="Manage payment modes and reusable lookup values used across the app."
-            />
-
             <Tabs items={[
                 {
                     key: 'payment-modes',

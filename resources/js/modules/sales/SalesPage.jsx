@@ -346,7 +346,6 @@ export function SalesPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title={section === 'invoices' ? 'Sales' : section === 'returns' ? 'Sales Return' : 'New Sales Invoice'}
                 actions={(
                     <Space>
                         {section !== 'pos' && <Button type="primary" onClick={() => goToApp('/app/sales/pos')}>New Sales</Button>}

@@ -62,7 +62,6 @@ export function UsersPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title="Users"
                 actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => openUser()}>New User</Button>}
             />
 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { App, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Switch, Table, Tabs } from 'antd';
 import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined, UndoOutlined } from '@ant-design/icons';
-import { PageHeader } from '../../core/components/PageHeader';
 import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { ServerTable } from '../../core/components/ServerTable';
 import { FormDrawer } from '../../core/components/FormDrawer';
@@ -233,7 +232,6 @@ export function PartiesPage() {
 
     return (
         <div className="page-stack">
-            <PageHeader title="Parties" />
             <Tabs items={[
                 { key: 'suppliers', label: 'Suppliers', children: <PartyTab type="suppliers" /> },
                 { key: 'customers', label: 'Customers', children: <PartyTab type="customers" onViewLedger={viewLedger} /> },

@@ -286,7 +286,6 @@ export function PurchasesPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title={section === 'entry' ? 'Purchase Entry' : section === 'orders' ? 'Purchase Order' : section === 'returns' ? 'Purchase Return' : 'Purchase Bills'}
                 actions={(
                     <Space>
                         {section !== 'entry' && <Button type="primary" icon={<PlusOutlined />} onClick={() => goToApp('/app/purchases/entry')}>New Purchase</Button>}
