@@ -1419,6 +1419,57 @@ body {
     font-weight: 700;
 }
 
+.barcode-form-preview,
+.barcode-history-preview {
+    align-items: center;
+    background: #f8fcfb;
+    border: 1px solid #dbe7e4;
+    border-radius: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+    margin: 0 0 16px;
+    padding: 12px;
+}
+
+.barcode-label {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    display: inline-grid;
+    gap: 4px;
+    justify-items: center;
+    max-width: 100%;
+    padding: 8px 10px;
+}
+
+.barcode-label svg {
+    display: block;
+    max-width: 100%;
+}
+
+.barcode-label-compact {
+    padding: 6px 8px;
+}
+
+.barcode-label-empty {
+    min-width: 220px;
+}
+
+.barcode-caption {
+    color: #334155;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    max-width: 260px;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .product-image-preview {
     align-items: center;
     display: flex;
@@ -2194,6 +2245,20 @@ body {
     color: #1e293b;
     font-size: 13px;
     font-weight: 700;
+}
+
+.notification-tray-header span {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.notification-tray-action {
+    color: var(--primary-color);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 14px;
+    text-align: center;
 }
 
 .notification-tray-footer {

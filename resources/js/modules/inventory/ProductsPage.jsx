@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { App, Button, Card, Divider, Drawer, Form, Input, InputNumber, Modal, Select, Space, Switch, Tabs, Upload } from 'antd';
-import { DeleteOutlined, EditOutlined, HistoryOutlined, PlusOutlined, ReloadOutlined, UndoOutlined, UploadOutlined } from '@ant-design/icons';
+import { BarcodeOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, PlusOutlined, PrinterOutlined, ReloadOutlined, UndoOutlined, UploadOutlined } from '@ant-design/icons';
 import { BarcodeInput } from '../../core/components/BarcodeInput';
+import { BarcodeLabel, printBarcodeLabels, productBarcodeValue } from '../../core/components/BarcodeLabel';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { ExportButtons, ImportButton } from '../../core/components/ListToolbarActions';
 import { Money } from '../../core/components/Money';
@@ -19,6 +20,7 @@ import { InventoryMasterTable } from './InventoryMasterTable';
 import { InventoryBatchesPanel } from './InventoryBatchesPanel';
 import { StockAdjustmentsPanel } from './StockAdjustmentsPanel';
 import { StockMovementsPanel } from './StockMovementsPanel';
+import { makeBarcodeCandidate } from '../../core/utils/code128';
 
 const inventorySections = {
     companies: { title: 'Company', master: 'companies' },
@@ -131,6 +133,14 @@ function ProductHistoryDrawer({ product, onClose }) {
                     <span>MRP</span>
                     <strong><Money value={product.mrp} /></strong>
                 </div>
+                <div>
+                    <span>Barcode</span>
+                    <strong>{productBarcodeValue(product) || '-'}</strong>
+                </div>
+            </div>
+            <div className="barcode-history-preview">
+                <BarcodeLabel value={productBarcodeValue(product)} caption={product.name} compact />
+                <Button icon={<PrinterOutlined />} onClick={() => printBarcodeLabels([product])}>Print Label</Button>
             </div>
             <Tabs
                 items={[
@@ -169,6 +179,8 @@ export function ProductsPage() {
     const watchedDiscount = Number(Form.useWatch('discount_percent', form) || 0);
     const watchedPurchasePrice = Number(Form.useWatch('purchase_price', form) || 0);
     const watchedConversion = Number(Form.useWatch('conversion', form) || 1);
+    const watchedBarcode = Form.useWatch('barcode', form);
+    const watchedName = Form.useWatch('name', form);
     const displayPrice = useMemo(() => watchedMrp - (watchedMrp * watchedDiscount / 100), [watchedMrp, watchedDiscount]);
     const profit = useMemo(() => displayPrice - (watchedPurchasePrice / (watchedConversion || 1)), [displayPrice, watchedPurchasePrice, watchedConversion]);
 
@@ -307,6 +319,23 @@ export function ProductsPage() {
         form.setFieldValue('selling_price', Number((mrp - (mrp * discount / 100)).toFixed(2)));
     }
 
+    function generateBarcode() {
+        const seed = form.getFieldValue('sku')
+            || form.getFieldValue('product_code')
+            || form.getFieldValue('name')
+            || 'PNP';
+
+        form.setFieldValue('barcode', makeBarcodeCandidate(seed));
+    }
+
+    function printProductBarcode(record) {
+        const printed = printBarcodeLabels([record]);
+
+        if (!printed) {
+            notification.warning({ message: 'Add barcode or SKU before printing' });
+        }
+    }
+
     const columns = [
         {
             title: 'Product Name',
@@ -336,13 +365,14 @@ export function ProductsPage() {
             title: 'Action',
             key: 'actions',
             fixed: 'right',
-            width: 150,
+            width: 190,
             render: (_, record) => (
                 record.deleted_at ? (
                     <Button aria-label="Restore" icon={<UndoOutlined />} onClick={() => restore(record)}>Restore</Button>
                 ) : (
                     <Space>
                         <Button aria-label="History" icon={<HistoryOutlined />} onClick={() => setHistoryProduct(record)} />
+                        <Button aria-label="Print Barcode" icon={<BarcodeOutlined />} onClick={() => printProductBarcode(record)} />
                         <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openEdit(record)} />
                         <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
                     </Space>
@@ -472,8 +502,21 @@ export function ProductsPage() {
                     <div className="form-grid form-grid-3">
                         <Form.Item name="product_code" label="Product Code"><Input placeholder="Optional unique code" /></Form.Item>
                         <Form.Item name="sku" label="SKU"><Input /></Form.Item>
-                        <Form.Item name="barcode" label="Barcode"><BarcodeInput placeholder="Optional barcode" /></Form.Item>
+                        <Form.Item label="Barcode">
+                            <Space.Compact block>
+                                <Form.Item name="barcode" noStyle>
+                                    <BarcodeInput placeholder="Optional barcode" />
+                                </Form.Item>
+                                <Button onClick={generateBarcode}>Generate</Button>
+                            </Space.Compact>
+                        </Form.Item>
                     </div>
+                    {watchedBarcode ? (
+                        <div className="barcode-form-preview">
+                            <BarcodeLabel value={watchedBarcode} caption={watchedName || 'Product barcode'} compact />
+                            <Button icon={<PrinterOutlined />} onClick={() => printBarcodeLabels([{ ...(editing || {}), name: watchedName, barcode: watchedBarcode }])}>Print</Button>
+                        </div>
+                    ) : null}
                     <div className="form-grid form-grid-3">
                         <Form.Item name="name" label="Product Name" rules={[{ required: true }]}><Input placeholder="e.g. Paracetamol 500mg" /></Form.Item>
                         <Form.Item name="generic_name" label="Generic Name"><Input /></Form.Item>
