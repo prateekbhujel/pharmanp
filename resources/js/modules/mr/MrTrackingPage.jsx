@@ -1,5 +1,21 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { App, Button, Card, Col, Drawer, Form, Input, InputNumber, Row, Select, Space, Statistic, Switch, Table, Tooltip } from 'antd';
+import React, { useEffect, useState } from 'react';
+import {
+    App,
+    Button,
+    Card,
+    Col,
+    Drawer,
+    Form,
+    Input,
+    InputNumber,
+    Row,
+    Select,
+    Space,
+    Statistic,
+    Switch,
+    Table,
+    Tooltip,
+} from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DateText } from '../../core/components/DateText';
@@ -17,7 +33,6 @@ import { useAuth } from '../../core/auth/AuthProvider';
 import { can } from '../../core/utils/permissions';
 import { mrVisitStatusOptions } from '../../core/utils/accountCatalog';
 
-// ─── section routing ─────────────────────────────────────────────────────────
 const fieldForceSections = {
     dashboard: { title: 'Dashboard' },
     performance: { title: 'Performance' },
@@ -28,28 +43,53 @@ const fieldForceSections = {
 
 function currentSection() {
     const section = window.location.pathname.split('/').filter(Boolean).pop();
+
     return fieldForceSections[section] ? section : 'dashboard';
+}
+
+function MiniBar({ value = 0, max = 1, color = '#10b981' }) {
+    const numericValue = Number(value) || 0;
+    const numericMax = Math.max(Number(max) || 1, 1);
+    const percent = Math.max(0, Math.min((numericValue / numericMax) * 100, 100));
+
+    return (
+        <div
+            style={{
+                width: '100%',
+                height: 8,
+                borderRadius: 999,
+                background: '#e5e7eb',
+                overflow: 'hidden',
+            }}
+        >
+            <div
+                style={{
+                    width: `${percent}%`,
+                    height: '100%',
+                    borderRadius: 999,
+                    background: color,
+                    transition: 'width 0.2s ease',
+                }}
+            />
+        </div>
+    );
 }
 
 export function MrTrackingPage() {
     const { notification } = App.useApp();
     const { user } = useAuth();
 
-    // ── lookups ───────────────────────────────────────────────────────────────
     const [branchOptions, setBranchOptions] = useState([]);
     const [mrOptions, setMrOptions] = useState([]);
     const [customers, setCustomers] = useState([]);
 
-    // ── filter bar state ─────────────────────────────────────────────────────
     const [dateRange, setDateRange] = useState([]);
     const [branchId, setBranchId] = useState(undefined);
     const [mrId, setMrId] = useState(undefined);
 
-    // ── performance summary ───────────────────────────────────────────────────
     const [perfData, setPerfData] = useState(null);
     const [perfLoading, setPerfLoading] = useState(false);
 
-    // ── branch-sales breakdown ────────────────────────────────────────────────
     const [salesData, setSalesData] = useState(null);
     const [salesLoading, setSalesLoading] = useState(false);
 
@@ -57,30 +97,25 @@ export function MrTrackingPage() {
     const canVisits = canManage || can(user, 'mr.visits.manage');
 
     const section = currentSection();
-    const sectionConfig = fieldForceSections[section];
 
-    // ── branch table ──────────────────────────────────────────────────────────
     const branchTable = useServerTable({
         endpoint: endpoints.mrBranches,
         defaultSort: { field: 'name', order: 'asc' },
         enabled: canManage && section === 'branches',
     });
 
-    // ── visits table ──────────────────────────────────────────────────────────
     const visitTable = useServerTable({
         endpoint: endpoints.mrVisits,
         defaultSort: { field: 'visit_date', order: 'desc' },
         enabled: section === 'visits' && canVisits,
     });
 
-    // ── MR master table ───────────────────────────────────────────────────────
     const mrTable = useServerTable({
         endpoint: endpoints.mrRepresentatives,
         defaultSort: { field: 'name', order: 'asc' },
         enabled: section === 'representatives' && canManage,
     });
 
-    // ── form state ────────────────────────────────────────────────────────────
     const [view, setView] = useState('list');
     const [branchDrawerOpen, setBranchDrawerOpen] = useState(false);
     const [editingMr, setEditingMr] = useState(null);
@@ -95,12 +130,10 @@ export function MrTrackingPage() {
     const fromDate = dateRange?.[0]?.format('YYYY-MM-DD');
     const toDate = dateRange?.[1]?.format('YYYY-MM-DD');
 
-    // ── load lookups once ─────────────────────────────────────────────────────
     useEffect(() => {
         loadLookups();
     }, []);
 
-    // ── reload on filter change ───────────────────────────────────────────────
     useEffect(() => {
         loadPerformance();
         loadBranchSales();
@@ -113,33 +146,52 @@ export function MrTrackingPage() {
                 http.get(endpoints.mrOptions),
                 http.get(endpoints.customerOptions),
             ]);
+
             setBranchOptions(br.data || []);
             setMrOptions(mr.data || []);
             setCustomers(cu.data || []);
-        } catch { /* silent */ }
+        } catch {
+            // silent
+        }
     }
 
     async function loadPerformance() {
         setPerfLoading(true);
+
         try {
             const { data } = await http.get(endpoints.mrPerformance, {
-                params: { ...(fromDate ? { from: fromDate } : {}), ...(toDate ? { to: toDate } : {}), medical_representative_id: mrId },
+                params: {
+                    ...(fromDate ? { from: fromDate } : {}),
+                    ...(toDate ? { to: toDate } : {}),
+                    medical_representative_id: mrId,
+                },
             });
+
             setPerfData(data.data);
-        } finally { setPerfLoading(false); }
+        } finally {
+            setPerfLoading(false);
+        }
     }
 
     async function loadBranchSales() {
         setSalesLoading(true);
+
         try {
             const { data } = await http.get(endpoints.mrBranchSales, {
-                params: { ...(fromDate ? { from: fromDate } : {}), ...(toDate ? { to: toDate } : {}), branch_id: branchId, mr_id: mrId },
+                params: {
+                    ...(fromDate ? { from: fromDate } : {}),
+                    ...(toDate ? { to: toDate } : {}),
+                    branch_id: branchId,
+                    mr_id: mrId,
+                },
             });
+
             setSalesData(data.data);
-        } finally { setSalesLoading(false); }
+        } finally {
+            setSalesLoading(false);
+        }
     }
 
-    // ── MR CRUD ───────────────────────────────────────────────────────────────
     function openMr(record = null) {
         setView('mr');
         setEditingMr(record);
@@ -156,13 +208,20 @@ export function MrTrackingPage() {
                 await http.post(endpoints.mrRepresentatives, values);
                 notification.success({ message: 'MR created' });
             }
+
             setView('list');
             mrTable.reload();
             loadLookups();
             loadPerformance();
         } catch (e) {
-            mrForm.setFields(Object.entries(validationErrors(e)).map(([name, errors]) => ({ name, errors })));
-            notification.error({ message: 'Save failed', description: e?.response?.data?.message });
+            mrForm.setFields(
+                Object.entries(validationErrors(e)).map(([name, errors]) => ({ name, errors })),
+            );
+
+            notification.error({
+                message: 'Save failed',
+                description: e?.response?.data?.message,
+            });
         }
     }
 
@@ -178,22 +237,36 @@ export function MrTrackingPage() {
         });
     }
 
-    // ── Visit CRUD ────────────────────────────────────────────────────────────
     function openVisit(record = null) {
         setEditingVisit(record);
         visitForm.resetFields();
-        visitForm.setFieldsValue(record ? {
-            ...record,
-            medical_representative_id: record.medical_representative_id ?? record.medical_representative?.id,
-            customer_id: record.customer_id ?? record.customer?.id,
-            visit_date: record.visit_date ? dayjs(record.visit_date) : dayjs(),
-        } : { visit_date: dayjs(), status: 'planned', order_value: 0 });
+
+        visitForm.setFieldsValue(
+            record
+                ? {
+                    ...record,
+                    medical_representative_id:
+                        record.medical_representative_id ?? record.medical_representative?.id,
+                    customer_id: record.customer_id ?? record.customer?.id,
+                    visit_date: record.visit_date ? dayjs(record.visit_date) : dayjs(),
+                }
+                : {
+                    visit_date: dayjs(),
+                    status: 'planned',
+                    order_value: 0,
+                },
+        );
+
         setView('visit');
     }
 
     async function saveVisit(values) {
         try {
-            const payload = { ...values, visit_date: values.visit_date.format('YYYY-MM-DD') };
+            const payload = {
+                ...values,
+                visit_date: values.visit_date.format('YYYY-MM-DD'),
+            };
+
             if (editingVisit) {
                 await http.put(`${endpoints.mrVisits}/${editingVisit.id}`, payload);
                 notification.success({ message: 'Visit updated' });
@@ -201,11 +274,15 @@ export function MrTrackingPage() {
                 await http.post(endpoints.mrVisits, payload);
                 notification.success({ message: 'Visit created' });
             }
+
             setView('list');
             visitTable.reload();
             loadPerformance();
         } catch (e) {
-            visitForm.setFields(Object.entries(validationErrors(e)).map(([name, errors]) => ({ name, errors })));
+            visitForm.setFields(
+                Object.entries(validationErrors(e)).map(([name, errors]) => ({ name, errors })),
+            );
+
             notification.error({ message: 'Save failed' });
         }
     }
@@ -221,7 +298,6 @@ export function MrTrackingPage() {
         });
     }
 
-    // ── Branch CRUD ───────────────────────────────────────────────────────────
     function openBranch(record = null) {
         setEditingBranch(record);
         branchForm.resetFields();
@@ -238,11 +314,15 @@ export function MrTrackingPage() {
                 await http.post(endpoints.mrBranches, values);
                 notification.success({ message: 'Branch created' });
             }
+
             setBranchDrawerOpen(false);
             branchTable.reload();
             loadLookups();
         } catch (e) {
-            branchForm.setFields(Object.entries(validationErrors(e)).map(([name, errors]) => ({ name, errors })));
+            branchForm.setFields(
+                Object.entries(validationErrors(e)).map(([name, errors]) => ({ name, errors })),
+            );
+
             notification.error({ message: 'Save failed' });
         }
     }
@@ -259,106 +339,268 @@ export function MrTrackingPage() {
         });
     }
 
-    // ── get GPS from browser ──────────────────────────────────────────────────
     function captureLocation() {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition((pos) => {
-            visitForm.setFieldsValue({
-                latitude: pos.coords.latitude.toFixed(7),
-                longitude: pos.coords.longitude.toFixed(7),
-            });
-            notification.success({ message: 'Location captured' });
-        }, () => notification.warning({ message: 'Location access denied' }));
+        if (!navigator.geolocation) {
+            notification.warning({ message: 'Geolocation is not supported by this browser' });
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                visitForm.setFieldsValue({
+                    latitude: pos.coords.latitude.toFixed(7),
+                    longitude: pos.coords.longitude.toFixed(7),
+                });
+
+                notification.success({ message: 'Location captured' });
+            },
+            () => notification.warning({ message: 'Location access denied' }),
+        );
     }
 
-    // ── column definitions ────────────────────────────────────────────────────
     const branchColumns = [
-        { title: 'Name', dataIndex: 'name', sorter: true, field: 'name' },
-        { title: 'Code', dataIndex: 'code', width: 110 },
-        { title: 'Type', dataIndex: 'type', width: 110, render: (v) => <PharmaBadge tone={v === 'hq' ? 'info' : 'neutral'}>{v?.toUpperCase()}</PharmaBadge> },
-        { title: 'Parent HQ', dataIndex: ['parent', 'name'], render: (v) => v || '—' },
-        { title: 'Address', dataIndex: 'address' },
-        { title: 'Status', dataIndex: 'is_active', width: 120, render: (v) => <StatusBadge value={v} /> },
-        canManage ? {
-            title: 'Action', width: 96,
-            render: (_, r) => (
-                <Space>
-                    <Button size="small" icon={<EditOutlined />} onClick={() => openBranch(r)} />
-                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => deleteBranch(r)} />
-                </Space>
+        {
+            title: 'Name',
+            dataIndex: 'name',
+            sorter: true,
+            field: 'name',
+        },
+        {
+            title: 'Code',
+            dataIndex: 'code',
+            width: 110,
+        },
+        {
+            title: 'Type',
+            dataIndex: 'type',
+            width: 110,
+            render: (value) => (
+                <PharmaBadge tone={value === 'hq' ? 'info' : 'neutral'}>
+                    {value?.toUpperCase()}
+                </PharmaBadge>
             ),
-        } : null,
+        },
+        {
+            title: 'Parent HQ',
+            dataIndex: ['parent', 'name'],
+            render: (value) => value || '—',
+        },
+        {
+            title: 'Address',
+            dataIndex: 'address',
+        },
+        {
+            title: 'Status',
+            dataIndex: 'is_active',
+            width: 120,
+            render: (value) => <StatusBadge value={value} />,
+        },
+        canManage
+            ? {
+                title: 'Action',
+                width: 96,
+                render: (_, record) => (
+                    <Space>
+                        <Button
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => openBranch(record)}
+                        />
+                        <Button
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => deleteBranch(record)}
+                        />
+                    </Space>
+                ),
+            }
+            : null,
     ].filter(Boolean);
 
     const mrColumns = [
-        { title: 'Name', dataIndex: 'name', sorter: true, field: 'name' },
-        { title: 'Code', dataIndex: 'employee_code', width: 110 },
-        { title: 'Branch', dataIndex: ['branch', 'name'], render: (v) => v || <span style={{ color: '#aaa' }}>—</span> },
-        { title: 'Territory', dataIndex: 'territory', width: 140 },
-        { title: 'Target', dataIndex: 'monthly_target', align: 'right', width: 130, render: (v) => <Money value={v} /> },
-        { title: 'Status', dataIndex: 'is_active', width: 120, render: (v) => <StatusBadge value={v} /> },
-        canManage ? {
-            title: 'Action', width: 96,
-            render: (_, r) => (
-                <Space>
-                    <Button size="small" icon={<EditOutlined />} onClick={() => openMr(r)} />
-                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => deleteMr(r)} />
-                </Space>
-            ),
-        } : null,
+        {
+            title: 'Name',
+            dataIndex: 'name',
+            sorter: true,
+            field: 'name',
+        },
+        {
+            title: 'Code',
+            dataIndex: 'employee_code',
+            width: 110,
+        },
+        {
+            title: 'Branch',
+            dataIndex: ['branch', 'name'],
+            render: (value) => value || <span style={{ color: '#aaa' }}>—</span>,
+        },
+        {
+            title: 'Territory',
+            dataIndex: 'territory',
+            width: 140,
+        },
+        {
+            title: 'Target',
+            dataIndex: 'monthly_target',
+            align: 'right',
+            width: 130,
+            render: (value) => <Money value={value} />,
+        },
+        {
+            title: 'Status',
+            dataIndex: 'is_active',
+            width: 120,
+            render: (value) => <StatusBadge value={value} />,
+        },
+        canManage
+            ? {
+                title: 'Action',
+                width: 96,
+                render: (_, record) => (
+                    <Space>
+                        <Button
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => openMr(record)}
+                        />
+                        <Button
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => deleteMr(record)}
+                        />
+                    </Space>
+                ),
+            }
+            : null,
     ].filter(Boolean);
 
     const visitColumns = [
-        { title: 'Date', dataIndex: 'visit_date', width: 110, sorter: true, field: 'visit_date', render: (value) => <DateText value={value} style="compact" /> },
-        { title: 'MR', dataIndex: ['medical_representative', 'name'], render: (v) => v || '—' },
-        { title: 'Customer', dataIndex: ['customer', 'name'], render: (v) => v || '—' },
-        { title: 'Status', dataIndex: 'status', width: 120, render: (v) => <PharmaBadge tone={v} dot>{v}</PharmaBadge> },
-        { title: 'Order Value', dataIndex: 'order_value', align: 'right', width: 130, render: (v) => <Money value={v} /> },
         {
-            title: 'Location', width: 90, align: 'center',
-            render: (_, r) => r.latitude ? (
-                <Tooltip title={r.location_name || `${r.latitude}, ${r.longitude}`}>
-                    <Button
-                        type="link"
-                        icon={<EnvironmentOutlined style={{ color: '#52c41a' }} />}
-                        onClick={() => setMapVisit(r)}
-                    />
-                </Tooltip>
-            ) : <span style={{ color: '#ccc' }}>—</span>,
+            title: 'Date',
+            dataIndex: 'visit_date',
+            width: 110,
+            sorter: true,
+            field: 'visit_date',
+            render: (value) => <DateText value={value} style="compact" />,
         },
-        canVisits ? {
-            title: 'Action', width: 96,
-            render: (_, r) => (
-                <Space>
-                    <Button size="small" icon={<EditOutlined />} onClick={() => openVisit(r)} />
-                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => deleteVisit(r)} />
-                </Space>
+        {
+            title: 'MR',
+            dataIndex: ['medical_representative', 'name'],
+            render: (value) => value || '—',
+        },
+        {
+            title: 'Customer',
+            dataIndex: ['customer', 'name'],
+            render: (value) => value || '—',
+        },
+        {
+            title: 'Status',
+            dataIndex: 'status',
+            width: 120,
+            render: (value) => (
+                <PharmaBadge tone={value} dot>
+                    {value}
+                </PharmaBadge>
             ),
-        } : null,
+        },
+        {
+            title: 'Order Value',
+            dataIndex: 'order_value',
+            align: 'right',
+            width: 130,
+            render: (value) => <Money value={value} />,
+        },
+        {
+            title: 'Location',
+            width: 90,
+            align: 'center',
+            render: (_, record) => (
+                record.latitude ? (
+                    <Tooltip title={record.location_name || `${record.latitude}, ${record.longitude}`}>
+                        <Button
+                            type="link"
+                            icon={<EnvironmentOutlined style={{ color: '#52c41a' }} />}
+                            onClick={() => setMapVisit(record)}
+                        />
+                    </Tooltip>
+                ) : (
+                    <span style={{ color: '#ccc' }}>—</span>
+                )
+            ),
+        },
+        canVisits
+            ? {
+                title: 'Action',
+                width: 96,
+                render: (_, record) => (
+                    <Space>
+                        <Button
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => openVisit(record)}
+                        />
+                        <Button
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => deleteVisit(record)}
+                        />
+                    </Space>
+                ),
+            }
+            : null,
     ].filter(Boolean);
 
     const branchSalesRows = salesData?.rows || [];
-    const maxSalesVal = Math.max(...branchSalesRows.map((r) => r.total_value || 0), 1);
+    const maxSalesVal = Math.max(...branchSalesRows.map((row) => row.total_value || 0), 1);
 
     const branchSalesColumns = [
-        { title: 'SN', key: '__serial', width: 68, align: 'center', className: 'table-serial-cell', render: (_, __, index) => index + 1 },
-        { title: 'Branch', dataIndex: 'branch_name', width: 140 },
-        { title: 'MR', dataIndex: 'mr_name', width: 130 },
-        { title: 'Product', dataIndex: 'product_name' },
-        { title: 'Qty', dataIndex: 'total_qty', align: 'right', width: 80, render: (v) => (+v).toFixed(0) },
+        {
+            title: 'SN',
+            key: '__serial',
+            width: 68,
+            align: 'center',
+            className: 'table-serial-cell',
+            render: (_, __, index) => index + 1,
+        },
+        {
+            title: 'Branch',
+            dataIndex: 'branch_name',
+            width: 140,
+        },
+        {
+            title: 'MR',
+            dataIndex: 'mr_name',
+            width: 130,
+        },
+        {
+            title: 'Product',
+            dataIndex: 'product_name',
+        },
+        {
+            title: 'Qty',
+            dataIndex: 'total_qty',
+            align: 'right',
+            width: 80,
+            render: (value) => Number(value || 0).toFixed(0),
+        },
         {
             title: 'Value',
             dataIndex: 'total_value',
             align: 'right',
             width: 260,
-            render: (v) => (
+            render: (value) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ minWidth: 90, textAlign: 'right' }}><Money value={v} /></span>
+                    <span style={{ minWidth: 90, textAlign: 'right' }}>
+                        <Money value={value} />
+                    </span>
                     <div style={{ flex: 1 }}>
-                        <MiniBar value={v} max={maxSalesVal} color="#10b981" />
+                        <MiniBar value={value} max={maxSalesVal} color="#10b981" />
                     </div>
                 </div>
-            )
+            ),
         },
     ];
 
@@ -367,28 +609,56 @@ export function MrTrackingPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                actions={
+                actions={(
                     <Space wrap>
-                        {section === 'branches' && canManage && <Button onClick={() => openBranch()}>+ Branch</Button>}
-                        {section === 'representatives' && canManage && <Button icon={<PlusOutlined />} onClick={() => openMr()}>New MR</Button>}
-                        {section === 'visits' && canVisits && <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit()}>New Visit</Button>}
+                        {section === 'branches' && canManage && (
+                            <Button onClick={() => openBranch()}>
+                                + Branch
+                            </Button>
+                        )}
+
+                        {section === 'representatives' && canManage && (
+                            <Button icon={<PlusOutlined />} onClick={() => openMr()}>
+                                New MR
+                            </Button>
+                        )}
+
+                        {section === 'visits' && canVisits && (
+                            <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit()}>
+                                New Visit
+                            </Button>
+                        )}
                     </Space>
-                }
+                )}
             />
 
             {(section === 'dashboard' || section === 'performance') && (
                 <Card size="small" style={{ marginBottom: 16 }}>
                     <Space wrap>
                         <SmartDatePicker.RangePicker value={dateRange} onChange={setDateRange} />
+
                         <Select
-                            allowClear placeholder="All Branches" value={branchId}
-                            onChange={setBranchId} style={{ minWidth: 180 }}
-                            options={branchOptions.map((b) => ({ value: b.id, label: b.name }))}
+                            allowClear
+                            placeholder="All Branches"
+                            value={branchId}
+                            onChange={setBranchId}
+                            style={{ minWidth: 180 }}
+                            options={branchOptions.map((branch) => ({
+                                value: branch.id,
+                                label: branch.name,
+                            }))}
                         />
+
                         <Select
-                            allowClear placeholder="All MRs" value={mrId}
-                            onChange={setMrId} style={{ minWidth: 160 }}
-                            options={mrOptions.map((m) => ({ value: m.id, label: m.name }))}
+                            allowClear
+                            placeholder="All MRs"
+                            value={mrId}
+                            onChange={setMrId}
+                            style={{ minWidth: 160 }}
+                            options={mrOptions.map((mr) => ({
+                                value: mr.id,
+                                label: mr.name,
+                            }))}
                         />
                     </Space>
                 </Card>
@@ -398,41 +668,80 @@ export function MrTrackingPage() {
                 <>
                     {section === 'dashboard' && (
                         <>
-                            {/* ── KPI cards ─────────────────────────────────────────────────── */}
                             <Row gutter={[16, 16]}>
                                 <Col xs={12} md={6}>
-                                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #2563eb' }}>
-                                        <Statistic title={<span style={{ fontWeight: 600 }}>Active MRs</span>} value={totals.active_mrs ?? '—'} />
+                                    <Card
+                                        className="metric-card metric-card-glow glass-card"
+                                        loading={perfLoading}
+                                        style={{ borderTop: '4px solid #2563eb' }}
+                                    >
+                                        <Statistic
+                                            title={<span style={{ fontWeight: 600 }}>Active MRs</span>}
+                                            value={totals.active_mrs ?? '—'}
+                                        />
                                     </Card>
                                 </Col>
+
                                 <Col xs={12} md={6}>
-                                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #0891b2' }}>
-                                        <Statistic title={<span style={{ fontWeight: 600 }}>Visits</span>} value={totals.visits ?? '—'} />
+                                    <Card
+                                        className="metric-card metric-card-glow glass-card"
+                                        loading={perfLoading}
+                                        style={{ borderTop: '4px solid #0891b2' }}
+                                    >
+                                        <Statistic
+                                            title={<span style={{ fontWeight: 600 }}>Visits</span>}
+                                            value={totals.visits ?? '—'}
+                                        />
                                     </Card>
                                 </Col>
+
                                 <Col xs={12} md={6}>
-                                    <Card className="metric-card metric-card-glow glass-card" loading={perfLoading} style={{ borderTop: '4px solid #7c3aed' }}>
-                                        <Statistic title={<span style={{ fontWeight: 600 }}>Total Sales</span>} value={totals.invoiced_value ?? 0} prefix="NPR" precision={2} />
+                                    <Card
+                                        className="metric-card metric-card-glow glass-card"
+                                        loading={perfLoading}
+                                        style={{ borderTop: '4px solid #7c3aed' }}
+                                    >
+                                        <Statistic
+                                            title={<span style={{ fontWeight: 600 }}>Total Sales</span>}
+                                            value={totals.invoiced_value ?? 0}
+                                            prefix="NPR"
+                                            precision={2}
+                                        />
                                     </Card>
                                 </Col>
+
                                 <Col xs={12} md={6}>
-                                    <Card className="metric-card metric-card-glow glass-card" loading={salesLoading} style={{ borderTop: '4px solid #10b981' }}>
-                                        <Statistic title={<span style={{ fontWeight: 600 }}>Grand Total (Products)</span>} value={salesData?.grand_total ?? 0} prefix="NPR" precision={2} />
+                                    <Card
+                                        className="metric-card metric-card-glow glass-card"
+                                        loading={salesLoading}
+                                        style={{ borderTop: '4px solid #10b981' }}
+                                    >
+                                        <Statistic
+                                            title={<span style={{ fontWeight: 600 }}>Grand Total (Products)</span>}
+                                            value={salesData?.grand_total ?? 0}
+                                            prefix="NPR"
+                                            precision={2}
+                                        />
                                     </Card>
                                 </Col>
                             </Row>
 
-                            {/* ── Branch sales breakdown ────────────────────────────────────── */}
                             <Card
                                 title="Product Sales by Branch & MR"
                                 loading={salesLoading}
                                 extra={<PharmaBadge tone="info">{salesData?.period}</PharmaBadge>}
                             >
                                 <Table
-                                    rowKey={(record) => `${record.branch_id || 'branch'}-${record.mr_id || 'mr'}-${record.product_id || record.product_name}`}
+                                    rowKey={(record) => (
+                                        `${record.branch_id || 'branch'}-${record.mr_id || 'mr'}-${record.product_id || record.product_name}`
+                                    )}
                                     dataSource={salesData?.rows || []}
                                     columns={branchSalesColumns}
-                                    pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ['10', '15', '20', '25', '50', '100'] }}
+                                    pagination={{
+                                        pageSize: 20,
+                                        showSizeChanger: true,
+                                        pageSizeOptions: ['10', '15', '20', '25', '50', '100'],
+                                    }}
                                     scroll={{ x: 700 }}
                                     size="small"
                                 />
@@ -440,113 +749,220 @@ export function MrTrackingPage() {
                         </>
                     )}
 
-                    {/* ── MR Performance table ──────────────────────────────────────── */}
                     {section === 'performance' && (
                         <Card title="MR Performance" loading={perfLoading}>
                             <Table
                                 rowKey="id"
                                 dataSource={perfData?.rows || []}
                                 columns={[
-                                    { title: 'SN', key: '__serial', width: 68, align: 'center', className: 'table-serial-cell', render: (_, __, index) => index + 1 },
-                                    { title: 'MR', dataIndex: 'name' },
-                                    { title: 'Territory', dataIndex: 'territory' },
-                                    { title: 'Visits', dataIndex: 'visits', align: 'right', width: 80 },
-                                    { title: 'Orders', dataIndex: 'visit_order_value', align: 'right', width: 130, render: (v) => <Money value={v} /> },
-                                    { title: 'Invoiced', dataIndex: 'invoiced_value', align: 'right', width: 130, render: (v) => <Money value={v} /> },
-                                    { title: 'Target', dataIndex: 'monthly_target', align: 'right', width: 130, render: (v) => <Money value={v} /> },
                                     {
-                                        title: 'Achievement', dataIndex: 'achievement_percent', width: 110, align: 'right',
-                                        render: (v) => {
-                                            const pct = Math.min(v || 0, 100);
-                                            const color = pct >= 100 ? '#52c41a' : pct >= 70 ? '#faad14' : '#ff4d4f';
-                                            return <span style={{ color, fontWeight: 600 }}>{pct.toFixed(1)}%</span>;
+                                        title: 'SN',
+                                        key: '__serial',
+                                        width: 68,
+                                        align: 'center',
+                                        className: 'table-serial-cell',
+                                        render: (_, __, index) => index + 1,
+                                    },
+                                    {
+                                        title: 'MR',
+                                        dataIndex: 'name',
+                                    },
+                                    {
+                                        title: 'Territory',
+                                        dataIndex: 'territory',
+                                    },
+                                    {
+                                        title: 'Visits',
+                                        dataIndex: 'visits',
+                                        align: 'right',
+                                        width: 80,
+                                    },
+                                    {
+                                        title: 'Orders',
+                                        dataIndex: 'visit_order_value',
+                                        align: 'right',
+                                        width: 130,
+                                        render: (value) => <Money value={value} />,
+                                    },
+                                    {
+                                        title: 'Invoiced',
+                                        dataIndex: 'invoiced_value',
+                                        align: 'right',
+                                        width: 130,
+                                        render: (value) => <Money value={value} />,
+                                    },
+                                    {
+                                        title: 'Target',
+                                        dataIndex: 'monthly_target',
+                                        align: 'right',
+                                        width: 130,
+                                        render: (value) => <Money value={value} />,
+                                    },
+                                    {
+                                        title: 'Achievement',
+                                        dataIndex: 'achievement_percent',
+                                        width: 110,
+                                        align: 'right',
+                                        render: (value) => {
+                                            const pct = Math.min(value || 0, 100);
+                                            const color = pct >= 100
+                                                ? '#52c41a'
+                                                : pct >= 70
+                                                    ? '#faad14'
+                                                    : '#ff4d4f';
+
+                                            return (
+                                                <span style={{ color, fontWeight: 600 }}>
+                                                    {pct.toFixed(1)}%
+                                                </span>
+                                            );
                                         },
                                     },
                                 ]}
                                 scroll={{ x: 800 }}
-                                pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ['10', '15', '20', '25', '50', '100'] }}
+                                pagination={{
+                                    pageSize: 20,
+                                    showSizeChanger: true,
+                                    pageSizeOptions: ['10', '15', '20', '25', '50', '100'],
+                                }}
                                 size="small"
                             />
                         </Card>
                     )}
 
-                    {/* ── MR Master list ────────────────────────────────────────────── */}
                     {section === 'representatives' && canManage && (
                         <Card title="MR Directory">
                             <div className="table-toolbar table-toolbar-wide">
                                 <Input.Search
                                     value={mrTable.search}
-                                    onChange={(e) => mrTable.setSearch(e.target.value)}
+                                    onChange={(event) => mrTable.setSearch(event.target.value)}
                                     placeholder="Search name, code or territory"
                                     allowClear
                                 />
+
                                 <Select
-                                    allowClear placeholder="Branch"
+                                    allowClear
+                                    placeholder="Branch"
                                     value={mrTable.filters.branch_id}
-                                    onChange={(v) => mrTable.setFilters((c) => ({ ...c, branch_id: v }))}
-                                    options={branchOptions.map((b) => ({ value: b.id, label: b.name }))}
+                                    onChange={(value) => (
+                                        mrTable.setFilters((current) => ({
+                                            ...current,
+                                            branch_id: value,
+                                        }))
+                                    )}
+                                    options={branchOptions.map((branch) => ({
+                                        value: branch.id,
+                                        label: branch.name,
+                                    }))}
                                     style={{ minWidth: 160 }}
                                 />
+
                                 <Select
-                                    allowClear placeholder="Status"
+                                    allowClear
+                                    placeholder="Status"
                                     value={mrTable.filters.is_active}
-                                    onChange={(v) => mrTable.setFilters((c) => ({ ...c, is_active: v }))}
-                                    options={[{ value: true, label: 'Active' }, { value: false, label: 'Inactive' }]}
+                                    onChange={(value) => (
+                                        mrTable.setFilters((current) => ({
+                                            ...current,
+                                            is_active: value,
+                                        }))
+                                    )}
+                                    options={[
+                                        { value: true, label: 'Active' },
+                                        { value: false, label: 'Inactive' },
+                                    ]}
                                 />
-                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openMr(null)}>Add MR</Button>
+
+                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openMr(null)}>
+                                    Add MR
+                                </Button>
                             </div>
+
                             <ServerTable table={mrTable} columns={mrColumns} />
                         </Card>
                     )}
 
-                    {/* ── Visits list ───────────────────────────────────────────────── */}
                     {section === 'visits' && canVisits && (
                         <Card title="Visit Log">
                             <div className="table-toolbar table-toolbar-wide">
                                 <Input.Search
                                     value={visitTable.search}
-                                    onChange={(e) => visitTable.setSearch(e.target.value)}
+                                    onChange={(event) => visitTable.setSearch(event.target.value)}
                                     placeholder="Search MR or customer"
                                     allowClear
                                 />
+
                                 <Select
-                                    allowClear placeholder="MR"
+                                    allowClear
+                                    placeholder="MR"
                                     value={visitTable.filters.medical_representative_id}
-                                    onChange={(v) => visitTable.setFilters((c) => ({ ...c, medical_representative_id: v }))}
-                                    options={mrOptions.map((m) => ({ value: m.id, label: m.name }))}
+                                    onChange={(value) => (
+                                        visitTable.setFilters((current) => ({
+                                            ...current,
+                                            medical_representative_id: value,
+                                        }))
+                                    )}
+                                    options={mrOptions.map((mr) => ({
+                                        value: mr.id,
+                                        label: mr.name,
+                                    }))}
                                     style={{ minWidth: 160 }}
                                 />
+
                                 <Select
-                                    allowClear placeholder="Status"
+                                    allowClear
+                                    placeholder="Status"
                                     value={visitTable.filters.status}
-                                    onChange={(v) => visitTable.setFilters((c) => ({ ...c, status: v }))}
+                                    onChange={(value) => (
+                                        visitTable.setFilters((current) => ({
+                                            ...current,
+                                            status: value,
+                                        }))
+                                    )}
                                     options={mrVisitStatusOptions}
                                 />
-                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit(null)}>Add Visit</Button>
+
+                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit(null)}>
+                                    Add Visit
+                                </Button>
                             </div>
+
                             <ServerTable table={visitTable} columns={visitColumns} />
                         </Card>
                     )}
 
-                    {/* ── Branches list ──────────────────────────────────────────────── */}
                     {section === 'branches' && canManage && (
                         <Card title="Branch Management">
                             <div className="table-toolbar table-toolbar-wide">
                                 <Input.Search
                                     value={branchTable.search}
-                                    onChange={(e) => branchTable.setSearch(e.target.value)}
+                                    onChange={(event) => branchTable.setSearch(event.target.value)}
                                     placeholder="Search branch name or code"
                                     allowClear
                                 />
+
                                 <Select
-                                    allowClear placeholder="Type"
+                                    allowClear
+                                    placeholder="Type"
                                     value={branchTable.filters.type}
-                                    onChange={(v) => branchTable.setFilters((c) => ({ ...c, type: v }))}
-                                    options={[{ value: 'hq', label: 'HQ' }, { value: 'branch', label: 'Branch' }]}
+                                    onChange={(value) => (
+                                        branchTable.setFilters((current) => ({
+                                            ...current,
+                                            type: value,
+                                        }))
+                                    )}
+                                    options={[
+                                        { value: 'hq', label: 'HQ' },
+                                        { value: 'branch', label: 'Branch' },
+                                    ]}
                                     style={{ minWidth: 120 }}
                                 />
-                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openBranch(null)}>Add Branch</Button>
+
+                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openBranch(null)}>
+                                    Add Branch
+                                </Button>
                             </div>
+
                             <ServerTable table={branchTable} columns={branchColumns} />
                         </Card>
                     )}
@@ -557,23 +973,51 @@ export function MrTrackingPage() {
                     extra={<Button onClick={() => setView('list')}>Cancel</Button>}
                 >
                     <Form form={mrForm} layout="vertical" onFinish={saveMr}>
-                        <Form.Item name="name" label="Full Name" rules={[{ required: true }]}><Input /></Form.Item>
+                        <Form.Item name="name" label="Full Name" rules={[{ required: true }]}>
+                            <Input />
+                        </Form.Item>
+
                         <div className="form-grid">
-                            <Form.Item name="employee_code" label="Employee Code"><Input /></Form.Item>
+                            <Form.Item name="employee_code" label="Employee Code">
+                                <Input />
+                            </Form.Item>
+
                             <Form.Item name="branch_id" label="Branch">
-                                <Select allowClear options={branchOptions.map((b) => ({ value: b.id, label: b.name }))} />
+                                <Select
+                                    allowClear
+                                    options={branchOptions.map((branch) => ({
+                                        value: branch.id,
+                                        label: branch.name,
+                                    }))}
+                                />
                             </Form.Item>
                         </div>
+
                         <div className="form-grid">
-                            <Form.Item name="phone" label="Phone"><Input /></Form.Item>
-                            <Form.Item name="email" label="Email"><Input /></Form.Item>
+                            <Form.Item name="phone" label="Phone">
+                                <Input />
+                            </Form.Item>
+
+                            <Form.Item name="email" label="Email">
+                                <Input />
+                            </Form.Item>
                         </div>
-                        <Form.Item name="territory" label="Territory"><Input /></Form.Item>
+
+                        <Form.Item name="territory" label="Territory">
+                            <Input />
+                        </Form.Item>
+
                         <Form.Item name="monthly_target" label="Monthly Target (NPR)">
                             <InputNumber min={0} className="full-width" />
                         </Form.Item>
-                        <Form.Item name="is_active" label="Active" valuePropName="checked"><Switch /></Form.Item>
-                        <Button type="primary" htmlType="submit">Save MR</Button>
+
+                        <Form.Item name="is_active" label="Active" valuePropName="checked">
+                            <Switch />
+                        </Form.Item>
+
+                        <Button type="primary" htmlType="submit">
+                            Save MR
+                        </Button>
                     </Form>
                 </Card>
             ) : view === 'visit' ? (
@@ -582,83 +1026,159 @@ export function MrTrackingPage() {
                     extra={<Button onClick={() => setView('list')}>Cancel</Button>}
                 >
                     <Form form={visitForm} layout="vertical" onFinish={saveVisit}>
-                        <Form.Item name="medical_representative_id" label="MR" rules={[{ required: true }]}>
-                            <Select options={mrOptions.map((m) => ({ value: m.id, label: m.name }))} />
+                        <Form.Item
+                            name="medical_representative_id"
+                            label="MR"
+                            rules={[{ required: true }]}
+                        >
+                            <Select
+                                options={mrOptions.map((mr) => ({
+                                    value: mr.id,
+                                    label: mr.name,
+                                }))}
+                            />
                         </Form.Item>
+
                         <Form.Item name="customer_id" label="Customer">
-                            <Select allowClear options={customers.map((c) => ({ value: c.id, label: c.name }))} />
+                            <Select
+                                allowClear
+                                options={customers.map((customer) => ({
+                                    value: customer.id,
+                                    label: customer.name,
+                                }))}
+                            />
                         </Form.Item>
+
                         <div className="form-grid">
-                            <Form.Item name="visit_date" label="Visit Date" rules={[{ required: true }]}>
+                            <Form.Item
+                                name="visit_date"
+                                label="Visit Date"
+                                rules={[{ required: true }]}
+                            >
                                 <SmartDatePicker className="full-width" />
                             </Form.Item>
-                            <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+
+                            <Form.Item
+                                name="status"
+                                label="Status"
+                                rules={[{ required: true }]}
+                            >
                                 <Select options={mrVisitStatusOptions} />
                             </Form.Item>
                         </div>
+
                         <Form.Item name="order_value" label="Order Value">
                             <InputNumber min={0} className="full-width" />
                         </Form.Item>
-                        <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
 
-                        {/* GPS check-in */}
+                        <Form.Item name="notes" label="Notes">
+                            <Input.TextArea rows={2} />
+                        </Form.Item>
+
                         <Card size="small" title="Check-in Location (optional)" style={{ marginBottom: 16 }}>
-                            <Button icon={<EnvironmentOutlined />} onClick={captureLocation} style={{ marginBottom: 12 }}>
+                            <Button
+                                icon={<EnvironmentOutlined />}
+                                onClick={captureLocation}
+                                style={{ marginBottom: 12 }}
+                            >
                                 Capture Current Location
                             </Button>
+
                             <div className="form-grid">
-                                <Form.Item name="latitude" label="Latitude"><Input /></Form.Item>
-                                <Form.Item name="longitude" label="Longitude"><Input /></Form.Item>
+                                <Form.Item name="latitude" label="Latitude">
+                                    <Input />
+                                </Form.Item>
+
+                                <Form.Item name="longitude" label="Longitude">
+                                    <Input />
+                                </Form.Item>
                             </div>
-                            <Form.Item name="location_name" label="Location Name (optional)"><Input /></Form.Item>
+
+                            <Form.Item name="location_name" label="Location Name (optional)">
+                                <Input />
+                            </Form.Item>
                         </Card>
-                        <Button type="primary" htmlType="submit">Save Visit</Button>
+
+                        <Button type="primary" htmlType="submit">
+                            Save Visit
+                        </Button>
                     </Form>
                 </Card>
             ) : null}
 
-            {/* Branch form drawer */}
             <FormDrawer
                 title={editingBranch ? `Edit Branch: ${editingBranch.name}` : 'New Branch'}
                 open={branchDrawerOpen}
                 onClose={() => setBranchDrawerOpen(false)}
             >
                 <Form form={branchForm} layout="vertical" onFinish={saveBranch}>
-                    <Form.Item name="name" label="Branch Name" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="name" label="Branch Name" rules={[{ required: true }]}>
+                        <Input />
+                    </Form.Item>
+
                     <div className="form-grid">
-                        <Form.Item name="code" label="Code"><Input /></Form.Item>
+                        <Form.Item name="code" label="Code">
+                            <Input />
+                        </Form.Item>
+
                         <Form.Item name="type" label="Type" rules={[{ required: true }]}>
-                            <Select options={[{ value: 'hq', label: 'HQ' }, { value: 'branch', label: 'Branch' }]} />
+                            <Select
+                                options={[
+                                    { value: 'hq', label: 'HQ' },
+                                    { value: 'branch', label: 'Branch' },
+                                ]}
+                            />
                         </Form.Item>
                     </div>
+
                     <Form.Item name="parent_id" label="Parent HQ (leave empty if this IS the HQ)">
                         <Select
                             allowClear
-                            options={branchOptions.filter((b) => b.type === 'hq').map((b) => ({ value: b.id, label: b.name }))}
+                            options={branchOptions
+                                .filter((branch) => branch.type === 'hq')
+                                .map((branch) => ({
+                                    value: branch.id,
+                                    label: branch.name,
+                                }))}
                         />
                     </Form.Item>
-                    <Form.Item name="address" label="Address"><Input.TextArea rows={2} /></Form.Item>
-                    <Form.Item name="phone" label="Phone"><Input /></Form.Item>
-                    <Form.Item name="is_active" label="Active" valuePropName="checked"><Switch /></Form.Item>
-                    <Button type="primary" htmlType="submit">Save Branch</Button>
+
+                    <Form.Item name="address" label="Address">
+                        <Input.TextArea rows={2} />
+                    </Form.Item>
+
+                    <Form.Item name="phone" label="Phone">
+                        <Input />
+                    </Form.Item>
+
+                    <Form.Item name="is_active" label="Active" valuePropName="checked">
+                        <Switch />
+                    </Form.Item>
+
+                    <Button type="primary" htmlType="submit">
+                        Save Branch
+                    </Button>
                 </Form>
             </FormDrawer>
 
-            {/* Map modal — opens on location pin click */}
             <Drawer
                 title={mapVisit ? `Visit Location — ${mapVisit.medical_representative?.name ?? ''}` : ''}
                 open={!!mapVisit}
                 onClose={() => setMapVisit(null)}
-                width={560}
+                size="large"
             >
                 {mapVisit && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <p style={{ margin: 0 }}>
                             <strong>Coordinates:</strong> {mapVisit.latitude}, {mapVisit.longitude}
                         </p>
+
                         {mapVisit.location_name && (
-                            <p style={{ margin: 0 }}><strong>Location:</strong> {mapVisit.location_name}</p>
+                            <p style={{ margin: 0 }}>
+                                <strong>Location:</strong> {mapVisit.location_name}
+                            </p>
                         )}
+
                         <iframe
                             title="Visit Map"
                             width="100%"
@@ -667,6 +1187,7 @@ export function MrTrackingPage() {
                             loading="lazy"
                             src={`https://www.openstreetmap.org/export/embed.html?bbox=${+mapVisit.longitude - 0.01},${+mapVisit.latitude - 0.01},${+mapVisit.longitude + 0.01},${+mapVisit.latitude + 0.01}&layer=mapnik&marker=${mapVisit.latitude},${mapVisit.longitude}`}
                         />
+
                         <a
                             href={`https://www.openstreetmap.org/?mlat=${mapVisit.latitude}&mlon=${mapVisit.longitude}#map=15/${mapVisit.latitude}/${mapVisit.longitude}`}
                             target="_blank"

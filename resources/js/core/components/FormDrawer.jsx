@@ -1,14 +1,21 @@
 import React from 'react';
 import { Drawer } from 'antd';
 
-export function FormDrawer({ title, open, onClose, children, footer, width = 560 }) {
+export function FormDrawer({
+    title,
+    open,
+    onClose,
+    children,
+    footer,
+    size = 'large',
+}) {
     return (
         <Drawer
             className="intent-drawer form-drawer"
             title={title}
             open={open}
             onClose={onClose}
-            width={width}
+            size={size}
             maskClosable={false}
             destroyOnHidden
             footer={footer}
