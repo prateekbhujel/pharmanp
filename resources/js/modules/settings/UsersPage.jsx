@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { Button, Card, Form, Input, Select, Space, Switch, Table } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Button, Card, Form, Input, Select, Space, Switch, Table } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined, UserSwitchOutlined } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { PharmaBadge, StatusBadge } from '../../core/components/PharmaBadge';
 import { StatusToggle } from '../../core/components/StatusToggle';
+import { DateText } from '../../core/components/DateText';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { useAuth } from '../../core/auth/AuthProvider';
+import { appUrl } from '../../core/utils/url';
 
 export function UsersPage() {
+    const { notification } = App.useApp();
     const { user } = useAuth();
     const [userDrawerOpen, setUserDrawerOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
@@ -19,6 +22,12 @@ export function UsersPage() {
 
     const userTable = useServerTable({ endpoint: endpoints.users });
     const userLookups = userTable.extra?.lookups || {};
+    const canImpersonate = Boolean(
+        user?.is_owner
+        || user?.permissions?.includes('users.manage')
+        || user?.roles?.includes('Super Admin')
+        || user?.roles?.includes('Owner'),
+    );
 
     const openUser = (record = null) => {
         setEditingUser(record);
@@ -55,6 +64,20 @@ export function UsersPage() {
             onOk: async () => {
                 await http.delete(endpoints.users + '/' + record.id);
                 userTable.reload();
+            },
+        });
+    };
+
+    const impersonateUser = async (record) => {
+        confirmDelete({
+            title: `View as ${record.name}?`,
+            content: 'Your admin session will be remembered so you can return from the topbar.',
+            okText: 'Start Impersonation',
+            danger: false,
+            onOk: async () => {
+                await http.post(endpoints.userImpersonate(record.id));
+                notification.success({ message: `Viewing as ${record.name}` });
+                window.location.href = appUrl('/app');
             },
         });
     };
@@ -102,9 +125,18 @@ export function UsersPage() {
                         pageSize: userTable.pagination.pageSize,
                         total: userTable.pagination.total,
                         showSizeChanger: true,
+                        pageSizeOptions: ['10', '15', '20', '25', '50', '100'],
                     }}
                     onChange={userTable.handleTableChange}
                     columns={[
+                        {
+                            title: 'SN',
+                            key: '__serial',
+                            width: 68,
+                            align: 'center',
+                            className: 'table-serial-cell',
+                            render: (_, __, index) => ((userTable.pagination.current - 1) * userTable.pagination.pageSize) + index + 1,
+                        },
                         { title: 'Name', dataIndex: 'name', sorter: true, field: 'name' },
                         { title: 'Email', dataIndex: 'email', sorter: true, field: 'email' },
                         {
@@ -126,12 +158,15 @@ export function UsersPage() {
                                 : <StatusToggle value={value} id={record.id} endpoint={endpoints.users} />,
                             width: 150,
                         },
-                        { title: 'Last Login', dataIndex: 'last_login_at', sorter: true, field: 'last_login_at', width: 170, render: (value) => value || '-' },
+                        { title: 'Last Login', dataIndex: 'last_login_at', sorter: true, field: 'last_login_at', width: 170, render: (value) => <DateText value={value} includeTime style="compact" /> },
                         {
                             title: 'Action',
-                            width: 112,
+                            width: 156,
                             render: (_, record) => (
                                 <Space>
+                                    {canImpersonate && record.id !== user?.id && record.is_active && (
+                                        <Button aria-label="Impersonate" icon={<UserSwitchOutlined />} onClick={() => impersonateUser(record)} />
+                                    )}
                                     <Button icon={<EditOutlined />} onClick={() => openUser(record)} />
                                     <Button danger icon={<DeleteOutlined />} disabled={record.id === user?.id} onClick={() => deleteUser(record)} />
                                 </Space>

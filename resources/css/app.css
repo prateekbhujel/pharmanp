@@ -852,6 +852,13 @@ body {
     background: #eff9f6 !important;
 }
 
+.table-serial-cell {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
 .metric-card {
     min-height: 78px;
     background: #ffffff;
@@ -2600,6 +2607,8 @@ body {
     border: 1px solid #e2e8f0;
     border-radius: 14px;
     box-shadow: 0 20px 50px rgb(15 23 42 / 16%);
+    max-height: min(78vh, 620px);
+    overflow: auto;
     width: min(372px, calc(100vw - 32px));
 }
 
@@ -2778,7 +2787,9 @@ body {
     border: 1px solid #e2e8f0;
     border-radius: 14px;
     box-shadow: 0 24px 56px rgb(15 23 42 / 18%);
-    width: min(760px, calc(100vw - 32px));
+    max-height: min(80vh, 680px);
+    overflow: auto;
+    width: min(720px, calc(100vw - 16px));
 }
 
 .nepali-range-card .ant-card-body {
@@ -2951,22 +2962,64 @@ body {
 
 @media (max-width: 720px) {
     .nepali-range-picker {
-        grid-template-columns: auto minmax(0, 1fr) auto;
-    }
-
-    .nepali-range-picker .nepali-range-separator,
-    .nepali-range-picker .nepali-range-value:nth-of-type(2),
-    .nepali-range-picker .nepali-range-end-input {
-        display: none;
+        gap: 4px;
+        grid-template-columns: auto minmax(0, 1fr) 14px minmax(0, 1fr) auto;
+        min-height: 38px;
+        padding: 0 7px;
     }
 
     .nepali-range-card-body {
         grid-template-columns: 1fr;
     }
 
+    .nepali-range-month {
+        padding: 10px 10px 8px;
+    }
+
     .nepali-range-month + .nepali-range-month {
         border-left: 0;
         border-top: 1px solid #eef2f7;
+    }
+
+    .nepali-range-day,
+    .nepali-range-empty-day {
+        min-height: 38px;
+    }
+
+    .nepali-range-bs-day {
+        font-size: 13px;
+    }
+
+    .nepali-range-ad-day {
+        font-size: 9px;
+        margin-top: 3px;
+    }
+
+    .nepali-range-footer {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 430px) {
+    .nepali-range-card,
+    .nepali-datepicker-card {
+        border-radius: 12px;
+        width: calc(100vw - 12px);
+    }
+
+    .nepali-range-month-select {
+        width: min(116px, 54%);
+    }
+
+    .nepali-range-year-select {
+        width: 78px;
+    }
+
+    .nepali-range-day,
+    .nepali-range-empty-day {
+        min-height: 34px;
     }
 }
 

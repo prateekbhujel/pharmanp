@@ -18,6 +18,7 @@ class MrManagementService
         'territory' => 'territory',
         'monthly_target' => 'monthly_target',
         'created_at' => 'created_at',
+        'updated_at' => 'updated_at',
     ];
 
     private const VISIT_SORTS = [
@@ -25,6 +26,7 @@ class MrManagementService
         'status' => 'status',
         'order_value' => 'order_value',
         'created_at' => 'created_at',
+        'updated_at' => 'updated_at',
     ];
 
     public function representatives(TableQueryData $table, ?User $user = null): LengthAwarePaginator
@@ -44,7 +46,7 @@ class MrManagementService
             ->when(array_key_exists('is_active', $table->filters), fn (Builder $builder) => $builder->where('is_active', (bool) $table->filters['is_active']))
             ->when(array_key_exists('branch_id', $table->filters) && $table->filters['branch_id'], fn (Builder $builder) => $builder->where('branch_id', $table->filters['branch_id']));
 
-        return $query->orderBy(self::REPRESENTATIVE_SORTS[$table->sortField] ?? 'name', $table->sortOrder)
+        return $query->orderBy(self::REPRESENTATIVE_SORTS[$table->sortField] ?? 'updated_at', $table->sortOrder)
             ->paginate($table->perPage, ['*'], 'page', $table->page);
     }
 
@@ -65,7 +67,7 @@ class MrManagementService
             ->when(array_key_exists('medical_representative_id', $table->filters), fn (Builder $builder) => $builder->where('medical_representative_id', $table->filters['medical_representative_id']))
             ->when(array_key_exists('status', $table->filters), fn (Builder $builder) => $builder->where('status', $table->filters['status']));
 
-        return $query->orderBy(self::VISIT_SORTS[$table->sortField] ?? 'visit_date', $table->sortOrder)
+        return $query->orderBy(self::VISIT_SORTS[$table->sortField] ?? 'updated_at', $table->sortOrder)
             ->orderByDesc('id')
             ->paginate($table->perPage, ['*'], 'page', $table->page);
     }

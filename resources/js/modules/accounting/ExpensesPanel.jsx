@@ -3,6 +3,7 @@ import { App, Button, Card, Col, Form, Input, InputNumber, Row, Select, Space, S
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Money } from '../../core/components/Money';
+import { DateText } from '../../core/components/DateText';
 import { FormModal } from '../../core/components/FormModal';
 import { QuickDropdownOptionModal } from '../../core/components/QuickDropdownOptionModal';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
@@ -35,13 +36,13 @@ export function ExpensesPanel() {
         resetKey: drawerOpen,
     });
 
-    async function loadExpenses(page = 1) {
+    async function loadExpenses(page = 1, pageSize = meta.per_page) {
         setLoading(true);
         try {
             const { data } = await http.get(endpoints.expenses, {
                 params: {
                     page,
-                    per_page: meta.per_page,
+                    per_page: pageSize,
                     ...dateRangeParams(range),
                 },
             });
@@ -95,7 +96,15 @@ export function ExpensesPanel() {
     }
 
     const columns = [
-        { title: 'Date', dataIndex: 'expense_date_display', width: 130 },
+        {
+            title: 'SN',
+            key: '__serial',
+            width: 68,
+            align: 'center',
+            className: 'table-serial-cell',
+            render: (_, __, index) => ((meta.current_page - 1) * meta.per_page) + index + 1,
+        },
+        { title: 'Date', dataIndex: 'expense_date', width: 130, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'Category', dataIndex: 'category' },
         { title: 'Vendor', dataIndex: 'vendor_name', render: (v) => v || '-' },
         { title: 'Mode', dataIndex: 'payment_mode', width: 130 },
@@ -127,6 +136,8 @@ export function ExpensesPanel() {
                         current: meta.current_page,
                         pageSize: meta.per_page,
                         total: meta.total,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '15', '20', '25', '50', '100'],
                         onChange: loadExpenses,
                     }}
                     scroll={{ x: 'max-content' }}

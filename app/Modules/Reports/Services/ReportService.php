@@ -21,7 +21,7 @@ class ReportService
     {
         $from = $request->filled('from') ? (string) $request->query('from') : null;
         $to = $request->filled('to') ? (string) $request->query('to') : null;
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min(max((int) $request->query('per_page', 20), 5), 100);
 
         return match ($report) {
             'sales' => $this->sales($request, $from, $to, $perPage),
@@ -36,10 +36,11 @@ class ReportService
             'ledger' => $this->accountLedger($request, $request->query('account_type'), $from, $to, $perPage),
             'trial-balance' => $this->trialBalance($request, $from, $to, $perPage),
             'account-tree' => $this->accountTree($request, $from, $to, $perPage),
+            'profit-loss' => $this->profitLoss($request, $from, $to, $perPage),
             'supplier-performance' => $this->supplierPerformance($request, $from, $to, $perPage),
-            'supplier-ledger' => $this->supplierLedger((int) $request->query('supplier_id'), $from, $to, $perPage),
-            'customer-ledger' => $this->customerLedger((int) $request->query('customer_id'), $from, $to, $perPage),
-            'product-movement' => $this->productMovement((int) $request->query('product_id'), $from, $to, $perPage),
+            'supplier-ledger' => $this->supplierLedger($request, (int) $request->query('supplier_id'), $from, $to, $perPage),
+            'customer-ledger' => $this->customerLedger($request, (int) $request->query('customer_id'), $from, $to, $perPage),
+            'product-movement' => $this->productMovement($request, (int) $request->query('product_id'), $from, $to, $perPage),
             'mr-performance' => $this->mrPerformance($request),
             default => throw ValidationException::withMessages(['report' => 'Unknown report.']),
         };
@@ -51,6 +52,8 @@ class ReportService
             ->leftJoin('customers', 'customers.id', '=', 'sales_invoices.customer_id')
             ->leftJoin('medical_representatives', 'medical_representatives.id', '=', 'sales_invoices.medical_representative_id')
             ->whereNull('sales_invoices.deleted_at')
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('sales_invoices.tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('sales_invoices.company_id', $companyId))
             ->when($request->filled('customer_id'), fn ($builder) => $builder->where('sales_invoices.customer_id', $request->integer('customer_id')))
             ->when($request->filled('payment_status'), fn ($builder) => $builder->where('sales_invoices.payment_status', $request->query('payment_status')))
             ->when($request->filled('medical_representative_id'), fn ($builder) => $builder->where('sales_invoices.medical_representative_id', $request->integer('medical_representative_id')))
@@ -73,6 +76,8 @@ class ReportService
                 $join->on('suppliers.id', '=', 'account_transactions.party_id')
                     ->where('account_transactions.party_type', '=', 'supplier');
             })
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('account_transactions.tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('account_transactions.company_id', $companyId))
             ->when($accountType, fn ($builder) => $builder->where('account_type', $accountType))
             ->when($request->filled('party_type'), fn ($builder) => $builder->where('party_type', $request->query('party_type')))
             ->when($request->filled('party_id'), fn ($builder) => $builder->where('party_id', $request->integer('party_id')))
@@ -92,8 +97,8 @@ class ReportService
         })->all();
 
         $page['summary'] = [
-            'debit' => round((float) $this->accountTransactionSummaryQuery($from, $to, $accountType)->sum('debit'), 2),
-            'credit' => round((float) $this->accountTransactionSummaryQuery($from, $to, $accountType)->sum('credit'), 2),
+            'debit' => round((float) $this->accountTransactionSummaryQuery($request, $from, $to, $accountType)->sum('debit'), 2),
+            'credit' => round((float) $this->accountTransactionSummaryQuery($request, $from, $to, $accountType)->sum('credit'), 2),
         ];
 
         return $page;
@@ -113,6 +118,8 @@ class ReportService
         $query = DB::table('purchases')
             ->join('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
             ->whereNull('purchases.deleted_at')
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('purchases.tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('purchases.company_id', $companyId))
             ->when($request->filled('supplier_id'), fn ($builder) => $builder->where('purchases.supplier_id', $request->integer('supplier_id')))
             ->when($request->filled('payment_status'), fn ($builder) => $builder->where('purchases.payment_status', $request->query('payment_status')))
             ->orderByDesc('purchases.purchase_date')
@@ -123,7 +130,7 @@ class ReportService
         return $this->paged($query, $perPage);
     }
 
-    private function supplierLedger(int $supplierId, ?string $from, ?string $to, int $perPage): array
+    private function supplierLedger(Request $request, int $supplierId, ?string $from, ?string $to, int $perPage): array
     {
         if ($supplierId < 1) {
             throw ValidationException::withMessages(['supplier_id' => 'Supplier is required for supplier ledger.']);
@@ -132,6 +139,8 @@ class ReportService
         $query = DB::table('purchases')
             ->where('supplier_id', $supplierId)
             ->whereNull('deleted_at')
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('company_id', $companyId))
             ->orderBy('purchase_date')
             ->orderBy('id')
             ->selectRaw('purchase_date as date, purchase_no as reference, grand_total as credit, paid_amount as debit, payment_status');
@@ -150,6 +159,8 @@ class ReportService
                     ->where('batches.is_active', true);
             })
             ->whereNull('products.deleted_at')
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('products.tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('products.company_id', $companyId))
             ->when($request->filled('company_id'), fn ($builder) => $builder->where('products.company_id', $request->integer('company_id')))
             ->when($request->filled('category_id'), fn ($builder) => $builder->where('products.category_id', $request->integer('category_id')))
             ->groupBy('products.id', 'products.name', 'products.sku', 'products.reorder_level')
@@ -169,6 +180,8 @@ class ReportService
             })
             ->whereNull('products.deleted_at')
             ->where('products.is_active', true)
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('products.tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('products.company_id', $companyId))
             ->when($request->filled('company_id'), fn ($builder) => $builder->where('products.company_id', $request->integer('company_id')))
             ->when($request->filled('category_id'), fn ($builder) => $builder->where('products.category_id', $request->integer('category_id')))
             ->groupBy('products.id', 'products.name', 'products.sku', 'products.reorder_level')
@@ -185,6 +198,8 @@ class ReportService
             ->join('products', 'products.id', '=', 'batches.product_id')
             ->whereNull('batches.deleted_at')
             ->where('batches.quantity_available', '>', 0)
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('batches.tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('batches.company_id', $companyId))
             ->when($request->filled('product_id'), fn ($builder) => $builder->where('batches.product_id', $request->integer('product_id')))
             ->orderBy('batches.expires_at')
             ->selectRaw('products.id as product_id, products.name as product, batches.batch_no, batches.expires_at, batches.quantity_available, batches.mrp');
@@ -204,6 +219,8 @@ class ReportService
                     ->when($to, fn ($builder) => $builder->where('purchases.purchase_date', '<=', $to));
             })
             ->whereNull('suppliers.deleted_at')
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('suppliers.tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('suppliers.company_id', $companyId))
             ->groupBy('suppliers.id', 'suppliers.name', 'suppliers.current_balance')
             ->orderByDesc('purchase_total')
             ->selectRaw('suppliers.id, suppliers.name, suppliers.current_balance, COUNT(purchases.id) as purchase_count, COALESCE(SUM(purchases.grand_total), 0) as purchase_total');
@@ -215,6 +232,8 @@ class ReportService
     {
         $summary = DB::table('account_transactions')
             ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
+            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->groupBy('account_type');
 
         $this->applyDateRange($summary, 'transaction_date', $from, $to);
@@ -266,6 +285,8 @@ class ReportService
     {
         $summary = DB::table('account_transactions')
             ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
+            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->groupBy('account_type');
 
         $this->applyDateRange($summary, 'transaction_date', $from, $to);
@@ -312,6 +333,70 @@ class ReportService
         ];
     }
 
+    private function profitLoss(Request $request, ?string $from, ?string $to, int $perPage): array
+    {
+        $summary = DB::table('account_transactions')
+            ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
+            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
+            ->groupBy('account_type');
+
+        $this->applyDateRange($summary, 'transaction_date', $from, $to);
+
+        $totals = $summary->get()->keyBy('account_type');
+        $rows = collect(AccountCatalog::all())
+            ->filter(fn (array $account) => in_array($account['group'], ['Income', 'Expenses'], true))
+            ->map(function (array $account) use ($totals) {
+                $entry = $totals->get($account['key']);
+                $debit = (float) ($entry?->debit_total ?? 0);
+                $credit = (float) ($entry?->credit_total ?? 0);
+                $amount = $account['nature'] === 'credit'
+                    ? $credit - $debit
+                    : $debit - $credit;
+
+                return [
+                    'code' => $account['code'],
+                    'section' => $account['group'],
+                    'account' => $account['name'],
+                    'debit' => $debit,
+                    'credit' => $credit,
+                    'amount' => $amount,
+                ];
+            })
+            ->values();
+
+        $incomeTotal = (float) $rows->where('section', 'Income')->sum('amount');
+        $expenseTotal = (float) $rows->where('section', 'Expenses')->sum('amount');
+        $netProfit = $incomeTotal - $expenseTotal;
+        $rows->push([
+            'code' => '',
+            'section' => 'Result',
+            'account' => $netProfit >= 0 ? 'Net Profit' : 'Net Loss',
+            'debit' => 0,
+            'credit' => 0,
+            'amount' => $netProfit,
+        ]);
+
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $items = $rows->forPage($page, $perPage)->values();
+        $paginator = new LengthAwarePaginator($items, $rows->count(), $perPage, $page);
+
+        return [
+            'data' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+            'summary' => [
+                'income' => $incomeTotal,
+                'expense' => $expenseTotal,
+                'net_profit' => $netProfit,
+            ],
+        ];
+    }
+
     private function mrPerformance(Request $request): array
     {
         $payload = $this->mrPerformance->monthly($request->user(), $request->query());
@@ -328,7 +413,7 @@ class ReportService
         ];
     }
 
-    private function customerLedger(int $customerId, ?string $from, ?string $to, int $perPage): array
+    private function customerLedger(Request $request, int $customerId, ?string $from, ?string $to, int $perPage): array
     {
         if ($customerId < 1) {
             throw ValidationException::withMessages(['customer_id' => 'Customer is required for customer ledger.']);
@@ -337,6 +422,8 @@ class ReportService
         $query = DB::table('sales_invoices')
             ->where('customer_id', $customerId)
             ->whereNull('deleted_at')
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('company_id', $companyId))
             ->orderBy('invoice_date')
             ->selectRaw('invoice_date as date, invoice_no as reference, grand_total as debit, paid_amount as credit, payment_status');
 
@@ -345,7 +432,7 @@ class ReportService
         return $this->paged($query, $perPage);
     }
 
-    private function productMovement(int $productId, ?string $from, ?string $to, int $perPage): array
+    private function productMovement(Request $request, int $productId, ?string $from, ?string $to, int $perPage): array
     {
         if ($productId < 1) {
             throw ValidationException::withMessages(['product_id' => 'Product is required for product movement.']);
@@ -354,6 +441,8 @@ class ReportService
         $query = DB::table('stock_movements')
             ->leftJoin('batches', 'batches.id', '=', 'stock_movements.batch_id')
             ->where('stock_movements.product_id', $productId)
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('stock_movements.tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('stock_movements.company_id', $companyId))
             ->orderBy('stock_movements.movement_date')
             ->orderBy('stock_movements.id')
             ->selectRaw('stock_movements.movement_date, stock_movements.movement_type, batches.batch_no, stock_movements.quantity_in, stock_movements.quantity_out, stock_movements.notes');
@@ -363,9 +452,11 @@ class ReportService
         return $this->paged($query, $perPage);
     }
 
-    private function accountTransactionSummaryQuery(?string $from, ?string $to, ?string $accountType = null)
+    private function accountTransactionSummaryQuery(Request $request, ?string $from, ?string $to, ?string $accountType = null)
     {
         $query = DB::table('account_transactions')
+            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('company_id', $companyId))
             ->when($accountType, fn ($builder) => $builder->where('account_type', $accountType));
 
         $this->applyDateRange($query, 'transaction_date', $from, $to);

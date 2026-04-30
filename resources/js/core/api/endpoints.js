@@ -62,6 +62,8 @@ export const endpoints = {
     branding: appUrl('/api/v1/setup/branding'),
     roles: appUrl('/api/v1/setup/roles'),
     users: appUrl('/api/v1/setup/users'),
+    userImpersonate: (id) => appUrl(`/api/v1/setup/users/${id}/impersonate`),
+    stopImpersonation: appUrl('/api/v1/setup/users/stop-impersonating'),
     setupStatus: appUrl('/setup/status'),
     setupComplete: appUrl('/setup/complete'),
 

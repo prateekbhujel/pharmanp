@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Col, Empty, Row, Segmented, Select, Space, Statistic, Table, Tabs } from 'antd';
 import { DateText } from '../../core/components/DateText';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
-import { BarChart, DonutChart } from '../../core/components/Charts';
+import { BarChart } from '../../core/components/Charts';
 import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
@@ -30,12 +30,13 @@ const reportOptions = [
     { value: 'ledger', label: 'Account ledger' },
     { value: 'account-tree', label: 'Account tree' },
     { value: 'trial-balance', label: 'Trial balance' },
+    { value: 'profit-loss', label: 'Profit & loss' },
 ];
 
 const reportGroups = {
     sales: ['sales', 'purchase', 'supplier-performance'],
     inventory: ['stock', 'low-stock', 'expiry', 'smart-inventory', 'product-movement'],
-    accounting: ['day-book', 'cash-book', 'bank-book', 'ledger', 'account-tree', 'trial-balance', 'supplier-ledger', 'customer-ledger'],
+    accounting: ['day-book', 'cash-book', 'bank-book', 'ledger', 'account-tree', 'trial-balance', 'profit-loss', 'supplier-ledger', 'customer-ledger'],
     mr: ['mr-performance'],
 };
 
@@ -71,6 +72,27 @@ function inferGroup(report) {
 
 function labelForKey(key) {
     return key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function reportRowKey(record) {
+    const key = record.id
+        ?? record.code
+        ?? record.invoice_no
+        ?? record.purchase_no
+        ?? record.reference
+        ?? record.voucher_no
+        ?? record.account_key
+        ?? [
+            record.section,
+            record.account,
+            record.product,
+            record.customer,
+            record.supplier,
+            record.date,
+            record.movement_date,
+        ].filter(Boolean).join('-');
+
+    return key || JSON.stringify(record).slice(0, 80);
 }
 
 function inferChart(rows, report) {
@@ -151,13 +173,13 @@ export function ReportsPage() {
         }
     }
 
-    async function load(page = 1) {
+    async function load(page = 1, pageSize = meta.per_page) {
         setLoading(true);
         try {
             const { data } = await http.get(`${endpoints.reports}/${report}`, {
                 params: {
                     page,
-                    per_page: meta.per_page,
+                    per_page: pageSize,
                     ...dateRangeParams(range),
                     ...filters,
                 },
@@ -173,6 +195,7 @@ export function ReportsPage() {
     const columns = useMemo(() => Object.keys(rows[0] || {}).map((key) => ({
         title: labelForKey(key),
         dataIndex: key,
+        align: typeof rows[0]?.[key] === 'number' ? 'right' : undefined,
         render: (value) => {
             if (typeof value === 'number') {
                 return value.toLocaleString();
@@ -190,19 +213,6 @@ export function ReportsPage() {
         [group],
     );
     const chartData = useMemo(() => inferChart(rows, report), [report, rows]);
-    const summaryChartData = useMemo(() => {
-        if (!summary) return [];
-
-        return Object.entries(summary)
-            .filter(([, value]) => typeof value === 'number' && Number(value) > 0)
-            .slice(0, 5)
-            .map(([key, value], index) => ({
-                label: labelForKey(key),
-                value: Number(value || 0),
-                color: ['#0891b2', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'][index],
-            }));
-    }, [summary]);
-
     function updateFilter(name, value) {
         setFilters((current) => ({ ...current, [name]: value || undefined }));
     }
@@ -308,12 +318,12 @@ export function ReportsPage() {
     function renderCharts() {
         return (
             <Row gutter={[16, 16]}>
-                <Col xs={24} xl={14}>
-                    <Card title="Bar Analysis">
+                <Col xs={24}>
+                    <Card title="Trend and comparison">
                         {chartData ? (
                             <BarChart
                                 data={chartData}
-                                height={300}
+                                height={320}
                                 legend={chartData[0]?.bars?.length > 1 ? ['Primary', 'Secondary'] : undefined}
                                 colors={['#0891b2', '#10b981']}
                             />
@@ -322,30 +332,32 @@ export function ReportsPage() {
                         )}
                     </Card>
                 </Col>
-                <Col xs={24} xl={10}>
-                    <Card title="Summary Mix">
-                        {summaryChartData.length ? (
-                            <DonutChart data={summaryChartData} size={220} />
-                        ) : (
-                            <Empty description="Summary totals will appear here" />
-                        )}
-                    </Card>
-                </Col>
             </Row>
         );
     }
 
     function renderTable() {
+        const serialColumn = {
+            title: 'SN',
+            key: '__serial',
+            width: 68,
+            align: 'center',
+            className: 'table-serial-cell',
+            render: (_, __, index) => ((meta.current_page - 1) * meta.per_page) + index + 1,
+        };
+
         return (
             <Table
                 loading={loading}
-                rowKey={(_, index) => index}
-                columns={columns}
+                rowKey={reportRowKey}
+                columns={[serialColumn, ...columns]}
                 dataSource={rows}
                 pagination={{
                     current: meta.current_page,
                     pageSize: meta.per_page,
                     total: meta.total,
+                    showSizeChanger: true,
+                    pageSizeOptions: ['10', '15', '20', '25', '50', '100'],
                     onChange: load,
                 }}
                 scroll={{ x: true }}
@@ -412,22 +424,11 @@ export function ReportsPage() {
                         },
                         {
                             key: 'charts',
-                            label: 'Charts',
+                            label: 'Analysis',
                             children: (
                                 <div className="report-pane">
                                     {renderSummaryCards()}
                                     {renderCharts()}
-                                </div>
-                            ),
-                        },
-                        {
-                            key: 'details',
-                            label: 'Details',
-                            children: (
-                                <div className="report-pane">
-                                    {renderSummaryCards()}
-                                    {renderFilters()}
-                                    {renderTable()}
                                 </div>
                             ),
                         },
