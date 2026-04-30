@@ -49,9 +49,19 @@ Laravel/PHP is not the limiting factor for pharmacy ERP workloads. The limiting 
 - Dashboard widgets must aggregate by date windows and indexed dimensions, not scan transaction detail tables on every request.
 - File imports must validate in chunks and store rejected rows without holding the full workbook in memory.
 
+A 100-million-row dataset is an infrastructure and data-lifecycle project, not a shared-hosting promise. That scale needs MySQL/MariaDB tuning, slow-query review, summary tables, archival/partition strategy for ledgers and stock movements, queue workers, backup/restore rehearsals, and realistic load tests before it is sold as supported.
+
 ## Change Boundaries
 
 Feature-specific behavior belongs in its module. Shared behavior belongs in `resources/js/core` or `app/Core` only when at least two modules need it. A feature request from one pharmacy should be introduced behind configuration, permissions, or a module-level option when it is not universally useful.
+
+## Barcode Labels
+
+Product barcode scanning is supported in POS and product search. PharmaNP also includes a local Code 128 renderer in `resources/js/core/utils/code128.js`, so product labels can be generated and printed without a third-party JavaScript package. If a product has no barcode, the print flow falls back to SKU/product code because POS lookup supports those identifiers too.
+
+## Dependency Hygiene
+
+Use `php artisan pharmanp:dependency-audit` before removing Composer or npm packages. The command is intentionally read-only: it reports direct usage signals and review candidates but never deletes `vendor`, `node_modules`, lock files, or dependencies. Production deployments should still install optimized dependencies with Composer and ship built Vite assets instead of uploading development caches.
 
 ## Deployment
 

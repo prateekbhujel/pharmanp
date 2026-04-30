@@ -422,33 +422,19 @@ export function AppShell() {
         }
         const items = [];
 
-        // Header with Mark All as Read
         items.push({
             key: 'header',
+            disabled: true,
             label: (
                 <div className="notification-tray-header">
                     <strong>Notifications</strong>
-                    <Button
-                        type="link"
-                        size="small"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (alerts.signature) {
-                                window.localStorage.setItem(ALERT_DISMISS_STORAGE_KEY, alerts.signature);
-                            }
-                            setAlerts((current) => ({
-                                ...current,
-                                loading: false,
-                                lowStockRows: [],
-                                expiryRows: [],
-                                count: 0,
-                            }));
-                        }}
-                    >
-                        Mark all as read
-                    </Button>
+                    <span>{alerts.count} active</span>
                 </div>
             )
+        });
+        items.push({
+            key: 'mark-read',
+            label: <div className="notification-tray-action">Mark all as read</div>,
         });
         items.push({ type: 'divider' });
 
@@ -496,11 +482,10 @@ export function AppShell() {
         items.push({
             key: 'footer',
             label: <div className="notification-tray-footer">View detailed reports</div>,
-            onClick: () => goTo(appUrl('/app/reports/inventory'))
         });
 
         return items;
-    }, [alerts]);
+    }, [alerts, brandingData?.calendar_type]);
 
     function goTo(route) {
         if (!route || route === pathname) return;
@@ -516,6 +501,23 @@ export function AppShell() {
     }
 
     function handleNotificationClick({ key }) {
+        if (key === 'mark-read') {
+            if (alerts.signature) {
+                window.localStorage.setItem(ALERT_DISMISS_STORAGE_KEY, alerts.signature);
+            }
+            setAlerts((current) => ({
+                ...current,
+                loading: false,
+                lowStockRows: [],
+                expiryRows: [],
+                count: 0,
+            }));
+            return;
+        }
+        if (key === 'footer') {
+            goTo(appUrl('/app/reports/inventory'));
+            return;
+        }
         if (key.startsWith('low-stock')) goTo(appUrl('/app/reports/low-stock'));
         if (key.startsWith('expiry')) goTo(appUrl('/app/reports/expiry'));
     }
