@@ -193,6 +193,7 @@ class SetupService
             'accent_color' => $branding['accent_color'] ?? '#0f766e',
             'layout' => 'vertical',
             'sidebar_default_collapsed' => (bool) ($branding['sidebar_default_collapsed'] ?? true),
+            'show_breadcrumbs' => (bool) ($branding['show_breadcrumbs'] ?? true),
             'country_code' => $branding['country_code'] ?? 'NP',
             'currency_symbol' => $branding['currency_symbol'] ?? 'Rs.',
             'calendar_type' => $branding['calendar_type'] ?? 'bs',

@@ -248,6 +248,7 @@ class DemoSeeder extends Seeder
             'accent_color' => '#0f766e',
             'layout' => 'vertical',
             'sidebar_default_collapsed' => true,
+            'show_breadcrumbs' => true,
             'country_code' => 'NP',
             'currency_symbol' => 'Rs.',
             'calendar_type' => 'bs',

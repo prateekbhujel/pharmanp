@@ -134,6 +134,7 @@ export function SetupWizard() {
                             app_name: 'PharmaNP',
                             accent_color: '#0f766e',
                             sidebar_default_collapsed: true,
+                            show_breadcrumbs: true,
                             country_code: 'NP',
                             currency_symbol: 'Rs.',
                             calendar_type: 'bs',
@@ -226,6 +227,9 @@ export function SetupWizard() {
                     <div className="form-grid">
                         <Form.Item name={['branding', 'sidebar_default_collapsed']} valuePropName="checked">
                             <Checkbox>Start sidebar minimized</Checkbox>
+                        </Form.Item>
+                        <Form.Item name={['branding', 'show_breadcrumbs']} valuePropName="checked">
+                            <Checkbox>Show page breadcrumbs</Checkbox>
                         </Form.Item>
                     </div>
                     <div className="form-grid">

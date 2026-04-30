@@ -12,24 +12,34 @@ import { useAuth } from '../../core/auth/AuthProvider';
 import { appUrl } from '../../core/utils/url';
 import { dateRangeParams } from '../../core/utils/dateFilters';
 
+function formatMetricNumber(value) {
+    return new Intl.NumberFormat(undefined, {
+        maximumFractionDigits: 0,
+    }).format(Number(value || 0));
+}
+
 // ── Stat card with subtle trend arrow ────────────────────────────────────────
-function StatCard({ title, value, suffix, tone, loading, icon }) {
+function StatCard({ title, value, suffix, tone, loading, icon, valueType = 'number' }) {
+    const displayValue = valueType === 'money'
+        ? <Money value={value} />
+        : formatMetricNumber(value);
+
     return (
         <Card 
             className="metric-card metric-card-glow glass-card" 
             loading={loading} 
             size="small"
-            styles={{ body: { padding: '12px 16px' } }}
+            styles={{ body: { padding: '10px 14px' } }}
         >
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <div>
-                    <div style={{ color: '#64748b', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{title}</div>
-                    <div style={{ color: tone, fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>
-                        {value ?? 0}
+                    <div style={{ color: '#64748b', fontSize: 11, fontWeight: 650, marginBottom: 3 }}>{title}</div>
+                    <div className="metric-card-value" style={{ color: tone }}>
+                        {displayValue}
                         {suffix && <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.8 }}>{suffix}</span>}
                     </div>
                 </div>
-                {icon && <div style={{ color: tone, fontSize: 20, opacity: 0.8, marginTop: 2 }}>{icon}</div>}
+                {icon && <div style={{ color: tone, fontSize: 18, opacity: 0.8, marginTop: 2 }}>{icon}</div>}
             </div>
         </Card>
     );
@@ -116,10 +126,10 @@ export function DashboardPage() {
                 <div className="page-stack" style={{ marginTop: 16 }}>
                     <Row gutter={[16, 16]}>
                         <Col xs={12} md={6}>
-                            <StatCard title="Today's Sales" value={stats.today_sales} tone={TONES.sales} loading={loading} icon={<DollarCircleOutlined />} />
+                            <StatCard title="Today's Sales" value={stats.today_sales} valueType="money" tone={TONES.sales} loading={loading} icon={<DollarCircleOutlined />} />
                         </Col>
                         <Col xs={12} md={6}>
-                            <StatCard title="Period Sales" value={stats.period_sales} tone="#0891b2" loading={loading} icon={<LineChartOutlined />} />
+                            <StatCard title="Period Sales" value={stats.period_sales} valueType="money" tone="#0891b2" loading={loading} icon={<LineChartOutlined />} />
                         </Col>
                         {isMr ? (
                             <>
@@ -127,23 +137,23 @@ export function DashboardPage() {
                                     <StatCard title="Visits" value={stats.visits} suffix="visits" tone="#0891b2" loading={loading} icon={<ShopOutlined />} />
                                 </Col>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Monthly Target" value={stats.target} tone="#f59e0b" loading={loading} icon={<AlertOutlined />} />
+                                    <StatCard title="Monthly Target" value={stats.target} valueType="money" tone="#f59e0b" loading={loading} icon={<AlertOutlined />} />
                                 </Col>
                             </>
                         ) : (
                             <>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Period Purchases" value={stats.period_purchase} tone={TONES.purchase} loading={loading} icon={<ShoppingCartOutlined />} />
+                                    <StatCard title="Period Purchases" value={stats.period_purchase} valueType="money" tone={TONES.purchase} loading={loading} icon={<ShoppingCartOutlined />} />
                                 </Col>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Receivables" value={stats.receivables} tone="#ea580c" loading={loading} icon={<WalletOutlined />} />
+                                    <StatCard title="Receivables" value={stats.receivables} valueType="money" tone="#ea580c" loading={loading} icon={<WalletOutlined />} />
                                 </Col>
                             </>
                         )}
                         {!isMr && (
                             <>
                                 <Col xs={12} md={6}>
-                                    <StatCard title="Payables" value={stats.payables} tone="#9333ea" loading={loading} icon={<WalletOutlined />} />
+                                    <StatCard title="Payables" value={stats.payables} valueType="money" tone="#9333ea" loading={loading} icon={<WalletOutlined />} />
                                 </Col>
                                 <Col xs={12} md={6}>
                                     <StatCard title="Low Stock Items" value={stats.low_stock} suffix={stats.low_stock > 0 ? <WarningOutlined style={{ color: '#ef4444' }} /> : ''} tone={stats.low_stock > 0 ? "#ef4444" : "#64748b"} loading={loading} icon={<AlertOutlined />} />

@@ -14,6 +14,7 @@ export function BrandingProvider({ children }) {
             calendar_type: 'bs',
             country_code: 'NP',
             layout: 'vertical',
+            show_breadcrumbs: true,
             product: {
                 name: 'PharmaNP',
                 developer_name: 'Pratik Bhujel',

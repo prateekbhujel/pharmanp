@@ -68,6 +68,7 @@ class SetupInstallationTest extends TestCase
             'favicon_url' => '/storage/settings/favicon.ico',
             'accent_color' => '#0f766e',
             'sidebar_default_collapsed' => true,
+            'show_breadcrumbs' => false,
             'country_code' => 'NP',
             'currency_symbol' => 'Rs.',
             'calendar_type' => 'bs',
@@ -78,6 +79,7 @@ class SetupInstallationTest extends TestCase
         $this->assertSame('Bhujel Pharmacy', $branding['app_name']);
         $this->assertSame('/storage/settings/favicon.ico', $branding['favicon_url']);
         $this->assertTrue($branding['sidebar_default_collapsed']);
+        $this->assertFalse($branding['show_breadcrumbs']);
         $this->assertSame('vertical', $branding['layout']);
 
         $this->actingAs($user)->getJson('/api/v1/setup/branding')

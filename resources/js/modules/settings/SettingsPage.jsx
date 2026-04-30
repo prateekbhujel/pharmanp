@@ -9,7 +9,7 @@ import {
     ShopOutlined,
     UserOutlined,
 } from '@ant-design/icons';
-import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Typography } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Switch, Typography } from 'antd';
 import { BrandAssetUploadField } from '../../core/components/BrandAssetUploadField';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
@@ -140,7 +140,10 @@ export function SettingsPage() {
 
     useEffect(() => {
         if (branding) {
-            brandingForm.setFieldsValue(branding);
+            brandingForm.setFieldsValue({
+                show_breadcrumbs: true,
+                ...branding,
+            });
         }
     }, [branding, brandingForm]);
 
@@ -383,6 +386,9 @@ export function SettingsPage() {
                                                 { label: 'Nepali', value: 'bs' },
                                             ]}
                                         />
+                                    </Form.Item>
+                                    <Form.Item name="show_breadcrumbs" label="Show Breadcrumbs" valuePropName="checked">
+                                        <Switch checkedChildren="Show" unCheckedChildren="Hide" />
                                     </Form.Item>
                                 </div>
                                 <div className="branding-upload-grid">
