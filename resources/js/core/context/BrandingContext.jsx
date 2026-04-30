@@ -13,7 +13,14 @@ export function BrandingProvider({ children }) {
             currency_symbol: 'Rs.',
             calendar_type: 'bs',
             country_code: 'NP',
-            layout: 'vertical'
+            layout: 'vertical',
+            product: {
+                name: 'PharmaNP',
+                developer_name: 'Pratik Bhujel',
+                developer_email: 'prateekbhujelpb@gmail.com',
+                release_channel: 'Stable',
+                version_label: 'dev',
+            }
         },
         loading,
         reload

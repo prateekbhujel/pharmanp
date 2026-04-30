@@ -188,6 +188,11 @@ export function AppShell() {
 
     const layout = brandingData?.layout || 'vertical';
     const appName = brandingData?.app_name || 'PharmaNP';
+    const product = brandingData?.product || {};
+    const productName = product.name || 'PharmaNP';
+    const developerName = product.developer_name || 'Pratik Bhujel';
+    const developerEmail = product.developer_email || 'prateekbhujelpb@gmail.com';
+    const productVersion = [product.version_label || 'dev', product.release_channel].filter(Boolean).join(' ');
     const logo = brandingData?.sidebar_logo_url || brandingData?.logo_url || brandingData?.app_icon_url;
     const user = authUser;
 
@@ -631,14 +636,14 @@ export function AppShell() {
                 </Content>
                 <div className="app-footer-premium">
                     <div className="footer-left">
-                        <span className="footer-copyright">© {new Date().getFullYear()} <strong>PharmaNP</strong></span>
+                        <span className="footer-copyright">© {new Date().getFullYear()} <strong>{productName}</strong></span>
                         <span className="footer-sep">|</span>
-                        <span className="footer-credit">Developed with excellence by <strong>Pratik Bhujel</strong></span>
+                        <span className="footer-credit">Developed with excellence by <strong>{developerName}</strong></span>
                     </div>
                     <div className="footer-right">
                         <Space size="middle">
-                            <Typography.Text type="secondary" size="small">v1.0.0 Stable</Typography.Text>
-                            <span className="footer-contact">prateekbhujelpb@gmail.com</span>
+                            <Typography.Text type="secondary" size="small">{productVersion}</Typography.Text>
+                            <span className="footer-contact">{developerEmail}</span>
                         </Space>
                     </div>
                 </div>

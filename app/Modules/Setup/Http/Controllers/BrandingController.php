@@ -3,6 +3,7 @@
 namespace App\Modules\Setup\Http\Controllers;
 
 use App\Core\Support\AssetUrl;
+use App\Core\Support\ProductMeta;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Modules\Setup\Http\Requests\BrandingSettingsRequest;
@@ -59,6 +60,8 @@ class BrandingController extends Controller
         foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {
             $branding[$key] = AssetUrl::resolve($branding[$key] ?? null);
         }
+
+        $branding['product'] = ProductMeta::payload();
 
         return $branding;
     }

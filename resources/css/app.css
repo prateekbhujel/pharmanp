@@ -175,7 +175,7 @@ body {
     line-height: normal;
     min-height: 64px;
     justify-content: space-between;
-    padding: 0 24px;
+    padding: 0 20px 0 14px;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -188,6 +188,14 @@ body {
 
 .header-content-left {
     flex: 1 1 auto;
+    gap: 10px !important;
+}
+
+.sidebar-toggle-btn {
+    border-radius: 10px;
+    flex: 0 0 auto;
+    height: 34px;
+    width: 34px;
 }
 
 .header-content-right {
