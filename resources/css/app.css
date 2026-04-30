@@ -1386,8 +1386,8 @@ body {
 }
 
 .product-history-summary {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: #ecfdf8;
+    border: 1px solid #cceee5;
     border-radius: 14px;
     display: grid;
     gap: 12px;
@@ -1397,12 +1397,16 @@ body {
 }
 
 .product-history-summary div {
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(20, 184, 166, 0.16);
+    border-radius: 11px;
     display: grid;
     gap: 3px;
+    padding: 10px 12px;
 }
 
 .product-history-summary span {
-    color: #64748b;
+    color: #0f766e;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.02em;
@@ -1410,8 +1414,9 @@ body {
 }
 
 .product-history-summary strong {
-    color: #0f172a;
+    color: #134e4a;
     font-size: 14px;
+    font-weight: 700;
 }
 
 .product-image-preview {
