@@ -18,6 +18,7 @@ class UserManagementService
         'is_active' => 'users.is_active',
         'last_login_at' => 'users.last_login_at',
         'created_at' => 'users.created_at',
+        'updated_at' => 'users.updated_at',
     ];
 
     public function paginate(TableQueryData $table, ?User $actor = null): LengthAwarePaginator
@@ -36,7 +37,7 @@ class UserManagementService
             ->when(array_key_exists('is_active', $table->filters), fn (Builder $builder) => $builder->where('users.is_active', (bool) $table->filters['is_active']))
             ->when(array_key_exists('role_name', $table->filters), fn (Builder $builder) => $builder->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', $table->filters['role_name'])));
 
-        $sort = self::SORTS[$table->sortField] ?? self::SORTS['created_at'];
+        $sort = self::SORTS[$table->sortField] ?? self::SORTS['updated_at'];
 
         return $query->orderBy($sort, $table->sortOrder)
             ->paginate($table->perPage, ['*'], 'page', $table->page);

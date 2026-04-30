@@ -53,12 +53,12 @@ export function PaymentsPanel() {
         setSuppliers(s.data || []);
     }
 
-    async function loadPayments(page = 1) {
+    async function loadPayments(page = 1, pageSize = meta.per_page) {
         setLoading(true);
         try {
             const { data } = await http.get(endpoints.payments, {
                 params: {
-                    page, per_page: meta.per_page, direction,
+                    page, per_page: pageSize, direction,
                     deleted: deletedMode ? 1 : undefined,
                     ...dateRangeParams(range),
                 },
@@ -159,6 +159,14 @@ export function PaymentsPanel() {
         : suppliers.map((s) => ({ value: s.id, label: s.name }));
 
     const columns = [
+        {
+            title: 'SN',
+            key: '__serial',
+            width: 68,
+            align: 'center',
+            className: 'table-serial-cell',
+            render: (_, __, index) => ((meta.current_page - 1) * meta.per_page) + index + 1,
+        },
         { title: 'No', dataIndex: 'payment_no', width: 120 },
         { title: 'Date', dataIndex: 'payment_date', width: 130, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'Direction', dataIndex: 'direction_label', width: 130, render: (v, r) => <PharmaBadge tone={r.direction === 'in' ? 'success' : 'warning'} dot>{v}</PharmaBadge> },
@@ -205,7 +213,14 @@ export function PaymentsPanel() {
                     <Button type="primary" icon={<PlusOutlined />} onClick={() => openDrawer()}>New Payment</Button>
                 </div>
                 <Table rowKey="id" loading={loading} dataSource={rows} columns={columns}
-                    pagination={{ current: meta.current_page, pageSize: meta.per_page, total: meta.total, onChange: loadPayments }}
+                    pagination={{
+                        current: meta.current_page,
+                        pageSize: meta.per_page,
+                        total: meta.total,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '15', '20', '25', '50', '100'],
+                        onChange: loadPayments,
+                    }}
                     scroll={{ x: 'max-content' }}
                 />
             </Card>

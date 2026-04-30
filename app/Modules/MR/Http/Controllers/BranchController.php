@@ -18,10 +18,10 @@ class BranchController extends Controller
     {
         $this->ensureCanManage($request);
 
-        $sortField = in_array($request->query('sort_field'), ['name', 'code', 'type', 'created_at'], true)
+        $sortField = in_array($request->query('sort_field'), ['name', 'code', 'type', 'created_at', 'updated_at'], true)
             ? $request->query('sort_field')
-            : 'name';
-        $sortOrder = $request->query('sort_order') === 'desc' ? 'desc' : 'asc';
+            : 'updated_at';
+        $sortOrder = $request->query('sort_order') === 'asc' ? 'asc' : 'desc';
         $search = trim((string) $request->query('search'));
 
         $query = Branch::query()

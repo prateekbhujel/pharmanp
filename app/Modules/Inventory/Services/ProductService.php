@@ -23,6 +23,7 @@ class ProductService
         'reorder_level' => 'products.reorder_level',
         'stock_on_hand' => 'stock_on_hand',
         'created_at' => 'products.created_at',
+        'updated_at' => 'products.updated_at',
     ];
 
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
@@ -35,7 +36,7 @@ class ProductService
             ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available');
 
         $this->applyFilters($query, $table);
-        $sortColumn = self::SORTS[$table->sortField] ?? self::SORTS['created_at'];
+        $sortColumn = self::SORTS[$table->sortField] ?? self::SORTS['updated_at'];
 
         if ($sortColumn === 'stock_on_hand') {
             $query->orderByRaw('COALESCE(stock_on_hand, 0) '.$table->sortOrder);

@@ -95,6 +95,7 @@ export function DashboardPage() {
     const isMr  = data?.scope === 'medical_representative';
     const loading = state.loading;
     const appName = branding?.app_name || 'PharmaNP';
+    const heroPeriodLabel = data?.period || 'current period';
 
     // ── Convert monthly_trend to BarChart format ───────────────────────────────
     const trendBars = (chart.monthly_trend || []).map((m) => ({
@@ -455,7 +456,7 @@ export function DashboardPage() {
                                     <Money value={heroToggle === 'Sales' ? stats.period_sales : stats.period_purchase} />
                                 </div>
                                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
-                                    For {range?.[0]?.format('MMM D')} - {range?.[1]?.format('MMM D, YYYY')}
+                                    For {heroPeriodLabel}
                                 </div>
                             </div>
                         </div>

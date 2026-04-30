@@ -109,6 +109,7 @@ const routes = {
     [appUrl('/app/accounting/ledger')]: ReportsPage,
     [appUrl('/app/accounting/account-tree')]: ReportsPage,
     [appUrl('/app/accounting/trial-balance')]: ReportsPage,
+    [appUrl('/app/accounting/profit-loss')]: ReportsPage,
     [appUrl('/app/accounting/payments')]: AccountingPage,
     [appUrl('/app/accounting/expenses')]: AccountingPage,
     [appUrl('/app/party/management')]: PartiesPage,
@@ -123,6 +124,7 @@ const routes = {
     [appUrl('/app/reports/expiry')]: ReportsPage,
     [appUrl('/app/reports/smart-inventory')]: ReportsPage,
     [appUrl('/app/reports/accounting')]: ReportsPage,
+    [appUrl('/app/reports/profit-loss')]: ReportsPage,
     [appUrl('/app/reports/supplier-performance')]: ReportsPage,
     [appUrl('/app/reports/supplier-ledger')]: ReportsPage,
     [appUrl('/app/reports/customer-ledger')]: ReportsPage,
@@ -139,7 +141,7 @@ function currentAppPath() {
 }
 
 export function AppShell() {
-    const { user: authUser } = useAuth();
+    const { user: authUser, reload: reloadAuth } = useAuth();
     const { branding: brandingData, loading: brandingLoading } = useBranding();
     const { colorPrimary } = useTheme();
 
@@ -295,6 +297,7 @@ export function AppShell() {
                     child('accounting-ledger', 'Ledger', appUrl('/app/accounting/ledger')),
                     child('accounting-account-tree', 'Account Tree', appUrl('/app/accounting/account-tree')),
                     child('accounting-trial-balance', 'Trial Balance', appUrl('/app/accounting/trial-balance')),
+                    child('accounting-profit-loss', 'Profit & Loss', appUrl('/app/accounting/profit-loss')),
                 ],
             },
             {
@@ -523,7 +526,18 @@ export function AppShell() {
         });
     }
 
+    function stopImpersonating() {
+        http.post(endpoints.stopImpersonation).finally(() => {
+            reloadAuth?.();
+            window.location.href = appUrl('/app/administration/users');
+        });
+    }
+
     const profileItems = [
+        ...(user?.impersonating ? [
+            { key: 'stop-impersonation', label: 'Return to Admin', icon: <UserSwitchOutlined />, onClick: stopImpersonating },
+            { type: 'divider' },
+        ] : []),
         { key: 'profile', label: 'Profile Settings', icon: <UserSwitchOutlined />, onClick: () => { goTo(appUrl('/app/settings')); } },
         { type: 'divider' },
         { key: 'logout', label: 'Sign Out', danger: true, onClick: logout },

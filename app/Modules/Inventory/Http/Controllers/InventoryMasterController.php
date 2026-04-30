@@ -25,10 +25,10 @@ class InventoryMasterController extends Controller
 
         $model = $this->modelFor($master);
         $search = trim((string) $request->query('search'));
-        $sortField = in_array($request->query('sort_field'), ['name', 'code', 'created_at'], true)
+        $sortField = in_array($request->query('sort_field'), ['name', 'code', 'created_at', 'updated_at'], true)
             ? $request->query('sort_field')
-            : 'name';
-        $sortOrder = $request->query('sort_order') === 'desc' ? 'desc' : 'asc';
+            : 'updated_at';
+        $sortOrder = $request->query('sort_order') === 'asc' ? 'asc' : 'desc';
 
         $rows = $model::query()
             ->when($request->boolean('deleted'), fn ($query) => $query->onlyTrashed())

@@ -134,6 +134,36 @@ class SetupAccessManagementTest extends TestCase
             ->assertOk();
     }
 
+    public function test_owner_can_impersonate_and_return_to_admin_session(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $company = Company::query()->create(['name' => 'Impersonation Pharma']);
+        $owner = User::factory()->create([
+            'company_id' => $company->id,
+            'is_owner' => true,
+        ]);
+        $staff = User::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Counter Staff',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)->postJson("/api/v1/setup/users/{$staff->id}/impersonate")
+            ->assertOk();
+
+        $this->assertAuthenticatedAs($staff);
+
+        $this->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.impersonating', true)
+            ->assertJsonPath('data.impersonator_user_id', $owner->id);
+
+        $this->postJson('/api/v1/setup/users/stop-impersonating')
+            ->assertOk();
+
+        $this->assertAuthenticatedAs($owner);
+    }
+
     public function test_owner_can_manage_branches_as_master_data(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);

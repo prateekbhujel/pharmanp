@@ -37,6 +37,7 @@ use App\Modules\Setup\Http\Controllers\ProfileController;
 use App\Modules\Setup\Http\Controllers\RolePermissionController;
 use App\Modules\Setup\Http\Controllers\SettingsAdminController;
 use App\Modules\Setup\Http\Controllers\SupplierTypeController;
+use App\Modules\Setup\Http\Controllers\UserImpersonationController;
 use App\Modules\Setup\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -56,6 +57,8 @@ Route::prefix('api/v1')->name('api.')->group(function () {
     Route::delete('/setup/roles/{role}', [RolePermissionController::class, 'destroy'])->name('setup.roles.destroy');
     Route::get('/setup/users', [UserManagementController::class, 'index'])->name('setup.users.index');
     Route::post('/setup/users', [UserManagementController::class, 'store'])->name('setup.users.store');
+    Route::post('/setup/users/stop-impersonating', [UserImpersonationController::class, 'stop'])->name('setup.users.impersonate.stop');
+    Route::post('/setup/users/{user}/impersonate', [UserImpersonationController::class, 'start'])->name('setup.users.impersonate.start');
     Route::put('/setup/users/{user}', [UserManagementController::class, 'update'])->name('setup.users.update');
     Route::patch('/setup/users/{user}/status', [UserManagementController::class, 'toggleStatus'])->name('setup.users.status');
     Route::delete('/setup/users/{user}', [UserManagementController::class, 'destroy'])->name('setup.users.destroy');

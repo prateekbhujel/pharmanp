@@ -63,7 +63,7 @@ export function AccountingPage() {
     const [voucherMode, setVoucherMode] = useState('list');
     const [editingVoucher, setEditingVoucher] = useState(null);
     const [voucherRows, setVoucherRows] = useState([]);
-    const [voucherMeta, setVoucherMeta] = useState({ current_page: 1, per_page: 15, total: 0 });
+    const [voucherMeta, setVoucherMeta] = useState({ current_page: 1, per_page: 20, total: 0 });
     const [voucherLoading, setVoucherLoading] = useState(false);
     const [voucherSearch, setVoucherSearch] = useState('');
     const [voucherRange, setVoucherRange] = useState([]);
@@ -126,13 +126,13 @@ export function AccountingPage() {
         setSuppliers(supplierData.data || []);
     }
 
-    async function loadVouchers(page = 1) {
+    async function loadVouchers(page = 1, pageSize = voucherMeta.per_page) {
         setVoucherLoading(true);
         try {
             const { data } = await http.get(endpoints.vouchers, {
                 params: {
                     page,
-                    per_page: voucherMeta.per_page,
+                    per_page: pageSize,
                     search: voucherSearch || undefined,
                     ...dateRangeParams(voucherRange),
                 },
@@ -300,6 +300,14 @@ export function AccountingPage() {
     ];
 
     const voucherListColumns = [
+        {
+            title: 'SN',
+            key: '__serial',
+            width: 68,
+            align: 'center',
+            className: 'table-serial-cell',
+            render: (_, __, index) => ((voucherMeta.current_page - 1) * voucherMeta.per_page) + index + 1,
+        },
         { title: 'Voucher No', dataIndex: 'voucher_no', width: 160 },
         { title: 'Date', dataIndex: 'voucher_date', width: 130, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'Type', dataIndex: 'voucher_type_label', width: 160, render: (value) => <PharmaBadge tone="info">{value}</PharmaBadge> },
@@ -373,6 +381,8 @@ export function AccountingPage() {
                         current: voucherMeta.current_page,
                         pageSize: voucherMeta.per_page,
                         total: voucherMeta.total,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '15', '20', '25', '50', '100'],
                         onChange: loadVouchers,
                     }}
                     scroll={{ x: 'max-content' }}

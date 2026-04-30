@@ -18,6 +18,7 @@ class PartyService
         'phone' => 'phone',
         'current_balance' => 'current_balance',
         'created_at' => 'created_at',
+        'updated_at' => 'updated_at',
     ];
 
     public function suppliers(TableQueryData $table, ?User $user = null): LengthAwarePaginator
@@ -75,7 +76,7 @@ class PartyService
             $query->where('is_active', (bool) $table->filters['is_active']);
         }
 
-        $query->orderBy(self::SORTS[$table->sortField] ?? 'created_at', $table->sortOrder);
+        $query->orderBy(self::SORTS[$table->sortField] ?? 'updated_at', $table->sortOrder);
 
         return $query->paginate($table->perPage, ['*'], 'page', $table->page);
     }

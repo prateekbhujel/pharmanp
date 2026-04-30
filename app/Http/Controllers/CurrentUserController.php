@@ -54,6 +54,8 @@ class CurrentUserController extends Controller
                     'id' => $user->medicalRepresentative->id,
                     'name' => $user->medicalRepresentative->name,
                 ] : null,
+                'impersonating' => $request->session()->has('impersonator_user_id'),
+                'impersonator_user_id' => $request->session()->get('impersonator_user_id'),
             ],
             'branding' => $branding,
         ]);

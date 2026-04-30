@@ -3,14 +3,14 @@ import { App } from 'antd';
 import { http } from '../api/http';
 import { useDebounce } from './useDebounce';
 
-export function useServerTable({ endpoint, defaultSort = { field: 'created_at', order: 'desc' }, defaultFilters = {} }) {
+export function useServerTable({ endpoint, defaultSort = { field: 'updated_at', order: 'desc' }, defaultFilters = {}, enabled = true }) {
     const { notification } = App.useApp();
     const [rows, setRows] = useState([]);
     const [extra, setExtra] = useState({});
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search);
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 });
+    const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
     const [sort, setSort] = useState(defaultSort);
     const [filters, setFilters] = useState(defaultFilters);
 
@@ -24,8 +24,13 @@ export function useServerTable({ endpoint, defaultSort = { field: 'created_at', 
     }), [pagination.current, pagination.pageSize, debouncedSearch, sort, filters]);
 
     const load = useCallback(() => {
+        if (!enabled || !endpoint) {
+            setLoading(false);
+            return Promise.resolve();
+        }
+
         setLoading(true);
-        http.get(endpoint, { params })
+        return http.get(endpoint, { params })
             .then(({ data }) => {
                 setRows(data.data || []);
                 setExtra(Object.fromEntries(Object.entries(data).filter(([key]) => !['data', 'meta'].includes(key))));
@@ -43,11 +48,13 @@ export function useServerTable({ endpoint, defaultSort = { field: 'created_at', 
                 });
             })
             .finally(() => setLoading(false));
-    }, [endpoint, params, notification]);
+    }, [enabled, endpoint, params, notification]);
 
     useEffect(() => {
-        load();
-    }, [load]);
+        if (enabled) {
+            load();
+        }
+    }, [enabled, load]);
 
     function handleTableChange(nextPagination, _filters, sorter) {
         setPagination({

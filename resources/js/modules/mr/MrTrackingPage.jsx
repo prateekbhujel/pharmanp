@@ -53,22 +53,31 @@ export function MrTrackingPage() {
     const [salesData, setSalesData] = useState(null);
     const [salesLoading, setSalesLoading] = useState(false);
 
+    const canManage = user?.is_owner || can(user, 'mr.manage');
+    const canVisits = canManage || can(user, 'mr.visits.manage');
+
+    const section = currentSection();
+    const sectionConfig = fieldForceSections[section];
+
     // ── branch table ──────────────────────────────────────────────────────────
     const branchTable = useServerTable({
         endpoint: endpoints.mrBranches,
         defaultSort: { field: 'name', order: 'asc' },
+        enabled: canManage && section === 'branches',
     });
 
     // ── visits table ──────────────────────────────────────────────────────────
     const visitTable = useServerTable({
         endpoint: endpoints.mrVisits,
         defaultSort: { field: 'visit_date', order: 'desc' },
+        enabled: section === 'visits' && canVisits,
     });
 
     // ── MR master table ───────────────────────────────────────────────────────
     const mrTable = useServerTable({
         endpoint: endpoints.mrRepresentatives,
         defaultSort: { field: 'name', order: 'asc' },
+        enabled: section === 'representatives' && canManage,
     });
 
     // ── form state ────────────────────────────────────────────────────────────
@@ -82,12 +91,6 @@ export function MrTrackingPage() {
     const [mrForm] = Form.useForm();
     const [visitForm] = Form.useForm();
     const [branchForm] = Form.useForm();
-
-    const canManage = user?.is_owner || can(user, 'mr.manage');
-    const canVisits = canManage || can(user, 'mr.visits.manage');
-
-    const section = currentSection();
-    const sectionConfig = fieldForceSections[section];
 
     const fromDate = dateRange?.[0]?.format('YYYY-MM-DD');
     const toDate = dateRange?.[1]?.format('YYYY-MM-DD');
@@ -338,6 +341,7 @@ export function MrTrackingPage() {
     const maxSalesVal = Math.max(...branchSalesRows.map((r) => r.total_value || 0), 1);
 
     const branchSalesColumns = [
+        { title: 'SN', key: '__serial', width: 68, align: 'center', className: 'table-serial-cell', render: (_, __, index) => index + 1 },
         { title: 'Branch', dataIndex: 'branch_name', width: 140 },
         { title: 'MR', dataIndex: 'mr_name', width: 130 },
         { title: 'Product', dataIndex: 'product_name' },
@@ -425,10 +429,10 @@ export function MrTrackingPage() {
                                 extra={<PharmaBadge tone="info">{salesData?.period}</PharmaBadge>}
                             >
                                 <Table
-                                    rowKey={(_, i) => i}
+                                    rowKey={(record) => `${record.branch_id || 'branch'}-${record.mr_id || 'mr'}-${record.product_id || record.product_name}`}
                                     dataSource={salesData?.rows || []}
                                     columns={branchSalesColumns}
-                                    pagination={{ pageSize: 15, showSizeChanger: true }}
+                                    pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ['10', '15', '20', '25', '50', '100'] }}
                                     scroll={{ x: 700 }}
                                     size="small"
                                 />
@@ -442,8 +446,8 @@ export function MrTrackingPage() {
                             <Table
                                 rowKey="id"
                                 dataSource={perfData?.rows || []}
-                                pagination={{ pageSize: 10 }}
                                 columns={[
+                                    { title: 'SN', key: '__serial', width: 68, align: 'center', className: 'table-serial-cell', render: (_, __, index) => index + 1 },
                                     { title: 'MR', dataIndex: 'name' },
                                     { title: 'Territory', dataIndex: 'territory' },
                                     { title: 'Visits', dataIndex: 'visits', align: 'right', width: 80 },
@@ -460,6 +464,7 @@ export function MrTrackingPage() {
                                     },
                                 ]}
                                 scroll={{ x: 800 }}
+                                pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ['10', '15', '20', '25', '50', '100'] }}
                                 size="small"
                             />
                         </Card>
