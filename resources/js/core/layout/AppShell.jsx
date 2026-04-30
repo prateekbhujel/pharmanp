@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { Avatar, Badge, Button, Drawer, Dropdown, Layout, Menu, Space, Spin, Typography } from 'antd';
+import { Avatar, Badge, Breadcrumb, Button, Drawer, Dropdown, Layout, Menu, Space, Spin, Typography } from 'antd';
 import {
     BarChartOutlined,
     BellOutlined,
@@ -199,7 +199,7 @@ export function AppShell() {
     }, [pathname]);
     const ActivePage = routes[activeKey] || DashboardPage;
 
-    const { items: menuItems, routesByKey, selectedMenuKey, openKeys } = useMemo(() => {
+    const { items: menuItems, routesByKey, selectedMenuKey, openKeys, breadcrumbs } = useMemo(() => {
         const canInventory = can(user, 'inventory.products.view') || can(user, 'inventory.masters.manage');
         const canPurchase = can(user, 'purchase.entries.view') || can(user, 'purchase.entries.create') || can(user, 'purchase.orders.manage');
         const canSales = can(user, 'sales.invoices.view') || can(user, 'sales.pos.use');
@@ -215,7 +215,6 @@ export function AppShell() {
         };
         const child = (key, label, route) => ({ key: register(key, route), label });
         const items = [
-            { key: 'category-main', label: 'Main Menu', disabled: true, className: 'menu-category' },
             { key: register('dashboard', appUrl('/app')), icon: <DashboardOutlined />, label: 'Dashboard', show: can(user, 'dashboard.view') },
 
             {
@@ -287,7 +286,6 @@ export function AppShell() {
                 ],
             },
             { key: register('reports', appUrl('/app/reports')), icon: <BarChartOutlined />, label: 'Reports', show: canReports },
-            { key: 'category-admin', label: 'Administration', disabled: true, className: 'menu-category' },
             {
                 key: 'admin-master',
                 icon: <ContainerOutlined />,
@@ -333,7 +331,25 @@ export function AppShell() {
             selectedKey = 'dashboard';
         }
 
-        return { items: flatItems, routesByKey: routeMap, selectedMenuKey: selectedKey, openKeys: openKey ? [openKey] : [] };
+        const selectedParent = flatItems.find((item) => item.children?.some((childItem) => childItem.key === selectedKey));
+        const selectedChild = selectedParent?.children?.find((childItem) => childItem.key === selectedKey);
+        const selectedRoot = flatItems.find((item) => item.key === selectedKey);
+        const pageBreadcrumbs = selectedParent && selectedChild
+            ? [
+                { key: selectedParent.key, title: selectedParent.label },
+                { key: selectedChild.key, title: selectedChild.label },
+            ]
+            : selectedRoot
+                ? [{ key: selectedRoot.key, title: selectedRoot.label }]
+                : [];
+
+        return {
+            items: flatItems,
+            routesByKey: routeMap,
+            selectedMenuKey: selectedKey,
+            openKeys: openKey ? [openKey] : [],
+            breadcrumbs: pageBreadcrumbs,
+        };
     }, [pathname, user]);
 
 
@@ -476,6 +492,21 @@ export function AppShell() {
         includeSeconds: false,
         includeEra: false,
     });
+    const isDashboardBreadcrumb = breadcrumbs.length === 1 && breadcrumbs[0].key === 'dashboard';
+    const breadcrumbItems = [
+        ...(!isDashboardBreadcrumb ? [{
+            title: (
+                <button type="button" className="breadcrumb-link" onClick={() => goTo(appUrl('/app'))}>
+                    Dashboard
+                </button>
+            ),
+        }] : []),
+        ...breadcrumbs.map((item, index) => ({
+            title: index === breadcrumbs.length - 1
+                ? <span className="breadcrumb-current">{item.title}</span>
+                : <span className="breadcrumb-section">{item.title}</span>,
+        })),
+    ];
 
     return (
         <Layout className={`app-shell app-shell-${layout}`}>
@@ -591,6 +622,9 @@ export function AppShell() {
                     </Space>
                 </Header>
                 <Content className="app-content">
+                    {breadcrumbItems.length > 0 && (
+                        <Breadcrumb className="app-breadcrumbs" items={breadcrumbItems} />
+                    )}
                     <Suspense fallback={<div className="screen-center"><Spin /></div>}>
                         <ActivePage key={activeKey} />
                     </Suspense>
