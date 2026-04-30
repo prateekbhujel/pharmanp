@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { App, Button, Card, Descriptions, Form, Input, InputNumber, Modal, Select, Space, Table } from 'antd';
 import { DollarOutlined, EyeOutlined, PlusOutlined, PrinterOutlined, QrcodeOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -15,6 +15,7 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { focusFirstKeyboardField, useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { itemFreeGoodsValue, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl } from '../../core/utils/url';
@@ -56,6 +57,9 @@ export function SalesPage() {
     const [qrVisible, setQrVisible] = useState(false);
     const [viewingInvoice, setViewingInvoice] = useState(null);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [productOptions, setProductOptions] = useState([]);
+    const posEntryRef = useRef(null);
+    const paymentUpdateRef = useRef(null);
     const [customerForm] = Form.useForm();
     const [mrForm] = Form.useForm();
     const [paymentForm] = Form.useForm();
@@ -67,10 +71,6 @@ export function SalesPage() {
     useEffect(() => {
         loadCustomers();
         loadMedicalRepresentatives();
-
-        if (section === 'pos') {
-            setTimeout(() => document.getElementById('pos-barcode-input')?.focus(), 300);
-        }
 
         function handleKeyDown(event) {
             if (event.altKey && event.key === 's') {
@@ -117,6 +117,25 @@ export function SalesPage() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [section]);
 
+    useKeyboardFlow(posEntryRef, {
+        enabled: section === 'pos',
+        autofocus: section === 'pos',
+        autofocusSelector: '#pos-barcode-input',
+        onSubmit: submitInvoice,
+        onAddRow: () => {
+            searchProduct('').then(setProductOptions);
+            focusFirstKeyboardField(posEntryRef.current, '.pos-product-search input');
+        },
+        resetKey: section,
+    });
+
+    useKeyboardFlow(paymentUpdateRef, {
+        enabled: paymentModalOpen,
+        autofocus: paymentModalOpen,
+        onSubmit: () => paymentForm.submit(),
+        resetKey: paymentModalOpen,
+    });
+
     useEffect(() => {
         invoiceTable.setFilters((current) => applyDateRangeFilter(current, invoiceRange));
     }, [invoiceRange]);
@@ -158,8 +177,6 @@ export function SalesPage() {
             batch,
         })));
     }
-
-    const [productOptions, setProductOptions] = useState([]);
 
     function addItem(product, batch) {
         setItems((current) => {
@@ -342,94 +359,99 @@ export function SalesPage() {
 
             {section === 'pos' && (
                 <Card>
-                    <div className="pos-toolbar pos-toolbar-wide">
-                        <BarcodeInput id="pos-barcode-input" value={barcode} onChange={setBarcode} onScan={scan} />
+                    <div ref={posEntryRef} data-keyboard-flow="true">
+                        <div className="pos-toolbar pos-toolbar-wide">
+                            <BarcodeInput id="pos-barcode-input" value={barcode} onChange={setBarcode} onScan={scan} />
+                            <Select
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                placeholder="Walk-in Customer"
+                                value={customerId}
+                                onChange={setCustomerId}
+                                options={customers.map((item) => ({ value: item.id, label: item.name }))}
+                                dropdownRender={(menu) => (
+                                    <>
+                                        {menu}
+                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickCustomerOpen(true)}>Quick add customer</Button>
+                                    </>
+                                )}
+                            />
+                            <Select
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                placeholder="MR"
+                                value={medicalRepresentativeId}
+                                onChange={setMedicalRepresentativeId}
+                                options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
+                                dropdownRender={(menu) => (
+                                    <>
+                                        {menu}
+                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickMrOpen(true)}>Quick add MR</Button>
+                                    </>
+                                )}
+                            />
+                            <SmartDatePicker value={invoiceDate} onChange={setInvoiceDate} className="full-width" placeholder="Invoice Date" />
+                            <InputNumber id="pos-paid-amount" min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
+                        </div>
+                        <div className="pos-walkin-strip">
+                            <PharmaBadge tone={customerId ? 'info' : 'neutral'} icon={<UserOutlined />}>{customerId ? `Customer #${customerId}` : 'Walk-in customer'}</PharmaBadge>
+                            <Button size="small" onClick={() => setCustomerId(null)}>Use Walk-in</Button>
+                        </div>
                         <Select
-                            allowClear
                             showSearch
-                            optionFilterProp="label"
-                            placeholder="Walk-in Customer"
-                            value={customerId}
-                            onChange={setCustomerId}
-                            options={customers.map((item) => ({ value: item.id, label: item.name }))}
+                            filterOption={false}
+                            placeholder="Search product and batch"
+                            className="full-width mb-16 pos-product-search"
+                            options={productOptions}
+                            onSearch={(q) => searchProduct(q).then(setProductOptions)}
+                            onFocus={() => searchProduct('').then(setProductOptions)}
                             dropdownRender={(menu) => (
                                 <>
                                     {menu}
-                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickCustomerOpen(true)}>Quick add customer</Button>
+                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick add product</Button>
                                 </>
                             )}
+                            onChange={(_, option) => {
+                                addItem(option.product, option.batch);
+                                focusFirstKeyboardField(posEntryRef.current, '.pos-product-search input');
+                            }}
+                            value={null}
                         />
-                        <Select
-                            allowClear
-                            showSearch
-                            optionFilterProp="label"
-                            placeholder="MR"
-                            value={medicalRepresentativeId}
-                            onChange={setMedicalRepresentativeId}
-                            options={medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))}
-                            dropdownRender={(menu) => (
-                                <>
-                                    {menu}
-                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickMrOpen(true)}>Quick add MR</Button>
-                                </>
+                        <TransactionLineItems
+                            rows={items}
+                            columns={columns}
+                            errors={lineErrors}
+                            rowKey={(row) => row.key}
+                            addLabel="Add Item"
+                            onAdd={() => {
+                                searchProduct('').then(setProductOptions);
+                                focusFirstKeyboardField(posEntryRef.current, '.pos-product-search input');
+                            }}
+                            onRemove={(index) => setItems((current) => current.filter((_, rowIndex) => rowIndex !== index))}
+                            minRows={0}
+                            summary={[
+                                { label: 'Subtotal', value: <Money value={invoiceSummary.subtotal} /> },
+                                { label: 'Discount', value: <Money value={invoiceSummary.discount} /> },
+                                { label: 'Tax', value: <Money value={invoiceSummary.tax} /> },
+                                { label: 'Free Goods Value', value: <Money value={invoiceSummary.freeGoods} /> },
+                                { label: 'Grand Total', value: <Money value={invoiceSummary.grandTotal} />, strong: true },
+                            ]}
+                            actions={(
+                                <Space>
+                                    <Button
+                                        icon={<QrcodeOutlined />}
+                                        disabled={!items.length}
+                                        onClick={() => setQrVisible(true)}
+                                    >
+                                        Payment QR
+                                    </Button>
+                                    <Button id="pos-submit-btn" type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice</Button>
+                                </Space>
                             )}
                         />
-                        <SmartDatePicker value={invoiceDate} onChange={setInvoiceDate} className="full-width" placeholder="Invoice Date" />
-                        <InputNumber id="pos-paid-amount" min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
                     </div>
-                    <div className="pos-walkin-strip">
-                        <PharmaBadge tone={customerId ? 'info' : 'neutral'} icon={<UserOutlined />}>{customerId ? `Customer #${customerId}` : 'Walk-in customer'}</PharmaBadge>
-                        <Button size="small" onClick={() => setCustomerId(null)}>Use Walk-in</Button>
-                    </div>
-                    <Select
-                        showSearch
-                        filterOption={false}
-                        placeholder="Search product and batch"
-                        className="full-width mb-16 pos-product-search"
-                        options={productOptions}
-                        onSearch={(q) => searchProduct(q).then(setProductOptions)}
-                        onFocus={() => searchProduct('').then(setProductOptions)}
-                        dropdownRender={(menu) => (
-                            <>
-                                {menu}
-                                <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick add product</Button>
-                            </>
-                        )}
-                        onChange={(_, option) => addItem(option.product, option.batch)}
-                        value={null}
-                    />
-                    <TransactionLineItems
-                        rows={items}
-                        columns={columns}
-                        errors={lineErrors}
-                        rowKey={(row) => row.key}
-                        addLabel="Add Item"
-                        onAdd={() => {
-                            searchProduct('').then(setProductOptions);
-                            document.querySelector('.pos-product-search input')?.focus();
-                        }}
-                        onRemove={(index) => setItems((current) => current.filter((_, rowIndex) => rowIndex !== index))}
-                        minRows={0}
-                        summary={[
-                            { label: 'Subtotal', value: <Money value={invoiceSummary.subtotal} /> },
-                            { label: 'Discount', value: <Money value={invoiceSummary.discount} /> },
-                            { label: 'Tax', value: <Money value={invoiceSummary.tax} /> },
-                            { label: 'Free Goods Value', value: <Money value={invoiceSummary.freeGoods} /> },
-                            { label: 'Grand Total', value: <Money value={invoiceSummary.grandTotal} />, strong: true },
-                        ]}
-                        actions={(
-                            <Space>
-                                <Button
-                                    icon={<QrcodeOutlined />}
-                                    disabled={!items.length}
-                                    onClick={() => setQrVisible(true)}
-                                >
-                                    Payment QR
-                                </Button>
-                                <Button id="pos-submit-btn" type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice (F8)</Button>
-                            </Space>
-                        )}
-                    />
                 </Card>
             )}
 
@@ -603,14 +625,16 @@ export function SalesPage() {
                 okText="Save Payment"
                 destroyOnHidden
             >
-                <Form form={paymentForm} layout="vertical" onFinish={submitPayment}>
-                    <Descriptions size="small" bordered column={1} className="mb-16">
-                        <Descriptions.Item label="Invoice Total"><Money value={viewingInvoice?.grand_total || 0} /></Descriptions.Item>
-                    </Descriptions>
-                    <Form.Item name="paid_amount" label="Paid Amount" rules={[{ required: true }]}>
-                        <InputNumber min={0} max={Number(viewingInvoice?.grand_total || 0)} className="full-width" />
-                    </Form.Item>
-                </Form>
+                <div ref={paymentUpdateRef} data-keyboard-flow="true">
+                    <Form form={paymentForm} layout="vertical" onFinish={submitPayment}>
+                        <Descriptions size="small" bordered column={1} className="mb-16">
+                            <Descriptions.Item label="Invoice Total"><Money value={viewingInvoice?.grand_total || 0} /></Descriptions.Item>
+                        </Descriptions>
+                        <Form.Item name="paid_amount" label="Paid Amount" rules={[{ required: true }]}>
+                            <InputNumber min={0} max={Number(viewingInvoice?.grand_total || 0)} className="full-width" />
+                        </Form.Item>
+                    </Form>
+                </div>
             </Modal>
         </div>
     );

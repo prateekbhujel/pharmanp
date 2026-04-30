@@ -2748,15 +2748,25 @@ body {
     font-size: 14px;
 }
 
-.nepali-range-value {
+.nepali-range-value,
+.nepali-range-input {
+    background: transparent;
+    border: 0;
     color: #1f2937;
     display: block;
     font-size: 13px;
     font-weight: 650;
     min-width: 0;
+    outline: 0;
     overflow: hidden;
+    padding: 0;
     text-overflow: ellipsis;
     white-space: nowrap;
+    width: 100%;
+}
+
+.nepali-range-input:focus {
+    color: #0f766e;
 }
 
 .nepali-range-placeholder {
@@ -2945,7 +2955,8 @@ body {
     }
 
     .nepali-range-picker .nepali-range-separator,
-    .nepali-range-picker .nepali-range-value:nth-of-type(2) {
+    .nepali-range-picker .nepali-range-value:nth-of-type(2),
+    .nepali-range-picker .nepali-range-end-input {
         display: none;
     }
 

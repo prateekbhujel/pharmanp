@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { App, Button, Card, Drawer, Form, Input, InputNumber, Modal, Select, Space, Table, Descriptions } from 'antd';
 import { CheckCircleOutlined, DollarOutlined, EyeOutlined, PlusOutlined, TruckOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -12,6 +12,7 @@ import { TransactionLineItems } from '../../core/components/TransactionLineItems
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
@@ -36,6 +37,8 @@ export function PurchaseOrdersPanel() {
     const [orderForm] = Form.useForm();
     const [receiveForm] = Form.useForm();
     const [range, setRange] = useState([]);
+    const orderEntryRef = useRef(null);
+    const receiveEntryRef = useRef(null);
 
     const table = useServerTable({
         endpoint: endpoints.purchaseOrders,
@@ -50,6 +53,22 @@ export function PurchaseOrdersPanel() {
     useEffect(() => {
         table.setFilters((current) => applyDateRangeFilter(current, range));
     }, [range]);
+
+    useKeyboardFlow(orderEntryRef, {
+        enabled: drawerOpen,
+        autofocus: drawerOpen,
+        onSubmit: () => orderForm.submit(),
+        onAddRow: addOrderRow,
+        resetKey: drawerOpen,
+    });
+
+    useKeyboardFlow(receiveEntryRef, {
+        enabled: Boolean(receivingOrder),
+        autofocus: Boolean(receivingOrder),
+        onSubmit: () => receiveForm.submit(),
+        onAddRow: addReceiveRow,
+        resetKey: receivingOrder?.id,
+    });
 
     async function loadSuppliers() {
         const { data } = await http.get(endpoints.supplierOptions);
@@ -78,6 +97,26 @@ export function PurchaseOrdersPanel() {
             const nextRows = rows.filter((_, rowIndex) => rowIndex !== index);
             return nextRows.length ? nextRows : [{ ...emptyOrderItem }];
         });
+    }
+
+    function addOrderRow() {
+        setOrderItems((rows) => [...rows, { ...emptyOrderItem }]);
+    }
+
+    function addReceiveRow() {
+        setReceiveItems((rows) => [...rows, {
+            purchase_order_item_id: null,
+            product_id: null,
+            product_name: '',
+            batch_no: '',
+            expires_at: null,
+            quantity: 1,
+            free_quantity: 0,
+            purchase_price: 0,
+            mrp: 0,
+            cc_rate: 0,
+            discount_percent: 0,
+        }]);
     }
 
     const orderSummary = summarizeItems(orderItems, 'unit_price');
@@ -270,36 +309,38 @@ export function PurchaseOrdersPanel() {
                 width={800}
                 destroyOnClose
             >
-                <Form form={orderForm} layout="vertical" onFinish={submitOrder} initialValues={{ order_date: dayjs() }}>
-                    <div className="form-grid">
-                        <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
-                            <Select
-                                showSearch
-                                optionFilterProp="label"
-                                options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
-                            />
-                        </Form.Item>
-                        <Form.Item name="order_date" label="Order Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
-                        <Form.Item name="expected_date" label="Expected Date"><SmartDatePicker className="full-width" /></Form.Item>
-                    </div>
-                    <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
+                <div ref={orderEntryRef} data-keyboard-flow="true">
+                    <Form form={orderForm} layout="vertical" onFinish={submitOrder} initialValues={{ order_date: dayjs() }}>
+                        <div className="form-grid">
+                            <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
+                                <Select
+                                    showSearch
+                                    optionFilterProp="label"
+                                    options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                                />
+                            </Form.Item>
+                            <Form.Item name="order_date" label="Order Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
+                            <Form.Item name="expected_date" label="Expected Date"><SmartDatePicker className="full-width" /></Form.Item>
+                        </div>
+                        <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
 
-                    <TransactionLineItems
-                        rows={orderItems}
-                        columns={orderColumns}
-                        errors={orderLineErrors}
-                        addLabel="Add Item"
-                        onAdd={() => setOrderItems([...orderItems, { ...emptyOrderItem }])}
-                        onRemove={removeRow}
-                        summary={[
-                            { label: 'Subtotal', value: <Money value={orderSummary.subtotal} /> },
-                            { label: 'Discount', value: <Money value={orderSummary.discount} /> },
-                            { label: 'Tax', value: <Money value={orderSummary.tax} /> },
-                            { label: 'Grand Total', value: <Money value={orderSummary.grandTotal} />, strong: true },
-                        ]}
-                        actions={<Button type="primary" htmlType="submit">Create Order</Button>}
-                    />
-                </Form>
+                        <TransactionLineItems
+                            rows={orderItems}
+                            columns={orderColumns}
+                            errors={orderLineErrors}
+                            addLabel="Add Item"
+                            onAdd={addOrderRow}
+                            onRemove={removeRow}
+                            summary={[
+                                { label: 'Subtotal', value: <Money value={orderSummary.subtotal} /> },
+                                { label: 'Discount', value: <Money value={orderSummary.discount} /> },
+                                { label: 'Tax', value: <Money value={orderSummary.tax} /> },
+                                { label: 'Grand Total', value: <Money value={orderSummary.grandTotal} />, strong: true },
+                            ]}
+                            actions={<Button type="primary" htmlType="submit">Create Order</Button>}
+                        />
+                    </Form>
+                </div>
             </Drawer>
 
             <Modal
@@ -366,52 +407,42 @@ export function PurchaseOrdersPanel() {
                 width={1100}
                 destroyOnClose
             >
-                <Form form={receiveForm} layout="vertical" onFinish={submitReceive}>
-                    <div className="form-grid">
-                        <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
-                        <Form.Item name="purchase_date" label="Receive Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
-                        <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
-                    </div>
-                    <Form.Item name="notes" label="Receive Notes"><Input.TextArea rows={2} /></Form.Item>
+                <div ref={receiveEntryRef} data-keyboard-flow="true">
+                    <Form form={receiveForm} layout="vertical" onFinish={submitReceive}>
+                        <div className="form-grid">
+                            <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
+                            <Form.Item name="purchase_date" label="Receive Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
+                            <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
+                        </div>
+                        <Form.Item name="notes" label="Receive Notes"><Input.TextArea rows={2} /></Form.Item>
 
-                    <TransactionLineItems
-                        rows={receiveItems}
-                        errors={receiveLineErrors}
-                        addLabel="Add Line"
-                        minRows={1}
-                        onAdd={() => setReceiveItems((rows) => [...rows, {
-                            purchase_order_item_id: null,
-                            product_id: null,
-                            product_name: '',
-                            batch_no: '',
-                            expires_at: null,
-                            quantity: 1,
-                            free_quantity: 0,
-                            purchase_price: 0,
-                            mrp: 0,
-                            cc_rate: 0,
-                            discount_percent: 0,
-                        }])}
-                        onRemove={(index) => setReceiveItems((rows) => rows.filter((_, rowIndex) => rowIndex !== index))}
-                        columns={[
-                            { key: 'product', title: 'Product', width: 220, render: (row) => <strong>{row.product_name || row.product_id || '-'}</strong> },
-                            { key: 'batch', title: 'Batch', width: 140, render: (row, index) => <Input value={row.batch_no} onChange={(event) => updateReceiveRow(index, { batch_no: event.target.value })} /> },
-                            { key: 'expiry', title: 'Expiry', width: 150, render: (row, index) => <SmartDatePicker value={row.expires_at} onChange={(expires_at) => updateReceiveRow(index, { expires_at })} /> },
-                            { key: 'quantity', title: 'Qty', width: 100, render: (row, index) => <InputNumber min={0.001} value={row.quantity} onChange={(quantity) => updateReceiveRow(index, { quantity })} /> },
-                            { key: 'free_quantity', title: 'Free', width: 90, render: (row, index) => <InputNumber min={0} value={row.free_quantity} onChange={(free_quantity) => updateReceiveRow(index, { free_quantity })} /> },
-                            { key: 'purchase_price', title: 'Rate', width: 110, render: (row, index) => <InputNumber min={0} value={row.purchase_price} onChange={(purchase_price) => updateReceiveRow(index, { purchase_price })} /> },
-                            { key: 'mrp', title: 'MRP', width: 110, render: (row, index) => <InputNumber min={0} value={row.mrp} onChange={(mrp) => updateReceiveRow(index, { mrp })} /> },
-                            { key: 'discount_percent', title: 'Disc %', width: 100, render: (row, index) => <InputNumber min={0} max={100} value={row.discount_percent} onChange={(discount_percent) => updateReceiveRow(index, { discount_percent })} /> },
-                            { key: 'amount', title: 'Amount', className: 'line-money-cell', width: 120, render: (row) => <Money value={itemNet(row, 'purchase_price')} /> },
-                        ]}
-                        summary={[
-                            { label: 'Subtotal', value: <Money value={receiveSummary.subtotal} /> },
-                            { label: 'Discount', value: <Money value={receiveSummary.discount} /> },
-                            { label: 'Grand Total', value: <Money value={receiveSummary.grandTotal} />, strong: true },
-                        ]}
-                        actions={<Button type="primary" htmlType="submit">Receive and Post Purchase</Button>}
-                    />
-                </Form>
+                        <TransactionLineItems
+                            rows={receiveItems}
+                            errors={receiveLineErrors}
+                            addLabel="Add Line"
+                            minRows={1}
+                            onAdd={addReceiveRow}
+                            onRemove={(index) => setReceiveItems((rows) => rows.filter((_, rowIndex) => rowIndex !== index))}
+                            columns={[
+                                { key: 'product', title: 'Product', width: 220, render: (row) => <strong>{row.product_name || row.product_id || '-'}</strong> },
+                                { key: 'batch', title: 'Batch', width: 140, render: (row, index) => <Input value={row.batch_no} onChange={(event) => updateReceiveRow(index, { batch_no: event.target.value })} /> },
+                                { key: 'expiry', title: 'Expiry', width: 150, render: (row, index) => <SmartDatePicker value={row.expires_at} onChange={(expires_at) => updateReceiveRow(index, { expires_at })} /> },
+                                { key: 'quantity', title: 'Qty', width: 100, render: (row, index) => <InputNumber min={0.001} value={row.quantity} onChange={(quantity) => updateReceiveRow(index, { quantity })} /> },
+                                { key: 'free_quantity', title: 'Free', width: 90, render: (row, index) => <InputNumber min={0} value={row.free_quantity} onChange={(free_quantity) => updateReceiveRow(index, { free_quantity })} /> },
+                                { key: 'purchase_price', title: 'Rate', width: 110, render: (row, index) => <InputNumber min={0} value={row.purchase_price} onChange={(purchase_price) => updateReceiveRow(index, { purchase_price })} /> },
+                                { key: 'mrp', title: 'MRP', width: 110, render: (row, index) => <InputNumber min={0} value={row.mrp} onChange={(mrp) => updateReceiveRow(index, { mrp })} /> },
+                                { key: 'discount_percent', title: 'Disc %', width: 100, render: (row, index) => <InputNumber min={0} max={100} value={row.discount_percent} onChange={(discount_percent) => updateReceiveRow(index, { discount_percent })} /> },
+                                { key: 'amount', title: 'Amount', className: 'line-money-cell', width: 120, render: (row) => <Money value={itemNet(row, 'purchase_price')} /> },
+                            ]}
+                            summary={[
+                                { label: 'Subtotal', value: <Money value={receiveSummary.subtotal} /> },
+                                { label: 'Discount', value: <Money value={receiveSummary.discount} /> },
+                                { label: 'Grand Total', value: <Money value={receiveSummary.grandTotal} />, strong: true },
+                            ]}
+                            actions={<Button type="primary" htmlType="submit">Receive and Post Purchase</Button>}
+                        />
+                    </Form>
+                </div>
             </Modal>
         </div>
     );

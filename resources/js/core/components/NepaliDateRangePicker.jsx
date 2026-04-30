@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Dropdown, Select } from 'antd';
 import { CalendarOutlined, CloseCircleOutlined, LeftOutlined, RightOutlined, SwapRightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -10,6 +10,7 @@ import {
     isNepaliHolidayDate,
     nepaliDaysShort,
     nepaliMonthsFull,
+    parseCalendarInput,
 } from '../utils/calendar';
 
 function normalizeDate(value) {
@@ -196,6 +197,9 @@ export function NepaliDateRangePicker({
     const hasValue = Boolean(start || end);
     const displayStart = start ? formatBsDate(start, { style: 'compact', includeEra: false }) : '';
     const displayEnd = end ? formatBsDate(end, { style: 'compact', includeEra: false }) : '';
+    const [startInput, setStartInput] = useState(displayStart);
+    const [endInput, setEndInput] = useState(displayEnd);
+    const endInputRef = useRef(null);
     const panelClassName = [
         'nepali-range-picker',
         'smart-date-range',
@@ -206,6 +210,8 @@ export function NepaliDateRangePicker({
 
     useEffect(() => {
         setDraftRange([start, end]);
+        setStartInput(displayStart);
+        setEndInput(displayEnd);
 
         const anchor = start || end;
         if (!anchor || open) {
@@ -216,7 +222,7 @@ export function NepaliDateRangePicker({
         if (bsDate) {
             setViewDate({ year: bsDate.year, month: bsDate.month });
         }
-    }, [startValue, endValue, open]);
+    }, [startValue, endValue, open, displayStart, displayEnd]);
 
     function emit(nextStart, nextEnd) {
         if (!nextStart && !nextEnd) {
@@ -224,7 +230,41 @@ export function NepaliDateRangePicker({
             return;
         }
 
+        if (nextStart && nextEnd && nextStart.isAfter(nextEnd, 'day')) {
+            onChange?.([nextEnd, nextStart]);
+            return;
+        }
+
         onChange?.([nextStart, nextEnd]);
+    }
+
+    function commitTypedDate(field) {
+        const rawValue = field === 'start' ? startInput : endInput;
+
+        if (!rawValue) {
+            const nextStart = field === 'start' ? null : start;
+            const nextEnd = field === 'end' ? null : end;
+            emit(nextStart, nextEnd);
+            return;
+        }
+
+        const parsed = parseCalendarInput(rawValue, 'bs');
+
+        if (!parsed) {
+            setStartInput(displayStart);
+            setEndInput(displayEnd);
+            return;
+        }
+
+        const nextStart = field === 'start' ? parsed : start;
+        const nextEnd = field === 'end' ? parsed : end;
+
+        emit(nextStart, nextEnd);
+
+        const bsDate = adToBs(parsed);
+        if (bsDate) {
+            setViewDate({ year: bsDate.year, month: bsDate.month });
+        }
     }
 
     function handleSelect(adDate) {
@@ -323,13 +363,40 @@ export function NepaliDateRangePicker({
         >
             <div className={panelClassName} role="button" tabIndex={disabled ? -1 : 0}>
                 <CalendarOutlined className="nepali-range-icon" />
-                <span className={`nepali-range-value ${displayStart ? '' : 'nepali-range-placeholder'}`}>
-                    {displayStart || placeholder?.[0] || 'Start date'}
-                </span>
+                <input
+                    className={`nepali-range-input ${displayStart || startInput ? '' : 'nepali-range-placeholder'}`}
+                    placeholder={placeholder?.[0] || 'Start date'}
+                    value={startInput}
+                    disabled={disabled}
+                    onChange={(event) => setStartInput(event.target.value)}
+                    onBlur={() => commitTypedDate('start')}
+                    onFocus={() => !disabled && setOpen(true)}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            commitTypedDate('start');
+                            endInputRef.current?.focus();
+                        }
+                    }}
+                />
                 <SwapRightOutlined className="nepali-range-separator" />
-                <span className={`nepali-range-value ${displayEnd ? '' : 'nepali-range-placeholder'}`}>
-                    {displayEnd || placeholder?.[1] || 'End date'}
-                </span>
+                <input
+                    ref={endInputRef}
+                    className={`nepali-range-input nepali-range-end-input ${displayEnd || endInput ? '' : 'nepali-range-placeholder'}`}
+                    placeholder={placeholder?.[1] || 'End date'}
+                    value={endInput}
+                    disabled={disabled}
+                    onChange={(event) => setEndInput(event.target.value)}
+                    onBlur={() => commitTypedDate('end')}
+                    onFocus={() => !disabled && setOpen(true)}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            commitTypedDate('end');
+                            setOpen(false);
+                        }
+                    }}
+                />
                 {allowClear && hasValue && !disabled ? (
                     <Button
                         type="text"

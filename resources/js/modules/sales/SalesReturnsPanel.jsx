@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Switch } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, PrinterOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -15,6 +15,7 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
 import { appUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
+import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 
 const emptyReturnItem = {
     sales_invoice_item_id: null,
@@ -77,6 +78,7 @@ export function SalesReturnsPanel() {
     const [view, setView] = useState('list');
     const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
     const [range, setRange] = useState([]);
+    const returnFormRef = useRef(null);
     const table = useServerTable({
         endpoint: endpoints.salesReturns,
         defaultSort: { field: 'return_date', order: 'desc' },
@@ -102,6 +104,14 @@ export function SalesReturnsPanel() {
     useEffect(() => {
         table.setFilters((filters) => applyDateRangeFilter(filters, range));
     }, [range]);
+
+    useKeyboardFlow(returnFormRef, {
+        enabled: view === 'form',
+        autofocus: view === 'form',
+        onSubmit: () => form.submit(),
+        onAddRow: addManualRow,
+        resetKey: view,
+    });
 
     async function loadCustomers() {
         const { data } = await http.get(endpoints.customerOptions);
@@ -401,72 +411,74 @@ export function SalesReturnsPanel() {
         <div className="page-stack">
             {view === 'form' ? (
                 <Card title={editing ? `Edit ${editing.return_no || 'Sales Return'}` : 'Sales Return Entry'}>
-                    <Form form={form} layout="vertical" onFinish={submit}>
-                        <div className="form-grid form-grid-4">
-                            <Form.Item name="customer_id" label="Customer" rules={[{ required: true }]}>
-                                <Select
-                                    showSearch
-                                    optionFilterProp="label"
-                                    options={customers.map((item) => ({ value: item.id, label: item.name }))}
-                                    dropdownRender={(menu) => (
-                                        <>
-                                            {menu}
-                                            <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickCustomerOpen(true)}>Quick add customer</Button>
-                                        </>
-                                    )}
-                                />
-                            </Form.Item>
-                            <Form.Item name="return_mode" label="Return Mode" rules={[{ required: true }]}>
-                                <Select options={[
-                                    { value: 'invoice', label: 'By Sales Invoice' },
-                                    { value: 'product', label: 'By Product / Batch' },
-                                ]} />
-                            </Form.Item>
-                            <Form.Item name="return_date" label="Return Date" rules={[{ required: true }]}>
-                                <SmartDatePicker className="full-width" />
-                            </Form.Item>
-                            <Form.Item name="reason" label="Reason"><Input /></Form.Item>
-                        </div>
-                        <div className="form-grid">
-                            <Form.Item name="notes" label="Notes"><Input.TextArea rows={1} /></Form.Item>
-                        </div>
-                        {returnMode === 'invoice' && (
-                            <div className="form-grid">
-                                <Form.Item name="sales_invoice_id" label="Sales Invoice" rules={[{ required: returnMode === 'invoice' }]}>
+                    <div ref={returnFormRef} data-keyboard-flow="true">
+                        <Form form={form} layout="vertical" onFinish={submit}>
+                            <div className="form-grid form-grid-4">
+                                <Form.Item name="customer_id" label="Customer" rules={[{ required: true }]}>
                                     <Select
                                         showSearch
                                         optionFilterProp="label"
-                                        options={invoices.map((inv) => ({
-                                            value: inv.id,
-                                            label: `${inv.invoice_no} — NPR ${inv.grand_total}`,
-                                        }))}
+                                        options={customers.map((item) => ({ value: item.id, label: item.name }))}
+                                        dropdownRender={(menu) => (
+                                            <>
+                                                {menu}
+                                                <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickCustomerOpen(true)}>Quick add customer</Button>
+                                            </>
+                                        )}
                                     />
                                 </Form.Item>
-                                <Form.Item label=" "><Button icon={<ReloadOutlined />} onClick={loadInvoiceItems}>Load Invoice Items</Button></Form.Item>
+                                <Form.Item name="return_mode" label="Return Mode" rules={[{ required: true }]}>
+                                    <Select options={[
+                                        { value: 'invoice', label: 'By Sales Invoice' },
+                                        { value: 'product', label: 'By Product / Batch' },
+                                    ]} />
+                                </Form.Item>
+                                <Form.Item name="return_date" label="Return Date" rules={[{ required: true }]}>
+                                    <SmartDatePicker className="full-width" />
+                                </Form.Item>
+                                <Form.Item name="reason" label="Reason"><Input /></Form.Item>
                             </div>
-                        )}
-                        <TransactionLineItems
-                            rows={items}
-                            columns={lineColumns}
-                            errors={lineErrors}
-                            addLabel="Add Manual Item"
-                            onAdd={addManualRow}
-                            onRemove={removeRow}
-                            minRows={0}
-                            summary={[
-                                { label: 'Total Qty', value: Number(summary.qty || 0).toFixed(3) },
-                                { label: 'Gross Return', value: <Money value={summary.subtotal} /> },
-                                { label: 'Discount', value: <Money value={summary.discount} /> },
-                                { label: 'Net Return', value: <Money value={summary.total} />, strong: true },
-                            ]}
-                            actions={(
-                                <Space>
-                                    <Button onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice' }); }}>Cancel</Button>
-                                    <Button type="primary" htmlType="submit" loading={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
-                                </Space>
+                            <div className="form-grid">
+                                <Form.Item name="notes" label="Notes"><Input.TextArea rows={1} /></Form.Item>
+                            </div>
+                            {returnMode === 'invoice' && (
+                                <div className="form-grid">
+                                    <Form.Item name="sales_invoice_id" label="Sales Invoice" rules={[{ required: returnMode === 'invoice' }]}>
+                                        <Select
+                                            showSearch
+                                            optionFilterProp="label"
+                                            options={invoices.map((inv) => ({
+                                                value: inv.id,
+                                                label: `${inv.invoice_no} - NPR ${inv.grand_total}`,
+                                            }))}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item label=" "><Button icon={<ReloadOutlined />} onClick={loadInvoiceItems}>Load Invoice Items</Button></Form.Item>
+                                </div>
                             )}
-                        />
-                    </Form>
+                            <TransactionLineItems
+                                rows={items}
+                                columns={lineColumns}
+                                errors={lineErrors}
+                                addLabel="Add Manual Item"
+                                onAdd={addManualRow}
+                                onRemove={removeRow}
+                                minRows={0}
+                                summary={[
+                                    { label: 'Total Qty', value: Number(summary.qty || 0).toFixed(3) },
+                                    { label: 'Gross Return', value: <Money value={summary.subtotal} /> },
+                                    { label: 'Discount', value: <Money value={summary.discount} /> },
+                                    { label: 'Net Return', value: <Money value={summary.total} />, strong: true },
+                                ]}
+                                actions={(
+                                    <Space>
+                                        <Button onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice' }); }}>Cancel</Button>
+                                        <Button type="primary" htmlType="submit" loading={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
+                                    </Space>
+                                )}
+                            />
+                        </Form>
+                    </div>
                 </Card>
             ) : (
                 <Card title="Sales Return List" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice' }); setView('form'); }}>New Return</Button>}>
