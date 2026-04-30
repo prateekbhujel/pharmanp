@@ -54,7 +54,7 @@ class MrManagementService
     {
         $query = RepresentativeVisit::query()
             ->with(['medicalRepresentative:id,name', 'customer:id,name'])
-            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->whereHas('medicalRepresentative', fn (Builder $mrQuery) => $mrQuery->where('tenant_id', $tenantId)))
+            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($user && $this->isRepresentativeUser($user), fn (Builder $builder) => $builder->where('medical_representative_id', $user->medical_representative_id))
             ->when($table->search, function (Builder $builder, string $search) {
                 $builder->where(function (Builder $inner) use ($search) {
@@ -125,8 +125,12 @@ class MrManagementService
     public function createVisit(array $data, User $user): RepresentativeVisit
     {
         return DB::transaction(function () use ($data, $user) {
+            $representativeId = $this->resolveRepresentativeId($data, $user);
+
             return RepresentativeVisit::query()->create([
-                'medical_representative_id' => $this->resolveRepresentativeId($data, $user),
+                'tenant_id'     => $user->tenant_id,
+                'company_id'    => $user->company_id,
+                'medical_representative_id' => $representativeId,
                 'customer_id'   => $data['customer_id'] ?? null,
                 'visit_date'    => $data['visit_date'],
                 'status'        => $data['status'],
@@ -144,8 +148,12 @@ class MrManagementService
     public function updateVisit(RepresentativeVisit $visit, array $data, User $user): RepresentativeVisit
     {
         return DB::transaction(function () use ($visit, $data, $user) {
+            $representativeId = $this->resolveRepresentativeId($data, $user);
+
             $visit->update([
-                'medical_representative_id' => $this->resolveRepresentativeId($data, $user),
+                'tenant_id'     => $visit->tenant_id ?: $user->tenant_id,
+                'company_id'    => $visit->company_id ?: $user->company_id,
+                'medical_representative_id' => $representativeId,
                 'customer_id'   => $data['customer_id'] ?? null,
                 'visit_date'    => $data['visit_date'],
                 'status'        => $data['status'],

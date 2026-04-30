@@ -12,6 +12,8 @@ class RepresentativeVisit extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'tenant_id',
+        'company_id',
         'medical_representative_id',
         'customer_id',
         'visit_date',

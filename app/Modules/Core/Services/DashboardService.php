@@ -27,34 +27,34 @@ class DashboardService
                 'medical_representative_id' => $representativeId,
             ],
             'stats' => [
-                'today_sales' => $this->sumSales($today->toDateString(), $today->toDateString(), $representativeId),
-                'period_sales' => $this->sumSales($from->toDateString(), $to->toDateString(), $representativeId),
-                'period_purchase' => $this->sumPurchases($from->toDateString(), $to->toDateString()),
-                'low_stock' => $this->lowStockCount(),
-                'expiring_batches' => $this->expiringBatchCount(),
-                'receivables' => (float) DB::table('customers')->whereNull('deleted_at')->sum('current_balance'),
-                'payables' => (float) DB::table('suppliers')->whereNull('deleted_at')->sum('current_balance'),
-                'products' => DB::table('products')->whereNull('deleted_at')->count(),
-                'sales_invoices' => DB::table('sales_invoices')
+                'today_sales' => $this->sumSales($today->toDateString(), $today->toDateString(), $representativeId, $user),
+                'period_sales' => $this->sumSales($from->toDateString(), $to->toDateString(), $representativeId, $user),
+                'period_purchase' => $this->sumPurchases($from->toDateString(), $to->toDateString(), $user),
+                'low_stock' => $this->lowStockCount($user),
+                'expiring_batches' => $this->expiringBatchCount($user),
+                'receivables' => (float) $this->scopeTenant(DB::table('customers'), $user, 'customers')->whereNull('deleted_at')->sum('current_balance'),
+                'payables' => (float) $this->scopeTenant(DB::table('suppliers'), $user, 'suppliers')->whereNull('deleted_at')->sum('current_balance'),
+                'products' => $this->scopeTenant(DB::table('products'), $user, 'products')->whereNull('deleted_at')->count(),
+                'sales_invoices' => $this->scopeTenant(DB::table('sales_invoices'), $user, 'sales_invoices')
                     ->whereNull('deleted_at')
                     ->whereBetween('invoice_date', [$from->toDateString(), $to->toDateString()])
                     ->when($representativeId, fn ($query) => $query->where('medical_representative_id', $representativeId))
                     ->count(),
-                'purchase_bills' => DB::table('purchases')
+                'purchase_bills' => $this->scopeTenant(DB::table('purchases'), $user, 'purchases')
                     ->whereNull('deleted_at')
                     ->whereBetween('purchase_date', [$from->toDateString(), $to->toDateString()])
                     ->count(),
             ],
-            'top_products' => $this->topProducts($from->toDateString(), $to->toDateString(), $representativeId),
-            'low_stock_rows' => $this->lowStockRows(),
-            'expiry_rows' => $this->expiryRows(),
-            'top_representatives' => $this->topRepresentatives($from->toDateString(), $to->toDateString()),
+            'top_products' => $this->topProducts($from->toDateString(), $to->toDateString(), $representativeId, $user),
+            'low_stock_rows' => $this->lowStockRows($user),
+            'expiry_rows' => $this->expiryRows($user),
+            'top_representatives' => $this->topRepresentatives($from->toDateString(), $to->toDateString(), $user),
             'chart_data' => [
-                'monthly_trend'      => $this->monthlySalesTrend(),
-                'payment_breakdown'  => $this->paymentModeBreakdown($from->toDateString(), $to->toDateString()),
-                'top_products_chart' => $this->topProducts($from->toDateString(), $to->toDateString(), $representativeId),
+                'monthly_trend'      => $this->monthlySalesTrend($user),
+                'payment_breakdown'  => $this->paymentModeBreakdown($from->toDateString(), $to->toDateString(), $user),
+                'top_products_chart' => $this->topProducts($from->toDateString(), $to->toDateString(), $representativeId, $user),
             ],
-            'recent_sales' => DB::table('sales_invoices')
+            'recent_sales' => $this->scopeTenant(DB::table('sales_invoices'), $user, 'sales_invoices')
                 ->leftJoin('customers', 'customers.id', '=', 'sales_invoices.customer_id')
                 ->leftJoin('medical_representatives', 'medical_representatives.id', '=', 'sales_invoices.medical_representative_id')
                 ->whereNull('sales_invoices.deleted_at')
@@ -63,7 +63,7 @@ class DashboardService
                 ->orderByDesc('sales_invoices.id')
                 ->limit(6)
                 ->get(['sales_invoices.id', 'sales_invoices.invoice_no', 'sales_invoices.invoice_date', 'sales_invoices.grand_total', 'sales_invoices.payment_status', 'customers.name as customer_name', 'medical_representatives.name as mr_name']),
-            'recent_purchases' => DB::table('purchases')
+            'recent_purchases' => $this->scopeTenant(DB::table('purchases'), $user, 'purchases')
                 ->leftJoin('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
                 ->whereNull('purchases.deleted_at')
                 ->orderByDesc('purchases.purchase_date')
@@ -71,8 +71,8 @@ class DashboardService
                 ->limit(6)
                 ->get(['purchases.id', 'purchases.purchase_no', 'purchases.purchase_date', 'purchases.grand_total', 'purchases.payment_status', 'suppliers.name as supplier_name']),
             'mr' => [
-                'active' => DB::table('medical_representatives')->where('is_active', true)->whereNull('deleted_at')->count(),
-                'month_orders' => (float) DB::table('representative_visits')
+                'active' => $this->scopeTenant(DB::table('medical_representatives'), $user, 'medical_representatives')->where('is_active', true)->whereNull('deleted_at')->count(),
+                'month_orders' => (float) $this->scopeTenant(DB::table('representative_visits'), $user, 'representative_visits')
                     ->whereNull('deleted_at')
                     ->whereBetween('visit_date', [$from->toDateString(), $to->toDateString()])
                     ->sum('order_value'),
@@ -134,9 +134,9 @@ class DashboardService
         ];
     }
 
-    private function sumSales(string $from, string $to, ?int $representativeId = null): float
+    private function sumSales(string $from, string $to, ?int $representativeId = null, ?User $user = null): float
     {
-        return round((float) DB::table('sales_invoices')
+        return round((float) $this->scopeTenant(DB::table('sales_invoices'), $user, 'sales_invoices')
             ->whereNull('deleted_at')
             ->where('status', 'confirmed')
             ->whereBetween('invoice_date', [$from, $to])
@@ -144,17 +144,17 @@ class DashboardService
             ->sum('grand_total'), 2);
     }
 
-    private function sumPurchases(string $from, string $to): float
+    private function sumPurchases(string $from, string $to, ?User $user = null): float
     {
-        return round((float) DB::table('purchases')
+        return round((float) $this->scopeTenant(DB::table('purchases'), $user, 'purchases')
             ->whereNull('deleted_at')
             ->whereBetween('purchase_date', [$from, $to])
             ->sum('grand_total'), 2);
     }
 
-    private function lowStockCount(): int
+    private function lowStockCount(?User $user = null): int
     {
-        return DB::table('products')
+        return $this->scopeTenant(DB::table('products'), $user, 'products')
             ->leftJoin('batches', function ($join) {
                 $join->on('batches.product_id', '=', 'products.id')
                     ->where('batches.is_active', true)
@@ -168,11 +168,11 @@ class DashboardService
             ->count();
     }
 
-    private function expiringBatchCount(): int
+    private function expiringBatchCount(?User $user = null): int
     {
         $today = CarbonImmutable::today();
 
-        return DB::table('batches')
+        return $this->scopeTenant(DB::table('batches'), $user, 'batches')
             ->whereNull('deleted_at')
             ->where('is_active', true)
             ->where('quantity_available', '>', 0)
@@ -181,9 +181,9 @@ class DashboardService
             ->count();
     }
 
-    private function topProducts(string $from, string $to, ?int $representativeId = null): array
+    private function topProducts(string $from, string $to, ?int $representativeId = null, ?User $user = null): array
     {
-        return DB::table('sales_invoice_items')
+        return $this->scopeTenant(DB::table('sales_invoice_items'), $user, 'sales_invoices')
             ->join('sales_invoices', 'sales_invoices.id', '=', 'sales_invoice_items.sales_invoice_id')
             ->join('products', 'products.id', '=', 'sales_invoice_items.product_id')
             ->whereNull('sales_invoices.deleted_at')
@@ -203,9 +203,9 @@ class DashboardService
             ->all();
     }
 
-    private function lowStockRows(): array
+    private function lowStockRows(?User $user = null): array
     {
-        return DB::table('products')
+        return $this->scopeTenant(DB::table('products'), $user, 'products')
             ->leftJoin('batches', function ($join) {
                 $join->on('batches.product_id', '=', 'products.id')
                     ->whereNull('batches.deleted_at')
@@ -228,9 +228,9 @@ class DashboardService
             ->all();
     }
 
-    private function expiryRows(): array
+    private function expiryRows(?User $user = null): array
     {
-        return DB::table('batches')
+        return $this->scopeTenant(DB::table('batches'), $user, 'batches')
             ->join('products', 'products.id', '=', 'batches.product_id')
             ->whereNull('batches.deleted_at')
             ->where('batches.is_active', true)
@@ -250,9 +250,9 @@ class DashboardService
             ->all();
     }
 
-    private function topRepresentatives(string $from, string $to): array
+    private function topRepresentatives(string $from, string $to, ?User $user = null): array
     {
-        return DB::table('medical_representatives')
+        return $this->scopeTenant(DB::table('medical_representatives'), $user, 'medical_representatives')
             ->leftJoin('sales_invoices', function ($join) use ($from, $to) {
                 $join->on('sales_invoices.medical_representative_id', '=', 'medical_representatives.id')
                     ->whereNull('sales_invoices.deleted_at')
@@ -275,7 +275,7 @@ class DashboardService
     }
 
     /** Last 6 calendar months — sales total per month. */
-    private function monthlySalesTrend(): array
+    private function monthlySalesTrend(?User $user = null): array
     {
         $months = collect(range(5, 0))->map(function (int $offset) {
             $month = CarbonImmutable::today()->startOfMonth()->subMonths($offset);
@@ -286,13 +286,13 @@ class DashboardService
             ];
         });
 
-        return $months->map(function (array $m) {
-            $sales = (float) DB::table('sales_invoices')
+        return $months->map(function (array $m) use ($user) {
+            $sales = (float) $this->scopeTenant(DB::table('sales_invoices'), $user, 'sales_invoices')
                 ->whereNull('deleted_at')
                 ->whereBetween('invoice_date', [$m['from'], $m['to']])
                 ->sum('grand_total');
 
-            $purchases = (float) DB::table('purchases')
+            $purchases = (float) $this->scopeTenant(DB::table('purchases'), $user, 'purchases')
                 ->whereNull('deleted_at')
                 ->whereBetween('purchase_date', [$m['from'], $m['to']])
                 ->sum('grand_total');
@@ -306,9 +306,9 @@ class DashboardService
     }
 
     /** Payment mode split for period (cash / bank / credit). */
-    private function paymentModeBreakdown(string $from, string $to): array
+    private function paymentModeBreakdown(string $from, string $to, ?User $user = null): array
     {
-        return DB::table('sales_invoices')
+        return $this->scopeTenant(DB::table('sales_invoices'), $user, 'sales_invoices')
             ->whereNull('deleted_at')
             ->whereBetween('invoice_date', [$from, $to])
             ->selectRaw('payment_status, COUNT(*) as count, COALESCE(SUM(grand_total), 0) as total')
@@ -323,5 +323,11 @@ class DashboardService
             ->values()
             ->all();
     }
-}
 
+    private function scopeTenant($query, ?User $user, string $table)
+    {
+        return $query
+            ->when($user?->tenant_id, fn ($builder, int $tenantId) => $builder->where($table.'.tenant_id', $tenantId))
+            ->when($user?->company_id, fn ($builder, int $companyId) => $builder->where($table.'.company_id', $companyId));
+    }
+}

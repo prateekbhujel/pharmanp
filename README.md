@@ -1,6 +1,6 @@
 # PharmaNP
 
-PharmaNP is a Laravel + React pharmacy ERP/POS foundation for Nepal-focused pharmacy and distributor operations.
+PharmaNP is a Laravel + React pharmacy ERP/POS application for Nepal-focused pharmacy and distributor operations.
 
 ## Stack
 
@@ -54,7 +54,16 @@ The frontend still expects a running Laravel backend from the same app URL. Prod
 
 ## Product Position
 
-PharmaNP is shipped as a standalone Laravel application. A pharmacy installs it, completes the first-run setup, configures branding/fiscal year/roles, and begins daily operation from the same codebase. It uses one database with company, branch and store scoped columns where the workflow needs them, which keeps shared-hosting deployment simple while still protecting data boundaries inside the app.
+PharmaNP is shipped as a standalone Laravel application. A pharmacy installs it, completes the first-run setup, configures branding/fiscal year/roles, and begins daily operation from the same codebase. It uses one database with tenant, company, branch and store scoped columns where the workflow needs them, which keeps shared-hosting deployment simple while still protecting data boundaries inside the app.
+
+For realistic demos and load testing:
+
+```bash
+php artisan pharmanp:demo-load --profile=tiny --yes
+php artisan pharmanp:demo-load --profile=showcase --yes
+```
+
+The loader writes chunked multi-tenant pharmacy data and is meant for demo/performance databases, not customer production databases.
 
 ## Deployment
 
