@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, App, Button, Card, Form, Input, InputNumber, Modal, Select, Space } from 'antd';
 import { PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -14,6 +14,7 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { itemFreeGoodsValue, itemGross, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl } from '../../core/utils/url';
@@ -73,6 +74,7 @@ export function PurchasesPage() {
     const [purchaseForm] = Form.useForm();
     const [orderForm] = Form.useForm();
     const [supplierForm] = Form.useForm();
+    const purchaseEntryRef = useRef(null);
     const purchaseTable = useServerTable({
         endpoint: endpoints.purchases,
         defaultSort: { field: 'purchase_date', order: 'desc' },
@@ -87,6 +89,14 @@ export function PurchasesPage() {
     useEffect(() => {
         purchaseTable.setFilters((current) => applyDateRangeFilter(current, billRange));
     }, [billRange]);
+
+    useKeyboardFlow(purchaseEntryRef, {
+        enabled: section === 'entry',
+        autofocus: section === 'entry',
+        onSubmit: () => purchaseForm.submit(),
+        onAddRow: addPurchaseRow,
+        resetKey: section,
+    });
 
     async function loadSuppliers() {
         const { data } = await http.get(endpoints.supplierOptions);
@@ -131,6 +141,10 @@ export function PurchasesPage() {
 
     function updateRow(rows, setRows, index, patch) {
         setRows(rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
+    }
+
+    function addPurchaseRow() {
+        setPurchaseItems((rows) => [...rows, { ...emptyPurchaseItem }]);
     }
 
     function removeRow(rows, setRows, index, emptyRow) {
@@ -272,7 +286,6 @@ export function PurchasesPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title={section === 'entry' ? 'Purchase Entry' : section === 'orders' ? 'Purchase Order' : section === 'returns' ? 'Purchase Return' : 'Purchase Bills'}
                 actions={(
                     <Space>
                         {section !== 'entry' && <Button type="primary" icon={<PlusOutlined />} onClick={() => goToApp('/app/purchases/entry')}>New Purchase</Button>}
@@ -285,53 +298,55 @@ export function PurchasesPage() {
 
             {section === 'entry' && (
                 <Card>
-                    <Form form={purchaseForm} layout="vertical" onFinish={submitPurchase} initialValues={{ purchase_date: dayjs(), paid_amount: 0 }}>
-                        {ocrDraft && (
-                            <Alert
-                                type="info"
-                                showIcon
-                                className="mb-16"
-                                message="OCR draft loaded"
-                                description={`Supplier: ${ocrDraft.supplier_name || 'manual review'} | Invoice: ${ocrDraft.supplier_invoice_no || '-'} | ${ocrDraft.matches?.length || 0} possible match(es) found.`}
-                                action={<Button size="small" onClick={clearOcrDraft}>Clear</Button>}
-                            />
-                        )}
-                        <div className="form-grid">
-                            <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
-                                <Select
-                                    showSearch
-                                    optionFilterProp="label"
-                                    options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
-                                    dropdownRender={(menu) => (
-                                        <>
-                                            {menu}
-                                            <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
-                                        </>
-                                    )}
+                    <div ref={purchaseEntryRef} data-keyboard-flow="true">
+                        <Form form={purchaseForm} layout="vertical" onFinish={submitPurchase} initialValues={{ purchase_date: dayjs(), paid_amount: 0 }}>
+                            {ocrDraft && (
+                                <Alert
+                                    type="info"
+                                    showIcon
+                                    className="mb-16"
+                                    message="OCR draft loaded"
+                                    description={`Supplier: ${ocrDraft.supplier_name || 'manual review'} | Invoice: ${ocrDraft.supplier_invoice_no || '-'} | ${ocrDraft.matches?.length || 0} possible match(es) found.`}
+                                    action={<Button size="small" onClick={clearOcrDraft}>Clear</Button>}
                                 />
-                            </Form.Item>
-                            <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
-                            <Form.Item name="purchase_date" label="Purchase Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
-                            <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
-                        </div>
-                        <Form.Item name="notes" label="RemarksI "><Input.TextArea rows={3} /></Form.Item>
-                        <TransactionLineItems
-                            rows={purchaseItems}
-                            columns={purchaseColumns}
-                            errors={purchaseLineErrors}
-                            addLabel="Add Item"
-                            onAdd={() => setPurchaseItems([...purchaseItems, { ...emptyPurchaseItem }])}
-                            onRemove={(index) => removeRow(purchaseItems, setPurchaseItems, index, emptyPurchaseItem)}
-                            summary={[
-                                { label: 'Subtotal', value: <Money value={purchaseSummary.subtotal} /> },
-                                { label: 'Discount', value: <Money value={purchaseSummary.discount} /> },
-                                { label: 'Tax', value: <Money value={purchaseSummary.tax} /> },
-                                { label: 'Free Goods Value', value: <Money value={purchaseSummary.freeGoods} /> },
-                                { label: 'Grand Total', value: <Money value={purchaseSummary.grandTotal} />, strong: true },
-                            ]}
-                            actions={<Button type="primary" htmlType="submit">Post Purchase</Button>}
-                        />
-                    </Form>
+                            )}
+                            <div className="form-grid">
+                                <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
+                                    <Select
+                                        showSearch
+                                        optionFilterProp="label"
+                                        options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                                        dropdownRender={(menu) => (
+                                            <>
+                                                {menu}
+                                                <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
+                                            </>
+                                        )}
+                                    />
+                                </Form.Item>
+                                <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
+                                <Form.Item name="purchase_date" label="Purchase Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
+                                <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
+                            </div>
+                            <Form.Item name="notes" label="Remarks"><Input.TextArea rows={3} /></Form.Item>
+                            <TransactionLineItems
+                                rows={purchaseItems}
+                                columns={purchaseColumns}
+                                errors={purchaseLineErrors}
+                                addLabel="Add Item"
+                                onAdd={addPurchaseRow}
+                                onRemove={(index) => removeRow(purchaseItems, setPurchaseItems, index, emptyPurchaseItem)}
+                                summary={[
+                                    { label: 'Subtotal', value: <Money value={purchaseSummary.subtotal} /> },
+                                    { label: 'Discount', value: <Money value={purchaseSummary.discount} /> },
+                                    { label: 'Tax', value: <Money value={purchaseSummary.tax} /> },
+                                    { label: 'Free Goods Value', value: <Money value={purchaseSummary.freeGoods} /> },
+                                    { label: 'Grand Total', value: <Money value={purchaseSummary.grandTotal} />, strong: true },
+                                ]}
+                                actions={<Button type="primary" htmlType="submit">Post Purchase</Button>}
+                            />
+                        </Form>
+                    </div>
                 </Card>
             )}
 

@@ -56,6 +56,16 @@ function pad(value) {
 }
 
 export function bsToAd(year, month, day) {
+    if (!bsData[year] || month < 0 || month > 11) {
+        return null;
+    }
+
+    const daysInMonth = bsData[year][month];
+
+    if (day < 1 || day > daysInMonth) {
+        return null;
+    }
+
     let totalDays = 0;
 
     for (let currentYear = refBsYear; currentYear < year; currentYear += 1) {
@@ -194,6 +204,44 @@ export function formatCalendarDate(value, calendarType = 'ad', options = {}) {
     return calendarType === 'bs'
         ? formatBsDate(value, options)
         : formatAdDate(value, options);
+}
+
+export function parseCalendarInput(value, preferredCalendar = 'ad') {
+    const input = String(value || '').trim();
+
+    if (!input) {
+        return null;
+    }
+
+    const match = input.match(/^(\d{4})[./\-\s](\d{1,2})[./\-\s](\d{1,2})$/);
+
+    if (match) {
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+
+        if (bsData[year]) {
+            return bsToAd(year, month - 1, day)?.startOf('day') || null;
+        }
+
+        const parsed = dayjs(`${year}-${pad(month)}-${pad(day)}`);
+        return parsed.isValid() ? parsed.startOf('day') : null;
+    }
+
+    const parsed = dayjs(input);
+
+    if (parsed.isValid()) {
+        return parsed.startOf('day');
+    }
+
+    if (preferredCalendar === 'bs') {
+        const compactBs = input.match(/^(\d{4})(\d{2})(\d{2})$/);
+        if (compactBs && bsData[Number(compactBs[1])]) {
+            return bsToAd(Number(compactBs[1]), Number(compactBs[2]) - 1, Number(compactBs[3]))?.startOf('day') || null;
+        }
+    }
+
+    return null;
 }
 
 export function isLikelyDateValue(key, value) {

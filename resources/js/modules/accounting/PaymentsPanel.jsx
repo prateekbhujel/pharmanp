@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { App, Button, Card, Descriptions, Form, Input, InputNumber, Modal, Segmented, Select, Space, Switch, Table } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -13,6 +13,7 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { dateRangeParams } from '../../core/utils/dateFilters';
+import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 
 export function PaymentsPanel() {
     const { notification } = App.useApp();
@@ -32,8 +33,16 @@ export function PaymentsPanel() {
     const [suppliers, setSuppliers] = useState([]);
     const [quickPaymentModeOpen, setQuickPaymentModeOpen] = useState(false);
     const [form] = Form.useForm();
+    const paymentFormRef = useRef(null);
 
     useEffect(() => { loadPayments(1); loadParties(); }, [range, direction, deletedMode]);
+
+    useKeyboardFlow(paymentFormRef, {
+        enabled: drawerOpen,
+        autofocus: drawerOpen,
+        onSubmit: () => form.submit(),
+        resetKey: drawerOpen,
+    });
 
     async function loadParties() {
         const [{ data: c }, { data: s }] = await Promise.all([
@@ -209,59 +218,61 @@ export function PaymentsPanel() {
                 width={860}
                 destroyOnHidden
             >
-                <Form form={form} layout="vertical" onFinish={submit}>
-                    <Form.Item name="direction" label="Direction" rules={[{ required: true }]}>
-                        <Select options={[{ value: 'in', label: 'Payment In (Receive)' }, { value: 'out', label: 'Payment Out (Pay)' }]} />
-                    </Form.Item>
-                    <Form.Item name="party_type" label="Party Type" rules={[{ required: true }]}>
-                        <Select options={[{ value: 'customer', label: 'Customer' }, { value: 'supplier', label: 'Supplier' }]}
-                            onChange={() => { form.setFieldValue('party_id', undefined); setOutstandingBills([]); setAllocations([]); }}
-                        />
-                    </Form.Item>
-                    <Form.Item name="party_id" label="Party" rules={[{ required: true }]}>
-                        <Select showSearch optionFilterProp="label" options={partyOptions}
-                            onChange={(id) => loadBills(id, form.getFieldValue('party_type'))}
-                        />
-                    </Form.Item>
-                    <Form.Item name="payment_date" label="Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
-                    <Form.Item name="amount" label="Amount" rules={[{ required: true }]}><InputNumber min={0.01} className="full-width" /></Form.Item>
-                    <Form.Item name="payment_mode_id" label="Mode" rules={[{ required: true }]}>
-                        <Select
-                            showSearch
-                            optionFilterProp="label"
-                            options={lookups.payment_modes.map((m) => ({ value: m.id, label: m.name }))}
-                            dropdownRender={(menu) => (
-                                <>
-                                    {menu}
-                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickPaymentModeOpen(true)}>Quick add payment mode</Button>
-                                </>
-                            )}
-                        />
-                    </Form.Item>
-                    <Form.Item name="reference_no" label="Reference #"><Input /></Form.Item>
-                    <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
-                </Form>
+                <div ref={paymentFormRef} data-keyboard-flow="true">
+                    <Form form={form} layout="vertical" onFinish={submit}>
+                        <Form.Item name="direction" label="Direction" rules={[{ required: true }]}>
+                            <Select options={[{ value: 'in', label: 'Payment In (Receive)' }, { value: 'out', label: 'Payment Out (Pay)' }]} />
+                        </Form.Item>
+                        <Form.Item name="party_type" label="Party Type" rules={[{ required: true }]}>
+                            <Select options={[{ value: 'customer', label: 'Customer' }, { value: 'supplier', label: 'Supplier' }]}
+                                onChange={() => { form.setFieldValue('party_id', undefined); setOutstandingBills([]); setAllocations([]); }}
+                            />
+                        </Form.Item>
+                        <Form.Item name="party_id" label="Party" rules={[{ required: true }]}>
+                            <Select showSearch optionFilterProp="label" options={partyOptions}
+                                onChange={(id) => loadBills(id, form.getFieldValue('party_type'))}
+                            />
+                        </Form.Item>
+                        <Form.Item name="payment_date" label="Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
+                        <Form.Item name="amount" label="Amount" rules={[{ required: true }]}><InputNumber min={0.01} className="full-width" /></Form.Item>
+                        <Form.Item name="payment_mode_id" label="Mode" rules={[{ required: true }]}>
+                            <Select
+                                showSearch
+                                optionFilterProp="label"
+                                options={lookups.payment_modes.map((m) => ({ value: m.id, label: m.name }))}
+                                dropdownRender={(menu) => (
+                                    <>
+                                        {menu}
+                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickPaymentModeOpen(true)}>Quick add payment mode</Button>
+                                    </>
+                                )}
+                            />
+                        </Form.Item>
+                        <Form.Item name="reference_no" label="Reference #"><Input /></Form.Item>
+                        <Form.Item name="notes" label="Notes"><Input.TextArea rows={2} /></Form.Item>
+                    </Form>
 
-                {outstandingBills.length > 0 && (
-                    <Card size="small" title="Allocate to Outstanding Bills" style={{ marginTop: 16 }}>
-                        <Table rowKey="bill_id" dataSource={outstandingBills} pagination={false} size="small"
-                            columns={[
-                                { title: 'Bill', dataIndex: 'bill_number', width: 120 },
-                                { title: 'Date', dataIndex: 'bill_date', width: 110, render: (value) => <DateText value={value} style="compact" /> },
-                                { title: 'Total', dataIndex: 'net_amount', align: 'right', width: 100, render: (v) => <Money value={v} /> },
-                                { title: 'Outstanding', dataIndex: 'outstanding', align: 'right', width: 110, render: (v) => <Money value={v} /> },
-                                {
-                                    title: 'Allocate', width: 120, render: (_, bill) => (
-                                        <InputNumber size="small" min={0} max={bill.outstanding} className="full-width"
-                                            value={allocations.find((a) => a.bill_id === bill.bill_id)?.allocated_amount || 0}
-                                            onChange={(v) => updateAllocation(bill.bill_id, bill.bill_type, v || 0)}
-                                        />
-                                    ),
-                                },
-                            ]}
-                        />
-                    </Card>
-                )}
+                    {outstandingBills.length > 0 && (
+                        <Card size="small" title="Allocate to Outstanding Bills" style={{ marginTop: 16 }}>
+                            <Table rowKey="bill_id" dataSource={outstandingBills} pagination={false} size="small"
+                                columns={[
+                                    { title: 'Bill', dataIndex: 'bill_number', width: 120 },
+                                    { title: 'Date', dataIndex: 'bill_date', width: 110, render: (value) => <DateText value={value} style="compact" /> },
+                                    { title: 'Total', dataIndex: 'net_amount', align: 'right', width: 100, render: (v) => <Money value={v} /> },
+                                    { title: 'Outstanding', dataIndex: 'outstanding', align: 'right', width: 110, render: (v) => <Money value={v} /> },
+                                    {
+                                        title: 'Allocate', width: 120, render: (_, bill) => (
+                                            <InputNumber size="small" min={0} max={bill.outstanding} className="full-width"
+                                                value={allocations.find((a) => a.bill_id === bill.bill_id)?.allocated_amount || 0}
+                                                onChange={(v) => updateAllocation(bill.bill_id, bill.bill_type, v || 0)}
+                                            />
+                                        ),
+                                    },
+                                ]}
+                            />
+                        </Card>
+                    )}
+                </div>
             </FormModal>
             <QuickDropdownOptionModal
                 alias="payment_mode"

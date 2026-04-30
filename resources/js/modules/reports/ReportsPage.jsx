@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Col, Empty, Row, Segmented, Select, Space, Statistic, Table } from 'antd';
+import { Button, Card, Col, Empty, Row, Segmented, Select, Space, Statistic, Table, Tabs } from 'antd';
 import { DateText } from '../../core/components/DateText';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { BarChart, DonutChart } from '../../core/components/Charts';
@@ -111,6 +111,7 @@ export function ReportsPage() {
     const [summary, setSummary] = useState(null);
     const [meta, setMeta] = useState({ current_page: 1, per_page: 20, total: 0 });
     const [loading, setLoading] = useState(false);
+    const [reportView, setReportView] = useState('table');
     const [productOptions, setProductOptions] = useState([]);
     const [lookups, setLookups] = useState({ suppliers: [], customers: [], medicalRepresentatives: [], companies: [], categories: [] });
 
@@ -218,10 +219,143 @@ export function ReportsPage() {
         setProductOptions((data.data || []).map((item) => ({ value: item.id, label: item.name })));
     }
 
+    function renderFilters() {
+        return (
+            <div className="report-filter-grid">
+                {report === 'sales' && (
+                    <>
+                        <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />
+                        <Select {...searchableSelectProps} allowClear placeholder="Payment" value={filters.payment_status} onChange={(value) => updateFilter('payment_status', value)} options={paymentStatusOptions} />
+                        <Select {...searchableSelectProps} allowClear placeholder="MR" value={filters.medical_representative_id} onChange={(value) => updateFilter('medical_representative_id', value)} options={lookups.medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))} />
+                    </>
+                )}
+                {report === 'purchase' && (
+                    <>
+                        <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />
+                        <Select {...searchableSelectProps} allowClear placeholder="Payment" value={filters.payment_status} onChange={(value) => updateFilter('payment_status', value)} options={paymentStatusOptions} />
+                    </>
+                )}
+                {['stock', 'low-stock', 'smart-inventory'].includes(report) && (
+                    <>
+                        <Select {...searchableSelectProps} allowClear placeholder="Company" value={filters.company_id} onChange={(value) => updateFilter('company_id', value)} options={lookups.companies.map((item) => ({ value: item.id, label: item.name }))} />
+                        <Select {...searchableSelectProps} allowClear placeholder="Category" value={filters.category_id} onChange={(value) => updateFilter('category_id', value)} options={lookups.categories.map((item) => ({ value: item.id, label: item.name }))} />
+                    </>
+                )}
+                {report === 'smart-inventory' && (
+                    <Select
+                        {...searchableSelectProps}
+                        allowClear
+                        placeholder="Signal"
+                        value={filters.signal}
+                        onChange={(value) => updateFilter('signal', value)}
+                        options={[
+                            { value: 'urgent_reorder', label: 'Urgent reorder' },
+                            { value: 'reorder_soon', label: 'Reorder soon' },
+                            { value: 'overstock', label: 'Overstock' },
+                            { value: 'expiry_urgent', label: 'Expiry urgent' },
+                            { value: 'expiry_watch', label: 'Expiry watch' },
+                            { value: 'fast_moving', label: 'Fast moving' },
+                            { value: 'slow_moving', label: 'Slow moving' },
+                        ]}
+                    />
+                )}
+                {report === 'supplier-ledger' && <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
+                {report === 'customer-ledger' && <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}
+                {report === 'product-movement' && (
+                    <Select
+                        showSearch
+                        allowClear
+                        filterOption={false}
+                        placeholder="Product"
+                        value={filters.product_id}
+                        onSearch={searchProducts}
+                        onFocus={() => searchProducts('')}
+                        onChange={(value) => updateFilter('product_id', value)}
+                        options={productOptions}
+                    />
+                )}
+                {report === 'ledger' && (
+                    <>
+                        <Select {...searchableSelectProps} allowClear placeholder="Account" value={filters.account_type} onChange={(value) => updateFilter('account_type', value)} options={accountCatalog} />
+                        <Select {...searchableSelectProps} allowClear placeholder="Party Type" value={filters.party_type} onChange={(value) => updateFilter('party_type', value)} options={[
+                            { value: 'customer', label: 'Customer' },
+                            { value: 'supplier', label: 'Supplier' },
+                        ]} />
+                        {filters.party_type === 'customer' && <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.party_id} onChange={(value) => updateFilter('party_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}
+                        {filters.party_type === 'supplier' && <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.party_id} onChange={(value) => updateFilter('party_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
+                    </>
+                )}
+            </div>
+        );
+    }
+
+    function renderSummaryCards() {
+        if (!summary) {
+            return null;
+        }
+
+        return (
+            <Row gutter={[16, 16]}>
+                {Object.entries(summary).map(([key, value]) => (
+                    <Col xs={24} sm={12} xl={6} key={key}>
+                        <Card size="small"><Statistic title={labelForKey(key)} value={value || 0} /></Card>
+                    </Col>
+                ))}
+            </Row>
+        );
+    }
+
+    function renderCharts() {
+        return (
+            <Row gutter={[16, 16]}>
+                <Col xs={24} xl={14}>
+                    <Card title="Bar Analysis">
+                        {chartData ? (
+                            <BarChart
+                                data={chartData}
+                                height={300}
+                                legend={chartData[0]?.bars?.length > 1 ? ['Primary', 'Secondary'] : undefined}
+                                colors={['#0891b2', '#10b981']}
+                            />
+                        ) : (
+                            <Empty description="No chartable rows for this report yet" />
+                        )}
+                    </Card>
+                </Col>
+                <Col xs={24} xl={10}>
+                    <Card title="Summary Mix">
+                        {summaryChartData.length ? (
+                            <DonutChart data={summaryChartData} size={220} />
+                        ) : (
+                            <Empty description="Summary totals will appear here" />
+                        )}
+                    </Card>
+                </Col>
+            </Row>
+        );
+    }
+
+    function renderTable() {
+        return (
+            <Table
+                loading={loading}
+                rowKey={(_, index) => index}
+                columns={columns}
+                dataSource={rows}
+                pagination={{
+                    current: meta.current_page,
+                    pageSize: meta.per_page,
+                    total: meta.total,
+                    onChange: load,
+                }}
+                scroll={{ x: true }}
+            />
+        );
+    }
+
     return (
         <div className="page-stack">
             <PageHeader
-                title="Reports"
                 actions={
                     <Space wrap>
                         <ExportButtons basePath={endpoints.reportExport(report)} params={{ ...dateRangeParams(range), ...filters }} />
@@ -261,120 +395,43 @@ export function ReportsPage() {
                 </div>
             </Card>
 
-            {summary && (
-                <Row gutter={[16, 16]}>
-                    {Object.entries(summary).map(([key, value]) => (
-                        <Col xs={24} sm={12} xl={6} key={key}>
-                            <Card size="small"><Statistic title={labelForKey(key)} value={value || 0} /></Card>
-                        </Col>
-                    ))}
-                </Row>
-            )}
-
-            <Row gutter={[16, 16]}>
-                <Col xs={24} xl={14}>
-                    <Card title="Report Snapshot">
-                        {chartData ? (
-                            <BarChart
-                                data={chartData}
-                                height={300}
-                                legend={chartData[0]?.bars?.length > 1 ? ['Primary', 'Secondary'] : undefined}
-                                colors={['#0891b2', '#10b981']}
-                            />
-                        ) : (
-                            <Empty description="No chartable rows for this report yet" />
-                        )}
-                    </Card>
-                </Col>
-                <Col xs={24} xl={10}>
-                    <Card title="Summary Mix">
-                        {summaryChartData.length ? (
-                            <DonutChart data={summaryChartData} size={220} />
-                        ) : (
-                            <Empty description="Summary totals will appear here" />
-                        )}
-                    </Card>
-                </Col>
-            </Row>
-
-            <Card>
-                <div className="report-filter-grid">
-                    {report === 'sales' && (
-                        <>
-                            <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />
-                            <Select {...searchableSelectProps} allowClear placeholder="Payment" value={filters.payment_status} onChange={(value) => updateFilter('payment_status', value)} options={paymentStatusOptions} />
-                            <Select {...searchableSelectProps} allowClear placeholder="MR" value={filters.medical_representative_id} onChange={(value) => updateFilter('medical_representative_id', value)} options={lookups.medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))} />
-                        </>
-                    )}
-                    {report === 'purchase' && (
-                        <>
-                            <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />
-                            <Select {...searchableSelectProps} allowClear placeholder="Payment" value={filters.payment_status} onChange={(value) => updateFilter('payment_status', value)} options={paymentStatusOptions} />
-                        </>
-                    )}
-                    {['stock', 'low-stock', 'smart-inventory'].includes(report) && (
-                        <>
-                            <Select {...searchableSelectProps} allowClear placeholder="Company" value={filters.company_id} onChange={(value) => updateFilter('company_id', value)} options={lookups.companies.map((item) => ({ value: item.id, label: item.name }))} />
-                            <Select {...searchableSelectProps} allowClear placeholder="Category" value={filters.category_id} onChange={(value) => updateFilter('category_id', value)} options={lookups.categories.map((item) => ({ value: item.id, label: item.name }))} />
-                        </>
-                    )}
-                    {report === 'smart-inventory' && (
-                        <Select
-                            {...searchableSelectProps}
-                            allowClear
-                            placeholder="Signal"
-                            value={filters.signal}
-                            onChange={(value) => updateFilter('signal', value)}
-                            options={[
-                                { value: 'urgent_reorder', label: 'Urgent reorder' },
-                                { value: 'reorder_soon', label: 'Reorder soon' },
-                                { value: 'overstock', label: 'Overstock' },
-                                { value: 'expiry_urgent', label: 'Expiry urgent' },
-                                { value: 'expiry_watch', label: 'Expiry watch' },
-                                { value: 'fast_moving', label: 'Fast moving' },
-                                { value: 'slow_moving', label: 'Slow moving' },
-                            ]}
-                        />
-                    )}
-                    {report === 'supplier-ledger' && <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
-                    {report === 'customer-ledger' && <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}
-                    {report === 'product-movement' && (
-                        <Select
-                            showSearch
-                            allowClear
-                            filterOption={false}
-                            placeholder="Product"
-                            value={filters.product_id}
-                            onSearch={searchProducts}
-                            onFocus={() => searchProducts('')}
-                            onChange={(value) => updateFilter('product_id', value)}
-                            options={productOptions}
-                        />
-                    )}
-                    {report === 'ledger' && (
-                        <>
-                            <Select {...searchableSelectProps} allowClear placeholder="Account" value={filters.account_type} onChange={(value) => updateFilter('account_type', value)} options={accountCatalog} />
-                            <Select {...searchableSelectProps} allowClear placeholder="Party Type" value={filters.party_type} onChange={(value) => updateFilter('party_type', value)} options={[
-                                { value: 'customer', label: 'Customer' },
-                                { value: 'supplier', label: 'Supplier' },
-                            ]} />
-                            {filters.party_type === 'customer' && <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.party_id} onChange={(value) => updateFilter('party_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}
-                            {filters.party_type === 'supplier' && <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.party_id} onChange={(value) => updateFilter('party_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
-                        </>
-                    )}
-                </div>
-                <Table
-                    loading={loading}
-                    rowKey={(_, index) => index}
-                    columns={columns}
-                    dataSource={rows}
-                    pagination={{
-                        current: meta.current_page,
-                        pageSize: meta.per_page,
-                        total: meta.total,
-                        onChange: load,
-                    }}
-                    scroll={{ x: true }}
+            <Card className="report-view-card">
+                <Tabs
+                    activeKey={reportView}
+                    onChange={setReportView}
+                    items={[
+                        {
+                            key: 'table',
+                            label: 'Table',
+                            children: (
+                                <div className="report-pane">
+                                    {renderFilters()}
+                                    {renderTable()}
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'charts',
+                            label: 'Charts',
+                            children: (
+                                <div className="report-pane">
+                                    {renderSummaryCards()}
+                                    {renderCharts()}
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'details',
+                            label: 'Details',
+                            children: (
+                                <div className="report-pane">
+                                    {renderSummaryCards()}
+                                    {renderFilters()}
+                                    {renderTable()}
+                                </div>
+                            ),
+                        },
+                    ]}
                 />
             </Card>
         </div>

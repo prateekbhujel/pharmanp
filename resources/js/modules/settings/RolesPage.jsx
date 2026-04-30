@@ -111,7 +111,6 @@ export function RolesPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title="Roles & Permissions"
                 actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => openRole()}>New Role</Button>}
             />
 

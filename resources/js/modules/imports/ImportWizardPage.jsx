@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, App, Button, Card, Select, Space, Steps, Table, Upload } from 'antd';
 import { CloseCircleOutlined, FileTextOutlined, InboxOutlined } from '@ant-design/icons';
-import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 
@@ -66,8 +65,6 @@ export function ImportWizardPage() {
 
     return (
         <div className="page-stack">
-            <PageHeader title="Import Wizard" />
-
             <Card>
                 <Steps
                     current={preview ? ((preview.status || '').startsWith('completed') ? 2 : 1) : 0}

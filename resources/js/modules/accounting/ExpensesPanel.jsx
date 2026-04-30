@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { App, Button, Card, Col, Form, Input, InputNumber, Row, Select, Space, Statistic, Table } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -10,6 +10,7 @@ import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { dateRangeParams } from '../../core/utils/dateFilters';
+import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 
 export function ExpensesPanel() {
     const { notification } = App.useApp();
@@ -23,8 +24,16 @@ export function ExpensesPanel() {
     const [quickAlias, setQuickAlias] = useState(null);
     const [range, setRange] = useState([]);
     const [form] = Form.useForm();
+    const expenseFormRef = useRef(null);
 
     useEffect(() => { loadExpenses(1); }, [range]);
+
+    useKeyboardFlow(expenseFormRef, {
+        enabled: drawerOpen,
+        autofocus: drawerOpen,
+        onSubmit: () => form.submit(),
+        resetKey: drawerOpen,
+    });
 
     async function loadExpenses(page = 1) {
         setLoading(true);
@@ -132,38 +141,40 @@ export function ExpensesPanel() {
                 width={680}
                 destroyOnHidden
             >
-                <Form form={form} layout="vertical" onFinish={submit}>
-                    <Form.Item name="expense_date" label="Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
-                    <Form.Item name="expense_category_id" label="Category" rules={[{ required: true }]}>
-                        <Select
-                            showSearch
-                            optionFilterProp="label"
-                            options={lookups.expense_categories.map((c) => ({ value: c.id, label: c.name }))}
-                            dropdownRender={(menu) => (
-                                <>
-                                    {menu}
-                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickAlias('expense_category')}>Quick add category</Button>
-                                </>
-                            )}
-                        />
-                    </Form.Item>
-                    <Form.Item name="vendor_name" label="Vendor / Payee"><Input /></Form.Item>
-                    <Form.Item name="payment_mode_id" label="Payment Mode" rules={[{ required: true }]}>
-                        <Select
-                            showSearch
-                            optionFilterProp="label"
-                            options={lookups.payment_modes.map((m) => ({ value: m.id, label: m.name }))}
-                            dropdownRender={(menu) => (
-                                <>
-                                    {menu}
-                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickAlias('payment_mode')}>Quick add payment mode</Button>
-                                </>
-                            )}
-                        />
-                    </Form.Item>
-                    <Form.Item name="amount" label="Amount" rules={[{ required: true }]}><InputNumber min={0.01} className="full-width" /></Form.Item>
-                    <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
-                </Form>
+                <div ref={expenseFormRef} data-keyboard-flow="true">
+                    <Form form={form} layout="vertical" onFinish={submit}>
+                        <Form.Item name="expense_date" label="Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
+                        <Form.Item name="expense_category_id" label="Category" rules={[{ required: true }]}>
+                            <Select
+                                showSearch
+                                optionFilterProp="label"
+                                options={lookups.expense_categories.map((c) => ({ value: c.id, label: c.name }))}
+                                dropdownRender={(menu) => (
+                                    <>
+                                        {menu}
+                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickAlias('expense_category')}>Quick add category</Button>
+                                    </>
+                                )}
+                            />
+                        </Form.Item>
+                        <Form.Item name="vendor_name" label="Vendor / Payee"><Input /></Form.Item>
+                        <Form.Item name="payment_mode_id" label="Payment Mode" rules={[{ required: true }]}>
+                            <Select
+                                showSearch
+                                optionFilterProp="label"
+                                options={lookups.payment_modes.map((m) => ({ value: m.id, label: m.name }))}
+                                dropdownRender={(menu) => (
+                                    <>
+                                        {menu}
+                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickAlias('payment_mode')}>Quick add payment mode</Button>
+                                    </>
+                                )}
+                            />
+                        </Form.Item>
+                        <Form.Item name="amount" label="Amount" rules={[{ required: true }]}><InputNumber min={0.01} className="full-width" /></Form.Item>
+                        <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
+                    </Form>
+                </div>
             </FormModal>
             <QuickDropdownOptionModal
                 alias={quickAlias || 'payment_mode'}

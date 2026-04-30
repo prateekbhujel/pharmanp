@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { App, Button, Card, Form, Input, InputNumber, Select, Space, Table } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -15,6 +15,7 @@ import { validationErrorsByLine } from '../../core/utils/lineItems';
 import { appUrl } from '../../core/utils/url';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { dateRangeParams } from '../../core/utils/dateFilters';
+import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { ExpensesPanel } from './ExpensesPanel';
 import { PaymentsPanel } from './PaymentsPanel';
 
@@ -67,6 +68,7 @@ export function AccountingPage() {
     const [voucherSearch, setVoucherSearch] = useState('');
     const [voucherRange, setVoucherRange] = useState([]);
     const [form] = Form.useForm();
+    const voucherFormRef = useRef(null);
 
     useEffect(() => {
         const handleRoute = () => setRouteKey((value) => value + 1);
@@ -103,6 +105,18 @@ export function AccountingPage() {
         }
     }, [routeState.tab, voucherSearch, voucherRange]);
 
+    useKeyboardFlow(voucherFormRef, {
+        enabled: routeState.tab === 'voucher' && voucherMode === 'form',
+        autofocus: routeState.tab === 'voucher' && voucherMode === 'form',
+        onSubmit: () => {
+            if (debit === credit && debit > 0) {
+                form.submit();
+            }
+        },
+        onAddRow: addVoucherEntry,
+        resetKey: voucherMode,
+    });
+
     async function loadParties() {
         const [{ data: customerData }, { data: supplierData }] = await Promise.all([
             http.get(endpoints.customerOptions),
@@ -134,6 +148,10 @@ export function AccountingPage() {
 
     function updateEntry(index, patch) {
         setEntries(entries.map((entry, rowIndex) => rowIndex === index ? { ...entry, ...patch } : entry));
+    }
+
+    function addVoucherEntry() {
+        setEntries((rows) => [...rows, { ...emptyEntry }]);
     }
 
     function resetVoucherForm() {
@@ -308,30 +326,32 @@ export function AccountingPage() {
                 title={editingVoucher ? `Edit ${editingVoucher.voucher_no}` : 'New Voucher Entry'}
                 extra={<Button icon={<RollbackOutlined />} onClick={() => { resetVoucherForm(); setVoucherMode('list'); }}>Back to List</Button>}
             >
-                <Form form={form} layout="vertical" onFinish={submit} initialValues={{ voucher_date: dayjs(), voucher_type: 'journal' }}>
-                    <div className="form-grid">
-                        <Form.Item name="voucher_date" label="Voucher Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
-                        <Form.Item name="voucher_type" label="Voucher Type" rules={[{ required: true }]}>
-                            <Select options={voucherTypeOptions} />
-                        </Form.Item>
-                    </div>
-                    <Form.Item name="notes" label="Narration"><Input.TextArea rows={2} /></Form.Item>
-                    <TransactionLineItems
-                        rows={entries}
-                        columns={voucherEntryColumns}
-                        errors={entryErrors}
-                        addLabel="Add Entry"
-                        minRows={2}
-                        onAdd={() => setEntries([...entries, { ...emptyEntry }])}
-                        onRemove={(index) => setEntries(entries.filter((_, rowIndex) => rowIndex !== index))}
-                        summary={[
-                            { label: 'Debit', value: <Money value={debit} /> },
-                            { label: 'Credit', value: <Money value={credit} /> },
-                            { label: 'Difference', value: <Money value={Math.abs(debit - credit)} />, strong: true },
-                        ]}
-                        actions={<Button type="primary" htmlType="submit" disabled={debit !== credit || debit <= 0}>{editingVoucher ? 'Update Voucher' : 'Post Voucher'}</Button>}
-                    />
-                </Form>
+                <div ref={voucherFormRef} data-keyboard-flow="true">
+                    <Form form={form} layout="vertical" onFinish={submit} initialValues={{ voucher_date: dayjs(), voucher_type: 'journal' }}>
+                        <div className="form-grid">
+                            <Form.Item name="voucher_date" label="Voucher Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
+                            <Form.Item name="voucher_type" label="Voucher Type" rules={[{ required: true }]}>
+                                <Select options={voucherTypeOptions} />
+                            </Form.Item>
+                        </div>
+                        <Form.Item name="notes" label="Narration"><Input.TextArea rows={2} /></Form.Item>
+                        <TransactionLineItems
+                            rows={entries}
+                            columns={voucherEntryColumns}
+                            errors={entryErrors}
+                            addLabel="Add Entry"
+                            minRows={2}
+                            onAdd={addVoucherEntry}
+                            onRemove={(index) => setEntries(entries.filter((_, rowIndex) => rowIndex !== index))}
+                            summary={[
+                                { label: 'Debit', value: <Money value={debit} /> },
+                                { label: 'Credit', value: <Money value={credit} /> },
+                                { label: 'Difference', value: <Money value={Math.abs(debit - credit)} />, strong: true },
+                            ]}
+                            actions={<Button type="primary" htmlType="submit" disabled={debit !== credit || debit <= 0}>{editingVoucher ? 'Update Voucher' : 'Post Voucher'}</Button>}
+                        />
+                    </Form>
+                </div>
             </Card>
         );
     }
@@ -369,18 +389,9 @@ export function AccountingPage() {
         return voucherMode === 'form' ? renderVoucherForm() : renderVoucherList();
     }
 
-    const pageTitle = routeState.tab === 'payments'
-        ? 'Payments'
-        : routeState.tab === 'expenses'
-            ? 'Expenses'
-            : routeState.tab === 'books'
-                ? 'Books'
-                : 'Vouchers';
-
     return (
         <div className="page-stack">
             <PageHeader
-                title={pageTitle}
                 actions={routeState.tab === 'books' && (
                     <Button type="primary" onClick={() => goToAccounting('/app/accounting/vouchers')}>Vouchers</Button>
                 )}

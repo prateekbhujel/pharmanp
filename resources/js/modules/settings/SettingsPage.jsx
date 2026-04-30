@@ -9,10 +9,8 @@ import {
     ShopOutlined,
     UserOutlined,
 } from '@ant-design/icons';
-import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Typography } from 'antd';
+import { App, Button, Card, Form, Input, InputNumber, Segmented, Select, Space, Switch, Typography } from 'antd';
 import { BrandAssetUploadField } from '../../core/components/BrandAssetUploadField';
-import { PharmaBadge } from '../../core/components/PharmaBadge';
-import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useApi } from '../../core/hooks/useApi';
@@ -119,7 +117,7 @@ function SettingsSection({ id, title, description, icon, children }) {
 
 export function SettingsPage() {
     const { notification } = App.useApp();
-    const { user, reload: reloadAuth } = useAuth();
+    const { reload: reloadAuth } = useAuth();
     const { branding, loading: brandingLoading, reload: reloadBranding } = useBranding();
     const { data: profile, reload: reloadProfile } = useApi(endpoints.profile);
 
@@ -142,7 +140,10 @@ export function SettingsPage() {
 
     useEffect(() => {
         if (branding) {
-            brandingForm.setFieldsValue(branding);
+            brandingForm.setFieldsValue({
+                show_breadcrumbs: true,
+                ...branding,
+            });
         }
     }, [branding, brandingForm]);
 
@@ -256,12 +257,6 @@ export function SettingsPage() {
 
     return (
         <div className="page-stack settings-page">
-            <PageHeader
-                title="Settings"
-                description="Company identity, fiscal year, mail delivery and operating controls."
-                actions={<PharmaBadge tone="info" icon={<UserOutlined />}>{user?.name}</PharmaBadge>}
-            />
-
             <div className="settings-layout">
                 <aside className="settings-sidebar">
                     <div className="settings-sidebar-title">Configuration</div>
@@ -391,6 +386,9 @@ export function SettingsPage() {
                                                 { label: 'Nepali', value: 'bs' },
                                             ]}
                                         />
+                                    </Form.Item>
+                                    <Form.Item name="show_breadcrumbs" label="Show Breadcrumbs" valuePropName="checked">
+                                        <Switch checkedChildren="Show" unCheckedChildren="Hide" />
                                     </Form.Item>
                                 </div>
                                 <div className="branding-upload-grid">

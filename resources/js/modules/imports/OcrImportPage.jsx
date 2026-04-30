@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, App, Button, Card, Descriptions, Input, Space, Table, Upload } from 'antd';
 import { CloseCircleOutlined, FileTextOutlined, InboxOutlined } from '@ant-design/icons';
-import { PageHeader } from '../../core/components/PageHeader';
 import { PaymentStatusBadge, PharmaBadge } from '../../core/components/PharmaBadge';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
@@ -64,8 +63,6 @@ export function OcrImportPage() {
 
     return (
         <div className="page-stack">
-            <PageHeader title="OCR Purchase Helper" />
-
             <Card title="Upload Bill">
                 <div className="import-grid">
                     <div className="import-dropzone">

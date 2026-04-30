@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { Avatar, Badge, Button, Drawer, Dropdown, Layout, Menu, Space, Spin, Typography } from 'antd';
+import { Avatar, Badge, Breadcrumb, Button, Drawer, Dropdown, Layout, Menu, Space, Spin, Typography } from 'antd';
 import {
     BarChartOutlined,
     BellOutlined,
@@ -55,6 +55,25 @@ const RolesPage = React.lazy(() => import('../../modules/settings/RolesPage').th
 const DataLookupPage = React.lazy(() => import('../../modules/settings/DataLookupPage').then((module) => ({ default: module.DataLookupPage })));
 
 const SIDEBAR_COLLAPSE_STORAGE_KEY = 'pharmanp-sidebar-collapsed';
+const ALERT_DISMISS_STORAGE_KEY = 'pharmanp-dismissed-alert-signature';
+
+function buildAlertSignature(lowStockRows = [], expiryRows = []) {
+    return [
+        ...lowStockRows.map((item) => [
+            'low',
+            item.id,
+            item.stock_on_hand,
+            item.reorder_level,
+        ].join(':')),
+        ...expiryRows.map((item) => [
+            'expiry',
+            item.id,
+            item.batch_no || '',
+            item.expires_at || '',
+            item.quantity_available || '',
+        ].join(':')),
+    ].sort().join('|');
+}
 
 const routes = {
     [appUrl('/app')]: DashboardPage,
@@ -188,6 +207,11 @@ export function AppShell() {
 
     const layout = brandingData?.layout || 'vertical';
     const appName = brandingData?.app_name || 'PharmaNP';
+    const product = brandingData?.product || {};
+    const productName = product.name || 'PharmaNP';
+    const developerName = product.developer_name || 'Pratik Bhujel';
+    const developerEmail = product.developer_email || 'prateekbhujelpb@gmail.com';
+    const productVersion = [product.version_label || 'dev', product.release_channel].filter(Boolean).join(' ');
     const logo = brandingData?.sidebar_logo_url || brandingData?.logo_url || brandingData?.app_icon_url;
     const user = authUser;
 
@@ -199,7 +223,7 @@ export function AppShell() {
     }, [pathname]);
     const ActivePage = routes[activeKey] || DashboardPage;
 
-    const { items: menuItems, routesByKey, selectedMenuKey, openKeys } = useMemo(() => {
+    const { items: menuItems, routesByKey, selectedMenuKey, openKeys, breadcrumbs } = useMemo(() => {
         const canInventory = can(user, 'inventory.products.view') || can(user, 'inventory.masters.manage');
         const canPurchase = can(user, 'purchase.entries.view') || can(user, 'purchase.entries.create') || can(user, 'purchase.orders.manage');
         const canSales = can(user, 'sales.invoices.view') || can(user, 'sales.pos.use');
@@ -215,7 +239,6 @@ export function AppShell() {
         };
         const child = (key, label, route) => ({ key: register(key, route), label });
         const items = [
-            { key: 'category-main', label: 'Main Menu', disabled: true, className: 'menu-category' },
             { key: register('dashboard', appUrl('/app')), icon: <DashboardOutlined />, label: 'Dashboard', show: can(user, 'dashboard.view') },
 
             {
@@ -287,7 +310,6 @@ export function AppShell() {
                 ],
             },
             { key: register('reports', appUrl('/app/reports')), icon: <BarChartOutlined />, label: 'Reports', show: canReports },
-            { key: 'category-admin', label: 'Administration', disabled: true, className: 'menu-category' },
             {
                 key: 'admin-master',
                 icon: <ContainerOutlined />,
@@ -333,7 +355,25 @@ export function AppShell() {
             selectedKey = 'dashboard';
         }
 
-        return { items: flatItems, routesByKey: routeMap, selectedMenuKey: selectedKey, openKeys: openKey ? [openKey] : [] };
+        const selectedParent = flatItems.find((item) => item.children?.some((childItem) => childItem.key === selectedKey));
+        const selectedChild = selectedParent?.children?.find((childItem) => childItem.key === selectedKey);
+        const selectedRoot = flatItems.find((item) => item.key === selectedKey);
+        const pageBreadcrumbs = selectedParent && selectedChild
+            ? [
+                { key: selectedParent.key, title: selectedParent.label },
+                { key: selectedChild.key, title: selectedChild.label },
+            ]
+            : selectedRoot
+                ? [{ key: selectedRoot.key, title: selectedRoot.label }]
+                : [];
+
+        return {
+            items: flatItems,
+            routesByKey: routeMap,
+            selectedMenuKey: selectedKey,
+            openKeys: openKey ? [openKey] : [],
+            breadcrumbs: pageBreadcrumbs,
+        };
     }, [pathname, user]);
 
 
@@ -352,12 +392,23 @@ export function AppShell() {
                 const stats = payload.stats || {};
                 const lowStockRows = payload.low_stock_rows || [];
                 const expiryRows = payload.expiry_rows || [];
-                const count = Number(stats.low_stock || lowStockRows.length || 0)
-                    + Number(stats.expiring_batches || expiryRows.length || 0);
-                setAlerts({ loading: false, lowStockRows, expiryRows, count });
+                const signature = buildAlertSignature(lowStockRows, expiryRows);
+                const dismissedSignature = window.localStorage.getItem(ALERT_DISMISS_STORAGE_KEY);
+                const dismissed = signature && dismissedSignature === signature;
+                const count = dismissed
+                    ? 0
+                    : Number(stats.low_stock || lowStockRows.length || 0)
+                        + Number(stats.expiring_batches || expiryRows.length || 0);
+                setAlerts({
+                    loading: false,
+                    lowStockRows: dismissed ? [] : lowStockRows,
+                    expiryRows: dismissed ? [] : expiryRows,
+                    count,
+                    signature,
+                });
             })
             .catch(() => {
-                if (active) setAlerts({ loading: false, lowStockRows: [], expiryRows: [], count: 0 });
+                if (active) setAlerts({ loading: false, lowStockRows: [], expiryRows: [], count: 0, signature: '' });
             });
         return () => { active = false; };
     }, []);
@@ -371,7 +422,6 @@ export function AppShell() {
         // Header with Mark All as Read
         items.push({
             key: 'header',
-            disabled: true,
             label: (
                 <div className="notification-tray-header">
                     <strong>Notifications</strong>
@@ -380,7 +430,16 @@ export function AppShell() {
                         size="small"
                         onClick={(e) => {
                             e.stopPropagation();
-                            setAlerts({ loading: false, lowStockRows: [], expiryRows: [], count: 0 });
+                            if (alerts.signature) {
+                                window.localStorage.setItem(ALERT_DISMISS_STORAGE_KEY, alerts.signature);
+                            }
+                            setAlerts((current) => ({
+                                ...current,
+                                loading: false,
+                                lowStockRows: [],
+                                expiryRows: [],
+                                count: 0,
+                            }));
                         }}
                     >
                         Mark all as read
@@ -476,6 +535,22 @@ export function AppShell() {
         includeSeconds: false,
         includeEra: false,
     });
+    const isDashboardBreadcrumb = breadcrumbs.length === 1 && breadcrumbs[0].key === 'dashboard';
+    const shouldShowBreadcrumbs = brandingData?.show_breadcrumbs !== false && !isDashboardBreadcrumb;
+    const breadcrumbItems = [
+        ...(!isDashboardBreadcrumb ? [{
+            title: (
+                <button type="button" className="breadcrumb-link" onClick={() => goTo(appUrl('/app'))}>
+                    Dashboard
+                </button>
+            ),
+        }] : []),
+        ...breadcrumbs.map((item, index) => ({
+            title: index === breadcrumbs.length - 1
+                ? <span className="breadcrumb-current">{item.title}</span>
+                : <span className="breadcrumb-section">{item.title}</span>,
+        })),
+    ];
 
     return (
         <Layout className={`app-shell app-shell-${layout}`}>
@@ -591,20 +666,23 @@ export function AppShell() {
                     </Space>
                 </Header>
                 <Content className="app-content">
+                    {shouldShowBreadcrumbs && breadcrumbItems.length > 0 && (
+                        <Breadcrumb className="app-breadcrumbs" items={breadcrumbItems} />
+                    )}
                     <Suspense fallback={<div className="screen-center"><Spin /></div>}>
                         <ActivePage key={activeKey} />
                     </Suspense>
                 </Content>
                 <div className="app-footer-premium">
                     <div className="footer-left">
-                        <span className="footer-copyright">© {new Date().getFullYear()} <strong>PharmaNP</strong></span>
+                        <span className="footer-copyright">© {new Date().getFullYear()} <strong>{productName}</strong></span>
                         <span className="footer-sep">|</span>
-                        <span className="footer-credit">Developed with excellence by <strong>Pratik Bhujel</strong></span>
+                        <span className="footer-credit">Developed with excellence by <strong>{developerName}</strong></span>
                     </div>
                     <div className="footer-right">
                         <Space size="middle">
-                            <Typography.Text type="secondary" size="small">v1.0.0 Stable</Typography.Text>
-                            <span className="footer-contact">prateekbhujelpb@gmail.com</span>
+                            <Typography.Text type="secondary" size="small">{productVersion}</Typography.Text>
+                            <span className="footer-contact">{developerEmail}</span>
                         </Space>
                     </div>
                 </div>

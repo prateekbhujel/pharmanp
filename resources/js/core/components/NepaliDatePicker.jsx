@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Dropdown, Input, Select } from 'antd';
 import { CalendarOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -10,6 +10,7 @@ import {
     isNepaliHolidayDate,
     nepaliDaysShort,
     nepaliMonthsFull,
+    parseCalendarInput,
 } from '../utils/calendar';
 
 export function NepaliDatePicker({
@@ -30,6 +31,8 @@ export function NepaliDatePicker({
     });
 
     const selectedBs = value ? adToBs(dayjs(value)) : null;
+    const displayValue = selectedBs ? formatBsDate(value, { style: 'compact' }) : '';
+    const [inputValue, setInputValue] = useState(displayValue);
     const supportedYears = useMemo(() => Object.keys(bsData).map(Number), []);
     const monthOptions = useMemo(
         () => nepaliMonthsFull.map((label, index) => ({ value: index, label })),
@@ -39,6 +42,32 @@ export function NepaliDatePicker({
         () => supportedYears.map((year) => ({ value: year, label: String(year) })),
         [supportedYears],
     );
+
+    useEffect(() => {
+        setInputValue(displayValue);
+    }, [displayValue]);
+
+    function commitTypedDate() {
+        if (!inputValue) {
+            onChange?.(null);
+            return;
+        }
+
+        const parsed = parseCalendarInput(inputValue, 'bs');
+
+        if (!parsed) {
+            setInputValue(displayValue);
+            return;
+        }
+
+        const bs = adToBs(parsed);
+        if (bs) {
+            setViewDate({ year: bs.year, month: bs.month });
+        }
+
+        onChange?.(parsed);
+        setOpen(false);
+    }
 
     function handlePrevMonth() {
         setViewDate((prev) => {
@@ -154,6 +183,7 @@ export function NepaliDatePicker({
                             key={day}
                             onClick={() => {
                                 onChange?.(adDate);
+                                setInputValue(formatBsDate(adDate, { style: 'compact' }));
                                 setOpen(false);
                             }}
                             className={dayClassName}
@@ -171,6 +201,7 @@ export function NepaliDatePicker({
                     size="small"
                     onClick={() => {
                         onChange?.(dayjs());
+                        setInputValue(formatBsDate(dayjs(), { style: 'compact' }));
                         setOpen(false);
                     }}
                 >
@@ -179,8 +210,6 @@ export function NepaliDatePicker({
             </div>
         </Card>
     );
-
-    const displayValue = selectedBs ? formatBsDate(value, { style: 'compact' }) : '';
 
     return (
         <Dropdown
@@ -193,8 +222,10 @@ export function NepaliDatePicker({
             <Input
                 className={`full-width ${className || ''}`}
                 placeholder={placeholder}
-                value={displayValue}
-                readOnly
+                value={inputValue}
+                onChange={(event) => setInputValue(event.target.value)}
+                onBlur={commitTypedDate}
+                onPressEnter={commitTypedDate}
                 disabled={disabled}
                 suffix={<CalendarOutlined style={{ color: '#94a3b8' }} />}
                 style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}

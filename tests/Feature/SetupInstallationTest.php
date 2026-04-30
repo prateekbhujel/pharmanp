@@ -68,6 +68,7 @@ class SetupInstallationTest extends TestCase
             'favicon_url' => '/storage/settings/favicon.ico',
             'accent_color' => '#0f766e',
             'sidebar_default_collapsed' => true,
+            'show_breadcrumbs' => false,
             'country_code' => 'NP',
             'currency_symbol' => 'Rs.',
             'calendar_type' => 'bs',
@@ -78,7 +79,15 @@ class SetupInstallationTest extends TestCase
         $this->assertSame('Bhujel Pharmacy', $branding['app_name']);
         $this->assertSame('/storage/settings/favicon.ico', $branding['favicon_url']);
         $this->assertTrue($branding['sidebar_default_collapsed']);
+        $this->assertFalse($branding['show_breadcrumbs']);
         $this->assertSame('vertical', $branding['layout']);
+
+        $this->actingAs($user)->getJson('/api/v1/setup/branding')
+            ->assertOk()
+            ->assertJsonPath('data.app_name', 'Bhujel Pharmacy')
+            ->assertJsonPath('data.product.name', 'PharmaNP')
+            ->assertJsonPath('data.product.developer_name', 'Pratik Bhujel')
+            ->assertJsonPath('data.product.developer_email', 'prateekbhujelpb@gmail.com');
     }
 
     public function test_setup_completion_accepts_brand_uploads_and_defaults_store_name(): void

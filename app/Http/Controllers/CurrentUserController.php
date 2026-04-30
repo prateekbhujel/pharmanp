@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Core\Support\AssetUrl;
+use App\Core\Support\ProductMeta;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,11 +22,13 @@ class CurrentUserController extends Controller
             'accent_color' => '#0f766e',
             'layout' => 'vertical',
             'sidebar_default_collapsed' => true,
+            'show_breadcrumbs' => true,
         ]);
 
         foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {
             $branding[$key] = AssetUrl::resolve($branding[$key] ?? null);
         }
+        $branding['product'] = ProductMeta::payload();
 
         return response()->json([
             'data' => [

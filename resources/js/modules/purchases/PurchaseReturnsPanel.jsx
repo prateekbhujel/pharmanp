@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { App, Button, Card, Form, Input, InputNumber, Modal, Radio, Select, Space, Switch } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, PrinterOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -11,6 +11,7 @@ import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
 import { appUrl } from '../../core/utils/url';
@@ -66,6 +67,7 @@ export function PurchaseReturnsPanel() {
     const { notification } = App.useApp();
     const [form] = Form.useForm();
     const [supplierForm] = Form.useForm();
+    const returnFormRef = useRef(null);
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
     const [purchases, setPurchases] = useState([]);
@@ -83,6 +85,14 @@ export function PurchaseReturnsPanel() {
     const supplierId = Form.useWatch('supplier_id', form);
     const returnMode = Form.useWatch('return_mode', form) || 'bill';
     const deletedMode = Boolean(table.filters.deleted);
+
+    useKeyboardFlow(returnFormRef, {
+        enabled: view === 'form',
+        autofocus: view === 'form',
+        resetKey: view,
+        onSubmit: () => form.submit(),
+        onAddRow: addManualRow,
+    });
 
     useEffect(() => {
         form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill' });
@@ -369,66 +379,68 @@ export function PurchaseReturnsPanel() {
         <div className="page-stack">
             {view === 'form' ? (
                 <Card title={editing ? `Edit ${editing.return_no}` : 'Purchase Return Entry'}>
-                    <Form form={form} layout="vertical" onFinish={submit}>
-                        <div className="form-grid form-grid-4">
-                            <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
-                                <Select
-                                    showSearch
-                                    optionFilterProp="label"
-                                    options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
-                                    dropdownRender={(menu) => (
-                                        <>
-                                            {menu}
-                                            <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
-                                        </>
-                                    )}
-                                />
-                            </Form.Item>
-                            <Form.Item name="return_mode" label="Return Mode" rules={[{ required: true }]}>
-                                <Radio.Group optionType="button" buttonStyle="solid" options={[
-                                    { value: 'bill', label: 'By Purchase Bill' },
-                                    { value: 'product', label: 'By Product / Batch' },
-                                ]} />
-                            </Form.Item>
-                            <Form.Item name="return_date" label="Return Date" rules={[{ required: true }]}>
-                                <SmartDatePicker className="full-width" />
-                            </Form.Item>
-                            <Form.Item name="notes" label="Notes"><Input /></Form.Item>
-                        </div>
-                        {returnMode === 'bill' && (
-                            <div className="form-grid">
-                                <Form.Item name="purchase_id" label="Purchase Bill" rules={[{ required: returnMode === 'bill' }]}>
+                    <div ref={returnFormRef} data-keyboard-flow="true">
+                        <Form form={form} layout="vertical" onFinish={submit}>
+                            <div className="form-grid form-grid-4">
+                                <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
                                     <Select
                                         showSearch
                                         optionFilterProp="label"
-                                        options={purchases.map((item) => ({ value: item.id, label: item.label }))}
+                                        options={suppliers.map((item) => ({ value: item.id, label: item.name }))}
+                                        dropdownRender={(menu) => (
+                                            <>
+                                                {menu}
+                                                <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickSupplierOpen(true)}>Quick add supplier</Button>
+                                            </>
+                                        )}
                                     />
                                 </Form.Item>
-                                <Form.Item label=" "><Button icon={<ReloadOutlined />} onClick={loadBillItems}>Load Bill Items</Button></Form.Item>
+                                <Form.Item name="return_mode" label="Return Mode" rules={[{ required: true }]}>
+                                    <Radio.Group optionType="button" buttonStyle="solid" options={[
+                                        { value: 'bill', label: 'By Purchase Bill' },
+                                        { value: 'product', label: 'By Product / Batch' },
+                                    ]} />
+                                </Form.Item>
+                                <Form.Item name="return_date" label="Return Date" rules={[{ required: true }]}>
+                                    <SmartDatePicker className="full-width" />
+                                </Form.Item>
+                                <Form.Item name="notes" label="Notes"><Input /></Form.Item>
                             </div>
-                        )}
-                        <TransactionLineItems
-                            rows={items}
-                            columns={lineColumns}
-                            errors={lineErrors}
-                            addLabel="Add Manual Item"
-                            onAdd={addManualRow}
-                            onRemove={removeRow}
-                            minRows={0}
-                            summary={[
-                                { label: 'Total Qty', value: Number(summary.qty || 0).toFixed(3) },
-                                { label: 'Gross Return', value: <Money value={summary.subtotal} /> },
-                                { label: 'Discount', value: <Money value={summary.discount} /> },
-                                { label: 'Net Return', value: <Money value={summary.total} />, strong: true },
-                            ]}
-                            actions={(
-                                <Space>
-                                    <Button onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill' }); }}>Cancel</Button>
-                                    <Button type="primary" htmlType="submit" loading={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
-                                </Space>
+                            {returnMode === 'bill' && (
+                                <div className="form-grid">
+                                    <Form.Item name="purchase_id" label="Purchase Bill" rules={[{ required: returnMode === 'bill' }]}>
+                                        <Select
+                                            showSearch
+                                            optionFilterProp="label"
+                                            options={purchases.map((item) => ({ value: item.id, label: item.label }))}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item label=" "><Button icon={<ReloadOutlined />} onClick={loadBillItems}>Load Bill Items</Button></Form.Item>
+                                </div>
                             )}
-                        />
-                    </Form>
+                            <TransactionLineItems
+                                rows={items}
+                                columns={lineColumns}
+                                errors={lineErrors}
+                                addLabel="Add Manual Item"
+                                onAdd={addManualRow}
+                                onRemove={removeRow}
+                                minRows={0}
+                                summary={[
+                                    { label: 'Total Qty', value: Number(summary.qty || 0).toFixed(3) },
+                                    { label: 'Gross Return', value: <Money value={summary.subtotal} /> },
+                                    { label: 'Discount', value: <Money value={summary.discount} /> },
+                                    { label: 'Net Return', value: <Money value={summary.total} />, strong: true },
+                                ]}
+                                actions={(
+                                    <Space>
+                                        <Button onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill' }); }}>Cancel</Button>
+                                        <Button type="primary" htmlType="submit" loading={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
+                                    </Space>
+                                )}
+                            />
+                        </Form>
+                    </div>
                 </Card>
             ) : (
                 <Card title="Purchase Return List" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill' }); setView('form'); }}>New Return</Button>}>

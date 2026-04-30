@@ -35,6 +35,7 @@ class CompleteSetupRequest extends FormRequest
             'branding.favicon_file' => ['nullable', 'mimes:ico,png,jpg,jpeg,svg,webp', 'max:1024'],
             'branding.accent_color' => ['nullable', 'string', 'max:20'],
             'branding.sidebar_default_collapsed' => ['sometimes', 'boolean'],
+            'branding.show_breadcrumbs' => ['sometimes', 'boolean'],
             'branding.country_code' => ['required', 'string', 'size:2'],
             'branding.currency_symbol' => ['required', 'string', 'max:20'],
             'branding.calendar_type' => ['required', 'in:ad,bs'],

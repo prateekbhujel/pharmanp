@@ -7,6 +7,7 @@ import { DateText } from '../../core/components/DateText';
 import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { FormDrawer } from '../../core/components/FormDrawer';
 import { Money } from '../../core/components/Money';
+import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { ServerTable } from '../../core/components/ServerTable';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { StatusTag } from '../../core/components/StatusTag';
@@ -21,6 +22,56 @@ const expiryOptions = [
     { value: '30d', label: 'Expiring in 30 days' },
     { value: '60d', label: 'Expiring in 60 days' },
 ];
+
+const quantityFormatter = new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 3,
+});
+
+function formatQuantity(value) {
+    return quantityFormatter.format(Number(value || 0));
+}
+
+function expiryBadge(value) {
+    if (!value) {
+        return <span>-</span>;
+    }
+
+    const days = dayjs(value).startOf('day').diff(dayjs().startOf('day'), 'day');
+    let tone = 'success';
+    let label = 'Healthy';
+
+    if (days < 0) {
+        tone = 'danger';
+        label = 'Expired';
+    } else if (days <= 30) {
+        tone = 'danger';
+        label = `${days}d`;
+    } else if (days <= 90) {
+        tone = 'warning';
+        label = `${days}d`;
+    }
+
+    return (
+        <Space size={6} wrap>
+            <DateText value={value} style="compact" />
+            <PharmaBadge tone={tone}>{label}</PharmaBadge>
+        </Space>
+    );
+}
+
+function stockBadge(value) {
+    const quantity = Number(value || 0);
+
+    if (quantity <= 0) {
+        return <PharmaBadge tone="danger">{formatQuantity(quantity)}</PharmaBadge>;
+    }
+
+    if (quantity <= 5) {
+        return <PharmaBadge tone="warning">{formatQuantity(quantity)}</PharmaBadge>;
+    }
+
+    return <span className="tabular">{formatQuantity(quantity)}</span>;
+}
 
 export function InventoryBatchesPanel() {
     const { notification } = App.useApp();
@@ -131,10 +182,10 @@ export function InventoryBatchesPanel() {
         { title: 'Batch', dataIndex: 'batch_no', field: 'batch_no', sorter: true, width: 150 },
         { title: 'Product', dataIndex: ['product', 'name'], width: 260 },
         { title: 'Supplier', dataIndex: ['supplier', 'name'], width: 180 },
-        { title: 'Expiry', dataIndex: 'expires_at', field: 'expires_at', sorter: true, width: 130, render: (value) => <DateText value={value} style="compact" /> },
+        { title: 'Expiry', dataIndex: 'expires_at', field: 'expires_at', sorter: true, width: 180, render: expiryBadge },
         { title: 'Storage', dataIndex: 'storage_location', width: 140, render: (value) => value || '-' },
-        { title: 'Available', dataIndex: 'quantity_available', field: 'quantity_available', sorter: true, align: 'right', width: 120 },
-        { title: 'Received', dataIndex: 'quantity_received', align: 'right', width: 120 },
+        { title: 'Available', dataIndex: 'quantity_available', field: 'quantity_available', sorter: true, align: 'right', width: 120, render: stockBadge },
+        { title: 'Received', dataIndex: 'quantity_received', align: 'right', width: 120, render: (value) => <span className="tabular">{formatQuantity(value)}</span> },
         { title: 'Purchase', dataIndex: 'purchase_price', field: 'purchase_price', sorter: true, align: 'right', width: 120, render: (value) => <Money value={value} /> },
         { title: 'MRP', dataIndex: 'mrp', field: 'mrp', sorter: true, align: 'right', width: 120, render: (value) => <Money value={value} /> },
         { title: 'Status', dataIndex: 'is_active', width: 110, render: (value) => <StatusTag active={value} /> },

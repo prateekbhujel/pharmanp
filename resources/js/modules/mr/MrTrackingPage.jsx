@@ -363,8 +363,6 @@ export function MrTrackingPage() {
     return (
         <div className="page-stack">
             <PageHeader
-                title={sectionConfig.title}
-                description={sectionConfig.description}
                 actions={
                     <Space wrap>
                         {section === 'branches' && canManage && <Button onClick={() => openBranch()}>+ Branch</Button>}

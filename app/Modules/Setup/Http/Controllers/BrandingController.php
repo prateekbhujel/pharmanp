@@ -3,6 +3,7 @@
 namespace App\Modules\Setup\Http\Controllers;
 
 use App\Core\Support\AssetUrl;
+use App\Core\Support\ProductMeta;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Modules\Setup\Http\Requests\BrandingSettingsRequest;
@@ -31,6 +32,9 @@ class BrandingController extends Controller
             'sidebar_default_collapsed' => array_key_exists('sidebar_default_collapsed', $data)
                 ? (bool) $data['sidebar_default_collapsed']
                 : (bool) ($current['sidebar_default_collapsed'] ?? true),
+            'show_breadcrumbs' => array_key_exists('show_breadcrumbs', $data)
+                ? (bool) $data['show_breadcrumbs']
+                : (bool) ($current['show_breadcrumbs'] ?? true),
         ];
 
         foreach ([
@@ -60,6 +64,8 @@ class BrandingController extends Controller
             $branding[$key] = AssetUrl::resolve($branding[$key] ?? null);
         }
 
+        $branding['product'] = ProductMeta::payload();
+
         return $branding;
     }
 
@@ -74,6 +80,7 @@ class BrandingController extends Controller
             'accent_color' => '#0f766e',
             'layout' => 'vertical',
             'sidebar_default_collapsed' => true,
+            'show_breadcrumbs' => true,
             'country_code' => 'NP',
             'currency_symbol' => 'Rs.',
             'calendar_type' => 'bs',

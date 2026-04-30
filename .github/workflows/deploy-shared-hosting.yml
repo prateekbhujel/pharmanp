@@ -19,6 +19,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release version
+        run: |
+          git fetch --tags --force
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION_VALUE="${GITHUB_REF_NAME}"
+          else
+            VERSION_VALUE="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+          fi
+          if [ -z "$VERSION_VALUE" ]; then
+            VERSION_VALUE="dev-${GITHUB_SHA::7}"
+          fi
+          printf '%s\n' "$VERSION_VALUE" > VERSION
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
