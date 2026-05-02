@@ -70,11 +70,12 @@ class PartyService implements PartyServiceInterface
             ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when((bool) ($table->filters['deleted'] ?? false), fn (Builder $builder) => $builder->onlyTrashed());
 
-        $query->when($table->search, function (Builder $builder, string $search) use ($typeRelation) {
-            $builder->where(function (Builder $inner) use ($search, $typeRelation) {
+        $codeColumn = $query->getModel()->getTable() === 'suppliers' ? 'supplier_code' : 'customer_code';
+
+        $query->when($table->search, function (Builder $builder, string $search) use ($typeRelation, $codeColumn) {
+            $builder->where(function (Builder $inner) use ($search, $typeRelation, $codeColumn) {
                 $inner->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('supplier_code', 'like', '%'.$search.'%')
-                    ->orWhere('customer_code', 'like', '%'.$search.'%')
+                    ->orWhere($codeColumn, 'like', '%'.$search.'%')
                     ->orWhere('contact_person', 'like', '%'.$search.'%')
                     ->orWhere('phone', 'like', '%'.$search.'%')
                     ->orWhere('email', 'like', '%'.$search.'%')
