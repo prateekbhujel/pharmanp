@@ -564,17 +564,27 @@ class PharmaNpDemoLoadCommand extends Command
     {
         $rows = [];
         $now = now();
+        $employees = DB::table('employees')
+            ->where('tenant_id', $context['tenantId'])
+            ->where('designation', 'Medical Representative')
+            ->orderByDesc('id')
+            ->limit(max($count, 1))
+            ->get(['id', 'branch_id', 'area_id', 'division_id', 'name', 'employee_code', 'phone', 'email']);
 
         for ($i = 1; $i <= $count; $i++) {
-            $name = $this->personName($i + 20);
+            $employee = $employees[($i - 1) % max($employees->count(), 1)] ?? null;
+            $name = $employee?->name ?: $this->personName($i + 20);
             $rows[] = [
                 'tenant_id' => $context['tenantId'],
                 'company_id' => $context['companyId'],
-                'branch_id' => $context['branchIds'][$i % count($context['branchIds'])] ?? null,
+                'branch_id' => $employee?->branch_id ?? $context['branchIds'][$i % count($context['branchIds'])] ?? null,
+                'employee_id' => $employee?->id,
+                'area_id' => $employee?->area_id ?? $context['areaIds'][$i % count($context['areaIds'])] ?? null,
+                'division_id' => $employee?->division_id ?? $context['divisionIds'][$i % count($context['divisionIds'])] ?? null,
                 'name' => $name,
-                'employee_code' => 'MR-'.$context['tenantNo'].'-'.$runCode.'-'.$i,
-                'phone' => '98'.str_pad((string) (83000000 + $context['tenantNo'] * 10000 + $i), 8, '0', STR_PAD_LEFT),
-                'email' => 'mr'.$context['tenantNo'].'-'.$runCode.'-'.$i.'@demo.pharmanp.test',
+                'employee_code' => $employee?->employee_code ?: 'MR-'.$context['tenantNo'].'-'.$runCode.'-'.$i,
+                'phone' => $employee?->phone ?: '98'.str_pad((string) (83000000 + $context['tenantNo'] * 10000 + $i), 8, '0', STR_PAD_LEFT),
+                'email' => $employee?->email ?: 'mr'.$context['tenantNo'].'-'.$runCode.'-'.$i.'@demo.pharmanp.test',
                 'territory' => $this->places[$i % count($this->places)],
                 'monthly_target' => [75000, 100000, 150000, 200000][$i % 4],
                 'is_active' => true,
@@ -605,10 +615,12 @@ class PharmaNpDemoLoadCommand extends Command
                 'company_id' => $context['companyId'],
                 'store_id' => $context['storeId'],
                 'category_id' => $context['categoryIds'][$i % count($context['categoryIds'])] ?? null,
+                'division_id' => $context['divisionIds'][$i % count($context['divisionIds'])] ?? null,
                 'unit_id' => $context['unitIds'][$i % count($context['unitIds'])] ?? null,
                 'sku' => $sku,
                 'barcode' => 'NP'.str_pad((string) ($context['tenantNo'] * 100000000 + $i), 12, '0', STR_PAD_LEFT),
                 'product_code' => $sku,
+                'hs_code' => '3004.'.str_pad((string) ($i % 9999), 4, '0', STR_PAD_LEFT),
                 'name' => $categoryName.' '.$formulation.' '.$i,
                 'generic_name' => $categoryName.' Generic',
                 'composition' => $categoryName.' '.$formulation,
@@ -616,6 +628,8 @@ class PharmaNpDemoLoadCommand extends Command
                 'formulation' => $formulation,
                 'strength' => ((($i % 5) + 1) * 100).'mg',
                 'manufacturer_name' => $this->places[$i % count($this->places)].' Pharma Labs',
+                'packaging_type' => ['Strip', 'Box', 'Bottle', 'Vial', 'Tube'][$i % 5],
+                'case_movement' => ['Fast', 'Regular', 'Slow', 'Seasonal'][$i % 4],
                 'conversion' => 1,
                 'rack_location' => 'R'.(($i % 24) + 1).'-S'.(($i % 8) + 1),
                 'previous_price' => round($mrp * 0.95, 2),
@@ -718,8 +732,10 @@ class PharmaNpDemoLoadCommand extends Command
                 'purchase_no' => $purchaseNo,
                 'supplier_invoice_no' => 'SUP-LD-'.$i,
                 'purchase_date' => $date,
+                'due_date' => $today->subDays($i % 365)->addDays([30, 45, 60, 90][$i % 4])->toDateString(),
                 'status' => 'received',
                 'payment_status' => $paid <= 0 ? 'unpaid' : ($paid >= $total ? 'paid' : 'partial'),
+                'payment_type' => $paid > 0 ? 'payment' : 'credit',
                 'subtotal' => $total,
                 'discount_total' => 0,
                 'grand_total' => $total,
@@ -844,9 +860,11 @@ class PharmaNpDemoLoadCommand extends Command
                 'medical_representative_id' => $mrId,
                 'invoice_no' => 'SI-LD-'.$context['tenantNo'].'-'.$runCode.'-'.str_pad((string) $i, 8, '0', STR_PAD_LEFT),
                 'invoice_date' => $today->subDays($i % 365)->toDateString(),
+                'due_date' => $today->subDays($i % 365)->addDays([30, 45, 60, 90][$i % 4])->toDateString(),
                 'sale_type' => $i % 5 === 0 ? 'pos' : 'retail',
                 'status' => 'confirmed',
                 'payment_status' => $paid <= 0 ? 'unpaid' : ($paid >= $total ? 'paid' : 'partial'),
+                'payment_type' => $paid > 0 ? 'receipt' : 'credit',
                 'subtotal' => $total,
                 'discount_total' => 0,
                 'grand_total' => $total,
