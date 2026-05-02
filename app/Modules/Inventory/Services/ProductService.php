@@ -6,8 +6,8 @@ use App\Core\DTOs\TableQueryData;
 use App\Models\User;
 use App\Modules\Inventory\DTOs\ProductData;
 use App\Modules\Inventory\Models\Product;
+use App\Modules\Inventory\Repositories\Contracts\ProductRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -15,36 +15,13 @@ use Illuminate\Support\Str;
 
 class ProductService
 {
-    private const SORTS = [
-        'name' => 'products.name',
-        'sku' => 'products.sku',
-        'barcode' => 'products.barcode',
-        'mrp' => 'products.mrp',
-        'reorder_level' => 'products.reorder_level',
-        'stock_on_hand' => 'stock_on_hand',
-        'created_at' => 'products.created_at',
-        'updated_at' => 'products.updated_at',
-    ];
+    public function __construct(
+        private readonly ProductRepositoryInterface $products,
+    ) {}
 
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
-        $query = Product::query()
-            ->select('products.*')
-            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('products.tenant_id', $tenantId))
-            ->when((bool) ($table->filters['deleted'] ?? false), fn (Builder $builder) => $builder->onlyTrashed())
-            ->with(['company:id,name', 'unit:id,name', 'category:id,name'])
-            ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available');
-
-        $this->applyFilters($query, $table);
-        $sortColumn = self::SORTS[$table->sortField] ?? self::SORTS['updated_at'];
-
-        if ($sortColumn === 'stock_on_hand') {
-            $query->orderByRaw('COALESCE(stock_on_hand, 0) '.$table->sortOrder);
-        } else {
-            $query->orderBy($sortColumn, $table->sortOrder);
-        }
-
-        return $query->paginate($table->perPage, ['*'], 'page', $table->page);
+        return $this->products->paginate($table, $user);
     }
 
     public function create(ProductData $data, ?User $user = null, ?UploadedFile $image = null): Product
@@ -57,7 +34,7 @@ class ProductService
             $payload['updated_by'] = $user?->id;
             $payload['image_path'] = $image ? $this->storeImage($image) : null;
 
-            return Product::query()->create($payload)->fresh(['company', 'unit', 'category']);
+            return $this->products->create($payload)->fresh(['company', 'unit', 'category']);
         });
     }
 
@@ -74,7 +51,7 @@ class ProductService
                 $payload['image_path'] = $image ? $this->storeImage($image) : null;
             }
 
-            $product->update($payload);
+            $this->products->update($product, $payload);
 
             return $product->fresh(['company', 'unit', 'category']);
         });
@@ -95,7 +72,7 @@ class ProductService
     public function restore(int $id, ?User $user = null): Product
     {
         return DB::transaction(function () use ($id, $user) {
-            $product = Product::query()->onlyTrashed()->findOrFail($id);
+            $product = $this->products->findTrashed($id);
             $product->restore();
             $product->forceFill([
                 'deleted_by' => null,
@@ -107,32 +84,12 @@ class ProductService
         });
     }
 
-    private function applyFilters(Builder $query, TableQueryData $table): void
-    {
-        $query
-            ->when($table->search, function (Builder $builder, string $search) {
-                $builder->where(function (Builder $inner) use ($search) {
-                    $inner->where('products.name', 'like', '%'.$search.'%')
-                        ->orWhere('products.product_code', 'like', '%'.$search.'%')
-                        ->orWhere('products.generic_name', 'like', '%'.$search.'%')
-                        ->orWhere('products.sku', 'like', '%'.$search.'%')
-                        ->orWhere('products.barcode', 'like', '%'.$search.'%')
-                        ->orWhere('products.composition', 'like', '%'.$search.'%')
-                        ->orWhere('products.group_name', 'like', '%'.$search.'%')
-                        ->orWhere('products.manufacturer_name', 'like', '%'.$search.'%');
-                });
-            })
-            ->when(isset($table->filters['company_id']), fn (Builder $builder) => $builder->where('products.company_id', $table->filters['company_id']))
-            ->when(isset($table->filters['category_id']), fn (Builder $builder) => $builder->where('products.category_id', $table->filters['category_id']))
-            ->when(isset($table->filters['is_active']), fn (Builder $builder) => $builder->where('products.is_active', (bool) $table->filters['is_active']));
-    }
-
     private function nextSku(?int $companyId): string
     {
         $prefix = $companyId ? 'P'.$companyId : 'PNP';
         $suffix = Str::upper(Str::random(6));
 
-        while (Product::query()->where('company_id', $companyId)->where('sku', $prefix.'-'.$suffix)->exists()) {
+        while ($this->products->skuExists($companyId, $prefix.'-'.$suffix)) {
             $suffix = Str::upper(Str::random(6));
         }
 

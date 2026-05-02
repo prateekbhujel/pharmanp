@@ -1,9 +1,9 @@
 <?php
 
 use App\Providers\AppServiceProvider;
-use App\Modules\Inventory\InventoryServiceProvider;
+use App\Providers\PharmaNpModuleServiceProvider;
 
 return [
     AppServiceProvider::class,
-    InventoryServiceProvider::class,
+    PharmaNpModuleServiceProvider::class,
 ];

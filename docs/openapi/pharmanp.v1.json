@@ -1,0 +1,169 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "PharmaNP API",
+    "version": "1.0.0",
+    "description": "Session-authenticated API for the PharmaNP Laravel and React pharmacy ERP/POS application."
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Same-domain Laravel API"
+    }
+  ],
+  "security": [
+    {
+      "sessionCookie": []
+    },
+    {
+      "csrfHeader": []
+    }
+  ],
+  "paths": {
+    "/me": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "Current authenticated user",
+        "responses": {
+          "200": {
+            "description": "Current user context"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          }
+        }
+      }
+    },
+    "/modules": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "Registered backend/frontend module catalog",
+        "responses": {
+          "200": {
+            "description": "Module catalog"
+          }
+        }
+      }
+    },
+    "/dashboard/summary": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Tenant-scoped dashboard metrics",
+        "parameters": [
+          {
+            "name": "from_date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "medical_representative_id",
+            "in": "query",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard metrics"
+          }
+        }
+      }
+    },
+    "/inventory/products": {
+      "get": {
+        "tags": ["Inventory"],
+        "summary": "Server-side product list",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "minimum": 5, "maximum": 100 } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort_field", "in": "query", "schema": { "type": "string", "enum": ["name", "sku", "barcode", "mrp", "reorder_level", "stock_on_hand", "created_at", "updated_at"] } },
+          { "name": "sort_order", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"] } },
+          { "name": "company_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "category_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "is_active", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "deleted", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated product collection"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Inventory"],
+        "summary": "Create product",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created"
+          },
+          "422": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "pharmanp_session"
+      },
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-TOKEN"
+      }
+    },
+    "schemas": {
+      "ProductWrite": {
+        "type": "object",
+        "required": ["name", "company_id", "category_id", "unit_id", "formulation", "mrp", "purchase_price", "selling_price", "reorder_level"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 180 },
+          "sku": { "type": "string", "nullable": true },
+          "barcode": { "type": "string", "nullable": true },
+          "product_code": { "type": "string", "nullable": true },
+          "company_id": { "type": "integer" },
+          "category_id": { "type": "integer" },
+          "unit_id": { "type": "integer" },
+          "formulation": { "type": "string" },
+          "strength": { "type": "string", "nullable": true },
+          "mrp": { "type": "number" },
+          "purchase_price": { "type": "number" },
+          "selling_price": { "type": "number" },
+          "reorder_level": { "type": "integer" },
+          "is_active": { "type": "boolean" },
+          "image": { "type": "string", "format": "binary", "nullable": true }
+        }
+      }
+    }
+  },
+  "tags": [
+    { "name": "Core" },
+    { "name": "Dashboard" },
+    { "name": "Inventory" },
+    { "name": "Purchase" },
+    { "name": "Sales" },
+    { "name": "Accounting" },
+    { "name": "Field Force" },
+    { "name": "Reports" },
+    { "name": "Setup" }
+  ]
+}

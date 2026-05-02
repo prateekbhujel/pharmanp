@@ -14,7 +14,7 @@ use Spatie\Permission\Models\Role;
 class PharmaNpDemoLoadCommand extends Command
 {
     protected $signature = 'pharmanp:demo-load
-        {--profile=showcase : tiny, showcase, or stress}
+        {--profile=showcase : tiny, showcase, stress, scale10m, or scale20m}
         {--tenants= : Override tenant count}
         {--branches= : Branches per tenant}
         {--users= : Total staff users}
@@ -104,9 +104,15 @@ class PharmaNpDemoLoadCommand extends Command
             'tiny' => ['tenants' => 2, 'branches' => 2, 'users' => 8, 'products' => 60, 'customers' => 120, 'suppliers' => 24, 'batches' => 120, 'purchases' => 40, 'sales' => 180],
             'showcase' => ['tenants' => 12, 'branches' => 3, 'users' => 180, 'products' => 3000, 'customers' => 6000, 'suppliers' => 360, 'batches' => 9000, 'purchases' => 3000, 'sales' => 18000],
             'stress' => ['tenants' => 100, 'branches' => 5, 'users' => 2500, 'products' => 100000, 'customers' => 250000, 'suppliers' => 10000, 'batches' => 400000, 'purchases' => 500000, 'sales' => 1000000],
+            'scale10m' => ['tenants' => 200, 'branches' => 5, 'users' => 5000, 'products' => 250000, 'customers' => 500000, 'suppliers' => 20000, 'batches' => 1000000, 'purchases' => 750000, 'sales' => 1500000],
+            'scale20m' => ['tenants' => 300, 'branches' => 8, 'users' => 9000, 'products' => 500000, 'customers' => 1000000, 'suppliers' => 40000, 'batches' => 2000000, 'purchases' => 1500000, 'sales' => 3000000],
         ];
 
         $counts = $profiles[$profile] ?? $profiles['showcase'];
+
+        if (str_starts_with($profile, 'scale') && DB::connection()->getDriverName() === 'sqlite') {
+            throw new \RuntimeException('Scale profiles require MySQL/MariaDB. Use tiny/showcase for SQLite.');
+        }
 
         foreach (array_keys($counts) as $key) {
             if ($this->option($key) !== null) {

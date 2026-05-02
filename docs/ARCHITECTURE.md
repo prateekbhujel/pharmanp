@@ -6,11 +6,30 @@ PharmaNP is one Laravel application serving a same-domain React SPA. Laravel own
 
 - `app/Core`: shared DTOs, support classes, installation service, and cross-module utilities.
 - `app/Modules/*`: domain modules with local models, DTOs, services, requests, resources, controllers, and policies.
+- `config/pharmanp-modules.php`: the module manifest. It declares each module's backend namespace, frontend path, domain boundary, and service provider.
+- `app/Providers/PharmaNpModuleServiceProvider.php`: registers the module registry and module service providers. A module should bind its contracts here, not inside controllers.
 - `routes/api_v1.php`: authenticated JSON endpoints consumed by the React app.
 - `routes/web.php`: install/login/logout, printable documents, and the SPA fallback only.
 - Controllers stay thin: validate, authorize, call a service, return a resource/JSON response.
 - Services own transactions and integrity checks.
-- Repositories are not created by default. Add one only when a reusable query or persistence boundary becomes complex enough to justify it.
+- Repositories are not created by default. Add one only when a reusable query or persistence boundary becomes complex enough to justify it. Product listing is the reference pattern: controller -> FormRequest/DTO -> service -> repository contract -> resource.
+
+Recommended module shape:
+
+```text
+app/Modules/<Module>/
+  DTOs/
+  Http/Controllers/
+  Http/Requests/
+  Http/Resources/
+  Models/
+  Providers/
+  Repositories/
+    Contracts/
+  Services/
+```
+
+DTOs normalize request payloads. Requests validate input and relationship existence. Resources own response shape. Services own business decisions and transactions. Repositories hide complex reusable query/persistence work behind contracts.
 
 ## Database
 
@@ -32,6 +51,7 @@ Dashboard, report, inventory, party, MR and transaction APIs must scope by the a
 
 - `resources/js/core`: API client, auth provider, layout, shared components, hooks, utilities.
 - `resources/js/modules`: feature modules. Each module owns screens and local composition.
+- `resources/js/core/modules/routeRegistry.jsx`: the SPA module route registry. Feature pages are lazy-loaded from their module folder, keeping AppShell from becoming the owner of every screen.
 - Ant Design is used for serious data UI. Tailwind/CSS handles layout density, spacing, and polish.
 
 ## API Convention
@@ -39,6 +59,8 @@ Dashboard, report, inventory, party, MR and transaction APIs must scope by the a
 Authenticated app APIs are under `/api/v1/*` and use Laravel session cookies plus CSRF because the React app is served from the same Laravel domain. This is intentional: Sanctum/JWT is not required for the browser SPA unless external/mobile API clients are added.
 
 Lists use server-side pagination, search, filters, and sorting. Laravel resources control response shape. Transactional writes such as purchases, sales, returns, vouchers, payments, stock adjustments, and imports must run inside services/actions with database transactions.
+
+The OpenAPI foundation is exposed at `GET /api/v1/openapi.json` for authenticated developers. It is intentionally static in this pass so shared hosting does not need Swagger generation during deploy. Package-backed Swagger UI can sit on top of the same file later.
 
 ## Large Data Guardrails
 
@@ -53,7 +75,7 @@ Laravel/PHP is not the limiting factor for pharmacy ERP workloads. The limiting 
 
 A 100-million-row dataset is an infrastructure and data-lifecycle project, not a shared-hosting promise. That scale needs MySQL/MariaDB tuning, slow-query review, summary tables, archival/partition strategy for ledgers and stock movements, queue workers, backup/restore rehearsals, and realistic load tests before it is sold as supported.
 
-Use `php artisan pharmanp:demo-load` to create repeatable chunked demo data. `tiny` is for local smoke tests, `showcase` is for a sales demo database, and `stress` is for controlled infrastructure testing only. The command uses direct chunked inserts so it can generate large datasets without going through slow browser workflows.
+Use `php artisan pharmanp:demo-load` to create repeatable chunked demo data. `tiny` is for local smoke tests, `showcase` is for a sales demo database, `stress` is for controlled infrastructure testing, and `scale10m`/`scale20m` are for serious MySQL/MariaDB load demonstrations only. The command uses direct chunked inserts so it can generate large datasets without going through slow browser workflows.
 
 ## Change Boundaries
 

@@ -7,6 +7,8 @@ Authentication: Laravel session cookie with CSRF token. All app APIs are protect
 ## Current Endpoints
 
 - `GET /me`
+- `GET /modules`
+- `GET /openapi.json`
 - `GET /dashboard/summary`
 - `GET /system/update-check`
 - `GET /inventory/products`
@@ -31,3 +33,19 @@ company_id=1
 ```
 
 Laravel resources return `data`, `links`, and `meta` for paginated lists.
+
+## OpenAPI
+
+The authenticated OpenAPI document lives at:
+
+```text
+GET /api/v1/openapi.json
+```
+
+Source file:
+
+```text
+docs/openapi/pharmanp.v1.json
+```
+
+Frontend developers can use this document in Swagger UI, Insomnia, Postman, Bruno, or any OpenAPI-compatible client while still using the same Laravel session and CSRF flow as the React app.
