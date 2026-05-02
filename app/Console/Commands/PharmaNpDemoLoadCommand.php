@@ -494,6 +494,72 @@ class PharmaNpDemoLoadCommand extends Command
         $this->insertChunked('users', $rows, $chunk);
     }
 
+    private function seedEmployees(array $context, int $count, int $chunk, string $runCode): void
+    {
+        $users = DB::table('users')
+            ->where('tenant_id', $context['tenantId'])
+            ->orderByDesc('id')
+            ->limit(max($count, 1))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+        $rows = [];
+        $now = now();
+        $managerIds = [];
+
+        for ($i = 1; $i <= $count; $i++) {
+            $designation = match (true) {
+                $i % 25 === 0 => 'Area Manager',
+                $i % 8 === 0 => 'Manager',
+                default => 'Medical Representative',
+            };
+
+            $reportsTo = null;
+            if ($designation === 'Manager' && $managerIds !== []) {
+                $reportsTo = $managerIds[array_key_last($managerIds)];
+            } elseif ($designation === 'Medical Representative' && $managerIds !== []) {
+                $reportsTo = $managerIds[$i % count($managerIds)];
+            }
+
+            $rows[] = [
+                'tenant_id' => $context['tenantId'],
+                'company_id' => $context['companyId'],
+                'user_id' => $users[($i - 1) % max(count($users), 1)] ?? null,
+                'branch_id' => $context['branchIds'][$i % count($context['branchIds'])] ?? null,
+                'area_id' => $context['areaIds'][$i % count($context['areaIds'])] ?? null,
+                'division_id' => $context['divisionIds'][$i % count($context['divisionIds'])] ?? null,
+                'reports_to_employee_id' => $reportsTo,
+                'employee_code' => 'EMP-'.$context['tenantNo'].'-'.$runCode.'-'.$i,
+                'name' => $this->personName($i + 40),
+                'designation' => $designation,
+                'phone' => '98'.str_pad((string) (84000000 + $context['tenantNo'] * 10000 + $i), 8, '0', STR_PAD_LEFT),
+                'email' => 'employee'.$context['tenantNo'].'-'.$runCode.'-'.$i.'@demo.pharmanp.test',
+                'joined_on' => CarbonImmutable::today()->subDays($i % 900)->toDateString(),
+                'is_active' => true,
+                'created_by' => $context['ownerId'],
+                'updated_by' => $context['ownerId'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+
+            if (count($rows) >= $chunk) {
+                $this->insertChunked('employees', $rows, $chunk);
+                $managerIds = DB::table('employees')
+                    ->where('tenant_id', $context['tenantId'])
+                    ->whereIn('designation', ['Manager', 'Area Manager'])
+                    ->orderByDesc('id')
+                    ->limit(100)
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                $rows = [];
+            }
+        }
+
+        $this->insertChunked('employees', $rows, $chunk);
+    }
+
     private function seedRepresentatives(array $context, int $count, int $chunk, string $runCode): void
     {
         $rows = [];
