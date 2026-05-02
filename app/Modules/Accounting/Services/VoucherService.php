@@ -3,6 +3,7 @@
 namespace App\Modules\Accounting\Services;
 
 use App\Core\Services\DocumentNumberService;
+use App\Modules\Accounting\Contracts\VoucherServiceInterface;
 use App\Models\User;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Models\Voucher;
@@ -11,7 +12,7 @@ use App\Modules\Party\Models\Supplier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class VoucherService
+class VoucherService implements VoucherServiceInterface
 {
     public function __construct(
         private readonly DocumentNumberService $numbers,

@@ -4,13 +4,14 @@ namespace App\Modules\MR\Services;
 
 use App\Core\DTOs\TableQueryData;
 use App\Models\User;
+use App\Modules\MR\Contracts\MrManagementServiceInterface;
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\MR\Models\RepresentativeVisit;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
-class MrManagementService
+class MrManagementService implements MrManagementServiceInterface
 {
     private const REPRESENTATIVE_SORTS = [
         'name' => 'name',

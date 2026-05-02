@@ -3,6 +3,7 @@
 namespace App\Modules\ImportExport\Services;
 
 use App\Models\User;
+use App\Modules\ImportExport\Contracts\ImportPreviewServiceInterface;
 use App\Modules\ImportExport\Models\ImportJob;
 use App\Modules\ImportExport\Models\ImportStagedRow;
 use App\Modules\Inventory\Models\Batch;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Rap2hpoutre\FastExcel\FastExcel;
 
-class ImportPreviewService
+class ImportPreviewService implements ImportPreviewServiceInterface
 {
     private const PREVIEW_ROW_LIMIT = 25;
 

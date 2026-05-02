@@ -4,6 +4,7 @@ namespace App\Modules\Party\Services;
 
 use App\Core\DTOs\TableQueryData;
 use App\Models\User;
+use App\Modules\Party\Contracts\PartyServiceInterface;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
-class PartyService
+class PartyService implements PartyServiceInterface
 {
     private const SORTS = [
         'name' => 'name',

@@ -3,6 +3,7 @@
 namespace App\Modules\Accounting\Services;
 
 use App\Models\User;
+use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Support\AccountCatalog;
 use App\Modules\Party\Models\Customer;
@@ -10,7 +11,7 @@ use App\Modules\Party\Models\Supplier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class AccountTransactionPostingService
+class AccountTransactionPostingService implements AccountTransactionPostingServiceInterface
 {
     public function replaceForSource(
         User $user,

@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Accounting\Http\Requests\VoucherStoreRequest;
 use App\Modules\Accounting\Http\Resources\VoucherResource;
 use App\Modules\Accounting\Models\Voucher;
-use App\Modules\Accounting\Services\VoucherService;
+use App\Modules\Accounting\Contracts\VoucherServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -40,7 +40,7 @@ class VoucherController extends Controller
         return new VoucherResource($voucher->load('entries'));
     }
 
-    public function store(VoucherStoreRequest $request, VoucherService $service): JsonResponse
+    public function store(VoucherStoreRequest $request, VoucherServiceInterface $service): JsonResponse
     {
         $voucher = $service->create($request->validated(), $request->user());
 
@@ -50,13 +50,13 @@ class VoucherController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(VoucherStoreRequest $request, Voucher $voucher, VoucherService $service): VoucherResource
+    public function update(VoucherStoreRequest $request, Voucher $voucher, VoucherServiceInterface $service): VoucherResource
     {
         return (new VoucherResource($service->update($voucher, $request->validated(), $request->user())))
             ->additional(['message' => 'Voucher updated.']);
     }
 
-    public function destroy(Voucher $voucher, VoucherService $service): JsonResponse
+    public function destroy(Voucher $voucher, VoucherServiceInterface $service): JsonResponse
     {
         $service->delete($voucher);
 

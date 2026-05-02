@@ -3,10 +3,11 @@
 namespace App\Modules\MR\Services;
 
 use App\Models\User;
+use App\Modules\MR\Contracts\MrPerformanceServiceInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
-class MrPerformanceService
+class MrPerformanceService implements MrPerformanceServiceInterface
 {
     public function monthly(?User $user = null, array $filters = []): array
     {

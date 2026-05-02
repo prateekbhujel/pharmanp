@@ -3,6 +3,8 @@
 namespace App\Modules\Setup\Services;
 
 use App\Core\Support\AssetUrl;
+use App\Modules\Setup\Contracts\AccessControlServiceInterface;
+use App\Modules\Setup\Contracts\SetupServiceInterface;
 use App\Core\Services\InstallationService;
 use App\Models\User;
 use App\Models\Setting;
@@ -20,11 +22,11 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
-class SetupService
+class SetupService implements SetupServiceInterface
 {
     public function __construct(
         private readonly InstallationService $installation,
-        private readonly AccessControlService $accessControl,
+        private readonly AccessControlServiceInterface $accessControl,
     ) {}
 
     public function complete(array $data): array

@@ -4,20 +4,22 @@ namespace App\Modules\Purchase\Services;
 
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
+use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Services\StockMovementService;
+use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
 use App\Modules\Party\Models\Supplier;
+use App\Modules\Purchase\Contracts\PurchaseEntryServiceInterface;
 use App\Modules\Purchase\Models\Purchase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class PurchaseEntryService
+class PurchaseEntryService implements PurchaseEntryServiceInterface
 {
     public function __construct(
-        private readonly StockMovementService $stock,
-        private readonly AccountTransactionPostingService $accounts,
+        private readonly StockMovementServiceInterface $stock,
+        private readonly AccountTransactionPostingServiceInterface $accounts,
         private readonly DocumentNumberService $numbers,
     ) {}
 

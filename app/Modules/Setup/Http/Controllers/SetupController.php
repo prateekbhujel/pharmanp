@@ -5,7 +5,7 @@ namespace App\Modules\Setup\Http\Controllers;
 use App\Core\Services\InstallationService;
 use App\Http\Controllers\Controller;
 use App\Modules\Setup\Http\Requests\CompleteSetupRequest;
-use App\Modules\Setup\Services\SetupService;
+use App\Modules\Setup\Contracts\SetupServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
@@ -21,7 +21,7 @@ class SetupController extends Controller
         return response()->json(['data' => $installation->status()]);
     }
 
-    public function complete(CompleteSetupRequest $request, SetupService $service): JsonResponse
+    public function complete(CompleteSetupRequest $request, SetupServiceInterface $service): JsonResponse
     {
         $result = $service->complete($request->validated());
 

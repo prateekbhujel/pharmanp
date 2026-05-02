@@ -7,12 +7,13 @@ PharmaNP is one Laravel application serving a same-domain React SPA. Laravel own
 - `app/Core`: shared DTOs, support classes, installation service, and cross-module utilities.
 - `app/Modules/*`: domain modules with local models, DTOs, services, requests, resources, controllers, and policies.
 - `config/pharmanp-modules.php`: the module manifest. It declares each module's backend namespace, frontend path, domain boundary, and service provider.
-- `app/Providers/PharmaNpModuleServiceProvider.php`: registers the module registry and module service providers. A module should bind its contracts here, not inside controllers.
-- `routes/api_v1.php`: authenticated JSON endpoints consumed by the React app.
+- `app/Providers/PharmaNpModuleServiceProvider.php`: registers the module registry and module service providers. A module should bind its contracts inside its module provider, not inside controllers.
+- `app/Core/Modules/ModuleServiceProvider.php`: base provider for module-level contracts and concrete services.
+- `routes/api_v1.php`: authenticated JSON endpoints consumed by the React app, registered from Laravel bootstrap instead of being hidden inside `web.php`.
 - `routes/web.php`: install/login/logout, printable documents, and the SPA fallback only.
 - Controllers stay thin: validate, authorize, call a service, return a resource/JSON response.
 - Services own transactions and integrity checks.
-- Repositories are not created by default. Add one only when a reusable query or persistence boundary becomes complex enough to justify it. Product listing is the reference pattern: controller -> FormRequest/DTO -> service -> repository contract -> resource.
+- Module services expose contracts across Inventory, Party, Purchase, Sales, Accounting, MR, Reports, ImportExport, Setup and Analytics. Repositories are not created by default. Add one only when a reusable query or persistence boundary becomes complex enough to justify it. Product listing is the reference pattern: controller -> FormRequest/DTO -> service -> repository contract -> resource.
 
 Recommended module shape:
 
@@ -52,6 +53,7 @@ Dashboard, report, inventory, party, MR and transaction APIs must scope by the a
 - `resources/js/core`: API client, auth provider, layout, shared components, hooks, utilities.
 - `resources/js/modules`: feature modules. Each module owns screens and local composition.
 - `resources/js/core/modules/routeRegistry.jsx`: the SPA module route registry. Feature pages are lazy-loaded from their module folder, keeping AppShell from becoming the owner of every screen.
+- `VITE_PHARMANP_API_BASE_URL` lets frontend developers run Vite against a backend host without editing source.
 - Ant Design is used for serious data UI. Tailwind/CSS handles layout density, spacing, and polish.
 
 ## API Convention
@@ -60,7 +62,7 @@ Authenticated app APIs are under `/api/v1/*` and use Laravel session cookies plu
 
 Lists use server-side pagination, search, filters, and sorting. Laravel resources control response shape. Transactional writes such as purchases, sales, returns, vouchers, payments, stock adjustments, and imports must run inside services/actions with database transactions.
 
-The OpenAPI foundation is exposed at `GET /api/v1/openapi.json` for authenticated developers. It is intentionally static in this pass so shared hosting does not need Swagger generation during deploy. Package-backed Swagger UI can sit on top of the same file later.
+The OpenAPI foundation is exposed at `GET /api/v1/openapi.json`. It starts from `docs/openapi/pharmanp.v1.json` and is augmented with discovered Laravel `/api/v1` routes so Swagger coverage stays broad as modules grow. Swagger UI is available at `/api-docs`.
 
 ## Large Data Guardrails
 

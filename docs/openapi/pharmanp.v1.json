@@ -131,6 +131,38 @@
         "name": "X-CSRF-TOKEN"
       }
     },
+    "responses": {
+      "Unauthenticated": {
+        "description": "Authentication is required."
+      },
+      "Forbidden": {
+        "description": "The authenticated user is not allowed to perform this action."
+      },
+      "ValidationError": {
+        "description": "Validation failed.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "errors": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "schemas": {
       "ProductWrite": {
         "type": "object",

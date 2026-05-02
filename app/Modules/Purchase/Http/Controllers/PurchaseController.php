@@ -7,7 +7,7 @@ use App\Models\Setting;
 use App\Modules\Purchase\Http\Requests\PurchaseStoreRequest;
 use App\Modules\Purchase\Http\Resources\PurchaseResource;
 use App\Modules\Purchase\Models\Purchase;
-use App\Modules\Purchase\Services\PurchaseEntryService;
+use App\Modules\Purchase\Contracts\PurchaseEntryServiceInterface;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -47,7 +47,7 @@ class PurchaseController extends Controller
         return response()->json(PurchaseResource::collection($purchases)->response()->getData(true));
     }
 
-    public function store(PurchaseStoreRequest $request, PurchaseEntryService $service): JsonResponse
+    public function store(PurchaseStoreRequest $request, PurchaseEntryServiceInterface $service): JsonResponse
     {
         $purchase = $service->create($request->validated(), $request->user());
 

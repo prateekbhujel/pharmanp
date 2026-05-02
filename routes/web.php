@@ -10,6 +10,14 @@ use App\Modules\Sales\Http\Controllers\SalesInvoiceController;
 use App\Modules\Setup\Http\Controllers\SetupController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/api/v1/openapi.json', \App\Modules\Core\Http\Controllers\OpenApiController::class)
+    ->middleware('installed')
+    ->name('api.openapi');
+
+Route::view('/api-docs', 'api-docs')
+    ->middleware('installed')
+    ->name('api.docs');
+
 Route::get('/', function () {
     if (! app(\App\Core\Services\InstallationService::class)->installed()) {
         return redirect()->route('setup.show');
@@ -36,8 +44,6 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->name('logout');
 
 Route::middleware(['installed', 'auth'])->group(function () {
-    require __DIR__.'/api_v1.php';
-
     Route::get('/purchases/{purchase}/print', [PurchaseController::class, 'print'])->name('purchases.print');
     Route::get('/purchases/{purchase}/pdf', [PurchaseController::class, 'pdf'])->name('purchases.pdf');
     Route::get('/purchase-returns/{purchaseReturn}/print', [PurchaseReturnController::class, 'print'])->name('purchase-returns.print');

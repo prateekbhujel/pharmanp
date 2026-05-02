@@ -2,6 +2,7 @@
 
 namespace App\Modules\Analytics\Services;
 
+use App\Modules\Analytics\Contracts\PharmaSignalServiceInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -9,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Rubix\ML\Clusterers\KMeans;
 use Rubix\ML\Datasets\Unlabeled;
 
-class PharmaSignalService
+class PharmaSignalService implements PharmaSignalServiceInterface
 {
     public function inventorySignals(Request $request, int $perPage = 20): array
     {

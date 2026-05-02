@@ -3,12 +3,14 @@
 namespace App\Modules\Inventory\Services;
 
 use App\Models\User;
+use App\Modules\Inventory\Contracts\BatchServiceInterface;
+use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
 use App\Modules\Inventory\Models\Batch;
 use Illuminate\Support\Facades\DB;
 
-class BatchService
+class BatchService implements BatchServiceInterface
 {
-    public function __construct(private readonly StockMovementService $stock) {}
+    public function __construct(private readonly StockMovementServiceInterface $stock) {}
 
     public function save(array $data, User $user, ?Batch $batch = null): Batch
     {

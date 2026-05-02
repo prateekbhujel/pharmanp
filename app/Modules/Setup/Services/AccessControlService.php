@@ -2,10 +2,11 @@
 
 namespace App\Modules\Setup\Services;
 
+use App\Modules\Setup\Contracts\AccessControlServiceInterface;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
-class AccessControlService
+class AccessControlService implements AccessControlServiceInterface
 {
     public function syncPermissions(): void
     {

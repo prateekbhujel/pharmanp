@@ -624,7 +624,7 @@ class PharmaNpDemoLoadCommand extends Command
             return;
         }
 
-        DB::table('purchases')->insert($purchaseRows);
+        $this->insertChunked('purchases', $purchaseRows, $chunk);
         $purchaseIds = DB::table('purchases')->whereIn('purchase_no', array_column($purchaseRows, 'purchase_no'))->pluck('id', 'purchase_no');
         $now = now();
 
@@ -769,7 +769,7 @@ class PharmaNpDemoLoadCommand extends Command
             $publicRows[] = $row;
         }
 
-        DB::table('sales_invoices')->insert($publicRows);
+        $this->insertChunked('sales_invoices', $publicRows, $chunk);
         $invoiceIds = DB::table('sales_invoices')->whereIn('invoice_no', array_column($publicRows, 'invoice_no'))->pluck('id', 'invoice_no');
         $now = now();
         $itemRows = [];
@@ -828,9 +828,7 @@ class PharmaNpDemoLoadCommand extends Command
         $this->insertChunked('stock_movements', $movementRows, $chunk);
         $this->insertChunked('account_transactions', $accountRows, $chunk);
 
-        foreach ($batchOut as $batchId => $quantity) {
-            DB::table('batches')->whereKey($batchId)->decrement('quantity_available', $quantity);
-        }
+        $this->decrementBatchQuantities($batchOut);
 
         $invoiceRows = [];
     }
@@ -901,22 +899,76 @@ class PharmaNpDemoLoadCommand extends Command
 
     private function applyBalances(string $table, array $balances): void
     {
-        foreach ($balances as $id => $amount) {
-            if ($amount == 0) {
-                continue;
+        if (! in_array($table, ['customers', 'suppliers'], true)) {
+            throw new \InvalidArgumentException('Unsupported balance table: '.$table);
+        }
+
+        $balances = array_filter($balances, fn ($amount) => (float) $amount !== 0.0);
+
+        foreach (array_chunk($balances, 1000, true) as $part) {
+            $ids = array_map('intval', array_keys($part));
+            $caseSql = 'CASE id ';
+            $caseBindings = [];
+
+            foreach ($part as $id => $amount) {
+                $caseSql .= 'WHEN ? THEN ? ';
+                $caseBindings[] = (int) $id;
+                $caseBindings[] = (float) $amount;
             }
 
-            DB::table($table)->whereKey($id)->increment('current_balance', round($amount, 2));
+            $caseSql .= 'ELSE 0 END';
+            $inSql = implode(',', array_fill(0, count($ids), '?'));
+
+            DB::update(
+                "UPDATE {$table} SET current_balance = current_balance + ({$caseSql}), updated_at = ? WHERE id IN ({$inSql})",
+                [...$caseBindings, now()->toDateTimeString(), ...$ids],
+            );
+        }
+    }
+
+    private function decrementBatchQuantities(array $batchOut): void
+    {
+        $batchOut = array_filter($batchOut, fn ($quantity) => (float) $quantity !== 0.0);
+
+        foreach (array_chunk($batchOut, 1000, true) as $part) {
+            $ids = array_map('intval', array_keys($part));
+            $caseSql = 'CASE id ';
+            $caseBindings = [];
+
+            foreach ($part as $id => $quantity) {
+                $caseSql .= 'WHEN ? THEN ? ';
+                $caseBindings[] = (int) $id;
+                $caseBindings[] = (float) $quantity;
+            }
+
+            $caseSql .= 'ELSE 0 END';
+            $inSql = implode(',', array_fill(0, count($ids), '?'));
+
+            DB::update(
+                "UPDATE batches SET quantity_available = quantity_available - ({$caseSql}), updated_at = ? WHERE id IN ({$inSql})",
+                [...$caseBindings, now()->toDateTimeString(), ...$ids],
+            );
         }
     }
 
     private function insertChunked(string $table, array $rows, int $chunk): void
     {
-        foreach (array_chunk($rows, $chunk) as $part) {
+        $safeChunk = $this->safeInsertChunk($rows, $chunk);
+
+        foreach (array_chunk($rows, $safeChunk) as $part) {
             if ($part !== []) {
                 DB::table($table)->insert($part);
             }
         }
+    }
+
+    private function safeInsertChunk(array $rows, int $requestedChunk): int
+    {
+        $firstRow = $rows[0] ?? [];
+        $columnCount = max(count($firstRow), 1);
+        $placeholderLimit = 60000;
+
+        return max(1, min($requestedChunk, intdiv($placeholderLimit, $columnCount)));
     }
 
     private function share(int $total, int $parts, int $position): int

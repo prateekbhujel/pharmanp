@@ -3,13 +3,13 @@
 namespace App\Modules\ImportExport\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\ImportExport\Services\PurchaseOcrService;
+use App\Modules\ImportExport\Contracts\PurchaseOcrServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PurchaseOcrController extends Controller
 {
-    public function extract(Request $request, PurchaseOcrService $service): JsonResponse
+    public function extract(Request $request, PurchaseOcrServiceInterface $service): JsonResponse
     {
         $uploadMaxKb = max(1024, (int) config('services.ocr_space.upload_max_kb', 10240));
 
@@ -27,7 +27,7 @@ class PurchaseOcrController extends Controller
         ], $result['extraction_status'] === 'success' ? 200 : 422);
     }
 
-    public function draftPurchase(Request $request, PurchaseOcrService $service): JsonResponse
+    public function draftPurchase(Request $request, PurchaseOcrServiceInterface $service): JsonResponse
     {
         $validated = $request->validate([
             'ocr_text' => ['required', 'string'],

@@ -4,20 +4,21 @@ namespace App\Modules\Sales\Services;
 
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
-use App\Modules\Accounting\Services\AccountTransactionPostingService;
+use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Services\StockMovementService;
+use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
 use App\Modules\Party\Models\Customer;
+use App\Modules\Sales\Contracts\SalesInvoiceServiceInterface;
 use App\Modules\Sales\Models\SalesInvoice;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class SalesInvoiceService
+class SalesInvoiceService implements SalesInvoiceServiceInterface
 {
     public function __construct(
-        private readonly StockMovementService $stock,
-        private readonly AccountTransactionPostingService $accounts,
+        private readonly StockMovementServiceInterface $stock,
+        private readonly AccountTransactionPostingServiceInterface $accounts,
         private readonly DocumentNumberService $numbers,
     ) {}
 

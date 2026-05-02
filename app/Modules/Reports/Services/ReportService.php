@@ -3,18 +3,19 @@
 namespace App\Modules\Reports\Services;
 
 use App\Modules\Accounting\Support\AccountCatalog;
-use App\Modules\Analytics\Services\PharmaSignalService;
-use App\Modules\MR\Services\MrPerformanceService;
+use App\Modules\Reports\Contracts\ReportServiceInterface;
+use App\Modules\Analytics\Contracts\PharmaSignalServiceInterface;
+use App\Modules\MR\Contracts\MrPerformanceServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class ReportService
+class ReportService implements ReportServiceInterface
 {
     public function __construct(
-        private readonly MrPerformanceService $mrPerformance,
-        private readonly PharmaSignalService $signals,
+        private readonly MrPerformanceServiceInterface $mrPerformance,
+        private readonly PharmaSignalServiceInterface $signals,
     ) {}
 
     public function run(string $report, Request $request): array

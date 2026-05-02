@@ -2,13 +2,14 @@
 
 namespace App\Modules\Inventory\Services;
 
+use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class StockMovementService
+class StockMovementService implements StockMovementServiceInterface
 {
     public function record(array $data): StockMovement
     {

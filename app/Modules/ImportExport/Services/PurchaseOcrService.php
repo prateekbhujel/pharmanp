@@ -2,6 +2,7 @@
 
 namespace App\Modules\ImportExport\Services;
 
+use App\Modules\ImportExport\Contracts\PurchaseOcrServiceInterface;
 use App\Modules\Party\Models\Supplier;
 use App\Modules\Purchase\Models\Purchase;
 use Carbon\Carbon;
@@ -9,7 +10,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
-class PurchaseOcrService
+class PurchaseOcrService implements PurchaseOcrServiceInterface
 {
     public function extract(UploadedFile $file): array
     {

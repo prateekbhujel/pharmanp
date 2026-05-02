@@ -92,7 +92,7 @@ class DashboardService
             ->where('medical_representative_id', $representativeId)
             ->whereBetween('invoice_date', [$from->toDateString(), $to->toDateString()]);
 
-        $representative = DB::table('medical_representatives')->whereKey($representativeId)->first();
+        $representative = DB::table('medical_representatives')->where('id', $representativeId)->first();
 
         return [
             'scope' => 'medical_representative',

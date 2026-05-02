@@ -2,9 +2,10 @@
 
 namespace App\Modules\Setup\Services;
 
+use App\Modules\Setup\Contracts\FeatureCatalogServiceInterface;
 use App\Modules\Setup\Models\FeatureCatalogItem;
 
-class FeatureCatalogService
+class FeatureCatalogService implements FeatureCatalogServiceInterface
 {
     public function grouped(): array
     {

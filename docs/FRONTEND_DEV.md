@@ -15,6 +15,14 @@ The Laravel app still provides auth, CSRF, Blade entry points, and API routes. R
 php artisan serve
 ```
 
+If the frontend is served from Vite while the backend is on another host, set the API origin:
+
+```bash
+VITE_PHARMANP_API_BASE_URL=http://127.0.0.1:8000 npm run dev
+```
+
+The app still uses Laravel session auth and CSRF for browser safety. For write requests in a split-origin setup, log in through the backend first so the browser has the Laravel session cookie.
+
 ## Sparse Checkout Workflow
 
 Use this when a frontend developer only wants the frontend surface but must keep the same repository structure:
@@ -36,6 +44,7 @@ Do not create a separate frontend repository unless deployment architecture chan
 - SPA route ownership lives in `resources/js/core/modules/routeRegistry.jsx`.
 - Backend module metadata is available from `GET /api/v1/modules`.
 - API contract testing starts from `GET /api/v1/openapi.json`.
+- Swagger UI is available at `/api-docs` on the backend host.
 
 When adding a module, create the screen under `resources/js/modules`, add the lazy route in `routeRegistry.jsx`, and add any endpoints to `resources/js/core/api/endpoints.js`.
 

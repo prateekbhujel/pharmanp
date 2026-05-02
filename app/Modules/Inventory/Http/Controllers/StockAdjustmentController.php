@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Inventory\Http\Requests\StockAdjustmentRequest;
 use App\Modules\Inventory\Http\Resources\StockAdjustmentResource;
 use App\Modules\Inventory\Models\StockAdjustment;
-use App\Modules\Inventory\Services\StockAdjustmentService;
+use App\Modules\Inventory\Contracts\StockAdjustmentServiceInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
@@ -39,7 +39,7 @@ class StockAdjustmentController extends Controller
         return StockAdjustmentResource::collection($query)->response();
     }
 
-    public function store(StockAdjustmentRequest $request, StockAdjustmentService $service): JsonResponse
+    public function store(StockAdjustmentRequest $request, StockAdjustmentServiceInterface $service): JsonResponse
     {
         $adjustment = $service->save($request->validated(), $request->user());
 
@@ -49,12 +49,12 @@ class StockAdjustmentController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(StockAdjustmentRequest $request, StockAdjustment $adjustment, StockAdjustmentService $service): StockAdjustmentResource
+    public function update(StockAdjustmentRequest $request, StockAdjustment $adjustment, StockAdjustmentServiceInterface $service): StockAdjustmentResource
     {
         return new StockAdjustmentResource($service->save($request->validated(), $request->user(), $adjustment));
     }
 
-    public function destroy(StockAdjustment $adjustment, StockAdjustmentService $service): JsonResponse
+    public function destroy(StockAdjustment $adjustment, StockAdjustmentServiceInterface $service): JsonResponse
     {
         $service->delete($adjustment, request()->user());
 

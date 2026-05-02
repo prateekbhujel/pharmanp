@@ -7,7 +7,7 @@ use App\Models\Setting;
 use App\Modules\Sales\Http\Requests\SalesInvoiceStoreRequest;
 use App\Modules\Sales\Http\Resources\SalesInvoiceResource;
 use App\Modules\Sales\Models\SalesInvoice;
-use App\Modules\Sales\Services\SalesInvoiceService;
+use App\Modules\Sales\Contracts\SalesInvoiceServiceInterface;
 use App\Modules\Setup\Models\DropdownOption;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -50,7 +50,7 @@ class SalesInvoiceController extends Controller
         return response()->json(SalesInvoiceResource::collection($invoices)->response()->getData(true));
     }
 
-    public function store(SalesInvoiceStoreRequest $request, SalesInvoiceService $service): JsonResponse
+    public function store(SalesInvoiceStoreRequest $request, SalesInvoiceServiceInterface $service): JsonResponse
     {
         $invoice = $service->create($request->validated(), $request->user());
 
@@ -86,7 +86,7 @@ class SalesInvoiceController extends Controller
         ]);
     }
 
-    public function updatePayment(Request $request, SalesInvoice $invoice, SalesInvoiceService $service): SalesInvoiceResource
+    public function updatePayment(Request $request, SalesInvoice $invoice, SalesInvoiceServiceInterface $service): SalesInvoiceResource
     {
         $validated = $request->validate([
             'paid_amount' => ['required', 'numeric', 'min:0', 'max:'.(float) $invoice->grand_total],

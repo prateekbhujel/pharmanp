@@ -6,7 +6,6 @@ use App\Modules\Accounting\Http\Controllers\PaymentController;
 use App\Modules\Accounting\Http\Controllers\VoucherController;
 use App\Modules\Core\Http\Controllers\DashboardController;
 use App\Modules\Core\Http\Controllers\ModuleCatalogController;
-use App\Modules\Core\Http\Controllers\OpenApiController;
 use App\Modules\ImportExport\Http\Controllers\ExportController;
 use App\Modules\ImportExport\Http\Controllers\ImportWizardController;
 use App\Modules\ImportExport\Http\Controllers\PurchaseOcrController;
@@ -46,7 +45,6 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('api/v1')->name('api.')->group(function () {
     Route::get('/me', CurrentUserController::class)->name('me');
     Route::get('/modules', ModuleCatalogController::class)->name('modules.index');
-    Route::get('/openapi.json', OpenApiController::class)->name('openapi');
     Route::get('/dashboard/summary', DashboardController::class)->name('dashboard.summary');
     Route::get('/search', \App\Modules\Core\Http\Controllers\GlobalSearchController::class)->name('search');
     Route::get('/setup/features', FeatureCatalogController::class)->name('setup.features');

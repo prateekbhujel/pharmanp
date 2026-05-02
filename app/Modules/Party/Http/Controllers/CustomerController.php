@@ -8,18 +8,18 @@ use App\Modules\Party\Http\Requests\CustomerRequest;
 use App\Modules\Party\Http\Requests\PartyIndexRequest;
 use App\Modules\Party\Http\Resources\PartyResource;
 use App\Modules\Party\Models\Customer;
-use App\Modules\Party\Services\PartyService;
+use App\Modules\Party\Contracts\PartyServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
-    public function index(PartyIndexRequest $request, PartyService $service)
+    public function index(PartyIndexRequest $request, PartyServiceInterface $service)
     {
         return PartyResource::collection($service->customers(TableQueryData::fromRequest($request, ['is_active', 'deleted']), $request->user()));
     }
 
-    public function store(CustomerRequest $request, PartyService $service): JsonResponse
+    public function store(CustomerRequest $request, PartyServiceInterface $service): JsonResponse
     {
         $customer = $service->createCustomer($request->validated(), $request->user());
 
@@ -29,7 +29,7 @@ class CustomerController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(CustomerRequest $request, Customer $customer, PartyService $service): PartyResource
+    public function update(CustomerRequest $request, Customer $customer, PartyServiceInterface $service): PartyResource
     {
         return new PartyResource($service->updateCustomer($customer, $request->validated(), $request->user()));
     }

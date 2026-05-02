@@ -3,7 +3,7 @@
 namespace App\Modules\Sales\Http\Controllers;
 
 use App\Modules\Accounting\Models\AccountTransaction;
-use App\Modules\Inventory\Services\StockMovementService;
+use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesInvoiceItem;
 use App\Modules\Sales\Models\SalesReturn;
@@ -82,7 +82,7 @@ class SalesReturnController
     }
 
     // Create a sales return: reverse stock and post accounting entries.
-    public function store(Request $request, StockMovementService $stock): JsonResponse
+    public function store(Request $request, StockMovementServiceInterface $stock): JsonResponse
     {
         $validated = $this->validatePayload($request);
 
@@ -125,7 +125,7 @@ class SalesReturnController
         ]);
     }
 
-    public function update(Request $request, SalesReturn $salesReturn, StockMovementService $stock): JsonResponse
+    public function update(Request $request, SalesReturn $salesReturn, StockMovementServiceInterface $stock): JsonResponse
     {
         $validated = $this->validatePayload($request);
 
@@ -171,7 +171,7 @@ class SalesReturnController
     }
 
     // Delete a sales return and reverse its effects.
-    public function destroy(Request $request, SalesReturn $salesReturn, StockMovementService $stock): JsonResponse
+    public function destroy(Request $request, SalesReturn $salesReturn, StockMovementServiceInterface $stock): JsonResponse
     {
         DB::transaction(function () use ($salesReturn, $stock, $request) {
             $salesReturn->load('items');
@@ -254,7 +254,7 @@ class SalesReturnController
         ]);
     }
 
-    private function postReturnItems(SalesReturn $salesReturn, array $items, StockMovementService $stock, Request $request): float
+    private function postReturnItems(SalesReturn $salesReturn, array $items, StockMovementServiceInterface $stock, Request $request): float
     {
         $totalAmount = 0.0;
 
@@ -297,7 +297,7 @@ class SalesReturnController
         return round($totalAmount, 2);
     }
 
-    private function reverseReturnEffects(SalesReturn $salesReturn, StockMovementService $stock, Request $request): void
+    private function reverseReturnEffects(SalesReturn $salesReturn, StockMovementServiceInterface $stock, Request $request): void
     {
         foreach ($salesReturn->items as $item) {
             $stock->record([

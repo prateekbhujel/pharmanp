@@ -3,15 +3,17 @@
 namespace App\Modules\Inventory\Services;
 
 use App\Models\User;
+use App\Modules\Inventory\Contracts\StockAdjustmentServiceInterface;
+use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\StockAdjustment;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class StockAdjustmentService
+class StockAdjustmentService implements StockAdjustmentServiceInterface
 {
-    public function __construct(private readonly StockMovementService $stock) {}
+    public function __construct(private readonly StockMovementServiceInterface $stock) {}
 
     public function save(array $data, User $user, ?StockAdjustment $adjustment = null): StockAdjustment
     {

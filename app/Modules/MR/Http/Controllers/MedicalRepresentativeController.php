@@ -6,13 +6,13 @@ use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\Controller;
 use App\Modules\MR\Http\Requests\MedicalRepresentativeRequest;
 use App\Modules\MR\Models\MedicalRepresentative;
-use App\Modules\MR\Services\MrManagementService;
+use App\Modules\MR\Contracts\MrManagementServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MedicalRepresentativeController extends Controller
 {
-    public function index(Request $request, MrManagementService $service): JsonResponse
+    public function index(Request $request, MrManagementServiceInterface $service): JsonResponse
     {
         abort_unless($request->user()?->is_owner || $request->user()?->can('mr.view'), 403);
 
@@ -29,7 +29,7 @@ class MedicalRepresentativeController extends Controller
         ]);
     }
 
-    public function store(MedicalRepresentativeRequest $request, MrManagementService $service): JsonResponse
+    public function store(MedicalRepresentativeRequest $request, MrManagementServiceInterface $service): JsonResponse
     {
         $representative = $service->createRepresentative($request->validated(), $request->user());
 
@@ -39,7 +39,7 @@ class MedicalRepresentativeController extends Controller
         ], 201);
     }
 
-    public function update(MedicalRepresentativeRequest $request, MedicalRepresentative $representative, MrManagementService $service): JsonResponse
+    public function update(MedicalRepresentativeRequest $request, MedicalRepresentative $representative, MrManagementServiceInterface $service): JsonResponse
     {
         return response()->json([
             'data' => $service->updateRepresentative($representative, $request->validated(), $request->user()),
@@ -47,7 +47,7 @@ class MedicalRepresentativeController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, MedicalRepresentative $representative, MrManagementService $service): JsonResponse
+    public function destroy(Request $request, MedicalRepresentative $representative, MrManagementServiceInterface $service): JsonResponse
     {
         abort_unless($request->user()?->is_owner || $request->user()?->can('mr.manage'), 403);
 
