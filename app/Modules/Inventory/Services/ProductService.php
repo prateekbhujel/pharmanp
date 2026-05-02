@@ -3,6 +3,7 @@
 namespace App\Modules\Inventory\Services;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Inventory\Contracts\ProductServiceInterface;
 use App\Modules\Inventory\DTOs\ProductData;
@@ -18,6 +19,7 @@ class ProductService implements ProductServiceInterface
 {
     public function __construct(
         private readonly ProductRepositoryInterface $products,
+        private readonly DocumentNumberService $numbers,
     ) {}
 
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
@@ -29,6 +31,7 @@ class ProductService implements ProductServiceInterface
     {
         return DB::transaction(function () use ($data, $user, $image) {
             $payload = $data->toArray();
+            $payload['product_code'] = $payload['product_code'] ?: $this->numbers->next('product', 'products');
             $payload['sku'] = $payload['sku'] ?: $this->nextSku($payload['company_id']);
             $payload['tenant_id'] = $user?->tenant_id;
             $payload['created_by'] = $user?->id;
@@ -43,6 +46,7 @@ class ProductService implements ProductServiceInterface
     {
         return DB::transaction(function () use ($product, $data, $user, $image, $removeImage) {
             $payload = $data->toArray();
+            $payload['product_code'] = $payload['product_code'] ?: $product->product_code ?: $this->numbers->next('product', 'products');
             $payload['sku'] = $payload['sku'] ?: $product->sku ?: $this->nextSku($payload['company_id']);
             $payload['tenant_id'] = $product->tenant_id ?: $user?->tenant_id;
             $payload['updated_by'] = $user?->id;

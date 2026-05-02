@@ -11,6 +11,8 @@ class PartyResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'supplier_code' => $this->supplier_code,
+            'customer_code' => $this->customer_code,
             'name' => $this->name,
             'supplier_type_id' => $this->supplier_type_id,
             'supplier_type_name' => $this->supplierType?->name,

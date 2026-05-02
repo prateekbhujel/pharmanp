@@ -3,6 +3,7 @@
 namespace App\Modules\Party\Services;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Party\Contracts\PartyServiceInterface;
 use App\Modules\Party\Models\Customer;
@@ -14,8 +15,14 @@ use Illuminate\Support\Facades\DB;
 
 class PartyService implements PartyServiceInterface
 {
+    public function __construct(
+        private readonly DocumentNumberService $numbers,
+    ) {}
+
     private const SORTS = [
         'name' => 'name',
+        'supplier_code' => 'supplier_code',
+        'customer_code' => 'customer_code',
         'phone' => 'phone',
         'current_balance' => 'current_balance',
         'created_at' => 'created_at',
@@ -34,6 +41,8 @@ class PartyService implements PartyServiceInterface
 
     public function createSupplier(array $data, User $user): Supplier
     {
+        $data['supplier_code'] ??= $this->numbers->next('supplier', 'suppliers');
+
         return $this->create(Supplier::class, $data, $user);
     }
 
@@ -44,6 +53,8 @@ class PartyService implements PartyServiceInterface
 
     public function createCustomer(array $data, User $user): Customer
     {
+        $data['customer_code'] ??= $this->numbers->next('customer', 'customers');
+
         return $this->create(Customer::class, $data, $user);
     }
 
@@ -62,6 +73,8 @@ class PartyService implements PartyServiceInterface
         $query->when($table->search, function (Builder $builder, string $search) use ($typeRelation) {
             $builder->where(function (Builder $inner) use ($search, $typeRelation) {
                 $inner->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('supplier_code', 'like', '%'.$search.'%')
+                    ->orWhere('customer_code', 'like', '%'.$search.'%')
                     ->orWhere('contact_person', 'like', '%'.$search.'%')
                     ->orWhere('phone', 'like', '%'.$search.'%')
                     ->orWhere('email', 'like', '%'.$search.'%')
