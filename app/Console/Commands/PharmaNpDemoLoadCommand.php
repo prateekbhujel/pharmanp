@@ -76,6 +76,7 @@ class PharmaNpDemoLoadCommand extends Command
             $this->seedPurchases($context, $this->share($counts['purchases'], $tenantCount, $tenantNo), $chunk, $runCode);
             $this->seedSales($context, $this->share($counts['sales'], $tenantCount, $tenantNo), $chunk, $runCode);
             $this->seedRepresentativeVisits($context, min(max((int) ceil($this->share($counts['sales'], $tenantCount, $tenantNo) / 3), 20), 5000), $chunk, $runCode);
+            $this->seedTargets($context, $runCode);
 
             $this->line('Tenant '.$tenantNo.'/'.$tenantCount.' loaded.');
         }
