@@ -69,6 +69,7 @@ class PharmaNpDemoLoadCommand extends Command
             $this->seedSuppliers($context, $this->share($counts['suppliers'], $tenantCount, $tenantNo), $chunk, $runCode);
             $this->seedCustomers($context, $this->share($counts['customers'], $tenantCount, $tenantNo), $chunk, $runCode);
             $this->seedUsers($context, $this->share($counts['users'], $tenantCount, $tenantNo), $chunk, $runCode);
+            $this->seedEmployees($context, $this->share($counts['users'], $tenantCount, $tenantNo), $chunk, $runCode);
             $this->seedRepresentatives($context, max(3, min(30, (int) ceil($this->share($counts['users'], $tenantCount, $tenantNo) / 8))), $chunk, $runCode);
             $this->seedProducts($context, $this->share($counts['products'], $tenantCount, $tenantNo), $chunk, $runCode);
             $this->seedBatches($context, $this->share($counts['batches'], $tenantCount, $tenantNo), $chunk, $runCode);
