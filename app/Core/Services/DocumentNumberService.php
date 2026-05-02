@@ -42,6 +42,13 @@ class DocumentNumberService
                 'separator' => '-',
                 'padding' => 5,
             ],
+            'payment' => [
+                'label' => 'Payment Receipt',
+                'prefix' => 'PAY',
+                'date_format' => 'Ymd',
+                'separator' => '-',
+                'padding' => 5,
+            ],
             'supplier' => [
                 'label' => 'Supplier Code',
                 'prefix' => 'SUP',
