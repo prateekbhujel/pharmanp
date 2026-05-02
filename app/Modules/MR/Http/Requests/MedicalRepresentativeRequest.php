@@ -19,6 +19,9 @@ class MedicalRepresentativeRequest extends FormRequest
         return [
             'name'           => ['required', 'string', 'max:255'],
             'branch_id'      => ['nullable', 'integer', 'exists:branches,id'],
+            'employee_id'    => ['nullable', 'integer', 'exists:employees,id'],
+            'area_id'        => ['nullable', 'integer', 'exists:areas,id'],
+            'division_id'    => ['nullable', 'integer', 'exists:divisions,id'],
             'employee_code'  => ['nullable', 'string', 'max:80', Rule::unique('medical_representatives', 'employee_code')->ignore($representative?->id)],
             'phone'          => ['nullable', 'string', 'max:40'],
             'email'          => ['nullable', 'email', 'max:255'],

@@ -15,11 +15,16 @@ class RepresentativeVisitRequest extends FormRequest
     {
         return [
             'medical_representative_id' => ['required', 'integer', 'exists:medical_representatives,id'],
+            'employee_id' => ['nullable', 'integer', 'exists:employees,id'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
             'visit_date' => ['required', 'date'],
+            'visit_time' => ['nullable', 'date_format:H:i'],
             'status' => ['required', 'in:planned,visited,missed,converted'],
+            'purpose' => ['nullable', 'string', 'max:160'],
+            'location_name' => ['nullable', 'string', 'max:255'],
             'order_value' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }

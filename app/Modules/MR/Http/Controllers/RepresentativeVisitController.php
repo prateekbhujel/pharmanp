@@ -16,7 +16,7 @@ class RepresentativeVisitController extends Controller
     {
         abort_unless($request->user()?->is_owner || $request->user()?->can('mr.view') || $request->user()?->can('mr.visits.manage'), 403);
 
-        $page = $service->visits(TableQueryData::fromRequest($request, ['medical_representative_id', 'status']), $request->user());
+        $page = $service->visits(TableQueryData::fromRequest($request, ['medical_representative_id', 'employee_id', 'status']), $request->user());
 
         return response()->json([
             'data' => $page->items(),

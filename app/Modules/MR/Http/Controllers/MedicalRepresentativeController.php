@@ -16,7 +16,7 @@ class MedicalRepresentativeController extends Controller
     {
         abort_unless($request->user()?->is_owner || $request->user()?->can('mr.view'), 403);
 
-        $page = $service->representatives(TableQueryData::fromRequest($request, ['is_active']), $request->user());
+        $page = $service->representatives(TableQueryData::fromRequest($request, ['is_active', 'branch_id', 'area_id', 'division_id']), $request->user());
 
         return response()->json([
             'data' => $page->items(),
@@ -64,7 +64,7 @@ class MedicalRepresentativeController extends Controller
             'data' => MedicalRepresentative::query()
                 ->where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'name', 'territory', 'monthly_target']),
+                ->get(['id', 'name', 'employee_code', 'area_id', 'division_id', 'territory', 'monthly_target']),
         ]);
     }
 }

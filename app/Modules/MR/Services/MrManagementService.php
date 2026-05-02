@@ -33,7 +33,7 @@ class MrManagementService implements MrManagementServiceInterface
     public function representatives(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
         $query = MedicalRepresentative::query()
-            ->with(['branch:id,name,type'])
+            ->with(['branch:id,name,type', 'employee:id,name,employee_code,designation', 'area:id,name,code', 'division:id,name,code'])
             ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($user && $this->isRepresentativeUser($user), fn (Builder $builder) => $builder->whereKey($user->medical_representative_id))
             ->when($table->search, function (Builder $builder, string $search) {
@@ -45,7 +45,9 @@ class MrManagementService implements MrManagementServiceInterface
                 });
             })
             ->when(array_key_exists('is_active', $table->filters), fn (Builder $builder) => $builder->where('is_active', (bool) $table->filters['is_active']))
-            ->when(array_key_exists('branch_id', $table->filters) && $table->filters['branch_id'], fn (Builder $builder) => $builder->where('branch_id', $table->filters['branch_id']));
+            ->when(array_key_exists('branch_id', $table->filters) && $table->filters['branch_id'], fn (Builder $builder) => $builder->where('branch_id', $table->filters['branch_id']))
+            ->when(array_key_exists('area_id', $table->filters) && $table->filters['area_id'], fn (Builder $builder) => $builder->where('area_id', $table->filters['area_id']))
+            ->when(array_key_exists('division_id', $table->filters) && $table->filters['division_id'], fn (Builder $builder) => $builder->where('division_id', $table->filters['division_id']));
 
         return $query->orderBy(self::REPRESENTATIVE_SORTS[$table->sortField] ?? 'updated_at', $table->sortOrder)
             ->paginate($table->perPage, ['*'], 'page', $table->page);
@@ -54,7 +56,7 @@ class MrManagementService implements MrManagementServiceInterface
     public function visits(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
         $query = RepresentativeVisit::query()
-            ->with(['medicalRepresentative:id,name', 'customer:id,name'])
+            ->with(['medicalRepresentative:id,name', 'employee:id,name,employee_code', 'customer:id,name'])
             ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($user && $this->isRepresentativeUser($user), fn (Builder $builder) => $builder->where('medical_representative_id', $user->medical_representative_id))
             ->when($table->search, function (Builder $builder, string $search) {
@@ -66,6 +68,7 @@ class MrManagementService implements MrManagementServiceInterface
                 });
             })
             ->when(array_key_exists('medical_representative_id', $table->filters), fn (Builder $builder) => $builder->where('medical_representative_id', $table->filters['medical_representative_id']))
+            ->when(array_key_exists('employee_id', $table->filters), fn (Builder $builder) => $builder->where('employee_id', $table->filters['employee_id']))
             ->when(array_key_exists('status', $table->filters), fn (Builder $builder) => $builder->where('status', $table->filters['status']));
 
         return $query->orderBy(self::VISIT_SORTS[$table->sortField] ?? 'updated_at', $table->sortOrder)
@@ -80,6 +83,9 @@ class MrManagementService implements MrManagementServiceInterface
                 'tenant_id'     => $user->tenant_id,
                 'company_id'    => $user->company_id,
                 'branch_id'     => $data['branch_id'] ?? null,
+                'employee_id'    => $data['employee_id'] ?? null,
+                'area_id'        => $data['area_id'] ?? null,
+                'division_id'    => $data['division_id'] ?? null,
                 'name'          => $data['name'],
                 'employee_code' => $data['employee_code'] ?? null,
                 'phone'         => $data['phone'] ?? null,
@@ -98,6 +104,9 @@ class MrManagementService implements MrManagementServiceInterface
         return DB::transaction(function () use ($representative, $data, $user) {
             $representative->update([
                 'branch_id'     => $data['branch_id'] ?? $representative->branch_id,
+                'employee_id'    => $data['employee_id'] ?? null,
+                'area_id'        => $data['area_id'] ?? null,
+                'division_id'    => $data['division_id'] ?? null,
                 'name'          => $data['name'],
                 'employee_code' => $data['employee_code'] ?? null,
                 'phone'         => $data['phone'] ?? null,
@@ -108,7 +117,7 @@ class MrManagementService implements MrManagementServiceInterface
                 'updated_by'    => $user->id,
             ]);
 
-            return $representative->fresh(['branch:id,name']);
+            return $representative->fresh(['branch:id,name', 'employee:id,name,employee_code,designation', 'area:id,name,code', 'division:id,name,code']);
         });
     }
 
@@ -132,17 +141,19 @@ class MrManagementService implements MrManagementServiceInterface
                 'tenant_id'     => $user->tenant_id,
                 'company_id'    => $user->company_id,
                 'medical_representative_id' => $representativeId,
+                'employee_id'   => $data['employee_id'] ?? null,
                 'customer_id'   => $data['customer_id'] ?? null,
                 'visit_date'    => $data['visit_date'],
+                'visit_time'    => $data['visit_time'] ?? null,
                 'status'        => $data['status'],
+                'purpose'       => $data['purpose'] ?? null,
                 'order_value'   => $data['order_value'] ?? 0,
                 'notes'         => $data['notes'] ?? null,
-                'latitude'      => $data['latitude'] ?? null,
-                'longitude'     => $data['longitude'] ?? null,
                 'location_name' => $data['location_name'] ?? null,
+                'remarks'       => $data['remarks'] ?? null,
                 'created_by'    => $user->id,
                 'updated_by'    => $user->id,
-            ])->load(['medicalRepresentative:id,name', 'customer:id,name']);
+            ])->load(['medicalRepresentative:id,name', 'employee:id,name,employee_code', 'customer:id,name']);
         });
     }
 
@@ -155,18 +166,20 @@ class MrManagementService implements MrManagementServiceInterface
                 'tenant_id'     => $visit->tenant_id ?: $user->tenant_id,
                 'company_id'    => $visit->company_id ?: $user->company_id,
                 'medical_representative_id' => $representativeId,
+                'employee_id'   => $data['employee_id'] ?? null,
                 'customer_id'   => $data['customer_id'] ?? null,
                 'visit_date'    => $data['visit_date'],
+                'visit_time'    => $data['visit_time'] ?? null,
                 'status'        => $data['status'],
+                'purpose'       => $data['purpose'] ?? null,
                 'order_value'   => $data['order_value'] ?? 0,
                 'notes'         => $data['notes'] ?? null,
-                'latitude'      => $data['latitude'] ?? null,
-                'longitude'     => $data['longitude'] ?? null,
                 'location_name' => $data['location_name'] ?? null,
+                'remarks'       => $data['remarks'] ?? null,
                 'updated_by'    => $user->id,
             ]);
 
-            return $visit->fresh(['medicalRepresentative:id,name', 'customer:id,name']);
+            return $visit->fresh(['medicalRepresentative:id,name', 'employee:id,name,employee_code', 'customer:id,name']);
         });
     }
 
