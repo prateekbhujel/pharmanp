@@ -853,7 +853,8 @@ class PharmaNpDemoLoadCommand extends Command
 
             $batch = $batches[$i % $batches->count()];
             $customerId = $customers[$i % count($customers)];
-            $mrId = empty($mrs) || $i % 5 === 0 ? null : $mrs[$i % count($mrs)];
+            $mr = $mrs->isEmpty() || $i % 5 === 0 ? null : $mrs[$i % $mrs->count()];
+            $mrId = $mr?->id;
             $qty = 1 + ($i % 5);
             $total = round($qty * (float) $batch->mrp, 2);
             $paid = $i % 4 === 0 ? 0 : ($i % 7 === 0 ? round($total * 0.5, 2) : $total);
@@ -982,7 +983,11 @@ class PharmaNpDemoLoadCommand extends Command
 
     private function seedRepresentativeVisits(array $context, int $count, int $chunk, string $runCode): void
     {
-        $mrs = $this->sampleIds('medical_representatives', $context['tenantId'], 2000);
+        $mrs = DB::table('medical_representatives')
+            ->where('tenant_id', $context['tenantId'])
+            ->orderByDesc('id')
+            ->limit(2000)
+            ->get(['id', 'employee_id']);
         $customers = $this->sampleIds('customers', $context['tenantId'], 5000);
         $rows = [];
         $now = now();
@@ -1217,13 +1222,51 @@ class PharmaNpDemoLoadCommand extends Command
 
     private function insertChunked(string $table, array $rows, int $chunk): void
     {
+        $rows = $this->normalizeInsertRows($rows);
         $safeChunk = $this->safeInsertChunk($rows, $chunk);
 
         foreach (array_chunk($rows, $safeChunk) as $part) {
             if ($part !== []) {
+                $part = array_map(fn (array $row) => array_map(fn (mixed $value) => $this->insertValue($value), $row), $part);
                 DB::table($table)->insert($part);
             }
         }
+    }
+
+    private function normalizeInsertRows(array $rows): array
+    {
+        if ($rows === []) {
+            return [];
+        }
+
+        $columns = [];
+
+        foreach ($rows as $row) {
+            $columns = array_values(array_unique([...$columns, ...array_keys($row)]));
+        }
+
+        return array_map(fn (array $row) => array_replace(array_fill_keys($columns, null), $row), $rows);
+    }
+
+    private function insertValue(mixed $value): mixed
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s');
+        }
+
+        if (is_object($value)) {
+            if (isset($value->id)) {
+                return $value->id;
+            }
+
+            if (method_exists($value, '__toString')) {
+                return (string) $value;
+            }
+
+            return json_encode($value, JSON_UNESCAPED_SLASHES);
+        }
+
+        return $value;
     }
 
     private function safeInsertChunk(array $rows, int $requestedChunk): int
