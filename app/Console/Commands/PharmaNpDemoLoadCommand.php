@@ -226,6 +226,59 @@ class PharmaNpDemoLoadCommand extends Command
         return DB::table('branches')->where('tenant_id', $tenantId)->orderBy('id')->pluck('id')->map(fn ($id) => (int) $id)->all();
     }
 
+    private function seedAreas(int $tenantId, int $companyId, array $branchIds, int $ownerId, int $tenantNo, mixed $now): array
+    {
+        $rows = [];
+
+        foreach ($branchIds as $index => $branchId) {
+            foreach (range(1, 2) as $areaNo) {
+                $place = $this->places[($tenantNo + $index + $areaNo) % count($this->places)];
+                $rows[] = [
+                    'tenant_id' => $tenantId,
+                    'company_id' => $companyId,
+                    'branch_id' => $branchId,
+                    'name' => $place.' Area',
+                    'code' => 'A'.$tenantNo.'-'.str_pad((string) ($index * 2 + $areaNo), 2, '0', STR_PAD_LEFT),
+                    'district' => $place,
+                    'province' => $index % 2 === 0 ? 'Bagmati' : 'Gandaki',
+                    'is_active' => true,
+                    'created_by' => $ownerId,
+                    'updated_by' => $ownerId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+
+        $this->insertChunked('areas', $rows, 500);
+
+        return DB::table('areas')->where('tenant_id', $tenantId)->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    private function seedDivisions(int $tenantId, int $companyId, int $ownerId, int $tenantNo, mixed $now): array
+    {
+        $rows = [];
+
+        foreach (['General', 'Cardio-Diabetic', 'Antibiotic', 'Surgical', 'Wellness'] as $index => $name) {
+            $rows[] = [
+                'tenant_id' => $tenantId,
+                'company_id' => $companyId,
+                'name' => $name,
+                'code' => 'D'.$tenantNo.'-'.str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT),
+                'notes' => null,
+                'is_active' => true,
+                'created_by' => $ownerId,
+                'updated_by' => $ownerId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        $this->insertChunked('divisions', $rows, 500);
+
+        return DB::table('divisions')->where('tenant_id', $tenantId)->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
     private function seedOwner(int $tenantId, int $companyId, int $storeId, ?int $branchId, int $tenantNo, string $companyName, mixed $now): int
     {
         $email = $tenantNo === 1 ? 'pratik@admin.com' : 'owner'.$tenantNo.'@demo.pharmanp.test';
