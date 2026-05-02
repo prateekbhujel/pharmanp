@@ -828,7 +828,11 @@ class PharmaNpDemoLoadCommand extends Command
     private function seedSales(array $context, int $count, int $chunk, string $runCode): void
     {
         $customers = $this->sampleIds('customers', $context['tenantId'], 20000);
-        $mrs = $this->sampleIds('medical_representatives', $context['tenantId'], 2000);
+        $mrs = DB::table('medical_representatives')
+            ->where('tenant_id', $context['tenantId'])
+            ->orderByDesc('id')
+            ->limit(2000)
+            ->get(['id', 'employee_id']);
         $batches = DB::table('batches')
             ->where('tenant_id', $context['tenantId'])
             ->where('quantity_available', '>', 0)
@@ -983,19 +987,24 @@ class PharmaNpDemoLoadCommand extends Command
         $today = CarbonImmutable::today();
 
         for ($i = 1; $i <= $count; $i++) {
-            if (empty($mrs)) {
+            if ($mrs->isEmpty()) {
                 return;
             }
 
+            $mr = $mrs[$i % max($mrs->count(), 1)] ?? null;
             $rows[] = [
                 'tenant_id' => $context['tenantId'],
                 'company_id' => $context['companyId'],
-                'medical_representative_id' => $mrs[$i % count($mrs)],
+                'medical_representative_id' => $mr?->id,
+                'employee_id' => $mr?->employee_id,
                 'customer_id' => $customers[$i % max(count($customers), 1)] ?? null,
                 'visit_date' => $today->subDays($i % 180)->toDateString(),
-                'status' => ['planned', 'completed', 'follow_up'][$i % 3],
+                'visit_time' => sprintf('%02d:%02d:00', 9 + ($i % 8), ($i * 7) % 60),
+                'status' => ['planned', 'visited', 'missed', 'converted'][$i % 4],
+                'purpose' => ['Order follow-up', 'Collection', 'New product discussion', 'Expiry return check'][$i % 4],
                 'order_value' => $i % 3 === 0 ? (500 + ($i % 1000)) : 0,
                 'notes' => 'Load demo MR visit',
+                'remarks' => $i % 4 === 0 ? 'Customer requested next follow-up.' : null,
                 'location_name' => $this->places[$i % count($this->places)],
                 'created_by' => $context['ownerId'],
                 'updated_by' => $context['ownerId'],
