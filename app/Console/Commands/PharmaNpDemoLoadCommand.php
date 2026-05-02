@@ -288,15 +288,16 @@ class PharmaNpDemoLoadCommand extends Command
         DB::table('users')->updateOrInsert(
             ['email' => $email],
             [
-                'tenant_id' => $tenantId,
-                'company_id' => $companyId,
-                'store_id' => $storeId,
-                'branch_id' => $branchId,
+                'tenant_id' => $tenantNo === 1 ? null : $tenantId,
+                'company_id' => $tenantNo === 1 ? null : $companyId,
+                'store_id' => $tenantNo === 1 ? null : $storeId,
+                'branch_id' => $tenantNo === 1 ? null : $branchId,
                 'name' => $tenantNo === 1 ? 'Pratik Admin' : $companyName.' Owner',
                 'phone' => '98'.str_pad((string) (50000000 + $tenantNo), 8, '0', STR_PAD_LEFT),
                 'password' => Hash::make('done'),
                 'email_verified_at' => $now,
                 'is_owner' => true,
+                'is_platform_admin' => $tenantNo === 1,
                 'is_active' => true,
                 'updated_at' => $now,
                 'created_at' => $now,
@@ -1015,6 +1016,118 @@ class PharmaNpDemoLoadCommand extends Command
         }
 
         $this->insertChunked('representative_visits', $rows, $chunk);
+    }
+
+    private function seedTargets(array $context, string $runCode): void
+    {
+        $now = now();
+        $start = CarbonImmutable::today()->startOfMonth();
+        $end = $start->endOfMonth();
+        $employees = $this->sampleIds('employees', $context['tenantId'], 50);
+        $products = $this->sampleIds('products', $context['tenantId'], 50);
+        $rows = [[
+            'tenant_id' => $context['tenantId'],
+            'company_id' => $context['companyId'],
+            'target_type' => 'primary',
+            'target_period' => 'monthly',
+            'target_level' => 'company',
+            'target_amount' => 2500000,
+            'target_quantity' => null,
+            'start_date' => $start->toDateString(),
+            'end_date' => $end->toDateString(),
+            'status' => 'active',
+            'notes' => 'Company monthly target '.$runCode,
+            'created_by' => $context['ownerId'],
+            'updated_by' => $context['ownerId'],
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]];
+
+        foreach ($context['divisionIds'] as $index => $divisionId) {
+            $rows[] = [
+                'tenant_id' => $context['tenantId'],
+                'company_id' => $context['companyId'],
+                'division_id' => $divisionId,
+                'target_type' => 'primary',
+                'target_period' => 'monthly',
+                'target_level' => 'division',
+                'target_amount' => 450000 + ($index * 25000),
+                'target_quantity' => null,
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'status' => 'active',
+                'notes' => 'Division target '.$runCode,
+                'created_by' => $context['ownerId'],
+                'updated_by' => $context['ownerId'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        foreach ($context['areaIds'] as $index => $areaId) {
+            $rows[] = [
+                'tenant_id' => $context['tenantId'],
+                'company_id' => $context['companyId'],
+                'area_id' => $areaId,
+                'target_type' => 'secondary',
+                'target_period' => 'monthly',
+                'target_level' => 'area',
+                'target_amount' => 300000 + ($index * 15000),
+                'target_quantity' => null,
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'status' => 'active',
+                'notes' => 'Area target '.$runCode,
+                'created_by' => $context['ownerId'],
+                'updated_by' => $context['ownerId'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        foreach (array_slice($employees, 0, 20) as $index => $employeeId) {
+            $rows[] = [
+                'tenant_id' => $context['tenantId'],
+                'company_id' => $context['companyId'],
+                'employee_id' => $employeeId,
+                'target_type' => 'secondary',
+                'target_period' => 'monthly',
+                'target_level' => 'employee',
+                'target_amount' => 125000 + ($index * 5000),
+                'target_quantity' => null,
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'status' => 'active',
+                'notes' => 'Employee target '.$runCode,
+                'created_by' => $context['ownerId'],
+                'updated_by' => $context['ownerId'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        foreach (array_slice($products, 0, 20) as $index => $productId) {
+            $rows[] = [
+                'tenant_id' => $context['tenantId'],
+                'company_id' => $context['companyId'],
+                'product_id' => $productId,
+                'target_type' => 'primary',
+                'target_period' => 'monthly',
+                'target_level' => 'product',
+                'target_amount' => null,
+                'target_quantity' => 300 + ($index * 10),
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'status' => 'active',
+                'notes' => 'Product quantity target '.$runCode,
+                'created_by' => $context['ownerId'],
+                'updated_by' => $context['ownerId'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        $this->insertChunked('targets', $rows, 500);
     }
 
     private function accountRow(array $context, string $date, string $accountType, string $sourceType, int $sourceId, float $debit, float $credit, int $userId, ?string $partyType = null, ?int $partyId = null): array
