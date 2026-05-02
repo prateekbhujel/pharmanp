@@ -3,7 +3,7 @@
 namespace App\Modules\Setup\Services;
 
 use App\Core\DTOs\TableQueryData;
-use App\Core\Services\DocumentNumberService;
+use App\Core\Services\EmployeeCodeGenerator;
 use App\Models\User;
 use App\Modules\MR\Models\Branch;
 use App\Modules\Setup\Contracts\OrganizationStructureServiceInterface;
@@ -44,7 +44,7 @@ class OrganizationStructureService implements OrganizationStructureServiceInterf
     ];
 
     public function __construct(
-        private readonly DocumentNumberService $numbers,
+        private readonly EmployeeCodeGenerator $employeeCodes,
     ) {}
 
     public function areas(TableQueryData $table, User $user): LengthAwarePaginator
@@ -217,7 +217,7 @@ class OrganizationStructureService implements OrganizationStructureServiceInterf
                 'area_id' => $data['area_id'] ?? null,
                 'division_id' => $data['division_id'] ?? null,
                 'reports_to_employee_id' => $data['reports_to_employee_id'] ?? null,
-                'employee_code' => $employee->employee_code ?: ($data['employee_code'] ?? $this->numbers->next('employee', 'employees', 'employee_code')),
+                'employee_code' => $employee->employee_code ?: ($data['employee_code'] ?? $this->employeeCodes->next()),
                 'name' => $data['name'],
                 'designation' => $data['designation'] ?? null,
                 'phone' => $data['phone'] ?? null,

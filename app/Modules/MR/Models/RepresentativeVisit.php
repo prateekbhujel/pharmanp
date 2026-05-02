@@ -35,7 +35,6 @@ class RepresentativeVisit extends Model
     {
         return [
             'visit_date'  => 'date',
-            'visit_time'  => 'datetime:H:i:s',
             'order_value' => 'decimal:2',
             'latitude'    => 'decimal:7',
             'longitude'   => 'decimal:7',

@@ -5,7 +5,6 @@ namespace App\Modules\Purchase\Services;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
-use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
@@ -41,8 +40,11 @@ class PurchaseEntryService implements PurchaseEntryServiceInterface
                 'purchase_no' => $this->nextNumber(),
                 'supplier_invoice_no' => $data['supplier_invoice_no'] ?? null,
                 'purchase_date' => $data['purchase_date'],
+                'due_date' => $data['due_date'] ?? null,
                 'status' => 'received',
                 'payment_status' => $this->paymentStatus($grandTotal, $paidAmount),
+                'payment_mode_id' => $data['payment_mode_id'] ?? null,
+                'payment_type' => $data['payment_type'] ?? null,
                 'subtotal' => $subtotal,
                 'discount_total' => $discountTotal,
                 'grand_total' => $grandTotal,

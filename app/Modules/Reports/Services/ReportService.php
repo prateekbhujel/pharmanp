@@ -6,6 +6,11 @@ use App\Modules\Accounting\Support\AccountCatalog;
 use App\Modules\Reports\Contracts\ReportServiceInterface;
 use App\Modules\Analytics\Contracts\PharmaSignalServiceInterface;
 use App\Modules\MR\Contracts\MrPerformanceServiceInterface;
+use App\Modules\Reports\Contracts\AgingReportServiceInterface;
+use App\Modules\Reports\Contracts\DumpingReportServiceInterface;
+use App\Modules\Reports\Contracts\ExpiryReportServiceInterface;
+use App\Modules\Reports\Contracts\PerformanceReportServiceInterface;
+use App\Modules\Reports\Contracts\TargetAchievementServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +21,11 @@ class ReportService implements ReportServiceInterface
     public function __construct(
         private readonly MrPerformanceServiceInterface $mrPerformance,
         private readonly PharmaSignalServiceInterface $signals,
+        private readonly AgingReportServiceInterface $aging,
+        private readonly ExpiryReportServiceInterface $expiryBuckets,
+        private readonly DumpingReportServiceInterface $dumping,
+        private readonly TargetAchievementServiceInterface $targets,
+        private readonly PerformanceReportServiceInterface $performance,
     ) {}
 
     public function run(string $report, Request $request): array
@@ -30,6 +40,8 @@ class ReportService implements ReportServiceInterface
             'stock' => $this->stock($request, $perPage),
             'low-stock' => $this->lowStock($request, $perPage),
             'expiry' => $this->expiry($request, $from, $to, $perPage),
+            'expiry-buckets' => $this->expiryBuckets->buckets($request, $perPage),
+            'dumping' => $this->dumping->slowMoving($request, $perPage),
             'smart-inventory' => $this->signals->inventorySignals($request, $perPage),
             'day-book' => $this->accountBook($request, $from, $to, $perPage),
             'cash-book' => $this->accountBook($request, $from, $to, $perPage, 'cash'),
@@ -39,10 +51,17 @@ class ReportService implements ReportServiceInterface
             'account-tree' => $this->accountTree($request, $from, $to, $perPage),
             'profit-loss' => $this->profitLoss($request, $from, $to, $perPage),
             'supplier-performance' => $this->supplierPerformance($request, $from, $to, $perPage),
+            'supplier-aging' => $this->aging->suppliers($request, $perPage),
+            'customer-aging', 'sales-party-aging' => $this->aging->customers($request, $perPage),
             'supplier-ledger' => $this->supplierLedger($request, (int) $request->query('supplier_id'), $from, $to, $perPage),
             'customer-ledger' => $this->customerLedger($request, (int) $request->query('customer_id'), $from, $to, $perPage),
             'product-movement' => $this->productMovement($request, (int) $request->query('product_id'), $from, $to, $perPage),
             'mr-performance' => $this->mrPerformance($request),
+            'target-achievement' => $this->targets->achievement($request, $perPage),
+            'mr-vs-product' => $this->performance->mrVsProduct($request, $perPage),
+            'mr-vs-division' => $this->performance->mrVsDivision($request, $perPage),
+            'mr-vs-sales' => $this->performance->mrVsSales($request, $perPage),
+            'company-vs-customer' => $this->performance->companyVsCustomer($request, $perPage),
             default => throw ValidationException::withMessages(['report' => 'Unknown report.']),
         };
     }

@@ -58,6 +58,7 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
                 'purchase_id' => $purchase?->id,
                 'supplier_id' => $data['supplier_id'],
                 'return_no' => $purchaseReturn->return_no ?: $this->nextNumber(),
+                'return_type' => $data['return_type'] ?? 'regular',
                 'return_date' => $data['return_date'],
                 'status' => 'posted',
                 'subtotal' => 0,

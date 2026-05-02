@@ -16,6 +16,7 @@ class PurchaseReturnRequest extends FormRequest
         return [
             'purchase_id' => ['nullable', 'integer', 'exists:purchases,id'],
             'supplier_id' => ['required', 'integer', 'exists:suppliers,id'],
+            'return_type' => ['nullable', 'in:regular,expiry'],
             'return_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1'],

@@ -12,6 +12,7 @@ class PurchaseReturnResource extends JsonResource
         return [
             'id' => $this->id,
             'return_no' => $this->return_no,
+            'return_type' => $this->return_type,
             'purchase_id' => $this->purchase_id,
             'supplier_id' => $this->supplier_id,
             'return_date' => $this->return_date?->toDateString(),

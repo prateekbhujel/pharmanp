@@ -4,6 +4,7 @@ namespace App\Modules\Party\Services;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Services\DocumentNumberService;
+use App\Core\Services\SupplierCodeGenerator;
 use App\Models\User;
 use App\Modules\Party\Contracts\PartyServiceInterface;
 use App\Modules\Party\Models\Customer;
@@ -17,6 +18,7 @@ class PartyService implements PartyServiceInterface
 {
     public function __construct(
         private readonly DocumentNumberService $numbers,
+        private readonly SupplierCodeGenerator $supplierCodes,
     ) {}
 
     private const SORTS = [
@@ -41,7 +43,7 @@ class PartyService implements PartyServiceInterface
 
     public function createSupplier(array $data, User $user): Supplier
     {
-        $data['supplier_code'] ??= $this->numbers->next('supplier', 'suppliers');
+        $data['supplier_code'] ??= $this->supplierCodes->next();
 
         return $this->create(Supplier::class, $data, $user);
     }

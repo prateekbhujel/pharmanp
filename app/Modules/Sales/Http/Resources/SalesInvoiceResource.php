@@ -17,9 +17,12 @@ class SalesInvoiceResource extends JsonResource
             'branch_id' => $this->branch_id,
             'invoice_no' => $this->invoice_no,
             'invoice_date' => $this->invoice_date?->toDateString(),
+            'due_date' => $this->due_date?->toDateString(),
             'sale_type' => $this->sale_type,
             'status' => $this->status,
             'payment_status' => $this->payment_status,
+            'payment_mode_id' => $this->payment_mode_id,
+            'payment_type' => $this->payment_type,
             'customer' => $this->whenLoaded('customer', fn () => [
                 'id' => $this->customer?->id,
                 'name' => $this->customer?->name,
@@ -53,6 +56,7 @@ class SalesInvoiceResource extends JsonResource
             'returns' => $this->whenLoaded('returns', fn () => $this->returns->map(fn ($return) => [
                 'id' => $return->id,
                 'return_no' => $return->return_no,
+                'return_type' => $return->return_type,
                 'return_date' => $return->return_date?->toDateString(),
                 'total_amount' => (float) $return->total_amount,
                 'status' => $return->status,
