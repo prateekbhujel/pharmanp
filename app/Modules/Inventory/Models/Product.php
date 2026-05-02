@@ -19,10 +19,12 @@ class Product extends Model
         'store_id',
         'category_id',
         'manufacturer_id',
+        'division_id',
         'unit_id',
         'sku',
         'barcode',
         'product_code',
+        'hs_code',
         'name',
         'generic_name',
         'composition',
@@ -30,6 +32,8 @@ class Product extends Model
         'formulation',
         'strength',
         'manufacturer_name',
+        'packaging_type',
+        'case_movement',
         'conversion',
         'rack_location',
         'previous_price',
@@ -79,6 +83,11 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ProductCategory::class, 'category_id');
+    }
+
+    public function division(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Setup\Models\Division::class, 'division_id');
     }
 
     public function batches(): HasMany

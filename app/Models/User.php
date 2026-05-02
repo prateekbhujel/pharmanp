@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\MR\Models\Branch;
+use App\Modules\Setup\Models\Employee;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -32,7 +33,9 @@ class User extends Authenticatable
         'store_id',
         'branch_id',
         'medical_representative_id',
+        'employee_id',
         'is_owner',
+        'is_platform_admin',
         'is_active',
         'last_login_at',
     ];
@@ -58,6 +61,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_owner' => 'boolean',
+            'is_platform_admin' => 'boolean',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
         ];
@@ -71,5 +75,15 @@ class User extends Authenticatable
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class);
+    }
+
+    public function canAccessAllTenants(): bool
+    {
+        return (bool) ($this->is_platform_admin || ($this->is_owner && $this->tenant_id === null));
     }
 }

@@ -14,6 +14,7 @@ class Customer extends Model
         'tenant_id',
         'company_id',
         'party_type_id',
+        'customer_code',
         'name',
         'contact_person',
         'phone',

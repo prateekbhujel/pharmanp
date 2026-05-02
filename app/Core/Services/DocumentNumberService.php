@@ -42,6 +42,34 @@ class DocumentNumberService
                 'separator' => '-',
                 'padding' => 5,
             ],
+            'supplier' => [
+                'label' => 'Supplier Code',
+                'prefix' => 'SUP',
+                'date_format' => 'none',
+                'separator' => '-',
+                'padding' => 5,
+            ],
+            'customer' => [
+                'label' => 'Customer Code',
+                'prefix' => 'CUS',
+                'date_format' => 'none',
+                'separator' => '-',
+                'padding' => 5,
+            ],
+            'product' => [
+                'label' => 'Product Code',
+                'prefix' => 'ITM',
+                'date_format' => 'none',
+                'separator' => '-',
+                'padding' => 5,
+            ],
+            'employee' => [
+                'label' => 'Employee Code',
+                'prefix' => 'EMP',
+                'date_format' => 'none',
+                'separator' => '-',
+                'padding' => 5,
+            ],
         ];
     }
 

@@ -20,6 +20,7 @@ class PurchaseReturn extends Model
         'purchase_id',
         'supplier_id',
         'return_no',
+        'return_type',
         'return_date',
         'status',
         'subtotal',

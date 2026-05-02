@@ -22,9 +22,12 @@ class SalesInvoice extends Model
         'medical_representative_id',
         'invoice_no',
         'invoice_date',
+        'due_date',
         'sale_type',
         'status',
         'payment_status',
+        'payment_mode_id',
+        'payment_type',
         'subtotal',
         'discount_total',
         'grand_total',
@@ -38,6 +41,7 @@ class SalesInvoice extends Model
     {
         return [
             'invoice_date' => 'date',
+            'due_date' => 'date',
             'subtotal' => 'decimal:2',
             'discount_total' => 'decimal:2',
             'grand_total' => 'decimal:2',

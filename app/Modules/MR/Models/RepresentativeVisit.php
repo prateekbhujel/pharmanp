@@ -15,11 +15,15 @@ class RepresentativeVisit extends Model
         'tenant_id',
         'company_id',
         'medical_representative_id',
+        'employee_id',
         'customer_id',
         'visit_date',
+        'visit_time',
         'status',
+        'purpose',
         'order_value',
         'notes',
+        'remarks',
         'latitude',
         'longitude',
         'location_name',
@@ -31,6 +35,7 @@ class RepresentativeVisit extends Model
     {
         return [
             'visit_date'  => 'date',
+            'visit_time'  => 'datetime:H:i:s',
             'order_value' => 'decimal:2',
             'latitude'    => 'decimal:7',
             'longitude'   => 'decimal:7',
@@ -45,5 +50,10 @@ class RepresentativeVisit extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Setup\Models\Employee::class);
     }
 }

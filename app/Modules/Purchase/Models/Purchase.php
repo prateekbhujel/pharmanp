@@ -20,8 +20,11 @@ class Purchase extends Model
         'purchase_no',
         'supplier_invoice_no',
         'purchase_date',
+        'due_date',
         'status',
         'payment_status',
+        'payment_mode_id',
+        'payment_type',
         'subtotal',
         'discount_total',
         'grand_total',
@@ -35,6 +38,7 @@ class Purchase extends Model
     {
         return [
             'purchase_date' => 'date',
+            'due_date' => 'date',
             'subtotal' => 'decimal:2',
             'discount_total' => 'decimal:2',
             'grand_total' => 'decimal:2',

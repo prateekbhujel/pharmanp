@@ -19,6 +19,7 @@ class SalesReturn extends Model
         'sales_invoice_id',
         'customer_id',
         'return_no',
+        'return_type',
         'return_date',
         'total_amount',
         'reason',
