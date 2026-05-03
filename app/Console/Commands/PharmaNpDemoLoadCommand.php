@@ -94,7 +94,7 @@ class PharmaNpDemoLoadCommand extends Command
         ], true);
 
         $seconds = round(microtime(true) - $started, 2);
-        $this->components->info('Demo/load data completed in '.$seconds.'s. Login any tenant owner with password: done');
+        $this->components->info('Demo/load data completed in '.$seconds.'s. Login any tenant owner with password: password');
 
         return self::SUCCESS;
     }
@@ -294,7 +294,7 @@ class PharmaNpDemoLoadCommand extends Command
                 'branch_id' => $tenantNo === 1 ? null : $branchId,
                 'name' => $tenantNo === 1 ? 'Pratik Admin' : $companyName.' Owner',
                 'phone' => '98'.str_pad((string) (50000000 + $tenantNo), 8, '0', STR_PAD_LEFT),
-                'password' => Hash::make('done'),
+                'password' => Hash::make('password'),
                 'email_verified_at' => $now,
                 'is_owner' => true,
                 'is_platform_admin' => $tenantNo === 1,
@@ -472,7 +472,7 @@ class PharmaNpDemoLoadCommand extends Command
     {
         $rows = [];
         $now = now();
-        $password = Hash::make('done');
+        $password = Hash::make('password');
 
         for ($i = 1; $i <= $count; $i++) {
             $name = $this->personName($i + $context['tenantNo']);

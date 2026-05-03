@@ -154,7 +154,7 @@ class DashboardService
 
     private function lowStockCount(?User $user = null): int
     {
-        return $this->scopeTenant(DB::table('products'), $user, 'products')
+        $query = $this->scopeTenant(DB::table('products'), $user, 'products')
             ->leftJoin('batches', function ($join) {
                 $join->on('batches.product_id', '=', 'products.id')
                     ->where('batches.is_active', true)
@@ -164,8 +164,9 @@ class DashboardService
             ->where('products.is_active', true)
             ->groupBy('products.id', 'products.reorder_level')
             ->havingRaw('COALESCE(SUM(batches.quantity_available), 0) <= products.reorder_level')
-            ->get()
-            ->count();
+            ->select('products.id');
+
+        return DB::query()->fromSub($query, 'low_stock_products')->count();
     }
 
     private function expiringBatchCount(?User $user = null): int

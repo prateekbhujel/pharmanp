@@ -105,7 +105,7 @@ class DemoSeeder extends Seeder
             DB::statement('PRAGMA foreign_keys = ON');
         }
 
-        $this->command?->info('Realistic PharmaNP demo seeded. Login: pratik@admin.com / done');
+        $this->command?->info('Realistic PharmaNP demo seeded. Login: pratik@admin.com / password');
     }
 
     private function seedFoundation(): array
@@ -183,7 +183,7 @@ class DemoSeeder extends Seeder
                 'branch_id' => $branches->first()->id,
                 'name' => 'Pratik Admin',
                 'phone' => '9841000001',
-                'password' => Hash::make('done'),
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'is_owner' => true,
                 'is_active' => true,
@@ -613,7 +613,7 @@ class DemoSeeder extends Seeder
                     'medical_representative_id' => $mr->id,
                     'name' => $name,
                     'phone' => $mr->phone,
-                    'password' => Hash::make('done'),
+                    'password' => Hash::make('password'),
                     'email_verified_at' => now(),
                     'is_owner' => false,
                     'is_active' => true,
