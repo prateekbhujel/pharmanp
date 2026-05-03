@@ -23,7 +23,7 @@ The plain token is never stored. The database stores only a SHA-256 hash, expiry
 
 ## Endpoint Coverage
 
-The route source of truth is `routes/api_v1.php`. Runtime API docs are generated from the Laravel route collection and merged with curated schemas in `docs/openapi/pharmanp.v1.json`.
+The route source of truth is each module's `app/Modules/<Module>/Routes/api.php` file. Module service providers load those routes under `/api/v1` with the installed/authenticated API middleware. Runtime API docs are generated from the Laravel route collection and merged with curated schemas in `docs/openapi/pharmanp.v1.json`.
 
 Major groups:
 

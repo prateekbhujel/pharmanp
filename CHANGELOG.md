@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 - 2026-05-03
+
+- Moved authenticated API routes into module-owned `Routes/api.php` files loaded by each module service provider.
+- Added a Core module provider so shared API endpoints follow the same module registration path as Inventory, Purchase, Sales, Accounting, MR, Reports, ImportExport and Setup.
+- Refactored the React route registry so frontend route ownership lives in each feature module.
+- Updated architecture/API docs to reflect provider-loaded backend routes and module-composed frontend routes.
+
 ## 1.0.2 - 2026-05-03
 
 - Aligned distributor ERP menus with purchase expiry returns, sales expiry returns, setup masters, targets, areas, divisions and employee hierarchy.

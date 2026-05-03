@@ -8,8 +8,8 @@ PharmaNP is one Laravel application serving a same-domain React SPA. Laravel own
 - `app/Modules/*`: domain modules with local models, DTOs, services, requests, resources, controllers, and policies.
 - `config/pharmanp-modules.php`: the module manifest. It declares each module's backend namespace, frontend path, domain boundary, and service provider.
 - `app/Providers/PharmaNpModuleServiceProvider.php`: registers the module registry and module service providers. A module should bind its contracts inside its module provider, not inside controllers.
-- `app/Core/Modules/ModuleServiceProvider.php`: base provider for module-level contracts and concrete services.
-- `routes/api_v1.php`: authenticated JSON endpoints consumed by the React app, registered from Laravel bootstrap instead of being hidden inside `web.php`.
+- `app/Core/Modules/ModuleServiceProvider.php`: base provider for module-level contracts, concrete services, and module-owned API route loading.
+- `app/Modules/<Module>/Routes/api.php`: authenticated JSON endpoints consumed by the React app. Each module owns its API route surface instead of pushing every route into one central file.
 - `routes/web.php`: install/login/logout, printable documents, and the SPA fallback only.
 - Controllers stay thin: validate, authorize, call a service, return a resource/JSON response.
 - Services own transactions and integrity checks.
@@ -20,14 +20,17 @@ Recommended module shape:
 ```text
 app/Modules/<Module>/
   DTOs/
+  Contracts/
   Http/Controllers/
   Http/Requests/
   Http/Resources/
   Models/
-  Providers/
   Repositories/
     Contracts/
+  Routes/
+    api.php
   Services/
+  <Module>ServiceProvider.php
 ```
 
 DTOs normalize request payloads. Requests validate input and relationship existence. Resources own response shape. Services own business decisions and transactions. Repositories hide complex reusable query/persistence work behind contracts.
@@ -39,6 +42,8 @@ Relationship columns use `unsignedBigInteger` plus indexes, not DB-level foreign
 Company/store scoped columns are present where needed: `tenant_id`, `company_id`, `store_id`, `created_by`, `updated_by`, `deleted_by`. The internal `tenant_id` remains an installation scope identifier, not a hosted-service promise.
 
 The default commercial deployment model is one standalone database per installation. This is easier to support on shared hosting, easier to hand over to a pharmacy, and simpler for backups and upgrades.
+
+Migration filenames may retain early-development history after a live demo has been migrated. Do not rename or squash already-applied migration files on a shared-hosting database without a controlled reset, because Laravel will treat renamed files as new migrations and may try to recreate existing tables. There are no runtime `legacy_*` or `foundation_*` tables; those names are migration history only.
 
 ## Tenant And Branch Model
 
@@ -52,7 +57,8 @@ Dashboard, report, inventory, party, MR and transaction APIs must scope by the a
 
 - `resources/js/core`: API client, auth provider, layout, shared components, hooks, utilities.
 - `resources/js/modules`: feature modules. Each module owns screens and local composition.
-- `resources/js/core/modules/routeRegistry.jsx`: the SPA module route registry. Feature pages are lazy-loaded from their module folder, keeping AppShell from becoming the owner of every screen.
+- `resources/js/modules/<module>/routes.jsx`: frontend route ownership for that feature module. Each route file exports its lazy-loaded pages, module metadata, and route map.
+- `resources/js/core/modules/routeRegistry.jsx`: the SPA module registry composed from module-owned route files, keeping AppShell and core code from becoming the owner of every screen path.
 - `VITE_PHARMANP_API_BASE_URL` lets frontend developers run Vite against a backend host without editing source.
 - Ant Design is used for serious data UI. Tailwind/CSS handles layout density, spacing, and polish.
 
@@ -62,7 +68,7 @@ Authenticated app APIs are under `/api/v1/*` and use Laravel session cookies plu
 
 Lists use server-side pagination, search, filters, and sorting. Laravel resources control response shape. Transactional writes such as purchases, sales, returns, vouchers, payments, stock adjustments, and imports must run inside services/actions with database transactions.
 
-The OpenAPI foundation is exposed at `GET /api/v1/openapi.json`. It starts from `docs/openapi/pharmanp.v1.json` and is augmented with discovered Laravel `/api/v1` routes so Swagger coverage stays broad as modules grow. Swagger UI is available at `/api-docs`.
+The OpenAPI foundation is exposed at `GET /api/v1/openapi.json`. It starts from `docs/openapi/pharmanp.v1.json` and is augmented with discovered Laravel `/api/v1` routes loaded from module route files, so Swagger coverage stays broad as modules grow. Swagger UI is available at `/api-docs`.
 
 ## Large Data Guardrails
 

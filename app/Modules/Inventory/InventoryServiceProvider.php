@@ -30,7 +30,7 @@ class InventoryServiceProvider extends ModuleServiceProvider
         ];
     }
 
-    public function boot(): void
+    protected function bootModule(): void
     {
         Gate::policy(Product::class, ProductPolicy::class);
     }

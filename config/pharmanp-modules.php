@@ -9,7 +9,7 @@ return [
             'domain' => 'Shared application services, dashboard, search and notifications',
             'namespace' => 'App\\Modules\\Core',
             'frontend' => 'resources/js/modules/dashboard',
-            'provider' => null,
+            'provider' => App\Modules\Core\CoreServiceProvider::class,
         ],
         'inventory' => [
             'name' => 'Inventory',
