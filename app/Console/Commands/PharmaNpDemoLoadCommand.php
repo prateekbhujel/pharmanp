@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Setting;
+use App\Models\User;
 use App\Modules\Setup\Services\AccessControlService;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -31,9 +32,13 @@ class PharmaNpDemoLoadCommand extends Command
     protected $description = 'Create realistic multi-tenant demo/load data in chunks for performance demos.';
 
     private array $firstNames = ['Pratik', 'Ranjan', 'Alika', 'Sampanna', 'Dharma', 'Gokul', 'Abhisek', 'Mandip', 'Srijal', 'Utakrsha', 'Khush', 'Ryan', 'Sonu', 'Smriti', 'Pooja'];
+
     private array $lastNames = ['Bhujel', 'Dangol', 'Shrestha', 'Maharjan', 'Rimal', 'Gumaju', 'Adhikari', 'Subedi', 'Aryal', 'Dungana'];
+
     private array $places = ['Kathmandu', 'Pokhara', 'Patan', 'Bhaktapur', 'Baneshwor', 'Maharajgunj', 'New Road', 'Thamel', 'Kalanki', 'Koteshwor', 'Chabahil', 'Boudha', 'Lakeside Pokhara', 'Prithvi Chowk', 'Srijana Chowk'];
+
     private array $formulations = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Ointment', 'Drops', 'Sachet'];
+
     private array $categories = ['Analgesic', 'Antibiotic', 'Antidiabetic', 'Cardiac', 'GI', 'Respiratory', 'Supplement', 'Antiseptic', 'Dermatology', 'Emergency'];
 
     public function handle(): int
@@ -114,7 +119,7 @@ class PharmaNpDemoLoadCommand extends Command
         $counts = $profiles[$profile] ?? $profiles['showcase'];
 
         if (str_starts_with($profile, 'scale') && DB::connection()->getDriverName() === 'sqlite') {
-            throw new \RuntimeException('Scale profiles require MySQL/MariaDB. Use tiny/showcase for SQLite.');
+            throw new \RuntimeException('Scale profiles require MySQL/MariaDB. Use tiny/showcase for isolated test databases.');
         }
 
         foreach (array_keys($counts) as $key) {
@@ -307,7 +312,7 @@ class PharmaNpDemoLoadCommand extends Command
         $ownerId = (int) DB::table('users')->where('email', $email)->value('id');
         $role = Role::query()->firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
         $role->syncPermissions(app(AccessControlService::class)->permissionNames());
-        $user = \App\Models\User::query()->find($ownerId);
+        $user = User::query()->find($ownerId);
         $user?->assignRole($role);
 
         return $ownerId;

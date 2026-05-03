@@ -7,7 +7,7 @@ PharmaNP is a Laravel + React pharmacy ERP/POS application for Nepal-focused pha
 - Laravel 12
 - React 19, Vite, Tailwind CSS
 - Ant Design
-- SQLite for simple shared-hosting installs; MySQL/MariaDB for demos and larger installs
+- MySQL/MariaDB for local, shared-hosting, demo, and production installs
 - Session/cookie/CSRF auth for same-domain SPA deployment, plus hashed bearer tokens and signed JWTs for Swagger/mobile/frontend integration testing
 
 ## Local Setup
@@ -17,7 +17,6 @@ composer install
 npm install
 cp .env.example .env
 php artisan key:generate
-touch database/database.sqlite
 php artisan migrate
 npm run build
 php artisan serve
@@ -101,6 +100,14 @@ php artisan module:make Targets
 ```
 
 Controllers stay thin, services own business transactions, repositories hide reusable query details, and module providers bind repository interfaces and load module routes.
+
+Use the architecture doctor before pushing module work:
+
+```bash
+php artisan pharmanp:module-doctor
+```
+
+The command fails when a configured module is missing its provider, route boundary, repository interface, or service-provider binding.
 
 ## Deployment
 

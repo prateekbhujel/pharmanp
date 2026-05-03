@@ -2,12 +2,15 @@
 
 namespace App\Modules\Reports\Services;
 
+use App\Core\Database\SqlDialect;
 use App\Core\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AgingReportService
 {
+    public function __construct(private readonly SqlDialect $sql) {}
+
     public function customers(Request $request, int $perPage): array
     {
         $query = DB::table('sales_invoices')
@@ -130,10 +133,6 @@ class AgingReportService
 
     private function daysOverdueExpression(string $dueColumn, string $fallbackColumn): string
     {
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            return "CAST(julianday('now') - julianday(COALESCE({$dueColumn}, {$fallbackColumn})) AS INTEGER)";
-        }
-
-        return "DATEDIFF(CURDATE(), COALESCE({$dueColumn}, {$fallbackColumn}))";
+        return $this->sql->coalescedDaysUntilToday($dueColumn, $fallbackColumn);
     }
 }

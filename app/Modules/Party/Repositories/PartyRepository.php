@@ -3,6 +3,7 @@
 namespace App\Modules\Party\Repositories;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Query\TableQueryApplier;
 use App\Models\User;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 
 class PartyRepository implements PartyRepositoryInterface
 {
+    public function __construct(private readonly TableQueryApplier $tables) {}
+
     public function suppliers(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
         $sorts = [
@@ -25,28 +28,22 @@ class PartyRepository implements PartyRepositoryInterface
         ];
 
         $query = Supplier::query()
-            ->with('supplierType:id,name')
-            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
-            ->when((bool) ($table->filters['deleted'] ?? false), fn (Builder $builder) => $builder->onlyTrashed())
-            ->when($table->search, function (Builder $builder, string $search) {
-                $builder->where(function (Builder $inner) use ($search) {
-                    $inner->where('name', 'like', '%'.$search.'%')
-                        ->orWhere('supplier_code', 'like', '%'.$search.'%')
-                        ->orWhere('contact_person', 'like', '%'.$search.'%')
-                        ->orWhere('phone', 'like', '%'.$search.'%')
-                        ->orWhere('email', 'like', '%'.$search.'%')
-                        ->orWhere('pan_number', 'like', '%'.$search.'%')
-                        ->orWhereHas('supplierType', fn (Builder $typeQuery) => $typeQuery->where('name', 'like', '%'.$search.'%'));
-                });
+            ->with('supplierType:id,name');
+
+        $this->tables->tenant($query, $user, 'tenant_id');
+        $this->tables->softDeletes($query, $table);
+        $this->tables->activeFilter($query, $table, 'is_active');
+        $query->when($table->search, function (Builder $builder, string $search): void {
+            $builder->where(function (Builder $inner) use ($search): void {
+                $this->tables->search($inner, $search, ['name', 'supplier_code', 'contact_person', 'phone', 'email', 'pan_number']);
+                $inner->orWhereHas('supplierType', fn (Builder $typeQuery) => $typeQuery->where('name', 'like', '%'.$search.'%'));
             });
+        });
 
-        if (array_key_exists('is_active', $table->filters)) {
-            $query->where('is_active', (bool) $table->filters['is_active']);
-        }
-
-        return $query
-            ->orderBy($sorts[$table->sortField] ?? 'updated_at', $table->sortOrder)
-            ->paginate($table->perPage, ['*'], 'page', $table->page);
+        return $this->tables->paginate(
+            $query->orderBy($this->tables->sortColumn($table, $sorts, 'updated_at'), $table->sortOrder),
+            $table,
+        );
     }
 
     public function customers(TableQueryData $table, ?User $user = null): LengthAwarePaginator
@@ -61,28 +58,22 @@ class PartyRepository implements PartyRepositoryInterface
         ];
 
         $query = Customer::query()
-            ->with('partyType:id,name')
-            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
-            ->when((bool) ($table->filters['deleted'] ?? false), fn (Builder $builder) => $builder->onlyTrashed())
-            ->when($table->search, function (Builder $builder, string $search) {
-                $builder->where(function (Builder $inner) use ($search) {
-                    $inner->where('name', 'like', '%'.$search.'%')
-                        ->orWhere('customer_code', 'like', '%'.$search.'%')
-                        ->orWhere('contact_person', 'like', '%'.$search.'%')
-                        ->orWhere('phone', 'like', '%'.$search.'%')
-                        ->orWhere('email', 'like', '%'.$search.'%')
-                        ->orWhere('pan_number', 'like', '%'.$search.'%')
-                        ->orWhereHas('partyType', fn (Builder $typeQuery) => $typeQuery->where('name', 'like', '%'.$search.'%'));
-                });
+            ->with('partyType:id,name');
+
+        $this->tables->tenant($query, $user, 'tenant_id');
+        $this->tables->softDeletes($query, $table);
+        $this->tables->activeFilter($query, $table, 'is_active');
+        $query->when($table->search, function (Builder $builder, string $search): void {
+            $builder->where(function (Builder $inner) use ($search): void {
+                $this->tables->search($inner, $search, ['name', 'customer_code', 'contact_person', 'phone', 'email', 'pan_number']);
+                $inner->orWhereHas('partyType', fn (Builder $typeQuery) => $typeQuery->where('name', 'like', '%'.$search.'%'));
             });
+        });
 
-        if (array_key_exists('is_active', $table->filters)) {
-            $query->where('is_active', (bool) $table->filters['is_active']);
-        }
-
-        return $query
-            ->orderBy($sorts[$table->sortField] ?? 'updated_at', $table->sortOrder)
-            ->paginate($table->perPage, ['*'], 'page', $table->page);
+        return $this->tables->paginate(
+            $query->orderBy($this->tables->sortColumn($table, $sorts, 'updated_at'), $table->sortOrder),
+            $table,
+        );
     }
 
     public function createSupplier(array $data, User $user): Supplier

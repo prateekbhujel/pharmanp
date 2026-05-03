@@ -2,12 +2,15 @@
 
 namespace App\Modules\Reports\Services;
 
+use App\Core\Database\SqlDialect;
 use App\Core\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ExpiryReportService
 {
+    public function __construct(private readonly SqlDialect $sql) {}
+
     public function buckets(Request $request, int $perPage): array
     {
         $days = $this->daysRemainingExpression('batches.expires_at');
@@ -94,10 +97,6 @@ class ExpiryReportService
 
     private function daysRemainingExpression(string $dateColumn): string
     {
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            return "CAST(julianday({$dateColumn}) - julianday('now') AS INTEGER)";
-        }
-
-        return "DATEDIFF({$dateColumn}, CURDATE())";
+        return $this->sql->daysFromToday($dateColumn);
     }
 }

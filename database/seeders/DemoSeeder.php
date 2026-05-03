@@ -23,7 +23,6 @@ use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\MR\Models\RepresentativeVisit;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
-use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Purchase\Services\PurchaseEntryService;
 use App\Modules\Purchase\Services\PurchaseOrderService;
 use App\Modules\Sales\Models\SalesInvoice;
@@ -78,10 +77,6 @@ class DemoSeeder extends Seeder
 
         DB::disableQueryLog();
 
-        if (DB::getDriverName() === 'sqlite') {
-            DB::statement('PRAGMA foreign_keys = OFF');
-        }
-
         $context = DB::transaction(fn () => $this->seedFoundation());
 
         $this->seedProducts($context);
@@ -100,10 +95,6 @@ class DemoSeeder extends Seeder
         ]);
 
         Setting::putValue('demo.seeded_version', self::VERSION, true);
-
-        if (DB::getDriverName() === 'sqlite') {
-            DB::statement('PRAGMA foreign_keys = ON');
-        }
 
         $this->command?->info('Realistic PharmaNP demo seeded. Login: pratik@admin.com / password');
     }

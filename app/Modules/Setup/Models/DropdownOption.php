@@ -72,7 +72,7 @@ class DropdownOption extends Model
         return static::MANAGED_ALIASES[$this->alias]['label'] ?? ucwords(str_replace('_', ' ', $this->alias));
     }
 
-    // Legacy pages still expect a boolean-like property name.
+    // Keep the API shape consistent with other status-aware resources.
     public function getIsActiveAttribute(): bool
     {
         return (bool) $this->status;

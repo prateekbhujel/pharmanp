@@ -3,6 +3,7 @@
 namespace App\Modules\Inventory\Repositories;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Query\TableQueryApplier;
 use App\Models\User;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Repositories\Interfaces\ProductRepositoryInterface;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ProductRepository implements ProductRepositoryInterface
 {
+    public function __construct(private readonly TableQueryApplier $tables) {}
+
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
         $sorts = [
@@ -28,33 +31,32 @@ class ProductRepository implements ProductRepositoryInterface
 
         $query = Product::query()
             ->select('products.*')
-            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('products.tenant_id', $tenantId))
-            ->when((bool) ($table->filters['deleted'] ?? false), fn (Builder $builder) => $builder->onlyTrashed())
             ->with(['company:id,name', 'unit:id,name', 'category:id,name', 'division:id,name'])
             ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available');
 
+        $this->tables->tenant($query, $user, 'products.tenant_id');
+        $this->tables->softDeletes($query, $table);
+        $this->tables->search($query, $table->search, [
+            'products.name',
+            'products.product_code',
+            'products.hs_code',
+            'products.generic_name',
+            'products.sku',
+            'products.barcode',
+            'products.composition',
+            'products.group_name',
+            'products.manufacturer_name',
+            'products.packaging_type',
+            'products.case_movement',
+        ]);
+
         $query
-            ->when($table->search, function (Builder $builder, string $search) {
-                $builder->where(function (Builder $inner) use ($search) {
-                    $inner->where('products.name', 'like', '%'.$search.'%')
-                        ->orWhere('products.product_code', 'like', '%'.$search.'%')
-                        ->orWhere('products.hs_code', 'like', '%'.$search.'%')
-                        ->orWhere('products.generic_name', 'like', '%'.$search.'%')
-                        ->orWhere('products.sku', 'like', '%'.$search.'%')
-                        ->orWhere('products.barcode', 'like', '%'.$search.'%')
-                        ->orWhere('products.composition', 'like', '%'.$search.'%')
-                        ->orWhere('products.group_name', 'like', '%'.$search.'%')
-                        ->orWhere('products.manufacturer_name', 'like', '%'.$search.'%')
-                        ->orWhere('products.packaging_type', 'like', '%'.$search.'%')
-                        ->orWhere('products.case_movement', 'like', '%'.$search.'%');
-                });
-            })
             ->when(isset($table->filters['company_id']), fn (Builder $builder) => $builder->where('products.company_id', $table->filters['company_id']))
             ->when(isset($table->filters['category_id']), fn (Builder $builder) => $builder->where('products.category_id', $table->filters['category_id']))
-            ->when(isset($table->filters['division_id']), fn (Builder $builder) => $builder->where('products.division_id', $table->filters['division_id']))
-            ->when(isset($table->filters['is_active']), fn (Builder $builder) => $builder->where('products.is_active', (bool) $table->filters['is_active']));
+            ->when(isset($table->filters['division_id']), fn (Builder $builder) => $builder->where('products.division_id', $table->filters['division_id']));
+        $this->tables->activeFilter($query, $table, 'products.is_active');
 
-        $sortColumn = $sorts[$table->sortField] ?? $sorts['updated_at'];
+        $sortColumn = $this->tables->sortColumn($table, $sorts, 'updated_at');
 
         if ($sortColumn === 'stock_on_hand') {
             $query->orderByRaw('COALESCE(stock_on_hand, 0) '.$table->sortOrder);
@@ -62,7 +64,7 @@ class ProductRepository implements ProductRepositoryInterface
             $query->orderBy($sortColumn, $table->sortOrder);
         }
 
-        return $query->paginate($table->perPage, ['*'], 'page', $table->page);
+        return $this->tables->paginate($query, $table);
     }
 
     public function create(array $payload): Product

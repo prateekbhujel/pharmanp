@@ -3,6 +3,7 @@
 namespace App\Modules\Setup\Repositories;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Query\TableQueryApplier;
 use App\Models\User;
 use App\Modules\Setup\Repositories\Interfaces\UserRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -19,26 +20,27 @@ class UserRepository implements UserRepositoryInterface
         'updated_at' => 'users.updated_at',
     ];
 
+    public function __construct(private readonly TableQueryApplier $tables) {}
+
     public function paginate(TableQueryData $table, ?User $actor = null): LengthAwarePaginator
     {
         $query = User::query()
             ->with(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name'])
-            ->when($actor?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('users.tenant_id', $tenantId))
-            ->when($table->search, function (Builder $builder, string $search) {
-                $builder->where(function (Builder $inner) use ($search) {
-                    $inner->where('users.name', 'like', '%'.$search.'%')
-                        ->orWhere('users.email', 'like', '%'.$search.'%')
-                        ->orWhere('users.phone', 'like', '%'.$search.'%')
-                        ->orWhereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'like', '%'.$search.'%'));
-                });
-            })
-            ->when(array_key_exists('is_active', $table->filters), fn (Builder $builder) => $builder->where('users.is_active', (bool) $table->filters['is_active']))
             ->when(array_key_exists('role_name', $table->filters), fn (Builder $builder) => $builder->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', $table->filters['role_name'])));
 
-        $sort = self::SORTS[$table->sortField] ?? self::SORTS['updated_at'];
+        $this->tables->tenant($query, $actor, 'users.tenant_id');
+        $query->when($table->search, function (Builder $builder, string $search): void {
+            $builder->where(function (Builder $inner) use ($search): void {
+                $this->tables->search($inner, $search, ['users.name', 'users.email', 'users.phone']);
+                $inner->orWhereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'like', '%'.$search.'%'));
+            });
+        });
+        $this->tables->activeFilter($query, $table, 'users.is_active');
 
-        return $query->orderBy($sort, $table->sortOrder)
-            ->paginate($table->perPage, ['*'], 'page', $table->page);
+        return $this->tables->paginate(
+            $query->orderBy($this->tables->sortColumn($table, self::SORTS, 'updated_at'), $table->sortOrder),
+            $table,
+        );
     }
 
     public function create(array $payload): User
