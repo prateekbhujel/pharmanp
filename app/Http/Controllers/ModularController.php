@@ -25,7 +25,9 @@ abstract class ModularController extends Controller
     ): JsonResponse {
         return response()->json([
             'status' => 'error',
+            'code' => $status,
             'message' => $message,
+            'data' => null,
             'errors' => $errors,
         ], $status);
     }

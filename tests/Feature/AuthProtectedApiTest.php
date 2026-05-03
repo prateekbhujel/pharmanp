@@ -28,7 +28,12 @@ class AuthProtectedApiTest extends TestCase
         $this->actingAs($user)
             ->getJson('/api/v1/dashboard/summary')
             ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('code', 200)
             ->assertJsonStructure([
+                'status',
+                'code',
+                'message',
                 'data' => [
                     'period',
                     'stats',
@@ -50,6 +55,8 @@ class AuthProtectedApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$plainToken)
             ->getJson('/api/v1/dashboard/summary')
             ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('code', 200)
             ->assertJsonPath('data.stats.products', 0);
 
         $this->withHeader('Authorization', 'Bearer '.$plainToken)
@@ -84,6 +91,8 @@ class AuthProtectedApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$jwt)
             ->getJson('/api/v1/dashboard/summary')
             ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('code', 200)
             ->assertJsonPath('data.stats.products', 0);
     }
 
@@ -104,6 +113,8 @@ class AuthProtectedApiTest extends TestCase
             'device_name' => 'React Dev Server',
         ])
             ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('code', 200)
             ->assertJsonPath('message', 'Authenticated.')
             ->json('token');
 

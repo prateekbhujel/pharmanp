@@ -211,6 +211,87 @@
       }
     },
     "schemas": {
+      "ApiResponseEnvelope": {
+        "type": "object",
+        "required": ["status", "code", "message", "data"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["success", "error"],
+            "example": "success"
+          },
+          "code": {
+            "type": "integer",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "example": "Records retrieved successfully."
+          },
+          "data": {
+            "nullable": true,
+            "description": "Resource object, collection, or null for command-only responses."
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "example": {
+          "status": "success",
+          "code": 200,
+          "message": "Products retrieved successfully.",
+          "data": [
+            {
+              "id": 1,
+              "name": "Paracetamol 500",
+              "product_code": "ITEM-00001",
+              "hs_code": "3004.90",
+              "stock_on_hand": 120
+            }
+          ],
+          "links": {
+            "first": "https://pharmanp.example.test/api/v1/inventory/products?page=1",
+            "last": "https://pharmanp.example.test/api/v1/inventory/products?page=8",
+            "prev": null,
+            "next": "https://pharmanp.example.test/api/v1/inventory/products?page=2"
+          },
+          "meta": {
+            "current_page": 1,
+            "from": 1,
+            "last_page": 8,
+            "path": "https://pharmanp.example.test/api/v1/inventory/products",
+            "per_page": 15,
+            "to": 15,
+            "total": 120
+          }
+        }
+      },
+      "PaginationLinks": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "first": { "type": "string", "nullable": true },
+          "last": { "type": "string", "nullable": true },
+          "prev": { "type": "string", "nullable": true },
+          "next": { "type": "string", "nullable": true }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "current_page": { "type": "integer" },
+          "from": { "type": "integer", "nullable": true },
+          "last_page": { "type": "integer" },
+          "path": { "type": "string" },
+          "per_page": { "type": "integer", "example": 15 },
+          "to": { "type": "integer", "nullable": true },
+          "total": { "type": "integer" }
+        }
+      },
       "ProductWrite": {
         "type": "object",
         "required": ["name", "company_id", "unit_id", "mrp", "purchase_price", "selling_price", "reorder_level"],

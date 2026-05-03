@@ -83,7 +83,51 @@ final readonly class OpenApiSpecBuilder
                     'description' => 'Successful response',
                     'content' => [
                         'application/json' => [
-                            'schema' => ['type' => 'object'],
+                            'schema' => ['$ref' => '#/components/schemas/ApiResponseEnvelope'],
+                            'examples' => [
+                                'success' => [
+                                    'summary' => 'Standard success response',
+                                    'value' => [
+                                        'status' => 'success',
+                                        'code' => 200,
+                                        'message' => 'Records retrieved successfully.',
+                                        'data' => [
+                                            [
+                                                'id' => 1,
+                                                'name' => 'Kathmandu Care Pharmacy',
+                                                'created_at' => '2026-05-04T10:15:00.000000Z',
+                                                'updated_at' => '2026-05-04T10:15:00.000000Z',
+                                            ],
+                                        ],
+                                    ],
+                                ],
+                                'paginated' => [
+                                    'summary' => 'Paginated list response',
+                                    'value' => [
+                                        'status' => 'success',
+                                        'code' => 200,
+                                        'message' => 'Records retrieved successfully.',
+                                        'data' => [
+                                            ['id' => 1, 'name' => 'Paracetamol 500'],
+                                        ],
+                                        'links' => [
+                                            'first' => 'https://pharmanp.example.test/api/v1/inventory/products?page=1',
+                                            'last' => 'https://pharmanp.example.test/api/v1/inventory/products?page=10',
+                                            'prev' => null,
+                                            'next' => 'https://pharmanp.example.test/api/v1/inventory/products?page=2',
+                                        ],
+                                        'meta' => [
+                                            'current_page' => 1,
+                                            'from' => 1,
+                                            'last_page' => 10,
+                                            'path' => 'https://pharmanp.example.test/api/v1/inventory/products',
+                                            'per_page' => 15,
+                                            'to' => 15,
+                                            'total' => 150,
+                                        ],
+                                    ],
+                                ],
+                            ],
                         ],
                     ],
                 ],

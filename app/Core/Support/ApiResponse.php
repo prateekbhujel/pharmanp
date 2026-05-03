@@ -15,12 +15,14 @@ final class ApiResponse
         if ($data instanceof JsonResource || $data instanceof ResourceCollection) {
             return $data->additional([
                 'status' => 'success',
+                'code' => $status,
                 'message' => $message,
             ])->response()->setStatusCode($status);
         }
 
         return response()->json([
             'status' => 'success',
+            'code' => $status,
             'message' => $message,
             'data' => $data,
         ], $status);

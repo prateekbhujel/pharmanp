@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\WrapApiResponse;
 use App\Modules\Accounting\Providers\AccountingServiceProvider;
 use App\Modules\Analytics\Providers\AnalyticsServiceProvider;
 use App\Modules\Core\Providers\CoreServiceProvider;
@@ -15,7 +16,7 @@ use App\Modules\Setup\Providers\SetupServiceProvider;
 return [
     'api_prefix' => 'api/v1',
 
-    'api_middleware' => ['api', 'installed', 'pharmanp.api'],
+    'api_middleware' => ['api', WrapApiResponse::class, 'installed', 'pharmanp.api'],
 
     'modules' => [
         'core' => [

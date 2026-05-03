@@ -53,6 +53,9 @@ class ProductApiTest extends TestCase
 
         $this->actingAs($user)->getJson('/api/v1/inventory/products?search=Para&sort_field=name&sort_order=asc')
             ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('code', 200)
+            ->assertJsonPath('meta.per_page', 15)
             ->assertJsonPath('data.0.name', 'Paracetamol 500');
 
         $this->actingAs($user)->putJson('/api/v1/inventory/products/'.$product->id, [
@@ -82,6 +85,9 @@ class ProductApiTest extends TestCase
 
         $this->actingAs($user)->getJson('/api/v1/inventory/masters/companies?search=Nepal')
             ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('code', 200)
+            ->assertJsonStructure(['data', 'meta'])
             ->assertJsonPath('data.0.name', 'Nepal Pharma Manufacturer');
 
         $this->actingAs($user)->putJson('/api/v1/inventory/masters/companies/'.$companyId, [
