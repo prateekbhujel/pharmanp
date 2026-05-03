@@ -16,6 +16,10 @@ Route::get('/api/v1/openapi.json', OpenApiController::class)
     ->middleware('installed')
     ->name('api.openapi');
 
+Route::get('/docs/api-docs.json', OpenApiController::class)
+    ->middleware('installed')
+    ->name('api.docs.json');
+
 Route::view('/api-docs', 'api-docs')
     ->middleware('installed')
     ->name('api.docs');
