@@ -2,7 +2,6 @@
 
 namespace App\Modules\ImportExport\Services;
 
-use App\Modules\ImportExport\Contracts\PurchaseOcrServiceInterface;
 use App\Modules\Party\Models\Supplier;
 use App\Modules\Purchase\Models\Purchase;
 use Carbon\Carbon;
@@ -10,7 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
-class PurchaseOcrService implements PurchaseOcrServiceInterface
+class PurchaseOcrService
 {
     public function extract(UploadedFile $file): array
     {
@@ -62,6 +61,7 @@ class PurchaseOcrService implements PurchaseOcrServiceInterface
 
             if (! $response->ok() || ! empty($payload['IsErroredOnProcessing'])) {
                 $errorMessage = $this->failureMessage($payload ?: $rawBody) ?: $errorMessage;
+
                 continue;
             }
 
@@ -315,6 +315,7 @@ class PurchaseOcrService implements PurchaseOcrServiceInterface
             } else {
                 $payload = trim(strip_tags($payload));
                 $payload = preg_replace('/\s+/', ' ', $payload);
+
                 return $payload !== '' ? Str::limit((string) $payload, 180) : null;
             }
         }

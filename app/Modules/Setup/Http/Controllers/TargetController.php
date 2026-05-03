@@ -4,17 +4,17 @@ namespace App\Modules\Setup\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\Controller;
-use App\Modules\Setup\Contracts\TargetServiceInterface;
 use App\Modules\Setup\Http\Requests\TargetRequest;
 use App\Modules\Setup\Http\Resources\TargetResource;
 use App\Modules\Setup\Models\Target;
+use App\Modules\Setup\Services\TargetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TargetController extends Controller
 {
-    public function index(Request $request, TargetServiceInterface $service): JsonResponse
+    public function index(Request $request, TargetService $service): JsonResponse
     {
         $this->authorizeManage($request);
 
@@ -29,9 +29,9 @@ class TargetController extends Controller
         return response()->json(TargetResource::collection($page)->response()->getData(true));
     }
 
-    public function store(TargetRequest $request, TargetServiceInterface $service): JsonResponse
+    public function store(TargetRequest $request, TargetService $service): JsonResponse
     {
-        $target = $service->save(new Target(), $request->validated(), $request->user());
+        $target = $service->save(new Target, $request->validated(), $request->user());
 
         return (new TargetResource($target))
             ->additional(['message' => 'Target created.'])
@@ -39,12 +39,12 @@ class TargetController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(TargetRequest $request, Target $target, TargetServiceInterface $service): TargetResource
+    public function update(TargetRequest $request, Target $target, TargetService $service): TargetResource
     {
         return new TargetResource($service->save($target, $request->validated(), $request->user()));
     }
 
-    public function destroy(Request $request, Target $target, TargetServiceInterface $service): JsonResponse
+    public function destroy(Request $request, Target $target, TargetService $service): JsonResponse
     {
         $this->authorizeManage($request);
         $service->delete($target, $request->user());

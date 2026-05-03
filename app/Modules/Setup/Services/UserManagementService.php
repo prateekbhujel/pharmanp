@@ -4,14 +4,13 @@ namespace App\Modules\Setup\Services;
 
 use App\Core\DTOs\TableQueryData;
 use App\Models\User;
-use App\Modules\Setup\Contracts\UserManagementServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
-class UserManagementService implements UserManagementServiceInterface
+class UserManagementService
 {
     private const SORTS = [
         'name' => 'users.name',

@@ -3,21 +3,19 @@
 namespace App\Modules\Inventory\Services;
 
 use App\Models\User;
-use App\Modules\Inventory\Contracts\BatchServiceInterface;
-use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
 use App\Modules\Inventory\Models\Batch;
 use Illuminate\Support\Facades\DB;
 
-class BatchService implements BatchServiceInterface
+class BatchService
 {
-    public function __construct(private readonly StockMovementServiceInterface $stock) {}
+    public function __construct(private readonly StockMovementService $stock) {}
 
     public function save(array $data, User $user, ?Batch $batch = null): Batch
     {
         return DB::transaction(function () use ($data, $user, $batch) {
             $quantityAvailable = (float) ($data['quantity_available'] ?? $data['quantity_received']);
             $oldQuantity = $batch ? (float) $batch->quantity_available : 0;
-            $batch ??= new Batch();
+            $batch ??= new Batch;
 
             $batch->fill([
                 'tenant_id' => $batch->tenant_id ?: $user->tenant_id,

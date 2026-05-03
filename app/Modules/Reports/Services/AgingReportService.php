@@ -2,11 +2,11 @@
 
 namespace App\Modules\Reports\Services;
 
-use App\Modules\Reports\Contracts\AgingReportServiceInterface;
+use App\Core\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class AgingReportService implements AgingReportServiceInterface
+class AgingReportService
 {
     public function customers(Request $request, int $perPage): array
     {
@@ -45,7 +45,7 @@ class AgingReportService implements AgingReportServiceInterface
 
         return [
             'data' => collect($page->items())->map(fn ($row) => $this->agingRow($row))->values(),
-            'meta' => $this->meta($page),
+            'meta' => ApiResponse::paginationMeta($page),
             'summary' => $this->summary($query, '(sales_invoices.grand_total - sales_invoices.paid_amount)', $days),
         ];
     }
@@ -81,7 +81,7 @@ class AgingReportService implements AgingReportServiceInterface
 
         return [
             'data' => collect($page->items())->map(fn ($row) => $this->agingRow($row))->values(),
-            'meta' => $this->meta($page),
+            'meta' => ApiResponse::paginationMeta($page),
             'summary' => $this->summary($query, '(purchases.grand_total - purchases.paid_amount)', $days),
         ];
     }
@@ -135,15 +135,5 @@ class AgingReportService implements AgingReportServiceInterface
         }
 
         return "DATEDIFF(CURDATE(), COALESCE({$dueColumn}, {$fallbackColumn}))";
-    }
-
-    private function meta($page): array
-    {
-        return [
-            'current_page' => $page->currentPage(),
-            'per_page' => $page->perPage(),
-            'total' => $page->total(),
-            'last_page' => $page->lastPage(),
-        ];
     }
 }

@@ -6,14 +6,13 @@ use App\Core\DTOs\TableQueryData;
 use App\Core\Services\DocumentNumberService;
 use App\Core\Services\SupplierCodeGenerator;
 use App\Models\User;
-use App\Modules\Party\Contracts\PartyServiceInterface;
 use App\Modules\Party\DTOs\PartyData;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
 use App\Modules\Party\Repositories\Interfaces\PartyRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
-class PartyService implements PartyServiceInterface
+class PartyService
 {
     public function __construct(
         private readonly DocumentNumberService $numbers,

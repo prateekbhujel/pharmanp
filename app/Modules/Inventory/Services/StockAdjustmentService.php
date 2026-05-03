@@ -3,17 +3,15 @@
 namespace App\Modules\Inventory\Services;
 
 use App\Models\User;
-use App\Modules\Inventory\Contracts\StockAdjustmentServiceInterface;
-use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\StockAdjustment;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class StockAdjustmentService implements StockAdjustmentServiceInterface
+class StockAdjustmentService
 {
-    public function __construct(private readonly StockMovementServiceInterface $stock) {}
+    public function __construct(private readonly StockMovementService $stock) {}
 
     public function save(array $data, User $user, ?StockAdjustment $adjustment = null): StockAdjustment
     {
@@ -28,7 +26,7 @@ class StockAdjustmentService implements StockAdjustmentServiceInterface
                 throw ValidationException::withMessages(['batch_id' => 'Selected batch does not belong to the selected product.']);
             }
 
-            $adjustment ??= new StockAdjustment();
+            $adjustment ??= new StockAdjustment;
             $adjustment->fill([
                 'tenant_id' => $user->tenant_id,
                 'company_id' => $user->company_id ?: $batch->company_id,

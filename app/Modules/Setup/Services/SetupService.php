@@ -2,12 +2,10 @@
 
 namespace App\Modules\Setup\Services;
 
-use App\Core\Support\AssetUrl;
-use App\Modules\Setup\Contracts\AccessControlServiceInterface;
-use App\Modules\Setup\Contracts\SetupServiceInterface;
 use App\Core\Services\InstallationService;
-use App\Models\User;
+use App\Core\Support\AssetUrl;
 use App\Models\Setting;
+use App\Models\User;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Store;
@@ -15,18 +13,18 @@ use App\Modules\Inventory\Models\Unit;
 use App\Modules\MR\Models\Branch;
 use App\Modules\Setup\Models\FiscalYear;
 use App\Modules\Setup\Models\Tenant;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
-class SetupService implements SetupServiceInterface
+class SetupService
 {
     public function __construct(
         private readonly InstallationService $installation,
-        private readonly AccessControlServiceInterface $accessControl,
+        private readonly AccessControlService $accessControl,
     ) {}
 
     public function complete(array $data): array

@@ -3,11 +3,10 @@
 namespace App\Modules\Setup\Services;
 
 use App\Models\User;
-use App\Modules\Setup\Contracts\AccessScopeServiceInterface;
 use App\Modules\Setup\Models\Employee;
 use App\Modules\Setup\Models\UserAccessScope;
 
-class AccessScopeService implements AccessScopeServiceInterface
+class AccessScopeService
 {
     public function canAccessAll(User $user): bool
     {

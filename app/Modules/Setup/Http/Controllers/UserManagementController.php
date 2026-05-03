@@ -11,14 +11,14 @@ use App\Modules\Setup\Http\Requests\UserIndexRequest;
 use App\Modules\Setup\Http\Requests\UserStoreRequest;
 use App\Modules\Setup\Http\Requests\UserUpdateRequest;
 use App\Modules\Setup\Http\Resources\UserResource;
-use App\Modules\Setup\Contracts\UserManagementServiceInterface;
+use App\Modules\Setup\Services\UserManagementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 
 class UserManagementController extends Controller
 {
-    public function index(UserIndexRequest $request, UserManagementServiceInterface $service): JsonResponse
+    public function index(UserIndexRequest $request, UserManagementService $service): JsonResponse
     {
         $users = $service->paginate(TableQueryData::fromRequest($request, ['is_active', 'role_name']), $request->user());
         $payload = UserResource::collection($users)->response()->getData(true);
@@ -37,7 +37,7 @@ class UserManagementController extends Controller
         return response()->json($payload);
     }
 
-    public function store(UserStoreRequest $request, UserManagementServiceInterface $service): JsonResponse
+    public function store(UserStoreRequest $request, UserManagementService $service): JsonResponse
     {
         $user = $service->create($request->validated(), $request->user());
 
@@ -47,12 +47,12 @@ class UserManagementController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(UserUpdateRequest $request, User $user, UserManagementServiceInterface $service): UserResource
+    public function update(UserUpdateRequest $request, User $user, UserManagementService $service): UserResource
     {
         return new UserResource($service->update($user, $request->validated(), $request->user()));
     }
 
-    public function toggleStatus(Request $request, User $user, UserManagementServiceInterface $service): UserResource
+    public function toggleStatus(Request $request, User $user, UserManagementService $service): UserResource
     {
         abort_unless((bool) $request->user()?->is_owner || (bool) $request->user()?->can('users.manage'), 403);
 
@@ -63,7 +63,7 @@ class UserManagementController extends Controller
         return new UserResource($service->toggleStatus($user, (bool) $validated['is_active'], $request->user()));
     }
 
-    public function destroy(User $user, UserManagementServiceInterface $service): JsonResponse
+    public function destroy(User $user, UserManagementService $service): JsonResponse
     {
         $service->delete($user, request()->user());
 

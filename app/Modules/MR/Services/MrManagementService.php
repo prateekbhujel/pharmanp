@@ -4,14 +4,13 @@ namespace App\Modules\MR\Services;
 
 use App\Core\DTOs\TableQueryData;
 use App\Models\User;
-use App\Modules\MR\Contracts\MrManagementServiceInterface;
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\MR\Models\RepresentativeVisit;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
-class MrManagementService implements MrManagementServiceInterface
+class MrManagementService
 {
     private const REPRESENTATIVE_SORTS = [
         'name' => 'name',
@@ -80,21 +79,21 @@ class MrManagementService implements MrManagementServiceInterface
     {
         return DB::transaction(function () use ($data, $user) {
             return MedicalRepresentative::query()->create([
-                'tenant_id'     => $user->tenant_id,
-                'company_id'    => $user->company_id,
-                'branch_id'     => $data['branch_id'] ?? null,
-                'employee_id'    => $data['employee_id'] ?? null,
-                'area_id'        => $data['area_id'] ?? null,
-                'division_id'    => $data['division_id'] ?? null,
-                'name'          => $data['name'],
+                'tenant_id' => $user->tenant_id,
+                'company_id' => $user->company_id,
+                'branch_id' => $data['branch_id'] ?? null,
+                'employee_id' => $data['employee_id'] ?? null,
+                'area_id' => $data['area_id'] ?? null,
+                'division_id' => $data['division_id'] ?? null,
+                'name' => $data['name'],
                 'employee_code' => $data['employee_code'] ?? null,
-                'phone'         => $data['phone'] ?? null,
-                'email'         => $data['email'] ?? null,
-                'territory'     => $data['territory'] ?? null,
-                'monthly_target'=> $data['monthly_target'] ?? 0,
-                'is_active'     => $data['is_active'] ?? true,
-                'created_by'    => $user->id,
-                'updated_by'    => $user->id,
+                'phone' => $data['phone'] ?? null,
+                'email' => $data['email'] ?? null,
+                'territory' => $data['territory'] ?? null,
+                'monthly_target' => $data['monthly_target'] ?? 0,
+                'is_active' => $data['is_active'] ?? true,
+                'created_by' => $user->id,
+                'updated_by' => $user->id,
             ]);
         });
     }
@@ -103,18 +102,18 @@ class MrManagementService implements MrManagementServiceInterface
     {
         return DB::transaction(function () use ($representative, $data, $user) {
             $representative->update([
-                'branch_id'     => $data['branch_id'] ?? $representative->branch_id,
-                'employee_id'    => $data['employee_id'] ?? null,
-                'area_id'        => $data['area_id'] ?? null,
-                'division_id'    => $data['division_id'] ?? null,
-                'name'          => $data['name'],
+                'branch_id' => $data['branch_id'] ?? $representative->branch_id,
+                'employee_id' => $data['employee_id'] ?? null,
+                'area_id' => $data['area_id'] ?? null,
+                'division_id' => $data['division_id'] ?? null,
+                'name' => $data['name'],
                 'employee_code' => $data['employee_code'] ?? null,
-                'phone'         => $data['phone'] ?? null,
-                'email'         => $data['email'] ?? null,
-                'territory'     => $data['territory'] ?? null,
-                'monthly_target'=> $data['monthly_target'] ?? 0,
-                'is_active'     => $data['is_active'] ?? $representative->is_active,
-                'updated_by'    => $user->id,
+                'phone' => $data['phone'] ?? null,
+                'email' => $data['email'] ?? null,
+                'territory' => $data['territory'] ?? null,
+                'monthly_target' => $data['monthly_target'] ?? 0,
+                'is_active' => $data['is_active'] ?? $representative->is_active,
+                'updated_by' => $user->id,
             ]);
 
             return $representative->fresh(['branch:id,name', 'employee:id,name,employee_code,designation', 'area:id,name,code', 'division:id,name,code']);
@@ -138,21 +137,21 @@ class MrManagementService implements MrManagementServiceInterface
             $representativeId = $this->resolveRepresentativeId($data, $user);
 
             return RepresentativeVisit::query()->create([
-                'tenant_id'     => $user->tenant_id,
-                'company_id'    => $user->company_id,
+                'tenant_id' => $user->tenant_id,
+                'company_id' => $user->company_id,
                 'medical_representative_id' => $representativeId,
-                'employee_id'   => $data['employee_id'] ?? null,
-                'customer_id'   => $data['customer_id'] ?? null,
-                'visit_date'    => $data['visit_date'],
-                'visit_time'    => $data['visit_time'] ?? null,
-                'status'        => $data['status'],
-                'purpose'       => $data['purpose'] ?? null,
-                'order_value'   => $data['order_value'] ?? 0,
-                'notes'         => $data['notes'] ?? null,
+                'employee_id' => $data['employee_id'] ?? null,
+                'customer_id' => $data['customer_id'] ?? null,
+                'visit_date' => $data['visit_date'],
+                'visit_time' => $data['visit_time'] ?? null,
+                'status' => $data['status'],
+                'purpose' => $data['purpose'] ?? null,
+                'order_value' => $data['order_value'] ?? 0,
+                'notes' => $data['notes'] ?? null,
                 'location_name' => $data['location_name'] ?? null,
-                'remarks'       => $data['remarks'] ?? null,
-                'created_by'    => $user->id,
-                'updated_by'    => $user->id,
+                'remarks' => $data['remarks'] ?? null,
+                'created_by' => $user->id,
+                'updated_by' => $user->id,
             ])->load(['medicalRepresentative:id,name', 'employee:id,name,employee_code', 'customer:id,name']);
         });
     }
@@ -163,20 +162,20 @@ class MrManagementService implements MrManagementServiceInterface
             $representativeId = $this->resolveRepresentativeId($data, $user);
 
             $visit->update([
-                'tenant_id'     => $visit->tenant_id ?: $user->tenant_id,
-                'company_id'    => $visit->company_id ?: $user->company_id,
+                'tenant_id' => $visit->tenant_id ?: $user->tenant_id,
+                'company_id' => $visit->company_id ?: $user->company_id,
                 'medical_representative_id' => $representativeId,
-                'employee_id'   => $data['employee_id'] ?? null,
-                'customer_id'   => $data['customer_id'] ?? null,
-                'visit_date'    => $data['visit_date'],
-                'visit_time'    => $data['visit_time'] ?? null,
-                'status'        => $data['status'],
-                'purpose'       => $data['purpose'] ?? null,
-                'order_value'   => $data['order_value'] ?? 0,
-                'notes'         => $data['notes'] ?? null,
+                'employee_id' => $data['employee_id'] ?? null,
+                'customer_id' => $data['customer_id'] ?? null,
+                'visit_date' => $data['visit_date'],
+                'visit_time' => $data['visit_time'] ?? null,
+                'status' => $data['status'],
+                'purpose' => $data['purpose'] ?? null,
+                'order_value' => $data['order_value'] ?? 0,
+                'notes' => $data['notes'] ?? null,
                 'location_name' => $data['location_name'] ?? null,
-                'remarks'       => $data['remarks'] ?? null,
-                'updated_by'    => $user->id,
+                'remarks' => $data['remarks'] ?? null,
+                'updated_by' => $user->id,
             ]);
 
             return $visit->fresh(['medicalRepresentative:id,name', 'employee:id,name,employee_code', 'customer:id,name']);

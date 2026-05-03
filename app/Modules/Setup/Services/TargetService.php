@@ -4,13 +4,12 @@ namespace App\Modules\Setup\Services;
 
 use App\Core\DTOs\TableQueryData;
 use App\Models\User;
-use App\Modules\Setup\Contracts\TargetServiceInterface;
 use App\Modules\Setup\Models\Target;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
-class TargetService implements TargetServiceInterface
+class TargetService
 {
     private const SORTS = [
         'target_type' => 'target_type',

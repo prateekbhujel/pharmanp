@@ -2,13 +2,13 @@
 
 namespace App\Modules\Reports\Services;
 
-use App\Modules\Reports\Contracts\TargetAchievementServiceInterface;
+use App\Core\Support\ApiResponse;
 use App\Modules\Setup\Models\Target;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
-class TargetAchievementService implements TargetAchievementServiceInterface
+class TargetAchievementService
 {
     public function achievement(Request $request, int $perPage): array
     {
@@ -55,12 +55,7 @@ class TargetAchievementService implements TargetAchievementServiceInterface
 
         return [
             'data' => $paginator->items(),
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'last_page' => $paginator->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($paginator),
             'summary' => [
                 'target_amount' => (float) $rows->sum('target_amount'),
                 'achieved_amount' => (float) $rows->sum('achieved_amount'),

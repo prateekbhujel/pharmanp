@@ -3,9 +3,8 @@
 namespace App\Modules\Purchase\Services;
 
 use App\Models\User;
-use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
-use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
-use App\Modules\Purchase\Contracts\PurchaseReturnServiceInterface;
+use App\Modules\Accounting\Services\AccountTransactionPostingService;
+use App\Modules\Inventory\Services\StockMovementService;
 use App\Modules\Purchase\DTOs\PurchaseReturnData;
 use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Purchase\Models\PurchaseReturn;
@@ -13,11 +12,11 @@ use App\Modules\Purchase\Repositories\Interfaces\PurchaseReturnRepositoryInterfa
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class PurchaseReturnService implements PurchaseReturnServiceInterface
+class PurchaseReturnService
 {
     public function __construct(
-        private readonly StockMovementServiceInterface $stock,
-        private readonly AccountTransactionPostingServiceInterface $accounts,
+        private readonly StockMovementService $stock,
+        private readonly AccountTransactionPostingService $accounts,
         private readonly PurchaseReturnRepositoryInterface $returns,
     ) {}
 

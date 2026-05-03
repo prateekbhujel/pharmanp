@@ -2,9 +2,10 @@
 
 namespace App\Modules\Accounting\Http\Controllers;
 
+use App\Core\Support\ApiResponse;
 use App\Models\Setting;
-use App\Modules\Accounting\Contracts\PaymentSettlementServiceInterface;
 use App\Modules\Accounting\Models\Payment;
+use App\Modules\Accounting\Services\PaymentSettlementService;
 use App\Modules\Setup\Models\DropdownOption;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +16,7 @@ use Illuminate\View\View;
 class PaymentController
 {
     public function __construct(
-        private readonly PaymentSettlementServiceInterface $payments,
+        private readonly PaymentSettlementService $payments,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -48,12 +49,7 @@ class PaymentController
             'data' => $paginated->getCollection()
                 ->map(fn (Payment $payment) => $this->payments->payload($payment))
                 ->values(),
-            'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'last_page' => $paginated->lastPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-            ],
+            'meta' => ApiResponse::paginationMeta($paginated),
             'lookups' => [
                 'payment_modes' => DropdownOption::query()
                     ->forAlias('payment_mode')

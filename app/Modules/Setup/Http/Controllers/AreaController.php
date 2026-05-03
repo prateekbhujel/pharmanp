@@ -4,17 +4,17 @@ namespace App\Modules\Setup\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\Controller;
-use App\Modules\Setup\Contracts\OrganizationStructureServiceInterface;
 use App\Modules\Setup\Http\Requests\AreaRequest;
 use App\Modules\Setup\Http\Resources\AreaResource;
 use App\Modules\Setup\Models\Area;
+use App\Modules\Setup\Services\OrganizationStructureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AreaController extends Controller
 {
-    public function index(Request $request, OrganizationStructureServiceInterface $service): JsonResponse
+    public function index(Request $request, OrganizationStructureService $service): JsonResponse
     {
         $this->authorizeManage($request);
 
@@ -23,9 +23,9 @@ class AreaController extends Controller
         return response()->json(AreaResource::collection($page)->response()->getData(true));
     }
 
-    public function store(AreaRequest $request, OrganizationStructureServiceInterface $service): JsonResponse
+    public function store(AreaRequest $request, OrganizationStructureService $service): JsonResponse
     {
-        $area = $service->saveArea(new Area(), $request->validated(), $request->user());
+        $area = $service->saveArea(new Area, $request->validated(), $request->user());
 
         return (new AreaResource($area))
             ->additional(['message' => 'Area created.'])
@@ -33,12 +33,12 @@ class AreaController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(AreaRequest $request, Area $area, OrganizationStructureServiceInterface $service): AreaResource
+    public function update(AreaRequest $request, Area $area, OrganizationStructureService $service): AreaResource
     {
         return new AreaResource($service->saveArea($area, $request->validated(), $request->user()));
     }
 
-    public function destroy(Request $request, Area $area, OrganizationStructureServiceInterface $service): JsonResponse
+    public function destroy(Request $request, Area $area, OrganizationStructureService $service): JsonResponse
     {
         $this->authorizeManage($request);
         $service->deleteArea($area, $request->user());
@@ -66,7 +66,7 @@ class AreaController extends Controller
             ->response();
     }
 
-    public function options(Request $request, OrganizationStructureServiceInterface $service): JsonResponse
+    public function options(Request $request, OrganizationStructureService $service): JsonResponse
     {
         return response()->json(['data' => $service->options('areas', $request->user(), $request->query('search'))]);
     }

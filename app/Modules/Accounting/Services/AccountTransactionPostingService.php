@@ -3,13 +3,12 @@
 namespace App\Modules\Accounting\Services;
 
 use App\Models\User;
-use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
 use App\Modules\Accounting\Repositories\Interfaces\AccountTransactionRepositoryInterface;
 use App\Modules\Accounting\Support\AccountCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class AccountTransactionPostingService implements AccountTransactionPostingServiceInterface
+class AccountTransactionPostingService
 {
     public function __construct(
         private readonly AccountTransactionRepositoryInterface $transactions,

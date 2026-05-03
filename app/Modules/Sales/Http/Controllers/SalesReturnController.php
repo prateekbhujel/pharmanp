@@ -2,8 +2,9 @@
 
 namespace App\Modules\Sales\Http\Controllers;
 
+use App\Core\Support\ApiResponse;
 use App\Modules\Accounting\Models\AccountTransaction;
-use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
+use App\Modules\Inventory\Services\StockMovementService;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesInvoiceItem;
 use App\Modules\Sales\Models\SalesReturn;
@@ -28,10 +29,10 @@ class SalesReturnController
         if ($request->filled('search')) {
             $keyword = $request->input('search');
             $query->where(function ($builder) use ($keyword) {
-                $builder->where('return_no', 'like', '%' . $keyword . '%')
-                    ->orWhere('reason', 'like', '%' . $keyword . '%')
-                    ->orWhereHas('customer', fn ($q) => $q->where('name', 'like', '%' . $keyword . '%'))
-                    ->orWhereHas('invoice', fn ($q) => $q->where('invoice_no', 'like', '%' . $keyword . '%'));
+                $builder->where('return_no', 'like', '%'.$keyword.'%')
+                    ->orWhere('reason', 'like', '%'.$keyword.'%')
+                    ->orWhereHas('customer', fn ($q) => $q->where('name', 'like', '%'.$keyword.'%'))
+                    ->orWhereHas('invoice', fn ($q) => $q->where('invoice_no', 'like', '%'.$keyword.'%'));
             });
         }
 
@@ -71,11 +72,7 @@ class SalesReturnController
                 'items_count' => $return->items->count(),
                 'deleted_at' => $return->deleted_at?->toISOString(),
             ]),
-            'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-            ],
+            'meta' => ApiResponse::paginationMeta($paginated),
         ]);
     }
 
@@ -87,7 +84,7 @@ class SalesReturnController
     }
 
     // Create a sales return: reverse stock and post accounting entries.
-    public function store(Request $request, StockMovementServiceInterface $stock): JsonResponse
+    public function store(Request $request, StockMovementService $stock): JsonResponse
     {
         $validated = $this->validatePayload($request);
 
@@ -101,7 +98,7 @@ class SalesReturnController
                 throw ValidationException::withMessages(['customer_id' => 'Customer is required for manual sales return.']);
             }
 
-            $nextNo = 'SR-' . str_pad((string) (SalesReturn::withTrashed()->count() + 1), 5, '0', STR_PAD_LEFT);
+            $nextNo = 'SR-'.str_pad((string) (SalesReturn::withTrashed()->count() + 1), 5, '0', STR_PAD_LEFT);
 
             $salesReturn = SalesReturn::query()->create([
                 'tenant_id' => $request->user()->tenant_id ?? null,
@@ -131,7 +128,7 @@ class SalesReturnController
         ]);
     }
 
-    public function update(Request $request, SalesReturn $salesReturn, StockMovementServiceInterface $stock): JsonResponse
+    public function update(Request $request, SalesReturn $salesReturn, StockMovementService $stock): JsonResponse
     {
         $validated = $this->validatePayload($request);
 
@@ -178,7 +175,7 @@ class SalesReturnController
     }
 
     // Delete a sales return and reverse its effects.
-    public function destroy(Request $request, SalesReturn $salesReturn, StockMovementServiceInterface $stock): JsonResponse
+    public function destroy(Request $request, SalesReturn $salesReturn, StockMovementService $stock): JsonResponse
     {
         DB::transaction(function () use ($salesReturn, $stock, $request) {
             $salesReturn->load('items');
@@ -213,7 +210,7 @@ class SalesReturnController
         if ($request->filled('q')) {
             $keyword = $request->input('q');
             $query->where(function ($builder) use ($keyword) {
-                $builder->where('invoice_no', 'like', '%' . $keyword . '%');
+                $builder->where('invoice_no', 'like', '%'.$keyword.'%');
             });
         }
 
@@ -262,7 +259,7 @@ class SalesReturnController
         ]);
     }
 
-    private function postReturnItems(SalesReturn $salesReturn, array $items, StockMovementServiceInterface $stock, Request $request): float
+    private function postReturnItems(SalesReturn $salesReturn, array $items, StockMovementService $stock, Request $request): float
     {
         $totalAmount = 0.0;
 
@@ -305,7 +302,7 @@ class SalesReturnController
         return round($totalAmount, 2);
     }
 
-    private function reverseReturnEffects(SalesReturn $salesReturn, StockMovementServiceInterface $stock, Request $request): void
+    private function reverseReturnEffects(SalesReturn $salesReturn, StockMovementService $stock, Request $request): void
     {
         foreach ($salesReturn->items as $item) {
             $stock->record([

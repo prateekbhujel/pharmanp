@@ -4,14 +4,13 @@ namespace App\Modules\Accounting\Services;
 
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
-use App\Modules\Accounting\Contracts\VoucherServiceInterface;
 use App\Modules\Accounting\DTOs\VoucherData;
 use App\Modules\Accounting\Models\Voucher;
 use App\Modules\Accounting\Repositories\Interfaces\VoucherRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class VoucherService implements VoucherServiceInterface
+class VoucherService
 {
     public function __construct(
         private readonly DocumentNumberService $numbers,

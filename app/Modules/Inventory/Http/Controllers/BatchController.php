@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Inventory\Http\Requests\BatchRequest;
 use App\Modules\Inventory\Http\Resources\BatchResource;
 use App\Modules\Inventory\Models\Batch;
-use App\Modules\Inventory\Contracts\BatchServiceInterface;
+use App\Modules\Inventory\Services\BatchService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
@@ -93,7 +93,7 @@ class BatchController extends Controller
         ]);
     }
 
-    public function store(BatchRequest $request, BatchServiceInterface $service): JsonResponse
+    public function store(BatchRequest $request, BatchService $service): JsonResponse
     {
         $batch = $service->save($request->validated(), $request->user());
 
@@ -103,12 +103,12 @@ class BatchController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(BatchRequest $request, Batch $batch, BatchServiceInterface $service): BatchResource
+    public function update(BatchRequest $request, Batch $batch, BatchService $service): BatchResource
     {
         return new BatchResource($service->save($request->validated(), $request->user(), $batch));
     }
 
-    public function destroy(Batch $batch, BatchServiceInterface $service): JsonResponse
+    public function destroy(Batch $batch, BatchService $service): JsonResponse
     {
         $service->delete($batch, request()->user());
 

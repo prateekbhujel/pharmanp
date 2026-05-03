@@ -2,10 +2,9 @@
 
 namespace App\Modules\Accounting\Services;
 
-use App\Modules\Accounting\Contracts\PayableServiceInterface;
 use App\Modules\Accounting\Repositories\Interfaces\PartyBalanceRepositoryInterface;
 
-class PayableService implements PayableServiceInterface
+class PayableService
 {
     public function __construct(
         private readonly PartyBalanceRepositoryInterface $balances,

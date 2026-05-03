@@ -3,7 +3,6 @@
 namespace App\Modules\ImportExport\Services;
 
 use App\Models\User;
-use App\Modules\ImportExport\Contracts\ImportPreviewServiceInterface;
 use App\Modules\ImportExport\Models\ImportJob;
 use App\Modules\ImportExport\Models\ImportStagedRow;
 use App\Modules\Inventory\Models\Batch;
@@ -20,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Rap2hpoutre\FastExcel\FastExcel;
 
-class ImportPreviewService implements ImportPreviewServiceInterface
+class ImportPreviewService
 {
     private const PREVIEW_ROW_LIMIT = 25;
 
@@ -370,7 +369,7 @@ class ImportPreviewService implements ImportPreviewServiceInterface
     private function readRows(string $path, string $extension): Collection
     {
         if (in_array(strtolower($extension), ['xlsx', 'xls'], true)) {
-            return (new FastExcel())->import($path)->map(fn ($row) => $this->normaliseRow((array) $row))->values();
+            return (new FastExcel)->import($path)->map(fn ($row) => $this->normaliseRow((array) $row))->values();
         }
 
         $handle = fopen($path, 'rb');
@@ -383,6 +382,7 @@ class ImportPreviewService implements ImportPreviewServiceInterface
 
             if ($line === 1) {
                 $headers = array_map(fn ($header) => trim((string) $header), $data);
+
                 continue;
             }
 

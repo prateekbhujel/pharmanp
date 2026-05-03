@@ -11,7 +11,7 @@ use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Purchase\Models\PurchaseItem;
 use App\Modules\Purchase\Models\PurchaseReturn;
 use App\Modules\Purchase\Models\PurchaseReturnItem;
-use App\Modules\Purchase\Contracts\PurchaseReturnServiceInterface;
+use App\Modules\Purchase\Services\PurchaseReturnService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -65,7 +65,7 @@ class PurchaseReturnController extends Controller
         return new PurchaseReturnResource($purchaseReturn->load(['supplier', 'purchase', 'items.product', 'items.batch']));
     }
 
-    public function store(PurchaseReturnRequest $request, PurchaseReturnServiceInterface $service): JsonResponse
+    public function store(PurchaseReturnRequest $request, PurchaseReturnService $service): JsonResponse
     {
         $purchaseReturn = $service->save($request->validated(), $request->user());
 
@@ -78,12 +78,12 @@ class PurchaseReturnController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(PurchaseReturnRequest $request, PurchaseReturn $purchaseReturn, PurchaseReturnServiceInterface $service): PurchaseReturnResource
+    public function update(PurchaseReturnRequest $request, PurchaseReturn $purchaseReturn, PurchaseReturnService $service): PurchaseReturnResource
     {
         return new PurchaseReturnResource($service->save($request->validated(), $request->user(), $purchaseReturn));
     }
 
-    public function destroy(PurchaseReturn $purchaseReturn, PurchaseReturnServiceInterface $service): JsonResponse
+    public function destroy(PurchaseReturn $purchaseReturn, PurchaseReturnService $service): JsonResponse
     {
         $service->delete($purchaseReturn, request()->user());
 

@@ -8,18 +8,18 @@ use App\Modules\Party\Http\Requests\PartyIndexRequest;
 use App\Modules\Party\Http\Requests\SupplierRequest;
 use App\Modules\Party\Http\Resources\PartyResource;
 use App\Modules\Party\Models\Supplier;
-use App\Modules\Party\Contracts\PartyServiceInterface;
+use App\Modules\Party\Services\PartyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
 {
-    public function index(PartyIndexRequest $request, PartyServiceInterface $service)
+    public function index(PartyIndexRequest $request, PartyService $service)
     {
         return PartyResource::collection($service->suppliers(TableQueryData::fromRequest($request, ['is_active', 'deleted']), $request->user()));
     }
 
-    public function store(SupplierRequest $request, PartyServiceInterface $service): JsonResponse
+    public function store(SupplierRequest $request, PartyService $service): JsonResponse
     {
         $supplier = $service->createSupplier($request->validated(), $request->user());
 
@@ -29,7 +29,7 @@ class SupplierController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(SupplierRequest $request, Supplier $supplier, PartyServiceInterface $service): PartyResource
+    public function update(SupplierRequest $request, Supplier $supplier, PartyService $service): PartyResource
     {
         return new PartyResource($service->updateSupplier($supplier, $request->validated(), $request->user()));
     }

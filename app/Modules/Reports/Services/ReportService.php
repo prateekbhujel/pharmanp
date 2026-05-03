@@ -2,30 +2,25 @@
 
 namespace App\Modules\Reports\Services;
 
+use App\Core\Support\ApiResponse;
 use App\Modules\Accounting\Support\AccountCatalog;
-use App\Modules\Reports\Contracts\ReportServiceInterface;
-use App\Modules\Analytics\Contracts\PharmaSignalServiceInterface;
-use App\Modules\MR\Contracts\MrPerformanceServiceInterface;
-use App\Modules\Reports\Contracts\AgingReportServiceInterface;
-use App\Modules\Reports\Contracts\DumpingReportServiceInterface;
-use App\Modules\Reports\Contracts\ExpiryReportServiceInterface;
-use App\Modules\Reports\Contracts\PerformanceReportServiceInterface;
-use App\Modules\Reports\Contracts\TargetAchievementServiceInterface;
+use App\Modules\Analytics\Services\PharmaSignalService;
+use App\Modules\MR\Services\MrPerformanceService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class ReportService implements ReportServiceInterface
+class ReportService
 {
     public function __construct(
-        private readonly MrPerformanceServiceInterface $mrPerformance,
-        private readonly PharmaSignalServiceInterface $signals,
-        private readonly AgingReportServiceInterface $aging,
-        private readonly ExpiryReportServiceInterface $expiryBuckets,
-        private readonly DumpingReportServiceInterface $dumping,
-        private readonly TargetAchievementServiceInterface $targets,
-        private readonly PerformanceReportServiceInterface $performance,
+        private readonly MrPerformanceService $mrPerformance,
+        private readonly PharmaSignalService $signals,
+        private readonly AgingReportService $aging,
+        private readonly ExpiryReportService $expiryBuckets,
+        private readonly DumpingReportService $dumping,
+        private readonly TargetAchievementService $targets,
+        private readonly PerformanceReportService $performance,
     ) {}
 
     public function run(string $report, Request $request): array
@@ -287,12 +282,7 @@ class ReportService implements ReportServiceInterface
 
         return [
             'data' => $paginator->items(),
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'last_page' => $paginator->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($paginator),
             'summary' => [
                 'debit' => round((float) $rows->sum('debit'), 2),
                 'credit' => round((float) $rows->sum('credit'), 2),
@@ -339,12 +329,7 @@ class ReportService implements ReportServiceInterface
 
         return [
             'data' => $paginator->items(),
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'last_page' => $paginator->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($paginator),
             'summary' => [
                 'accounts' => $rows->count(),
                 'debit' => round((float) $rows->sum('debit'), 2),
@@ -403,12 +388,7 @@ class ReportService implements ReportServiceInterface
 
         return [
             'data' => $paginator->items(),
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'last_page' => $paginator->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($paginator),
             'summary' => [
                 'income' => $incomeTotal,
                 'expense' => $expenseTotal,
@@ -501,12 +481,7 @@ class ReportService implements ReportServiceInterface
 
         return [
             'data' => $page->items(),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($page),
         ];
     }
 }

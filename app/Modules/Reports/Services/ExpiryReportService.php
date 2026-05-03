@@ -2,11 +2,11 @@
 
 namespace App\Modules\Reports\Services;
 
-use App\Modules\Reports\Contracts\ExpiryReportServiceInterface;
+use App\Core\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class ExpiryReportService implements ExpiryReportServiceInterface
+class ExpiryReportService
 {
     public function buckets(Request $request, int $perPage): array
     {
@@ -66,12 +66,7 @@ class ExpiryReportService implements ExpiryReportServiceInterface
                     },
                 ];
             })->values(),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($page),
             'summary' => $this->summary($query, $days),
         ];
     }

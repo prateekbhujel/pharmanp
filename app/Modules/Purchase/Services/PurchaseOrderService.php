@@ -4,8 +4,6 @@ namespace App\Modules\Purchase\Services;
 
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
-use App\Modules\Purchase\Contracts\PurchaseEntryServiceInterface;
-use App\Modules\Purchase\Contracts\PurchaseOrderServiceInterface;
 use App\Modules\Purchase\DTOs\PurchaseOrderData;
 use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Purchase\Models\PurchaseOrder;
@@ -13,7 +11,7 @@ use App\Modules\Purchase\Repositories\Interfaces\PurchaseOrderRepositoryInterfac
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class PurchaseOrderService implements PurchaseOrderServiceInterface
+class PurchaseOrderService
 {
     public function __construct(
         private readonly DocumentNumberService $numbers,
@@ -67,7 +65,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
         });
     }
 
-    public function receive(PurchaseOrder $order, array $data, User $user, PurchaseEntryServiceInterface $purchases): Purchase
+    public function receive(PurchaseOrder $order, array $data, User $user, PurchaseEntryService $purchases): Purchase
     {
         return DB::transaction(function () use ($order, $data, $user, $purchases) {
             $dto = PurchaseOrderData::fromArray($data);

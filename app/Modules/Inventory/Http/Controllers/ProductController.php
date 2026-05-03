@@ -13,14 +13,14 @@ use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
-use App\Modules\Inventory\Contracts\ProductServiceInterface;
+use App\Modules\Inventory\Services\ProductService;
 use App\Modules\Setup\Models\Division;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function index(ProductIndexRequest $request, ProductServiceInterface $service)
+    public function index(ProductIndexRequest $request, ProductService $service)
     {
         $this->authorize('viewAny', Product::class);
 
@@ -35,7 +35,7 @@ class ProductController extends Controller
         return ProductResource::collection($products);
     }
 
-    public function store(ProductStoreRequest $request, ProductServiceInterface $service): JsonResponse
+    public function store(ProductStoreRequest $request, ProductService $service): JsonResponse
     {
         $this->authorize('create', Product::class);
 
@@ -51,7 +51,7 @@ class ProductController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(ProductUpdateRequest $request, Product $product, ProductServiceInterface $service): ProductResource
+    public function update(ProductUpdateRequest $request, Product $product, ProductService $service): ProductResource
     {
         $this->authorize('update', $product);
 
@@ -66,7 +66,7 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
-    public function destroy(Request $request, Product $product, ProductServiceInterface $service): JsonResponse
+    public function destroy(Request $request, Product $product, ProductService $service): JsonResponse
     {
         $this->authorize('delete', $product);
 
@@ -75,7 +75,7 @@ class ProductController extends Controller
         return response()->json(['message' => 'Product deleted.']);
     }
 
-    public function restore(Request $request, int $id, ProductServiceInterface $service): JsonResponse
+    public function restore(Request $request, int $id, ProductService $service): JsonResponse
     {
         abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.products.update'), 403);
 

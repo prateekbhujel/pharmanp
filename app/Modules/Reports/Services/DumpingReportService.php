@@ -2,11 +2,11 @@
 
 namespace App\Modules\Reports\Services;
 
-use App\Modules\Reports\Contracts\DumpingReportServiceInterface;
+use App\Core\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class DumpingReportService implements DumpingReportServiceInterface
+class DumpingReportService
 {
     public function slowMoving(Request $request, int $perPage): array
     {
@@ -38,7 +38,7 @@ class DumpingReportService implements DumpingReportServiceInterface
             ->whereRaw('COALESCE(stock.stock_on_hand, 0) > 0')
             ->orderByRaw('COALESCE(sales.sold_quantity, 0) asc')
             ->orderByRaw('COALESCE(stock.stock_on_hand, 0) desc')
-            ->selectRaw("
+            ->selectRaw('
                 products.id,
                 products.product_code,
                 products.name as product,
@@ -51,7 +51,7 @@ class DumpingReportService implements DumpingReportServiceInterface
                 sales.last_sale_date,
                 products.purchase_price,
                 (COALESCE(stock.stock_on_hand, 0) * products.purchase_price) as stock_value
-            ");
+            ');
 
         $page = $query->paginate($perPage);
 
@@ -73,12 +73,7 @@ class DumpingReportService implements DumpingReportServiceInterface
                     'days_to_expiry' => $daysToExpiry,
                 ];
             })->values(),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($page),
             'summary' => [
                 'stock_on_hand' => (float) collect($page->items())->sum('stock_on_hand'),
                 'stock_value' => (float) collect($page->items())->sum('stock_value'),

@@ -4,17 +4,17 @@ namespace App\Modules\Setup\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\Controller;
-use App\Modules\Setup\Contracts\OrganizationStructureServiceInterface;
 use App\Modules\Setup\Http\Requests\EmployeeRequest;
 use App\Modules\Setup\Http\Resources\EmployeeResource;
 use App\Modules\Setup\Models\Employee;
+use App\Modules\Setup\Services\OrganizationStructureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class EmployeeController extends Controller
 {
-    public function index(Request $request, OrganizationStructureServiceInterface $service): JsonResponse
+    public function index(Request $request, OrganizationStructureService $service): JsonResponse
     {
         $this->authorizeManage($request);
 
@@ -29,9 +29,9 @@ class EmployeeController extends Controller
         return response()->json(EmployeeResource::collection($page)->response()->getData(true));
     }
 
-    public function store(EmployeeRequest $request, OrganizationStructureServiceInterface $service): JsonResponse
+    public function store(EmployeeRequest $request, OrganizationStructureService $service): JsonResponse
     {
-        $employee = $service->saveEmployee(new Employee(), $request->validated(), $request->user());
+        $employee = $service->saveEmployee(new Employee, $request->validated(), $request->user());
 
         return (new EmployeeResource($employee))
             ->additional(['message' => 'Employee created.'])
@@ -39,12 +39,12 @@ class EmployeeController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(EmployeeRequest $request, Employee $employee, OrganizationStructureServiceInterface $service): EmployeeResource
+    public function update(EmployeeRequest $request, Employee $employee, OrganizationStructureService $service): EmployeeResource
     {
         return new EmployeeResource($service->saveEmployee($employee, $request->validated(), $request->user()));
     }
 
-    public function destroy(Request $request, Employee $employee, OrganizationStructureServiceInterface $service): JsonResponse
+    public function destroy(Request $request, Employee $employee, OrganizationStructureService $service): JsonResponse
     {
         $this->authorizeManage($request);
         $service->deleteEmployee($employee, $request->user());
@@ -72,7 +72,7 @@ class EmployeeController extends Controller
             ->response();
     }
 
-    public function options(Request $request, OrganizationStructureServiceInterface $service): JsonResponse
+    public function options(Request $request, OrganizationStructureService $service): JsonResponse
     {
         return response()->json(['data' => $service->options('employees', $request->user(), $request->query('search'))]);
     }

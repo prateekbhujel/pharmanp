@@ -3,7 +3,7 @@
 namespace App\Modules\Reports\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Reports\Contracts\ReportServiceInterface;
+use App\Modules\Reports\Services\ReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,12 +13,12 @@ use Rap2hpoutre\FastExcel\FastExcel;
 
 class ReportController extends Controller
 {
-    public function __invoke(string $report, Request $request, ReportServiceInterface $service): JsonResponse
+    public function __invoke(string $report, Request $request, ReportService $service): JsonResponse
     {
         return response()->json($service->run($report, $request));
     }
 
-    public function export(string $report, string $format, Request $request, ReportServiceInterface $service)
+    public function export(string $report, string $format, Request $request, ReportService $service)
     {
         $request->merge(['per_page' => min((int) $request->query('per_page', 5000), 5000)]);
         $payload = $service->run($report, $request);

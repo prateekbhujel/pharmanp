@@ -4,17 +4,17 @@ namespace App\Modules\Setup\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\Controller;
-use App\Modules\Setup\Contracts\OrganizationStructureServiceInterface;
 use App\Modules\Setup\Http\Requests\DivisionRequest;
 use App\Modules\Setup\Http\Resources\DivisionResource;
 use App\Modules\Setup\Models\Division;
+use App\Modules\Setup\Services\OrganizationStructureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DivisionController extends Controller
 {
-    public function index(Request $request, OrganizationStructureServiceInterface $service): JsonResponse
+    public function index(Request $request, OrganizationStructureService $service): JsonResponse
     {
         $this->authorizeManage($request);
 
@@ -23,9 +23,9 @@ class DivisionController extends Controller
         return response()->json(DivisionResource::collection($page)->response()->getData(true));
     }
 
-    public function store(DivisionRequest $request, OrganizationStructureServiceInterface $service): JsonResponse
+    public function store(DivisionRequest $request, OrganizationStructureService $service): JsonResponse
     {
-        $division = $service->saveDivision(new Division(), $request->validated(), $request->user());
+        $division = $service->saveDivision(new Division, $request->validated(), $request->user());
 
         return (new DivisionResource($division))
             ->additional(['message' => 'Division created.'])
@@ -33,12 +33,12 @@ class DivisionController extends Controller
             ->setStatusCode(201);
     }
 
-    public function update(DivisionRequest $request, Division $division, OrganizationStructureServiceInterface $service): DivisionResource
+    public function update(DivisionRequest $request, Division $division, OrganizationStructureService $service): DivisionResource
     {
         return new DivisionResource($service->saveDivision($division, $request->validated(), $request->user()));
     }
 
-    public function destroy(Request $request, Division $division, OrganizationStructureServiceInterface $service): JsonResponse
+    public function destroy(Request $request, Division $division, OrganizationStructureService $service): JsonResponse
     {
         $this->authorizeManage($request);
         $service->deleteDivision($division, $request->user());
@@ -66,7 +66,7 @@ class DivisionController extends Controller
             ->response();
     }
 
-    public function options(Request $request, OrganizationStructureServiceInterface $service): JsonResponse
+    public function options(Request $request, OrganizationStructureService $service): JsonResponse
     {
         return response()->json(['data' => $service->options('divisions', $request->user(), $request->query('search'))]);
     }

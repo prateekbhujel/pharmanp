@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventory\Http\Controllers;
 
+use App\Core\Support\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Modules\Inventory\Http\Requests\InventoryMasterRequest;
 use App\Modules\Inventory\Http\Requests\QuickCategoryRequest;
@@ -38,12 +39,7 @@ class InventoryMasterController extends Controller
 
         return response()->json([
             'data' => collect($rows->items())->map(fn (Model $row) => $this->shape($master, $row))->values(),
-            'meta' => [
-                'current_page' => $rows->currentPage(),
-                'per_page' => $rows->perPage(),
-                'total' => $rows->total(),
-                'last_page' => $rows->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($rows),
         ]);
     }
 

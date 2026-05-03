@@ -2,6 +2,7 @@
 
 namespace App\Modules\Accounting\Http\Controllers;
 
+use App\Core\Support\ApiResponse;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Models\Expense;
 use App\Modules\Setup\Models\DropdownOption;
@@ -24,10 +25,10 @@ class ExpenseController
         if ($request->filled('search')) {
             $keyword = $request->input('search');
             $query->where(function ($builder) use ($keyword) {
-                $builder->where('category', 'like', '%' . $keyword . '%')
-                    ->orWhere('vendor_name', 'like', '%' . $keyword . '%')
-                    ->orWhere('notes', 'like', '%' . $keyword . '%')
-                    ->orWhereHas('expenseCategory', fn ($q) => $q->where('name', 'like', '%' . $keyword . '%'));
+                $builder->where('category', 'like', '%'.$keyword.'%')
+                    ->orWhere('vendor_name', 'like', '%'.$keyword.'%')
+                    ->orWhere('notes', 'like', '%'.$keyword.'%')
+                    ->orWhereHas('expenseCategory', fn ($q) => $q->where('name', 'like', '%'.$keyword.'%'));
             });
         }
 
@@ -85,11 +86,7 @@ class ExpenseController
                 'notes' => $expense->notes,
                 'created_by' => $expense->creator?->name ?? '-',
             ]),
-            'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-            ],
+            'meta' => ApiResponse::paginationMeta($paginated),
             'summary' => $summary,
             'lookups' => [
                 'expense_categories' => DropdownOption::query()->forAlias('expense_category')->active()->orderBy('name')->get(['id', 'name']),
@@ -117,7 +114,7 @@ class ExpenseController
 
             $expense = ! empty($validated['id'])
                 ? Expense::query()->findOrFail($validated['id'])
-                : new Expense();
+                : new Expense;
 
             if ($expense->exists) {
                 AccountTransaction::query()
@@ -152,7 +149,7 @@ class ExpenseController
                 'account_type' => 'expense',
                 'debit' => $expense->amount,
                 'credit' => 0,
-                'notes' => 'Expense posted under ' . $expense->category,
+                'notes' => 'Expense posted under '.$expense->category,
                 'created_by' => $request->user()->id,
             ]);
 
@@ -166,7 +163,7 @@ class ExpenseController
                 'account_type' => ($paymentMode->data === 'cash') ? 'cash' : 'bank',
                 'debit' => 0,
                 'credit' => $expense->amount,
-                'notes' => 'Expense payment by ' . $paymentMode->name,
+                'notes' => 'Expense payment by '.$paymentMode->name,
                 'created_by' => $request->user()->id,
             ]);
 

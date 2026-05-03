@@ -4,10 +4,6 @@ namespace App\Modules\Accounting\Services;
 
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
-use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
-use App\Modules\Accounting\Contracts\PayableServiceInterface;
-use App\Modules\Accounting\Contracts\PaymentSettlementServiceInterface;
-use App\Modules\Accounting\Contracts\ReceivableServiceInterface;
 use App\Modules\Accounting\DTOs\PaymentData;
 use App\Modules\Accounting\Models\Payment;
 use App\Modules\Accounting\Models\PaymentBillAllocation;
@@ -20,13 +16,13 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class PaymentSettlementService implements PaymentSettlementServiceInterface
+class PaymentSettlementService
 {
     public function __construct(
         private readonly DocumentNumberService $numbers,
-        private readonly AccountTransactionPostingServiceInterface $accounts,
-        private readonly PayableServiceInterface $payables,
-        private readonly ReceivableServiceInterface $receivables,
+        private readonly AccountTransactionPostingService $accounts,
+        private readonly PayableService $payables,
+        private readonly ReceivableService $receivables,
         private readonly PaymentRepositoryInterface $payments,
     ) {}
 

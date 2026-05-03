@@ -2,11 +2,11 @@
 
 namespace App\Modules\Reports\Services;
 
-use App\Modules\Reports\Contracts\PerformanceReportServiceInterface;
+use App\Core\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class PerformanceReportService implements PerformanceReportServiceInterface
+class PerformanceReportService
 {
     public function mrVsProduct(Request $request, int $perPage): array
     {
@@ -104,12 +104,7 @@ class PerformanceReportService implements PerformanceReportServiceInterface
 
         return [
             'data' => $page->items(),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($page),
             'summary' => [
                 'rows' => $page->total(),
                 'sales_value' => (float) collect($page->items())->sum('sales_value'),

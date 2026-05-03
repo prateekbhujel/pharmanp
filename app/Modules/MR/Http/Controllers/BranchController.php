@@ -2,6 +2,7 @@
 
 namespace App\Modules\MR\Http\Controllers;
 
+use App\Core\Support\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Modules\MR\Models\Branch;
 use Illuminate\Database\Eloquent\Builder;
@@ -47,12 +48,7 @@ class BranchController extends Controller
 
         return response()->json([
             'data' => collect($rows->items())->map(fn (Branch $branch) => $this->rowPayload($branch))->values(),
-            'meta' => [
-                'current_page' => $rows->currentPage(),
-                'per_page' => $rows->perPage(),
-                'total' => $rows->total(),
-                'last_page' => $rows->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($rows),
             'lookups' => [
                 'parents' => $this->parentOptions($request),
             ],
@@ -74,7 +70,7 @@ class BranchController extends Controller
 
         return response()->json([
             'message' => "Branch '{$branch->name}' created.",
-            'data'    => $this->rowPayload($branch->load('parent')),
+            'data' => $this->rowPayload($branch->load('parent')),
         ], 201);
     }
 
@@ -89,7 +85,7 @@ class BranchController extends Controller
 
         return response()->json([
             'message' => "Branch '{$branch->name}' updated.",
-            'data'    => $this->rowPayload($branch->fresh('parent')),
+            'data' => $this->rowPayload($branch->fresh('parent')),
         ]);
     }
 
@@ -168,10 +164,10 @@ class BranchController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'type'])
             ->map(fn ($b) => [
-                'id'    => $b->id,
-                'name'  => $b->name . ($b->type === 'hq' ? ' (HQ)' : ''),
-                'code'  => $b->code,
-                'type'  => $b->type,
+                'id' => $b->id,
+                'name' => $b->name.($b->type === 'hq' ? ' (HQ)' : ''),
+                'code' => $b->code,
+                'type' => $b->type,
             ]);
 
         return response()->json(['data' => $options]);
@@ -183,8 +179,8 @@ class BranchController extends Controller
         $companyId = $request->user()?->company_id;
 
         $validated = $request->validate([
-            'name'      => ['required', 'string', 'max:255'],
-            'code'      => [
+            'name' => ['required', 'string', 'max:255'],
+            'code' => [
                 'nullable',
                 'string',
                 'max:40',
@@ -194,10 +190,10 @@ class BranchController extends Controller
                         ->when($companyId, fn ($builder) => $builder->where('company_id', $companyId)))
                     ->ignore($ignoreId),
             ],
-            'type'      => ['required', Rule::in(['hq', 'branch'])],
+            'type' => ['required', Rule::in(['hq', 'branch'])],
             'parent_id' => ['nullable', 'integer'],
-            'address'   => ['nullable', 'string', 'max:500'],
-            'phone'     => ['nullable', 'string', 'max:40'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'phone' => ['nullable', 'string', 'max:40'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -236,20 +232,20 @@ class BranchController extends Controller
     private function rowPayload(Branch $branch): array
     {
         return [
-            'id'        => $branch->id,
-            'name'      => $branch->name,
-            'code'      => $branch->code,
-            'type'      => $branch->type,
+            'id' => $branch->id,
+            'name' => $branch->name,
+            'code' => $branch->code,
+            'type' => $branch->type,
             'parent_id' => $branch->parent_id,
             'parent' => $branch->relationLoaded('parent') && $branch->parent ? [
                 'id' => $branch->parent->id,
                 'name' => $branch->parent->name,
                 'code' => $branch->parent->code,
             ] : null,
-            'address'   => $branch->address,
-            'phone'     => $branch->phone,
+            'address' => $branch->address,
+            'phone' => $branch->phone,
             'is_active' => (bool) $branch->is_active,
-            'is_hq'     => $branch->is_hq,
+            'is_hq' => $branch->is_hq,
             'medical_representatives_count' => (int) ($branch->medical_representatives_count ?? 0),
             'deleted_at' => $branch->deleted_at?->toISOString(),
             'created_at' => $branch->created_at?->toDateString(),

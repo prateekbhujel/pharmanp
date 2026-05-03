@@ -2,7 +2,7 @@
 
 namespace App\Modules\Analytics\Services;
 
-use App\Modules\Analytics\Contracts\PharmaSignalServiceInterface;
+use App\Core\Support\ApiResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Rubix\ML\Clusterers\KMeans;
 use Rubix\ML\Datasets\Unlabeled;
 
-class PharmaSignalService implements PharmaSignalServiceInterface
+class PharmaSignalService
 {
     public function inventorySignals(Request $request, int $perPage = 20): array
     {
@@ -64,7 +64,7 @@ class PharmaSignalService implements PharmaSignalServiceInterface
                 });
             })
             ->selectRaw(
-                "products.id,
+                'products.id,
                 products.name,
                 products.sku,
                 products.reorder_level,
@@ -79,7 +79,7 @@ class PharmaSignalService implements PharmaSignalServiceInterface
                 COALESCE(sales90.sold_90, 0) as sold_90,
                 COALESCE(sales90.sales_value_90, 0) as sales_value_90,
                 COALESCE(sales90.invoice_count_90, 0) as invoice_count_90,
-                COALESCE(sales30.sold_30, 0) as sold_30"
+                COALESCE(sales30.sold_30, 0) as sold_30'
             )
             ->orderBy('products.name');
 
@@ -107,12 +107,7 @@ class PharmaSignalService implements PharmaSignalServiceInterface
 
         return [
             'data' => $paginator->items(),
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'last_page' => $paginator->lastPage(),
-            ],
+            'meta' => ApiResponse::paginationMeta($paginator),
             'summary' => [
                 'products_scored' => count($rows),
                 'urgent_reorder' => collect($rows)->where('reorder_signal', 'urgent_reorder')->count(),

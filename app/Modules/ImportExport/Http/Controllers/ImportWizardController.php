@@ -6,13 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Modules\ImportExport\Http\Requests\ConfirmImportRequest;
 use App\Modules\ImportExport\Http\Requests\PreviewImportRequest;
 use App\Modules\ImportExport\Models\ImportJob;
-use App\Modules\ImportExport\Contracts\ImportPreviewServiceInterface;
+use App\Modules\ImportExport\Services\ImportPreviewService;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ImportWizardController extends Controller
 {
-    public function targets(ImportPreviewServiceInterface $service): JsonResponse
+    public function targets(ImportPreviewService $service): JsonResponse
     {
         return response()->json([
             'data' => collect($service->targetFields())->map(fn (array $fields, string $target) => [
@@ -23,7 +23,7 @@ class ImportWizardController extends Controller
         ]);
     }
 
-    public function preview(PreviewImportRequest $request, ImportPreviewServiceInterface $service): JsonResponse
+    public function preview(PreviewImportRequest $request, ImportPreviewService $service): JsonResponse
     {
         $job = $service->preview(
             $request->validated('target'),
@@ -34,7 +34,7 @@ class ImportWizardController extends Controller
         return $this->jobResponse($job, $service);
     }
 
-    public function sample(string $target, ImportPreviewServiceInterface $service): StreamedResponse
+    public function sample(string $target, ImportPreviewService $service): StreamedResponse
     {
         abort_unless(array_key_exists($target, $service->targetFields()), 404);
 
@@ -43,7 +43,7 @@ class ImportWizardController extends Controller
         }, $target.'-sample.csv', ['Content-Type' => 'text/csv']);
     }
 
-    public function confirm(ConfirmImportRequest $request, ImportPreviewServiceInterface $service): JsonResponse
+    public function confirm(ConfirmImportRequest $request, ImportPreviewService $service): JsonResponse
     {
         $job = $service->confirm(
             (int) $request->validated('import_job_id'),
@@ -54,14 +54,14 @@ class ImportWizardController extends Controller
         return $this->jobResponse($job, $service);
     }
 
-    public function rejected(ImportJob $job, ImportPreviewServiceInterface $service): StreamedResponse
+    public function rejected(ImportJob $job, ImportPreviewService $service): StreamedResponse
     {
         return response()->streamDownload(function () use ($job, $service) {
             echo $service->rejectedCsv($job);
         }, 'import-'.$job->id.'-rejected.csv', ['Content-Type' => 'text/csv']);
     }
 
-    private function jobResponse(ImportJob $job, ImportPreviewServiceInterface $service): JsonResponse
+    private function jobResponse(ImportJob $job, ImportPreviewService $service): JsonResponse
     {
         return response()->json([
             'data' => [

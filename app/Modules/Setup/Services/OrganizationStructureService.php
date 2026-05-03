@@ -6,7 +6,6 @@ use App\Core\DTOs\TableQueryData;
 use App\Core\Services\EmployeeCodeGenerator;
 use App\Models\User;
 use App\Modules\MR\Models\Branch;
-use App\Modules\Setup\Contracts\OrganizationStructureServiceInterface;
 use App\Modules\Setup\Models\Area;
 use App\Modules\Setup\Models\Division;
 use App\Modules\Setup\Models\Employee;
@@ -16,7 +15,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class OrganizationStructureService implements OrganizationStructureServiceInterface
+class OrganizationStructureService
 {
     private const AREA_SORTS = [
         'name' => 'name',

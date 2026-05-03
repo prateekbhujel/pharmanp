@@ -5,14 +5,14 @@ namespace App\Modules\Setup\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Setup\Http\Requests\RoleStoreRequest;
 use App\Modules\Setup\Http\Requests\RoleUpdateRequest;
-use App\Modules\Setup\Contracts\AccessControlServiceInterface;
+use App\Modules\Setup\Services\AccessControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 
 class RolePermissionController extends Controller
 {
-    public function index(Request $request, AccessControlServiceInterface $accessControl): JsonResponse
+    public function index(Request $request, AccessControlService $accessControl): JsonResponse
     {
         abort_unless($request->user()?->is_owner, 403);
         $accessControl->syncPermissions();
@@ -36,7 +36,7 @@ class RolePermissionController extends Controller
         ]);
     }
 
-    public function store(RoleStoreRequest $request, AccessControlServiceInterface $accessControl): JsonResponse
+    public function store(RoleStoreRequest $request, AccessControlService $accessControl): JsonResponse
     {
         $accessControl->syncPermissions();
 

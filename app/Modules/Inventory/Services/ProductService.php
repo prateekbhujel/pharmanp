@@ -5,7 +5,6 @@ namespace App\Modules\Inventory\Services;
 use App\Core\DTOs\TableQueryData;
 use App\Core\Services\ProductCodeGenerator;
 use App\Models\User;
-use App\Modules\Inventory\Contracts\ProductServiceInterface;
 use App\Modules\Inventory\DTOs\ProductData;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Repositories\Interfaces\ProductRepositoryInterface;
@@ -15,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-class ProductService implements ProductServiceInterface
+class ProductService
 {
     public function __construct(
         private readonly ProductRepositoryInterface $products,
