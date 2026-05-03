@@ -36,3 +36,23 @@ if (bootToken) {
 export function validationErrors(error) {
     return error?.response?.data?.errors || {};
 }
+
+export function apiData(body, fallback = null) {
+    return body?.data ?? fallback;
+}
+
+export function apiMeta(body, fallback = {}) {
+    return body?.meta ?? fallback;
+}
+
+export function apiExtra(body) {
+    return Object.fromEntries(Object.entries(body || {}).filter(([key]) => ![
+        'status',
+        'code',
+        'message',
+        'data',
+        'meta',
+        'links',
+        'errors',
+    ].includes(key)));
+}

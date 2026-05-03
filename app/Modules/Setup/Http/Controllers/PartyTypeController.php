@@ -3,10 +3,12 @@
 namespace App\Modules\Setup\Http\Controllers;
 
 use App\Http\Controllers\ModularController;
+use App\Modules\Setup\DTOs\SetupTypeData;
+use App\Modules\Setup\Http\Requests\PartyTypeRequest;
+use App\Modules\Setup\Http\Resources\SetupTypeResource;
 use App\Modules\Setup\Models\PartyType;
+use App\Modules\Setup\Services\SetupTypeService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * @OA\Tag(
@@ -16,7 +18,8 @@ use Illuminate\Validation\Rule;
  */
 class PartyTypeController extends ModularController
 {
-    // Return all party types.
+    public function __construct(private readonly SetupTypeService $types) {}
+
     /**
      * @OA\Get(
      *     path="/settings/party-types",
@@ -26,18 +29,14 @@ class PartyTypeController extends ModularController
      *
      *     @OA\Response(response=200, description="Successful response"),
      *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(response=403, description="Forbidden"),
-     *     @OA\Response(response=422, description="Validation error")
+     *     @OA\Response(response=403, description="Forbidden")
      * )
      */
     public function index(): JsonResponse
     {
-        return response()->json([
-            'data' => PartyType::query()->orderBy('name')->get(),
-        ]);
+        return $this->resource(SetupTypeResource::collection($this->types->all(PartyType::class)), 'Party types retrieved successfully.');
     }
 
-    // Create a new party type.
     /**
      * @OA\Post(
      *     path="/settings/party-types",
@@ -45,7 +44,7 @@ class PartyTypeController extends ModularController
      *     tags={"SETUP - Party Types"},
      *     security={{"bearerAuth": {}}},
      *
-     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *     @OA\RequestBody(required=false, @OA\JsonContent(ref="#/components/schemas/PartyTypeRequest")),
      *
      *     @OA\Response(response=200, description="Successful response"),
      *     @OA\Response(response=401, description="Unauthenticated"),
@@ -53,22 +52,15 @@ class PartyTypeController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function store(Request $request): JsonResponse
+    public function store(PartyTypeRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('party_types', 'name')],
-            'code' => ['nullable', 'string', 'max:80'],
-        ]);
-
-        $partyType = PartyType::query()->create($validated);
-
-        return response()->json([
-            'message' => 'Party type created.',
-            'data' => $partyType,
-        ]);
+        return $this->resource(
+            new SetupTypeResource($this->types->create(PartyType::class, SetupTypeData::fromRequest($request))),
+            'Party type created.',
+            201,
+        );
     }
 
-    // Update a party type.
     /**
      * @OA\Put(
      *     path="/settings/party-types/{partyType}",
@@ -76,7 +68,7 @@ class PartyTypeController extends ModularController
      *     tags={"SETUP - Party Types"},
      *     security={{"bearerAuth": {}}},
      *
-     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *     @OA\RequestBody(required=false, @OA\JsonContent(ref="#/components/schemas/PartyTypeRequest")),
      *
      *     @OA\Response(response=200, description="Successful response"),
      *     @OA\Response(response=401, description="Unauthenticated"),
@@ -84,22 +76,11 @@ class PartyTypeController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function update(Request $request, PartyType $partyType): JsonResponse
+    public function update(PartyTypeRequest $request, PartyType $partyType): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('party_types', 'name')->ignore($partyType->id)],
-            'code' => ['nullable', 'string', 'max:80'],
-        ]);
-
-        $partyType->update($validated);
-
-        return response()->json([
-            'message' => 'Party type updated.',
-            'data' => $partyType->fresh(),
-        ]);
+        return $this->resource(new SetupTypeResource($this->types->update($partyType, SetupTypeData::fromRequest($request))), 'Party type updated.');
     }
 
-    // Delete a party type.
     /**
      * @OA\Delete(
      *     path="/settings/party-types/{partyType}",
@@ -109,16 +90,13 @@ class PartyTypeController extends ModularController
      *
      *     @OA\Response(response=200, description="Successful response"),
      *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(response=403, description="Forbidden"),
-     *     @OA\Response(response=422, description="Validation error")
+     *     @OA\Response(response=403, description="Forbidden")
      * )
      */
     public function destroy(PartyType $partyType): JsonResponse
     {
-        $partyType->delete();
+        $this->types->delete($partyType);
 
-        return response()->json([
-            'message' => 'Party type deleted.',
-        ]);
+        return $this->success(null, 'Party type deleted.');
     }
 }

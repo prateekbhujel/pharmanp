@@ -3,10 +3,12 @@
 namespace App\Modules\Setup\Http\Controllers;
 
 use App\Http\Controllers\ModularController;
+use App\Modules\Setup\DTOs\SetupTypeData;
+use App\Modules\Setup\Http\Requests\SupplierTypeRequest;
+use App\Modules\Setup\Http\Resources\SetupTypeResource;
 use App\Modules\Setup\Models\SupplierType;
+use App\Modules\Setup\Services\SetupTypeService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * @OA\Tag(
@@ -16,7 +18,8 @@ use Illuminate\Validation\Rule;
  */
 class SupplierTypeController extends ModularController
 {
-    // Return all supplier types.
+    public function __construct(private readonly SetupTypeService $types) {}
+
     /**
      * @OA\Get(
      *     path="/settings/supplier-types",
@@ -26,18 +29,14 @@ class SupplierTypeController extends ModularController
      *
      *     @OA\Response(response=200, description="Successful response"),
      *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(response=403, description="Forbidden"),
-     *     @OA\Response(response=422, description="Validation error")
+     *     @OA\Response(response=403, description="Forbidden")
      * )
      */
     public function index(): JsonResponse
     {
-        return response()->json([
-            'data' => SupplierType::query()->orderBy('name')->get(),
-        ]);
+        return $this->resource(SetupTypeResource::collection($this->types->all(SupplierType::class)), 'Supplier types retrieved successfully.');
     }
 
-    // Create a new supplier type.
     /**
      * @OA\Post(
      *     path="/settings/supplier-types",
@@ -45,7 +44,7 @@ class SupplierTypeController extends ModularController
      *     tags={"SETUP - Supplier Types"},
      *     security={{"bearerAuth": {}}},
      *
-     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *     @OA\RequestBody(required=false, @OA\JsonContent(ref="#/components/schemas/SupplierTypeRequest")),
      *
      *     @OA\Response(response=200, description="Successful response"),
      *     @OA\Response(response=401, description="Unauthenticated"),
@@ -53,22 +52,15 @@ class SupplierTypeController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function store(Request $request): JsonResponse
+    public function store(SupplierTypeRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('supplier_types', 'name')],
-            'code' => ['nullable', 'string', 'max:80'],
-        ]);
-
-        $supplierType = SupplierType::query()->create($validated);
-
-        return response()->json([
-            'message' => 'Supplier type created.',
-            'data' => $supplierType,
-        ]);
+        return $this->resource(
+            new SetupTypeResource($this->types->create(SupplierType::class, SetupTypeData::fromRequest($request))),
+            'Supplier type created.',
+            201,
+        );
     }
 
-    // Update a supplier type.
     /**
      * @OA\Put(
      *     path="/settings/supplier-types/{supplierType}",
@@ -76,7 +68,7 @@ class SupplierTypeController extends ModularController
      *     tags={"SETUP - Supplier Types"},
      *     security={{"bearerAuth": {}}},
      *
-     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *     @OA\RequestBody(required=false, @OA\JsonContent(ref="#/components/schemas/SupplierTypeRequest")),
      *
      *     @OA\Response(response=200, description="Successful response"),
      *     @OA\Response(response=401, description="Unauthenticated"),
@@ -84,22 +76,11 @@ class SupplierTypeController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function update(Request $request, SupplierType $supplierType): JsonResponse
+    public function update(SupplierTypeRequest $request, SupplierType $supplierType): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('supplier_types', 'name')->ignore($supplierType->id)],
-            'code' => ['nullable', 'string', 'max:80'],
-        ]);
-
-        $supplierType->update($validated);
-
-        return response()->json([
-            'message' => 'Supplier type updated.',
-            'data' => $supplierType->fresh(),
-        ]);
+        return $this->resource(new SetupTypeResource($this->types->update($supplierType, SetupTypeData::fromRequest($request))), 'Supplier type updated.');
     }
 
-    // Delete a supplier type.
     /**
      * @OA\Delete(
      *     path="/settings/supplier-types/{supplierType}",
@@ -109,16 +90,13 @@ class SupplierTypeController extends ModularController
      *
      *     @OA\Response(response=200, description="Successful response"),
      *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(response=403, description="Forbidden"),
-     *     @OA\Response(response=422, description="Validation error")
+     *     @OA\Response(response=403, description="Forbidden")
      * )
      */
     public function destroy(SupplierType $supplierType): JsonResponse
     {
-        $supplierType->delete();
+        $this->types->delete($supplierType);
 
-        return response()->json([
-            'message' => 'Supplier type deleted.',
-        ]);
+        return $this->success(null, 'Supplier type deleted.');
     }
 }

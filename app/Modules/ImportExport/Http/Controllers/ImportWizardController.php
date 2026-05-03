@@ -5,6 +5,7 @@ namespace App\Modules\ImportExport\Http\Controllers;
 use App\Http\Controllers\ModularController;
 use App\Modules\ImportExport\Http\Requests\ConfirmImportRequest;
 use App\Modules\ImportExport\Http\Requests\PreviewImportRequest;
+use App\Modules\ImportExport\Http\Resources\ImportJobResource;
 use App\Modules\ImportExport\Models\ImportJob;
 use App\Modules\ImportExport\Services\ImportPreviewService;
 use Illuminate\Http\JsonResponse;
@@ -33,13 +34,14 @@ class ImportWizardController extends ModularController
      */
     public function targets(ImportPreviewService $service): JsonResponse
     {
-        return response()->json([
-            'data' => collect($service->targetFields())->map(fn (array $fields, string $target) => [
+        return $this->success(
+            collect($service->targetFields())->map(fn (array $fields, string $target) => [
                 'target' => $target,
                 'fields' => $fields,
                 'required' => $service->requiredFields($target),
             ])->values(),
-        ]);
+            'Import targets retrieved successfully.',
+        );
     }
 
     /**
@@ -65,7 +67,7 @@ class ImportWizardController extends ModularController
             $request->user()?->id,
         );
 
-        return $this->jobResponse($job, $service);
+        return $this->jobResponse($job);
     }
 
     /**
@@ -113,7 +115,7 @@ class ImportWizardController extends ModularController
             $request->user(),
         );
 
-        return $this->jobResponse($job, $service);
+        return $this->jobResponse($job);
     }
 
     /**
@@ -136,27 +138,8 @@ class ImportWizardController extends ModularController
         }, 'import-'.$job->id.'-rejected.csv', ['Content-Type' => 'text/csv']);
     }
 
-    private function jobResponse(ImportJob $job, ImportPreviewService $service): JsonResponse
+    private function jobResponse(ImportJob $job): JsonResponse
     {
-        return response()->json([
-            'data' => [
-                'id' => $job->id,
-                'target' => $job->target,
-                'status' => $job->status,
-                'original_filename' => $job->original_filename,
-                'detected_columns' => $job->detected_columns,
-                'system_fields' => $service->targetFields()[$job->target] ?? [],
-                'required_fields' => $service->requiredFields($job->target),
-                'total_rows' => $job->total_rows,
-                'valid_rows' => $job->valid_rows,
-                'invalid_rows' => $job->invalid_rows,
-                'rows' => $job->rows->sortBy('row_number')->take(50)->map(fn ($row) => [
-                    'row_number' => $row->row_number,
-                    'raw_data' => $row->raw_data,
-                    'errors' => $row->errors,
-                    'status' => $row->status,
-                ])->values(),
-            ],
-        ]);
+        return $this->resource(new ImportJobResource($job), 'Import job processed successfully.');
     }
 }

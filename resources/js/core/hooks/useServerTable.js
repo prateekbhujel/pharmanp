@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { App } from 'antd';
-import { http } from '../api/http';
+import { apiData, apiExtra, apiMeta, http } from '../api/http';
 import { useDebounce } from './useDebounce';
 
 export function useServerTable({ endpoint, defaultSort = { field: 'updated_at', order: 'desc' }, defaultFilters = {}, enabled = true }) {
@@ -32,13 +32,14 @@ export function useServerTable({ endpoint, defaultSort = { field: 'updated_at', 
         setLoading(true);
         return http.get(endpoint, { params })
             .then(({ data }) => {
-                setRows(data.data || []);
-                setExtra(Object.fromEntries(Object.entries(data).filter(([key]) => !['data', 'meta'].includes(key))));
+                const meta = apiMeta(data);
+                setRows(apiData(data, []));
+                setExtra(apiExtra(data));
                 setPagination((current) => ({
                     ...current,
-                    total: data.meta?.total || 0,
-                    current: data.meta?.current_page || current.current,
-                    pageSize: data.meta?.per_page || current.pageSize,
+                    total: meta.total || 0,
+                    current: meta.current_page || current.current,
+                    pageSize: meta.per_page || current.pageSize,
                 }));
             })
             .catch((error) => {

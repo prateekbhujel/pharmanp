@@ -4,13 +4,12 @@ namespace App\Modules\Party\Http\Controllers;
 
 use App\Http\Controllers\ModularController;
 use App\Models\Setting;
-use App\Modules\Accounting\Models\Payment;
+use App\Modules\Party\Http\Requests\CustomerLedgerRequest;
+use App\Modules\Party\Http\Resources\CustomerLedgerResource;
 use App\Modules\Party\Models\Customer;
-use App\Modules\Sales\Models\SalesInvoice;
-use App\Modules\Sales\Models\SalesReturn;
+use App\Modules\Party\Services\CustomerLedgerService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -21,7 +20,8 @@ use Illuminate\View\View;
  */
 class CustomerLedgerController extends ModularController
 {
-    // Return customer ledger: invoices, returns, payments, and balance.
+    public function __construct(private readonly CustomerLedgerService $ledger) {}
+
     /**
      * @OA\Get(
      *     path="/customers/{customer}/ledger",
@@ -35,128 +35,43 @@ class CustomerLedgerController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function show(Request $request, Customer $customer): JsonResponse
+    public function show(CustomerLedgerRequest $request, Customer $customer): JsonResponse
     {
-        return response()->json($this->ledgerPayload($request, $customer));
+        $payload = (new CustomerLedgerResource($this->payload($request, $customer)))->resolve($request);
+
+        return $this->success($payload, 'Customer ledger retrieved successfully.')
+            ->setData([
+                'status' => 'success',
+                'code' => 200,
+                'message' => 'Customer ledger retrieved successfully.',
+                'data' => $payload,
+                'summary' => $payload['summary'] ?? [],
+                'filters' => $payload['filters'] ?? [],
+            ]);
     }
 
-    public function print(Request $request, Customer $customer): View
+    public function print(CustomerLedgerRequest $request, Customer $customer): View
     {
         return view('prints.customer-ledger', [
-            'ledger' => $this->ledgerPayload($request, $customer),
+            'ledger' => $this->payload($request, $customer),
             'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
         ]);
     }
 
-    public function pdf(Request $request, Customer $customer)
+    public function pdf(CustomerLedgerRequest $request, Customer $customer)
     {
         return Pdf::loadView('prints.customer-ledger', [
-            'ledger' => $this->ledgerPayload($request, $customer),
+            'ledger' => $this->payload($request, $customer),
             'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
         ])->setPaper('a4', 'landscape')->stream('customer-ledger-'.$customer->id.'.pdf');
     }
 
-    private function ledgerPayload(Request $request, Customer $customer): array
+    private function payload(CustomerLedgerRequest $request, Customer $customer): array
     {
-        $from = $request->input('from');
-        $to = $request->input('to');
-
-        // Invoices
-        $invoiceQuery = SalesInvoice::query()
-            ->where('customer_id', $customer->id)
-            ->latest('invoice_date');
-
-        if ($from) {
-            $invoiceQuery->where('invoice_date', '>=', $from);
-        }
-
-        if ($to) {
-            $invoiceQuery->where('invoice_date', '<=', $to);
-        }
-
-        $invoices = $invoiceQuery->get()->map(fn (SalesInvoice $invoice) => [
-            'id' => $invoice->id,
-            'invoice_no' => $invoice->invoice_no,
-            'date' => $invoice->invoice_date->format('M j, Y'),
-            'grand_total' => round((float) $invoice->grand_total, 2),
-            'paid_amount' => round((float) $invoice->paid_amount, 2),
-            'due' => round(max(0, (float) $invoice->grand_total - (float) $invoice->paid_amount), 2),
-            'payment_status' => $invoice->payment_status,
-        ]);
-
-        // Returns
-        $returnQuery = SalesReturn::query()
-            ->where('customer_id', $customer->id)
-            ->latest('return_date');
-
-        if ($from) {
-            $returnQuery->where('return_date', '>=', $from);
-        }
-
-        if ($to) {
-            $returnQuery->where('return_date', '<=', $to);
-        }
-
-        $returns = $returnQuery->get()->map(fn (SalesReturn $return) => [
-            'id' => $return->id,
-            'return_no' => $return->return_no,
-            'date' => $return->return_date->format('M j, Y'),
-            'total_amount' => round((float) $return->total_amount, 2),
-            'invoice_no' => $return->invoice?->invoice_no ?? '-',
-        ]);
-
-        // Payments
-        $paymentQuery = Payment::query()
-            ->where('party_type', 'customer')
-            ->where('party_id', $customer->id)
-            ->latest('payment_date');
-
-        if ($from) {
-            $paymentQuery->where('payment_date', '>=', $from);
-        }
-
-        if ($to) {
-            $paymentQuery->where('payment_date', '<=', $to);
-        }
-
-        $payments = $paymentQuery->get()->map(fn (Payment $payment) => [
-            'id' => $payment->id,
-            'payment_no' => $payment->payment_no,
-            'date' => $payment->payment_date->format('M j, Y'),
-            'direction' => $payment->direction,
-            'amount' => round((float) $payment->amount, 2),
-            'payment_mode' => $payment->payment_mode,
-        ]);
-
-        // Balance summary
-        $totalInvoiced = SalesInvoice::query()->where('customer_id', $customer->id)->sum('grand_total');
-        $totalReturned = SalesReturn::query()->where('customer_id', $customer->id)->sum('total_amount');
-        $totalPaid = SalesInvoice::query()->where('customer_id', $customer->id)->sum('paid_amount');
-        $totalPayments = Payment::query()->where('party_type', 'customer')->where('party_id', $customer->id)->where('direction', 'in')->sum('amount');
-
-        return [
-            'customer' => [
-                'id' => $customer->id,
-                'name' => $customer->name,
-                'phone' => $customer->phone,
-                'email' => $customer->email,
-                'address' => $customer->address,
-                'current_balance' => round((float) $customer->current_balance, 2),
-            ],
-            'invoices' => $invoices,
-            'returns' => $returns,
-            'payments' => $payments,
-            'summary' => [
-                'total_invoiced' => round((float) $totalInvoiced, 2),
-                'total_returned' => round((float) $totalReturned, 2),
-                'total_paid' => round((float) $totalPaid, 2),
-                'total_payments' => round((float) $totalPayments, 2),
-                'balance' => round((float) $customer->current_balance, 2),
-            ],
-            'filters' => [
-                'from' => $from,
-                'to' => $to,
-            ],
-        ];
+        return $this->ledger->payload(
+            $customer,
+            $request->validated('from'),
+            $request->validated('to'),
+        );
     }
 }

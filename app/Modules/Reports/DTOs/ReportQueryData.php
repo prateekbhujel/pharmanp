@@ -15,12 +15,12 @@ final readonly class ReportQueryData
         public ?int $companyId = null,
     ) {}
 
-    public static function fromRequest(Request $request): self
+    public static function fromRequest(Request $request, int $maxPerPage = TableQueryData::MAX_PER_PAGE): self
     {
         return new self(
             from: $request->filled('from') ? (string) $request->query('from') : null,
             to: $request->filled('to') ? (string) $request->query('to') : null,
-            perPage: TableQueryData::perPageFromRequest($request),
+            perPage: TableQueryData::perPageFromRequest($request, max: $maxPerPage),
             tenantId: $request->user()?->tenant_id,
             companyId: $request->user()?->company_id,
         );
