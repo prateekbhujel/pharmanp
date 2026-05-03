@@ -11,6 +11,7 @@ use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
+use App\Modules\Purchase\Models\PurchaseOrder;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -97,7 +98,7 @@ class TransactionPostingTest extends TestCase
             ]],
         ])->assertOk();
 
-        $purchaseId = (int) \App\Modules\Purchase\Models\PurchaseOrder::query()
+        $purchaseId = (int) PurchaseOrder::query()
             ->whereKey($orderId)
             ->value('received_purchase_id');
         $batch = Batch::query()->where('batch_no', 'PO-RCV-001')->firstOrFail();
@@ -308,7 +309,10 @@ class TransactionPostingTest extends TestCase
     public function test_payment_delete_soft_deletes_and_reverses_allocated_bill_balance(): void
     {
         [$user, $product, $supplier] = $this->fixture();
-        $paymentMode = DropdownOption::query()->where('alias', 'payment_mode')->where('name', 'Cash')->firstOrFail();
+        $paymentMode = DropdownOption::query()->firstOrCreate(
+            ['alias' => 'payment_mode', 'name' => 'Cash'],
+            ['data' => 'cash', 'status' => true],
+        );
 
         $purchaseResponse = $this->actingAs($user)->postJson('/api/v1/purchases', [
             'supplier_id' => $supplier->id,

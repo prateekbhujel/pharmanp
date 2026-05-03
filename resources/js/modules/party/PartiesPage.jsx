@@ -132,7 +132,7 @@ function PartyTab({ type, onViewLedger }) {
 
     return (
         <Card>
-            <div className="table-toolbar table-toolbar-legacy">
+            <div className="table-toolbar table-toolbar-compact">
                 <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder={`Search ${type}`} allowClear />
                 <div className="table-switch">
                     <Switch

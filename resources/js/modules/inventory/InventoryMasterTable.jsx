@@ -167,12 +167,12 @@ export function InventoryMasterTable({ master }) {
 
     return (
         <Card>
-            <div className="legacy-list-actions">
+            <div className="list-actions">
                 <ExportButtons basePath={endpoints.inventoryMasterExport(master)} params={{ search: table.search, deleted: table.filters.deleted }} />
                 {['companies', 'units'].includes(master) && <ImportButton target={master} />}
                 <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{config.createLabel}</Button>
             </div>
-            <div className="table-toolbar table-toolbar-legacy">
+            <div className="table-toolbar table-toolbar-compact">
                 <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder={`Search ${config.title.toLowerCase()}`} allowClear />
                 <div className="table-switch">
                     <Switch

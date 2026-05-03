@@ -8,9 +8,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Run demo data explicitly:
-        //   php artisan db:seed --class=DemoSeeder
-        // This class intentionally left minimal — DemoSeeder handles all showcase data.
+        if (app()->environment(['local', 'testing']) || filter_var(env('PHARMANP_SEED_DEMO', false), FILTER_VALIDATE_BOOL)) {
+            $this->call(DemoSeeder::class);
+        }
     }
 }
-

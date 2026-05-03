@@ -943,7 +943,7 @@ body {
     margin-bottom: 16px;
 }
 
-.legacy-list-actions {
+.list-actions {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
@@ -952,7 +952,7 @@ body {
     margin-bottom: 14px;
 }
 
-.table-toolbar-legacy {
+.table-toolbar-compact {
     grid-template-columns: minmax(260px, 1fr) 180px auto;
 }
 
@@ -3121,7 +3121,7 @@ body {
 
 @media (max-width: 900px) {
     .table-toolbar,
-    .table-toolbar-legacy,
+    .table-toolbar-compact,
     .table-toolbar-products,
     .table-toolbar-payments,
     .table-toolbar-vouchers,
