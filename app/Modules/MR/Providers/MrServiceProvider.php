@@ -3,6 +3,8 @@
 namespace App\Modules\MR\Providers;
 
 use App\Modules\Base\Providers\BaseModuleServiceProvider;
+use App\Modules\MR\Repositories\BranchRepository;
+use App\Modules\MR\Repositories\Interfaces\BranchRepositoryInterface;
 use App\Modules\MR\Repositories\Interfaces\MrRepositoryInterface;
 use App\Modules\MR\Repositories\MrRepository;
 
@@ -10,6 +12,7 @@ class MrServiceProvider extends BaseModuleServiceProvider
 {
     public function register()
     {
+        $this->app->bind(BranchRepositoryInterface::class, BranchRepository::class);
         $this->app->bind(MrRepositoryInterface::class, MrRepository::class);
     }
 

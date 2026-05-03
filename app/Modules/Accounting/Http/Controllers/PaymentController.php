@@ -3,16 +3,15 @@
 namespace App\Modules\Accounting\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
-use App\Core\Support\ApiResponse;
 use App\Http\Controllers\ModularController;
 use App\Models\Setting;
+use App\Modules\Accounting\Http\Requests\OutstandingBillsRequest;
+use App\Modules\Accounting\Http\Requests\PaymentRequest;
 use App\Modules\Accounting\Models\Payment;
 use App\Modules\Accounting\Services\PaymentSettlementService;
-use App\Modules\Setup\Models\DropdownOption;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -42,43 +41,10 @@ class PaymentController extends ModularController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Payment::query()
-            ->with(['customer', 'supplier', 'allocations', 'paymentModeOption:id,name,data'])
-            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
-            ->when($request->boolean('deleted'), fn ($builder) => $builder->onlyTrashed())
-            ->when($request->filled('direction'), fn ($builder) => $builder->where('direction', $request->query('direction')))
-            ->when($request->filled('party_type'), fn ($builder) => $builder->where('party_type', $request->query('party_type')))
-            ->when($request->filled('from'), fn ($builder) => $builder->where('payment_date', '>=', $request->query('from')))
-            ->when($request->filled('to'), fn ($builder) => $builder->where('payment_date', '<=', $request->query('to')))
-            ->latest('payment_date')
-            ->latest('id');
-
-        if ($request->filled('search')) {
-            $keyword = (string) $request->query('search');
-            $query->where(function ($builder) use ($keyword) {
-                $builder->where('payment_no', 'like', '%'.$keyword.'%')
-                    ->orWhere('reference_no', 'like', '%'.$keyword.'%')
-                    ->orWhere('notes', 'like', '%'.$keyword.'%')
-                    ->orWhere('payment_mode', 'like', '%'.$keyword.'%');
-            });
-        }
-
-        $perPage = TableQueryData::perPageFromRequest($request);
-        $paginated = $query->paginate($perPage);
-
-        return response()->json([
-            'data' => $paginated->getCollection()
-                ->map(fn (Payment $payment) => $this->payments->payload($payment))
-                ->values(),
-            'meta' => ApiResponse::paginationMeta($paginated),
-            'lookups' => [
-                'payment_modes' => DropdownOption::query()
-                    ->forAlias('payment_mode')
-                    ->active()
-                    ->orderBy('name')
-                    ->get(['id', 'name', 'data']),
-            ],
-        ]);
+        return response()->json($this->payments->table(
+            TableQueryData::fromRequest($request, ['deleted', 'direction', 'party_type', 'from', 'to']),
+            $request->user(),
+        ));
     }
 
     /**
@@ -96,29 +62,9 @@ class PaymentController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function store(Request $request): JsonResponse
+    public function store(PaymentRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'id' => ['nullable', 'integer', 'exists:payments,id'],
-            'direction' => ['required', Rule::in(['in', 'out'])],
-            'party_type' => ['required', Rule::in(['customer', 'supplier'])],
-            'party_id' => ['required', 'integer'],
-            'payment_date' => ['required', 'date'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'payment_mode_id' => [
-                'required',
-                'integer',
-                Rule::exists('dropdown_options', 'id')->where(fn ($query) => $query->where('alias', 'payment_mode')),
-            ],
-            'reference_no' => ['nullable', 'string', 'max:100'],
-            'notes' => ['nullable', 'string'],
-            'allocations' => ['nullable', 'array'],
-            'allocations.*.bill_id' => ['nullable', 'integer'],
-            'allocations.*.bill_type' => ['nullable', Rule::in(['sales_invoice', 'purchase'])],
-            'allocations.*.allocated_amount' => ['nullable', 'numeric', 'min:0.01'],
-        ]);
-
-        $payment = $this->payments->save($validated, $request->user());
+        $payment = $this->payments->save($request->validated(), $request->user());
 
         return response()->json([
             'message' => 'Payment saved successfully.',
@@ -139,12 +85,9 @@ class PaymentController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function outstandingBills(Request $request): JsonResponse
+    public function outstandingBills(OutstandingBillsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'party_id' => ['required', 'integer'],
-            'party_type' => ['required', Rule::in(['customer', 'supplier'])],
-        ]);
+        $validated = $request->validated();
 
         return response()->json([
             'data' => $this->payments->outstandingBills(

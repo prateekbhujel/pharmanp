@@ -2,15 +2,56 @@
 
 namespace App\Modules\Accounting\Repositories;
 
+use App\Core\DTOs\TableQueryData;
+use App\Core\Query\TableQueryApplier;
+use App\Models\User;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Models\Voucher;
 use App\Modules\Accounting\Models\VoucherEntry;
 use App\Modules\Accounting\Repositories\Interfaces\VoucherRepositoryInterface;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 
 class VoucherRepository implements VoucherRepositoryInterface
 {
+    private const SORTS = [
+        'voucher_date' => 'voucher_date',
+        'voucher_no' => 'voucher_no',
+        'voucher_type' => 'voucher_type',
+        'total_amount' => 'total_amount',
+        'created_at' => 'created_at',
+        'updated_at' => 'updated_at',
+    ];
+
+    public function __construct(private readonly TableQueryApplier $tables) {}
+
+    public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
+    {
+        $query = Voucher::query()
+            ->withCount('entries');
+
+        $this->tables->tenant($query, $user, 'tenant_id');
+
+        $query
+            ->when($table->search, function (Builder $builder, string $search): void {
+                $builder->where(function (Builder $inner) use ($search): void {
+                    $this->tables->search($inner, $search, ['voucher_no', 'voucher_type', 'notes']);
+                });
+            })
+            ->when($table->filters['voucher_type'] ?? null, fn (Builder $builder, mixed $type) => $builder->where('voucher_type', $type))
+            ->when($table->filters['from'] ?? null, fn (Builder $builder, mixed $from) => $builder->whereDate('voucher_date', '>=', $from))
+            ->when($table->filters['to'] ?? null, fn (Builder $builder, mixed $to) => $builder->whereDate('voucher_date', '<=', $to));
+
+        return $this->tables->paginate(
+            $query
+                ->orderBy($this->tables->sortColumn($table, self::SORTS, 'voucher_date'), $table->sortOrder)
+                ->orderByDesc('id'),
+            $table,
+        );
+    }
+
     public function create(array $data): Voucher
     {
         return Voucher::query()->create($data);

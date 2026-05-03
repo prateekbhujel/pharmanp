@@ -2,6 +2,7 @@
 
 namespace App\Modules\Accounting\Services;
 
+use App\Core\DTOs\TableQueryData;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Accounting\DTOs\VoucherData;
@@ -16,6 +17,11 @@ class VoucherService
         private readonly DocumentNumberService $numbers,
         private readonly VoucherRepositoryInterface $vouchers,
     ) {}
+
+    public function table(TableQueryData $table, ?User $user = null)
+    {
+        return $this->vouchers->paginate($table, $user);
+    }
 
     public function create(array $data, User $user): Voucher
     {

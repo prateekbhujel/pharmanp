@@ -2,6 +2,7 @@
 
 namespace App\Modules\Purchase\Http\Controllers;
 
+use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Modules\Purchase\Http\Requests\PurchaseOrderReceiveRequest;
 use App\Modules\Purchase\Http\Requests\PurchaseOrderStoreRequest;
@@ -10,6 +11,7 @@ use App\Modules\Purchase\Models\PurchaseOrder;
 use App\Modules\Purchase\Services\PurchaseEntryService;
 use App\Modules\Purchase\Services\PurchaseOrderService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * @OA\Tag(
@@ -32,14 +34,12 @@ class PurchaseOrderController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request, PurchaseOrderService $service): JsonResponse
     {
-        $orders = PurchaseOrder::query()
-            ->with('supplier:id,name')
-            ->when(request()->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->latest('order_date')
-            ->latest('id')
-            ->paginate(request()->integer('per_page', 15));
+        $orders = $service->table(
+            TableQueryData::fromRequest($request, ['supplier_id', 'status', 'from', 'to']),
+            $request->user(),
+        );
 
         return response()->json(PurchaseResource::collection($orders)->response()->getData(true));
     }
@@ -104,9 +104,9 @@ class PurchaseOrderController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function approve(PurchaseOrder $order): JsonResponse
+    public function approve(Request $request, PurchaseOrder $order, PurchaseOrderService $service): JsonResponse
     {
-        $order->update(['status' => 'approved']);
+        $order = $service->approve($order, $request->user());
 
         return response()->json(['message' => 'Order approved', 'data' => $order]);
     }
@@ -154,9 +154,9 @@ class PurchaseOrderController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function pay(PurchaseOrder $order): JsonResponse
+    public function pay(Request $request, PurchaseOrder $order, PurchaseOrderService $service): JsonResponse
     {
-        $order->update(['status' => 'paid']);
+        $order = $service->markPaid($order, $request->user());
 
         return response()->json(['message' => 'Order marked as paid', 'data' => $order]);
     }

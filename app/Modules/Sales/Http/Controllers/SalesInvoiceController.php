@@ -2,17 +2,17 @@
 
 namespace App\Modules\Sales\Http\Controllers;
 
+use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Models\Setting;
+use App\Modules\Sales\Http\Requests\SalesInvoicePaymentRequest;
 use App\Modules\Sales\Http\Requests\SalesInvoiceStoreRequest;
 use App\Modules\Sales\Http\Resources\SalesInvoiceResource;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Services\SalesInvoiceService;
-use App\Modules\Setup\Models\DropdownOption;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -36,35 +36,12 @@ class SalesInvoiceController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request, SalesInvoiceService $service): JsonResponse
     {
-        $sorts = [
-            'invoice_no' => 'invoice_no',
-            'invoice_date' => 'invoice_date',
-            'grand_total' => 'grand_total',
-            'created_at' => 'created_at',
-        ];
-        $sortField = $sorts[request('sort_field', 'invoice_date')] ?? 'invoice_date';
-        $sortOrder = request('sort_order') === 'asc' ? 'asc' : 'desc';
-        $search = trim((string) request('search'));
-
-        $invoices = SalesInvoice::query()
-            ->with(['customer:id,name', 'medicalRepresentative:id,name'])
-            ->when(request()->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($inner) use ($search) {
-                    $inner->where('invoice_no', 'like', '%'.$search.'%')
-                        ->orWhereHas('customer', fn ($customer) => $customer->where('name', 'like', '%'.$search.'%'));
-                });
-            })
-            ->when(request()->filled('customer_id'), fn ($query) => $query->where('customer_id', request()->integer('customer_id')))
-            ->when(request()->filled('payment_status'), fn ($query) => $query->where('payment_status', request('payment_status')))
-            ->when(request()->filled('medical_representative_id'), fn ($query) => $query->where('medical_representative_id', request()->integer('medical_representative_id')))
-            ->when(request()->filled('from'), fn ($query) => $query->whereDate('invoice_date', '>=', request('from')))
-            ->when(request()->filled('to'), fn ($query) => $query->whereDate('invoice_date', '<=', request('to')))
-            ->orderBy($sortField, $sortOrder)
-            ->orderByDesc('id')
-            ->paginate(min(100, max(5, request()->integer('per_page', 15))));
+        $invoices = $service->table(
+            TableQueryData::fromRequest($request, ['customer_id', 'payment_status', 'medical_representative_id', 'from', 'to']),
+            $request->user(),
+        );
 
         return response()->json(SalesInvoiceResource::collection($invoices)->response()->getData(true));
     }
@@ -174,25 +151,13 @@ class SalesInvoiceController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function updatePayment(Request $request, SalesInvoice $invoice, SalesInvoiceService $service): SalesInvoiceResource
+    public function updatePayment(SalesInvoicePaymentRequest $request, SalesInvoice $invoice, SalesInvoiceService $service): SalesInvoiceResource
     {
-        $validated = $request->validate([
-            'paid_amount' => ['required', 'numeric', 'min:0', 'max:'.(float) $invoice->grand_total],
-            'payment_mode_id' => [
-                'nullable',
-                Rule::exists('dropdown_options', 'id')->where(fn ($query) => $query->where('alias', 'payment_mode')),
-            ],
-        ]);
-
-        $cashAccount = 'cash';
-        if (! empty($validated['payment_mode_id'])) {
-            $mode = DropdownOption::query()->forAlias('payment_mode')->find($validated['payment_mode_id']);
-            $cashAccount = strtolower((string) ($mode?->data ?: $mode?->name)) === 'cash' ? 'cash' : 'bank';
-        }
+        $validated = $request->validated();
 
         $invoice = $service->updatePayment($invoice, [
             'paid_amount' => $validated['paid_amount'],
-            'cash_account' => $cashAccount,
+            'cash_account' => $service->cashAccountForPaymentMode($validated['payment_mode_id'] ?? null),
         ], $request->user());
 
         return (new SalesInvoiceResource($invoice))->additional(['message' => 'Invoice payment updated.']);

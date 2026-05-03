@@ -2,15 +2,21 @@
 
 namespace App\Modules\Accounting\Repositories\Interfaces;
 
+use App\Core\DTOs\TableQueryData;
 use App\Models\User;
 use App\Modules\Accounting\Models\Payment;
 use App\Modules\Accounting\Models\PaymentBillAllocation;
 use App\Modules\Setup\Models\DropdownOption;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 interface PaymentRepositoryInterface
 {
+    public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator;
+
+    public function lookups(): array;
+
     public function getForSettlement(?int $id = null): Payment;
 
     public function deleteAllocations(int $paymentId): void;

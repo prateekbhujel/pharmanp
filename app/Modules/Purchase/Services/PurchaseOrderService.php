@@ -2,6 +2,7 @@
 
 namespace App\Modules\Purchase\Services;
 
+use App\Core\DTOs\TableQueryData;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Purchase\DTOs\PurchaseOrderData;
@@ -17,6 +18,21 @@ class PurchaseOrderService
         private readonly DocumentNumberService $numbers,
         private readonly PurchaseOrderRepositoryInterface $orders,
     ) {}
+
+    public function table(TableQueryData $table, ?User $user = null)
+    {
+        return $this->orders->paginate($table, $user);
+    }
+
+    public function approve(PurchaseOrder $order, User $user): PurchaseOrder
+    {
+        return $this->orders->save($order, ['status' => 'approved', 'updated_by' => $user->id])->fresh();
+    }
+
+    public function markPaid(PurchaseOrder $order, User $user): PurchaseOrder
+    {
+        return $this->orders->save($order, ['status' => 'paid', 'updated_by' => $user->id])->fresh();
+    }
 
     public function create(array $data, User $user): PurchaseOrder
     {

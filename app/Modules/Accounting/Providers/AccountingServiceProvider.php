@@ -3,7 +3,9 @@
 namespace App\Modules\Accounting\Providers;
 
 use App\Modules\Accounting\Repositories\AccountTransactionRepository;
+use App\Modules\Accounting\Repositories\ExpenseRepository;
 use App\Modules\Accounting\Repositories\Interfaces\AccountTransactionRepositoryInterface;
+use App\Modules\Accounting\Repositories\Interfaces\ExpenseRepositoryInterface;
 use App\Modules\Accounting\Repositories\Interfaces\PartyBalanceRepositoryInterface;
 use App\Modules\Accounting\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Modules\Accounting\Repositories\Interfaces\VoucherRepositoryInterface;
@@ -17,6 +19,7 @@ class AccountingServiceProvider extends BaseModuleServiceProvider
     public function register()
     {
         $this->app->bind(AccountTransactionRepositoryInterface::class, AccountTransactionRepository::class);
+        $this->app->bind(ExpenseRepositoryInterface::class, ExpenseRepository::class);
         $this->app->bind(PartyBalanceRepositoryInterface::class, PartyBalanceRepository::class);
         $this->app->bind(PaymentRepositoryInterface::class, PaymentRepository::class);
         $this->app->bind(VoucherRepositoryInterface::class, VoucherRepository::class);

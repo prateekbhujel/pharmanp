@@ -2,6 +2,7 @@
 
 namespace App\Modules\Accounting\Http\Controllers;
 
+use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Modules\Accounting\Http\Requests\VoucherStoreRequest;
 use App\Modules\Accounting\Http\Resources\VoucherResource;
@@ -31,25 +32,12 @@ class VoucherController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, VoucherService $service): JsonResponse
     {
-        $vouchers = Voucher::query()
-            ->withCount('entries')
-            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->when($request->filled('search'), function ($query) use ($request) {
-                $keyword = trim((string) $request->query('search'));
-                $query->where(function ($builder) use ($keyword) {
-                    $builder->where('voucher_no', 'like', '%'.$keyword.'%')
-                        ->orWhere('voucher_type', 'like', '%'.$keyword.'%')
-                        ->orWhere('notes', 'like', '%'.$keyword.'%');
-                });
-            })
-            ->when($request->filled('voucher_type'), fn ($query) => $query->where('voucher_type', $request->query('voucher_type')))
-            ->when($request->filled('from'), fn ($query) => $query->whereDate('voucher_date', '>=', $request->query('from')))
-            ->when($request->filled('to'), fn ($query) => $query->whereDate('voucher_date', '<=', $request->query('to')))
-            ->latest('voucher_date')
-            ->latest('id')
-            ->paginate(min($request->integer('per_page', 15), 100));
+        $vouchers = $service->table(
+            TableQueryData::fromRequest($request, ['voucher_type', 'from', 'to']),
+            $request->user(),
+        );
 
         return response()->json(VoucherResource::collection($vouchers)->response()->getData(true));
     }

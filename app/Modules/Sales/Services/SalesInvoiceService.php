@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sales\Services;
 
+use App\Core\DTOs\TableQueryData;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
@@ -21,6 +22,22 @@ class SalesInvoiceService
         private readonly DocumentNumberService $numbers,
         private readonly SalesInvoiceRepositoryInterface $invoices,
     ) {}
+
+    public function table(TableQueryData $table, ?User $user = null)
+    {
+        return $this->invoices->paginate($table, $user);
+    }
+
+    public function cashAccountForPaymentMode(?int $paymentModeId): string
+    {
+        if (! $paymentModeId) {
+            return 'cash';
+        }
+
+        $mode = $this->invoices->paymentMode($paymentModeId);
+
+        return strtolower((string) ($mode?->data ?: $mode?->name)) === 'cash' ? 'cash' : 'bank';
+    }
 
     public function create(array $data, User $user): SalesInvoice
     {

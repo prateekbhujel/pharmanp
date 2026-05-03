@@ -2,6 +2,7 @@
 
 namespace App\Modules\Purchase\Http\Controllers;
 
+use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Models\Setting;
 use App\Modules\Purchase\Http\Requests\PurchaseStoreRequest;
@@ -10,6 +11,7 @@ use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Purchase\Services\PurchaseEntryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -33,35 +35,12 @@ class PurchaseController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request, PurchaseEntryService $service): JsonResponse
     {
-        $sorts = [
-            'purchase_no' => 'purchase_no',
-            'purchase_date' => 'purchase_date',
-            'grand_total' => 'grand_total',
-            'created_at' => 'created_at',
-        ];
-        $sortField = $sorts[request('sort_field', 'purchase_date')] ?? 'purchase_date';
-        $sortOrder = request('sort_order') === 'asc' ? 'asc' : 'desc';
-        $search = trim((string) request('search'));
-
-        $purchases = Purchase::query()
-            ->with('supplier:id,name')
-            ->when(request()->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($inner) use ($search) {
-                    $inner->where('purchase_no', 'like', '%'.$search.'%')
-                        ->orWhere('supplier_invoice_no', 'like', '%'.$search.'%')
-                        ->orWhereHas('supplier', fn ($supplier) => $supplier->where('name', 'like', '%'.$search.'%'));
-                });
-            })
-            ->when(request()->filled('supplier_id'), fn ($query) => $query->where('supplier_id', request()->integer('supplier_id')))
-            ->when(request()->filled('payment_status'), fn ($query) => $query->where('payment_status', request('payment_status')))
-            ->when(request()->filled('from'), fn ($query) => $query->whereDate('purchase_date', '>=', request('from')))
-            ->when(request()->filled('to'), fn ($query) => $query->whereDate('purchase_date', '<=', request('to')))
-            ->orderBy($sortField, $sortOrder)
-            ->orderByDesc('id')
-            ->paginate(min(100, max(5, request()->integer('per_page', 15))));
+        $purchases = $service->table(
+            TableQueryData::fromRequest($request, ['supplier_id', 'payment_status', 'from', 'to']),
+            $request->user(),
+        );
 
         return response()->json(PurchaseResource::collection($purchases)->response()->getData(true));
     }

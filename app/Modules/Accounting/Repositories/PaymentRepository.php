@@ -2,6 +2,8 @@
 
 namespace App\Modules\Accounting\Repositories;
 
+use App\Core\DTOs\TableQueryData;
+use App\Core\Query\TableQueryApplier;
 use App\Models\User;
 use App\Modules\Accounting\Models\Payment;
 use App\Modules\Accounting\Models\PaymentBillAllocation;
@@ -11,12 +13,64 @@ use App\Modules\Party\Models\Supplier;
 use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Setup\Models\DropdownOption;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class PaymentRepository implements PaymentRepositoryInterface
 {
+    private const SORTS = [
+        'payment_date' => 'payment_date',
+        'payment_no' => 'payment_no',
+        'direction' => 'direction',
+        'party_type' => 'party_type',
+        'amount' => 'amount',
+        'created_at' => 'created_at',
+        'updated_at' => 'updated_at',
+    ];
+
+    public function __construct(private readonly TableQueryApplier $tables) {}
+
+    public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
+    {
+        $query = Payment::query()
+            ->with(['customer', 'supplier', 'allocations', 'paymentModeOption:id,name,data']);
+
+        $this->tables->tenant($query, $user, 'tenant_id');
+        $this->tables->softDeletes($query, $table);
+
+        $query
+            ->when($table->filters['direction'] ?? null, fn (Builder $builder, mixed $direction) => $builder->where('direction', $direction))
+            ->when($table->filters['party_type'] ?? null, fn (Builder $builder, mixed $partyType) => $builder->where('party_type', $partyType))
+            ->when($table->filters['from'] ?? null, fn (Builder $builder, mixed $from) => $builder->where('payment_date', '>=', $from))
+            ->when($table->filters['to'] ?? null, fn (Builder $builder, mixed $to) => $builder->where('payment_date', '<=', $to))
+            ->when($table->search, function (Builder $builder, string $search): void {
+                $builder->where(function (Builder $inner) use ($search): void {
+                    $this->tables->search($inner, $search, ['payment_no', 'reference_no', 'notes', 'payment_mode']);
+                });
+            });
+
+        return $this->tables->paginate(
+            $query
+                ->orderBy($this->tables->sortColumn($table, self::SORTS, 'payment_date'), $table->sortOrder)
+                ->orderByDesc('id'),
+            $table,
+        );
+    }
+
+    public function lookups(): array
+    {
+        return [
+            'payment_modes' => DropdownOption::query()
+                ->forAlias('payment_mode')
+                ->active()
+                ->orderBy('name')
+                ->get(['id', 'name', 'data']),
+        ];
+    }
+
     public function getForSettlement(?int $id = null): Payment
     {
         return $id

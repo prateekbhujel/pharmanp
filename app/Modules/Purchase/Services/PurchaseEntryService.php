@@ -2,6 +2,7 @@
 
 namespace App\Modules\Purchase\Services;
 
+use App\Core\DTOs\TableQueryData;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
@@ -20,6 +21,11 @@ class PurchaseEntryService
         private readonly DocumentNumberService $numbers,
         private readonly PurchaseRepositoryInterface $purchases,
     ) {}
+
+    public function table(TableQueryData $table, ?User $user = null)
+    {
+        return $this->purchases->paginate($table, $user);
+    }
 
     public function create(array $data, User $user): Purchase
     {

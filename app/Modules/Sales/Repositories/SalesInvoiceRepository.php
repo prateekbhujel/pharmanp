@@ -2,15 +2,64 @@
 
 namespace App\Modules\Sales\Repositories;
 
+use App\Core\DTOs\TableQueryData;
+use App\Core\Query\TableQueryApplier;
+use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesInvoiceItem;
 use App\Modules\Sales\Repositories\Interfaces\SalesInvoiceRepositoryInterface;
+use App\Modules\Setup\Models\DropdownOption;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 
 class SalesInvoiceRepository implements SalesInvoiceRepositoryInterface
 {
+    private const SORTS = [
+        'invoice_no' => 'invoice_no',
+        'invoice_date' => 'invoice_date',
+        'grand_total' => 'grand_total',
+        'created_at' => 'created_at',
+        'updated_at' => 'updated_at',
+    ];
+
+    public function __construct(private readonly TableQueryApplier $tables) {}
+
+    public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
+    {
+        $query = SalesInvoice::query()
+            ->with(['customer:id,name', 'medicalRepresentative:id,name']);
+
+        $this->tables->tenant($query, $user, 'tenant_id');
+
+        $query
+            ->when($table->search, function (Builder $builder, string $search): void {
+                $builder->where(function (Builder $inner) use ($search): void {
+                    $this->tables->search($inner, $search, ['invoice_no']);
+                    $inner->orWhereHas('customer', fn (Builder $customer) => $customer->where('name', 'like', '%'.$search.'%'));
+                });
+            })
+            ->when($table->filters['customer_id'] ?? null, fn (Builder $builder, mixed $customerId) => $builder->where('customer_id', $customerId))
+            ->when($table->filters['payment_status'] ?? null, fn (Builder $builder, mixed $status) => $builder->where('payment_status', $status))
+            ->when($table->filters['medical_representative_id'] ?? null, fn (Builder $builder, mixed $id) => $builder->where('medical_representative_id', $id))
+            ->when($table->filters['from'] ?? null, fn (Builder $builder, mixed $from) => $builder->whereDate('invoice_date', '>=', $from))
+            ->when($table->filters['to'] ?? null, fn (Builder $builder, mixed $to) => $builder->whereDate('invoice_date', '<=', $to));
+
+        return $this->tables->paginate(
+            $query
+                ->orderBy($this->tables->sortColumn($table, self::SORTS, 'invoice_date'), $table->sortOrder)
+                ->orderByDesc('id'),
+            $table,
+        );
+    }
+
+    public function paymentMode(?int $id): ?DropdownOption
+    {
+        return $id ? DropdownOption::query()->forAlias('payment_mode')->find($id) : null;
+    }
+
     public function createInvoice(array $data): SalesInvoice
     {
         return SalesInvoice::query()->create($data);

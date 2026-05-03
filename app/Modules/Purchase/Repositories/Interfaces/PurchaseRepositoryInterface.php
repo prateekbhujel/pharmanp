@@ -2,13 +2,18 @@
 
 namespace App\Modules\Purchase\Repositories\Interfaces;
 
+use App\Core\DTOs\TableQueryData;
+use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Purchase\Models\PurchaseItem;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface PurchaseRepositoryInterface
 {
+    public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator;
+
     public function createPurchase(array $data): Purchase;
 
     public function productForUpdate(int $id): Product;

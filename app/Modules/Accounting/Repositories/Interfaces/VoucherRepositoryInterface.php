@@ -2,12 +2,17 @@
 
 namespace App\Modules\Accounting\Repositories\Interfaces;
 
+use App\Core\DTOs\TableQueryData;
+use App\Models\User;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Models\Voucher;
 use App\Modules\Accounting\Models\VoucherEntry;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface VoucherRepositoryInterface
 {
+    public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator;
+
     public function create(array $data): Voucher;
 
     public function update(Voucher $voucher, array $data): Voucher;
