@@ -738,7 +738,7 @@ export function MrTrackingPage() {
                                     dataSource={salesData?.rows || []}
                                     columns={branchSalesColumns}
                                     pagination={{
-                                        pageSize: 20,
+                                        pageSize: 15,
                                         showSizeChanger: true,
                                         pageSizeOptions: ['10', '15', '20', '25', '50', '100'],
                                     }}
@@ -821,7 +821,7 @@ export function MrTrackingPage() {
                                 ]}
                                 scroll={{ x: 800 }}
                                 pagination={{
-                                    pageSize: 20,
+                                    pageSize: 15,
                                     showSizeChanger: true,
                                     pageSizeOptions: ['10', '15', '20', '25', '50', '100'],
                                 }}

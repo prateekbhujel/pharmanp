@@ -3,8 +3,9 @@
 namespace App\Modules\ImportExport\Services;
 
 use App\Models\User;
+use App\Modules\ImportExport\DTOs\ImportJobData;
 use App\Modules\ImportExport\Models\ImportJob;
-use App\Modules\ImportExport\Models\ImportStagedRow;
+use App\Modules\ImportExport\Repositories\Interfaces\ImportJobRepositoryInterface;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
@@ -33,6 +34,8 @@ class ImportPreviewService
         'batches' => ['sku', 'barcode', 'batch_no', 'quantity_received', 'quantity_available', 'purchase_price', 'mrp', 'expires_at'],
     ];
 
+    public function __construct(private readonly ImportJobRepositoryInterface $jobs) {}
+
     public function preview(string $target, UploadedFile $file, ?int $userId = null): ImportJob
     {
         $rows = $this->readRows($file->getRealPath(), $file->getClientOriginalExtension());
@@ -40,7 +43,7 @@ class ImportPreviewService
         $headers = array_values(array_unique($rows->flatMap(fn (array $row) => array_keys($row))->filter()->all()));
 
         return DB::transaction(function () use ($target, $file, $path, $rows, $headers, $userId) {
-            $job = ImportJob::query()->create([
+            $job = $this->jobs->createJob(ImportJobData::fromArray([
                 'target' => $target,
                 'original_filename' => $file->getClientOriginalName(),
                 'stored_path' => $path,
@@ -50,41 +53,35 @@ class ImportPreviewService
                 'invalid_rows' => 0,
                 'status' => 'previewed',
                 'created_by' => $userId,
-            ]);
+            ]));
 
             $this->persistPreviewRows($job, $rows);
 
-            return $job->fresh('rows');
+            return $this->jobs->freshWithRows($job);
         });
     }
 
     public function confirm(int $jobId, array $mapping, ?User $user = null): ImportJob
     {
         return DB::transaction(function () use ($jobId, $mapping, $user) {
-            $job = ImportJob::query()->lockForUpdate()->findOrFail($jobId);
-            $job->rows()->delete();
+            $job = $this->jobs->lockJob($jobId);
+            $this->jobs->clearRows($job);
 
             $required = $this->requiredFields($job->target);
             $mappedSystemFields = array_values(array_filter($mapping));
             $missing = array_values(array_diff($required, $mappedSystemFields));
 
             if (! empty($missing)) {
-                $job->update([
+                $this->jobs->updateJob($job, [
                     'mapping' => $mapping,
                     'valid_rows' => 0,
                     'invalid_rows' => (int) $job->total_rows,
                     'status' => 'needs_mapping',
                 ]);
 
-                ImportStagedRow::query()->create([
-                    'import_job_id' => $job->id,
-                    'row_number' => 0,
-                    'raw_data' => [],
-                    'errors' => ['Missing required mapping: '.implode(', ', $missing)],
-                    'status' => 'invalid',
-                ]);
+                $this->jobs->createRow($job, 0, [], errors: ['Missing required mapping: '.implode(', ', $missing)], status: 'invalid');
 
-                return $job->fresh('rows');
+                return $this->jobs->freshWithRows($job);
             }
 
             $valid = 0;
@@ -102,36 +99,23 @@ class ImportPreviewService
                     $valid++;
 
                     if ($index < self::PREVIEW_ROW_LIMIT) {
-                        ImportStagedRow::query()->create([
-                            'import_job_id' => $job->id,
-                            'row_number' => $index + 1,
-                            'raw_data' => $rawRow,
-                            'mapped_data' => $mapped,
-                            'status' => 'imported',
-                        ]);
+                        $this->jobs->createRow($job, $index + 1, $rawRow, mappedData: $mapped, status: 'imported');
                     }
                 } catch (\Throwable $throwable) {
                     $invalid++;
 
-                    ImportStagedRow::query()->create([
-                        'import_job_id' => $job->id,
-                        'row_number' => $index + 1,
-                        'raw_data' => $rawRow,
-                        'mapped_data' => $mapped,
-                        'errors' => [$throwable->getMessage()],
-                        'status' => 'invalid',
-                    ]);
+                    $this->jobs->createRow($job, $index + 1, $rawRow, mappedData: $mapped, errors: [$throwable->getMessage()], status: 'invalid');
                 }
             }
 
-            $job->update([
+            $this->jobs->updateJob($job, [
                 'mapping' => $mapping,
                 'valid_rows' => $valid,
                 'invalid_rows' => $invalid,
                 'status' => $invalid > 0 ? 'completed_with_errors' : 'completed',
             ]);
 
-            return $job->fresh('rows');
+            return $this->jobs->freshWithRows($job);
         });
     }
 
@@ -165,7 +149,7 @@ class ImportPreviewService
 
     public function rejectedCsv(ImportJob $job): string
     {
-        $rows = $job->rows()->where('status', 'invalid')->orderBy('row_number')->get();
+        $rows = $this->jobs->invalidRows($job);
         $handle = fopen('php://temp', 'r+');
         fputcsv($handle, ['row_number', 'errors', 'raw_data']);
 
@@ -357,12 +341,7 @@ class ImportPreviewService
     private function persistPreviewRows(ImportJob $job, Collection $rows): void
     {
         $rows->take(self::PREVIEW_ROW_LIMIT)->values()->each(function (array $row, int $index) use ($job) {
-            ImportStagedRow::query()->create([
-                'import_job_id' => $job->id,
-                'row_number' => $index + 1,
-                'raw_data' => $row,
-                'status' => 'pending',
-            ]);
+            $this->jobs->createRow($job, $index + 1, $row);
         });
     }
 

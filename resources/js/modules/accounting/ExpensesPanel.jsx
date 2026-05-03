@@ -16,7 +16,7 @@ import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 export function ExpensesPanel() {
     const { notification } = App.useApp();
     const [rows, setRows] = useState([]);
-    const [meta, setMeta] = useState({ current_page: 1, per_page: 20, total: 0 });
+    const [meta, setMeta] = useState({ current_page: 1, per_page: 15, total: 0 });
     const [summary, setSummary] = useState(null);
     const [lookups, setLookups] = useState({ expense_categories: [], payment_modes: [] });
     const [loading, setLoading] = useState(false);

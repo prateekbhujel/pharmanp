@@ -2,6 +2,7 @@
 
 namespace App\Modules\Accounting\Http\Controllers;
 
+use App\Core\DTOs\TableQueryData;
 use App\Core\Support\ApiResponse;
 use App\Models\Setting;
 use App\Modules\Accounting\Models\Payment;
@@ -42,7 +43,7 @@ class PaymentController
             });
         }
 
-        $perPage = min(max((int) $request->query('per_page', 20), 5), 100);
+        $perPage = TableQueryData::perPageFromRequest($request);
         $paginated = $query->paginate($perPage);
 
         return response()->json([

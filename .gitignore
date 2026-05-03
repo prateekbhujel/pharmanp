@@ -23,6 +23,7 @@ Thumbs.db
 /.vite
 /node_modules
 /public/build
+/public/frontend-build
 /public/hot
 /public/storage
 /vendor

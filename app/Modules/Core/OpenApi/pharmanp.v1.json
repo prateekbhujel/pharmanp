@@ -3,7 +3,7 @@
   "info": {
     "title": "PharmaNP API",
     "version": "1.0.4",
-    "description": "PharmaNP ERP API. Same-domain React uses Laravel session cookies and CSRF. Swagger, mobile, and external frontend testing can use a bearer token issued by php artisan pharmanp:api-token or php artisan pharmanp:jwt-token."
+    "description": "PharmaNP ERP API. Same-domain React uses Sanctum/session cookies and CSRF. Standalone React, Swagger, and mobile clients can use Sanctum personal access tokens, PharmaNP API tokens, or signed JWT tokens during development."
   },
   "servers": [
     {
@@ -23,6 +23,45 @@
     }
   ],
   "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Authenticate and optionally issue a Sanctum token",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "format": "password" },
+                  "remember": { "type": "boolean" },
+                  "issue_token": { "type": "boolean", "description": "Return a Sanctum bearer token for standalone clients." },
+                  "device_name": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authenticated" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout current session or revoke current Sanctum token",
+        "responses": {
+          "200": { "description": "Logged out" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" }
+        }
+      }
+    },
     "/me": {
       "get": {
         "tags": ["Core"],
@@ -136,7 +175,7 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "JWT or PharmaNP API token"
+        "bearerFormat": "Sanctum token, JWT, or PharmaNP API token"
       }
     },
     "responses": {
@@ -204,6 +243,7 @@
     }
   },
   "tags": [
+    { "name": "Auth" },
     { "name": "Core" },
     { "name": "Dashboard" },
     { "name": "Inventory" },

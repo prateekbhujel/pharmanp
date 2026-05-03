@@ -10,7 +10,7 @@ export function useServerTable({ endpoint, defaultSort = { field: 'updated_at', 
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search);
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
+    const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 });
     const [sort, setSort] = useState(defaultSort);
     const [filters, setFilters] = useState(defaultFilters);
 

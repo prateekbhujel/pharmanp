@@ -2,6 +2,7 @@
 
 namespace App\Modules\Accounting\Http\Controllers;
 
+use App\Core\DTOs\TableQueryData;
 use App\Core\Support\ApiResponse;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Models\Expense;
@@ -48,7 +49,7 @@ class ExpenseController
             $query->where('expense_date', '<=', $request->input('to'));
         }
 
-        $perPage = min((int) $request->input('per_page', 20), 100);
+        $perPage = TableQueryData::perPageFromRequest($request);
         $paginated = $query->paginate($perPage);
 
         // Summary for all expenses (unfiltered).

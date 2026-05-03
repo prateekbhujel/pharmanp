@@ -140,7 +140,7 @@ export function ReportsPage() {
     const [filters, setFilters] = useState({});
     const [rows, setRows] = useState([]);
     const [summary, setSummary] = useState(null);
-    const [meta, setMeta] = useState({ current_page: 1, per_page: 20, total: 0 });
+    const [meta, setMeta] = useState({ current_page: 1, per_page: 15, total: 0 });
     const [loading, setLoading] = useState(false);
     const [reportView, setReportView] = useState('table');
     const [productOptions, setProductOptions] = useState([]);

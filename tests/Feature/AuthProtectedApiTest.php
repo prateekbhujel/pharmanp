@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\Setting;
-use App\Models\User;
 use App\Core\Services\ApiTokenService;
 use App\Core\Services\JwtTokenService;
+use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -82,6 +82,34 @@ class AuthProtectedApiTest extends TestCase
         $jwt = app(JwtTokenService::class)->issue($user);
 
         $this->withHeader('Authorization', 'Bearer '.$jwt)
+            ->getJson('/api/v1/dashboard/summary')
+            ->assertOk()
+            ->assertJsonPath('data.stats.products', 0);
+    }
+
+    public function test_api_login_can_issue_sanctum_token_for_standalone_frontend(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create([
+            'email' => 'frontend@example.com',
+            'password' => 'password',
+            'is_owner' => true,
+            'is_active' => true,
+        ]);
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'password',
+            'issue_token' => true,
+            'device_name' => 'React Dev Server',
+        ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Authenticated.')
+            ->json('token');
+
+        $this->assertNotEmpty($token);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/v1/dashboard/summary')
             ->assertOk()
             ->assertJsonPath('data.stats.products', 0);

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Sales\Http\Controllers;
 
+use App\Core\DTOs\TableQueryData;
 use App\Core\Support\ApiResponse;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Inventory\Services\StockMovementService;
@@ -52,7 +53,7 @@ class SalesReturnController
             $query->where('return_type', $request->input('return_type'));
         }
 
-        $perPage = min((int) $request->input('per_page', 20), 100);
+        $perPage = TableQueryData::perPageFromRequest($request);
         $paginated = $query->paginate($perPage);
 
         return response()->json([

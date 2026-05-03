@@ -6,6 +6,8 @@ use App\Core\Support\ApiResponse;
 use App\Modules\Accounting\Support\AccountCatalog;
 use App\Modules\Analytics\Services\PharmaSignalService;
 use App\Modules\MR\Services\MrPerformanceService;
+use App\Modules\Reports\DTOs\ReportQueryData;
+use App\Modules\Reports\Repositories\Interfaces\ReportRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -21,42 +23,41 @@ class ReportService
         private readonly DumpingReportService $dumping,
         private readonly TargetAchievementService $targets,
         private readonly PerformanceReportService $performance,
+        private readonly ReportRepositoryInterface $reports,
     ) {}
 
     public function run(string $report, Request $request): array
     {
-        $from = $request->filled('from') ? (string) $request->query('from') : null;
-        $to = $request->filled('to') ? (string) $request->query('to') : null;
-        $perPage = min(max((int) $request->query('per_page', 20), 5), 100);
+        $query = ReportQueryData::fromRequest($request);
 
         return match ($report) {
-            'sales' => $this->sales($request, $from, $to, $perPage),
-            'purchase' => $this->purchase($request, $from, $to, $perPage),
-            'stock' => $this->stock($request, $perPage),
-            'low-stock' => $this->lowStock($request, $perPage),
-            'expiry' => $this->expiry($request, $from, $to, $perPage),
-            'expiry-buckets' => $this->expiryBuckets->buckets($request, $perPage),
-            'dumping' => $this->dumping->slowMoving($request, $perPage),
-            'smart-inventory' => $this->signals->inventorySignals($request, $perPage),
-            'day-book' => $this->accountBook($request, $from, $to, $perPage),
-            'cash-book' => $this->accountBook($request, $from, $to, $perPage, 'cash'),
-            'bank-book' => $this->accountBook($request, $from, $to, $perPage, 'bank'),
-            'ledger' => $this->accountLedger($request, $request->query('account_type'), $from, $to, $perPage),
-            'trial-balance' => $this->trialBalance($request, $from, $to, $perPage),
-            'account-tree' => $this->accountTree($request, $from, $to, $perPage),
-            'profit-loss' => $this->profitLoss($request, $from, $to, $perPage),
-            'supplier-performance' => $this->supplierPerformance($request, $from, $to, $perPage),
-            'supplier-aging' => $this->aging->suppliers($request, $perPage),
-            'customer-aging', 'sales-party-aging' => $this->aging->customers($request, $perPage),
-            'supplier-ledger' => $this->supplierLedger($request, (int) $request->query('supplier_id'), $from, $to, $perPage),
-            'customer-ledger' => $this->customerLedger($request, (int) $request->query('customer_id'), $from, $to, $perPage),
-            'product-movement' => $this->productMovement($request, (int) $request->query('product_id'), $from, $to, $perPage),
+            'sales' => $this->sales($request, $query->from, $query->to, $query->perPage),
+            'purchase' => $this->purchase($request, $query->from, $query->to, $query->perPage),
+            'stock' => $this->stock($request, $query->perPage),
+            'low-stock' => $this->lowStock($request, $query->perPage),
+            'expiry' => $this->expiry($request, $query->from, $query->to, $query->perPage),
+            'expiry-buckets' => $this->expiryBuckets->buckets($request, $query->perPage),
+            'dumping' => $this->dumping->slowMoving($request, $query->perPage),
+            'smart-inventory' => $this->signals->inventorySignals($request, $query->perPage),
+            'day-book' => $this->accountBook($request, $query->from, $query->to, $query->perPage),
+            'cash-book' => $this->accountBook($request, $query->from, $query->to, $query->perPage, 'cash'),
+            'bank-book' => $this->accountBook($request, $query->from, $query->to, $query->perPage, 'bank'),
+            'ledger' => $this->accountLedger($request, $request->query('account_type'), $query->from, $query->to, $query->perPage),
+            'trial-balance' => $this->trialBalance($request, $query->from, $query->to, $query->perPage),
+            'account-tree' => $this->accountTree($request, $query->from, $query->to, $query->perPage),
+            'profit-loss' => $this->profitLoss($request, $query->from, $query->to, $query->perPage),
+            'supplier-performance' => $this->supplierPerformance($request, $query->from, $query->to, $query->perPage),
+            'supplier-aging' => $this->aging->suppliers($request, $query->perPage),
+            'customer-aging', 'sales-party-aging' => $this->aging->customers($request, $query->perPage),
+            'supplier-ledger' => $this->supplierLedger($request, (int) $request->query('supplier_id'), $query->from, $query->to, $query->perPage),
+            'customer-ledger' => $this->customerLedger($request, (int) $request->query('customer_id'), $query->from, $query->to, $query->perPage),
+            'product-movement' => $this->productMovement($request, (int) $request->query('product_id'), $query->from, $query->to, $query->perPage),
             'mr-performance' => $this->mrPerformance($request),
-            'target-achievement' => $this->targets->achievement($request, $perPage),
-            'mr-vs-product' => $this->performance->mrVsProduct($request, $perPage),
-            'mr-vs-division' => $this->performance->mrVsDivision($request, $perPage),
-            'mr-vs-sales' => $this->performance->mrVsSales($request, $perPage),
-            'company-vs-customer' => $this->performance->companyVsCustomer($request, $perPage),
+            'target-achievement' => $this->targets->achievement($request, $query->perPage),
+            'mr-vs-product' => $this->performance->mrVsProduct($request, $query->perPage),
+            'mr-vs-division' => $this->performance->mrVsDivision($request, $query->perPage),
+            'mr-vs-sales' => $this->performance->mrVsSales($request, $query->perPage),
+            'company-vs-customer' => $this->performance->companyVsCustomer($request, $query->perPage),
             default => throw ValidationException::withMessages(['report' => 'Unknown report.']),
         };
     }
@@ -111,9 +112,10 @@ class ReportService
             return $row;
         })->all();
 
+        $totals = $this->reports->accountTransactionTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to, $accountType);
         $page['summary'] = [
-            'debit' => (float) $this->accountTransactionSummaryQuery($request, $from, $to, $accountType)->sum('debit'),
-            'credit' => (float) $this->accountTransactionSummaryQuery($request, $from, $to, $accountType)->sum('credit'),
+            'debit' => (float) $totals->debit_total,
+            'credit' => (float) $totals->credit_total,
         ];
 
         return $page;
@@ -245,15 +247,7 @@ class ReportService
 
     private function trialBalance(Request $request, ?string $from, ?string $to, int $perPage): array
     {
-        $summary = DB::table('account_transactions')
-            ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
-            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
-            ->groupBy('account_type');
-
-        $this->applyDateRange($summary, 'transaction_date', $from, $to);
-
-        $summary = $summary->get()->keyBy('account_type');
+        $summary = $this->reports->accountTypeTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to);
 
         $rows = collect(AccountCatalog::all())
             ->map(function (array $account) use ($summary) {
@@ -293,15 +287,7 @@ class ReportService
 
     private function accountTree(Request $request, ?string $from, ?string $to, int $perPage): array
     {
-        $summary = DB::table('account_transactions')
-            ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
-            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
-            ->groupBy('account_type');
-
-        $this->applyDateRange($summary, 'transaction_date', $from, $to);
-
-        $summary = $summary->get()->keyBy('account_type');
+        $summary = $this->reports->accountTypeTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to);
         $rows = collect(AccountCatalog::all())
             ->map(function (array $account) use ($summary) {
                 $totals = $summary->get($account['key']);
@@ -340,15 +326,7 @@ class ReportService
 
     private function profitLoss(Request $request, ?string $from, ?string $to, int $perPage): array
     {
-        $summary = DB::table('account_transactions')
-            ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
-            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
-            ->groupBy('account_type');
-
-        $this->applyDateRange($summary, 'transaction_date', $from, $to);
-
-        $totals = $summary->get()->keyBy('account_type');
+        $totals = $this->reports->accountTypeTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to);
         $rows = collect(AccountCatalog::all())
             ->filter(fn (array $account) => in_array($account['group'], ['Income', 'Expenses'], true))
             ->map(function (array $account) use ($totals) {
@@ -452,18 +430,6 @@ class ReportService
         return $this->paged($query, $perPage);
     }
 
-    private function accountTransactionSummaryQuery(Request $request, ?string $from, ?string $to, ?string $accountType = null)
-    {
-        $query = DB::table('account_transactions')
-            ->when($request->user()?->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
-            ->when($request->user()?->company_id, fn ($builder, $companyId) => $builder->where('company_id', $companyId))
-            ->when($accountType, fn ($builder) => $builder->where('account_type', $accountType));
-
-        $this->applyDateRange($query, 'transaction_date', $from, $to);
-
-        return $query;
-    }
-
     private function applyDateRange($query, string $column, ?string $from, ?string $to): void
     {
         if ($from) {
@@ -477,11 +443,6 @@ class ReportService
 
     private function paged($query, int $perPage): array
     {
-        $page = $query->paginate($perPage);
-
-        return [
-            'data' => $page->items(),
-            'meta' => ApiResponse::paginationMeta($page),
-        ];
+        return $this->reports->paginate($query, $perPage);
     }
 }

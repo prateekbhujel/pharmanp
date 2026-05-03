@@ -21,7 +21,7 @@ export function PaymentsPanel() {
         ? new URLSearchParams(window.location.search).get('direction')
         : undefined;
     const [rows, setRows] = useState([]);
-    const [meta, setMeta] = useState({ current_page: 1, per_page: 20, total: 0 });
+    const [meta, setMeta] = useState({ current_page: 1, per_page: 15, total: 0 });
     const [lookups, setLookups] = useState({ payment_modes: [] });
     const [loading, setLoading] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);

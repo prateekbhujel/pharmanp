@@ -63,7 +63,7 @@ export function AccountingPage() {
     const [voucherMode, setVoucherMode] = useState('list');
     const [editingVoucher, setEditingVoucher] = useState(null);
     const [voucherRows, setVoucherRows] = useState([]);
-    const [voucherMeta, setVoucherMeta] = useState({ current_page: 1, per_page: 20, total: 0 });
+    const [voucherMeta, setVoucherMeta] = useState({ current_page: 1, per_page: 15, total: 0 });
     const [voucherLoading, setVoucherLoading] = useState(false);
     const [voucherSearch, setVoucherSearch] = useState('');
     const [voucherRange, setVoucherRange] = useState([]);

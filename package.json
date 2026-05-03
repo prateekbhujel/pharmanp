@@ -7,6 +7,8 @@
         "build": "vite build",
         "dev": "vite",
         "dev:frontend": "vite --host 127.0.0.1",
+        "frontend:dev": "vite --config frontend/vite.config.js",
+        "frontend:build": "vite build --config frontend/vite.config.js",
         "dev:host": "vite --host 0.0.0.0"
     },
     "devDependencies": {

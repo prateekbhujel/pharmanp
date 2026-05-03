@@ -3,87 +3,24 @@
 namespace App\Modules\Analytics\Services;
 
 use App\Core\Support\ApiResponse;
+use App\Modules\Analytics\DTOs\InventorySignalFilterData;
+use App\Modules\Analytics\Repositories\Interfaces\InventorySignalRepositoryInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 use Rubix\ML\Clusterers\KMeans;
 use Rubix\ML\Datasets\Unlabeled;
 
 class PharmaSignalService
 {
-    public function inventorySignals(Request $request, int $perPage = 20): array
+    public function __construct(private readonly InventorySignalRepositoryInterface $inventorySignals) {}
+
+    public function inventorySignals(Request $request, ?int $perPage = null): array
     {
         $today = CarbonImmutable::today();
-        $from90 = $today->subDays(90)->toDateString();
-        $from30 = $today->subDays(30)->toDateString();
-        $expiryTo = $today->addDays(90)->toDateString();
+        $filters = InventorySignalFilterData::fromRequest($request, $perPage);
 
-        $sales90 = DB::table('sales_invoice_items')
-            ->join('sales_invoices', 'sales_invoices.id', '=', 'sales_invoice_items.sales_invoice_id')
-            ->whereNull('sales_invoices.deleted_at')
-            ->whereDate('sales_invoices.invoice_date', '>=', $from90)
-            ->groupBy('sales_invoice_items.product_id')
-            ->selectRaw('sales_invoice_items.product_id, SUM(sales_invoice_items.quantity) as sold_90, SUM(sales_invoice_items.line_total) as sales_value_90, COUNT(DISTINCT sales_invoices.id) as invoice_count_90');
-
-        $sales30 = DB::table('sales_invoice_items')
-            ->join('sales_invoices', 'sales_invoices.id', '=', 'sales_invoice_items.sales_invoice_id')
-            ->whereNull('sales_invoices.deleted_at')
-            ->whereDate('sales_invoices.invoice_date', '>=', $from30)
-            ->groupBy('sales_invoice_items.product_id')
-            ->selectRaw('sales_invoice_items.product_id, SUM(sales_invoice_items.quantity) as sold_30');
-
-        $stock = DB::table('batches')
-            ->whereNull('deleted_at')
-            ->where('is_active', true)
-            ->groupBy('product_id')
-            ->selectRaw(
-                'product_id,
-                SUM(quantity_available) as stock_on_hand,
-                SUM(CASE WHEN expires_at IS NOT NULL AND expires_at >= ? AND expires_at <= ? THEN quantity_available ELSE 0 END) as expiring_quantity,
-                MIN(CASE WHEN quantity_available > 0 THEN expires_at ELSE NULL END) as nearest_expiry',
-                [$today->toDateString(), $expiryTo],
-            );
-
-        $query = DB::table('products')
-            ->leftJoinSub($sales90, 'sales90', 'sales90.product_id', '=', 'products.id')
-            ->leftJoinSub($sales30, 'sales30', 'sales30.product_id', '=', 'products.id')
-            ->leftJoinSub($stock, 'stock', 'stock.product_id', '=', 'products.id')
-            ->leftJoin('companies', 'companies.id', '=', 'products.company_id')
-            ->leftJoin('product_categories', 'product_categories.id', '=', 'products.category_id')
-            ->whereNull('products.deleted_at')
-            ->where('products.is_active', true)
-            ->when($request->filled('company_id'), fn ($builder) => $builder->where('products.company_id', $request->integer('company_id')))
-            ->when($request->filled('category_id'), fn ($builder) => $builder->where('products.category_id', $request->integer('category_id')))
-            ->when($request->filled('search'), function ($builder) use ($request) {
-                $search = '%'.strtolower((string) $request->query('search')).'%';
-                $builder->where(function ($inner) use ($search) {
-                    $inner->whereRaw('LOWER(products.name) LIKE ?', [$search])
-                        ->orWhereRaw('LOWER(products.sku) LIKE ?', [$search])
-                        ->orWhereRaw('LOWER(products.barcode) LIKE ?', [$search]);
-                });
-            })
-            ->selectRaw(
-                'products.id,
-                products.name,
-                products.sku,
-                products.reorder_level,
-                products.reorder_quantity,
-                products.purchase_price,
-                products.selling_price,
-                companies.name as company,
-                product_categories.name as category,
-                COALESCE(stock.stock_on_hand, 0) as stock_on_hand,
-                COALESCE(stock.expiring_quantity, 0) as expiring_quantity,
-                stock.nearest_expiry,
-                COALESCE(sales90.sold_90, 0) as sold_90,
-                COALESCE(sales90.sales_value_90, 0) as sales_value_90,
-                COALESCE(sales90.invoice_count_90, 0) as invoice_count_90,
-                COALESCE(sales30.sold_30, 0) as sold_30'
-            )
-            ->orderBy('products.name');
-
-        $rows = collect($query->get())
+        $rows = $this->inventorySignals->rows($filters, $today)
             ->map(fn ($row) => $this->scoreRow((array) $row, $today))
             ->values()
             ->all();
@@ -94,16 +31,15 @@ class PharmaSignalService
             $rows[$index]['engine'] = $rubix['enabled'] ? 'rubixml+kpi' : 'kpi';
         }
 
-        if ($request->filled('signal')) {
-            $signal = (string) $request->query('signal');
-            $rows = array_values(array_filter($rows, fn ($row) => $row['reorder_signal'] === $signal || $row['expiry_signal'] === $signal || $row['movement_group'] === $signal));
+        if ($filters->signal) {
+            $rows = array_values(array_filter($rows, fn ($row) => $row['reorder_signal'] === $filters->signal || $row['expiry_signal'] === $filters->signal || $row['movement_group'] === $filters->signal));
         }
 
         usort($rows, fn ($a, $b) => [$b['risk_score'], $a['name']] <=> [$a['risk_score'], $b['name']]);
 
         $page = LengthAwarePaginator::resolveCurrentPage();
-        $items = array_slice($rows, ($page - 1) * $perPage, $perPage);
-        $paginator = new LengthAwarePaginator($items, count($rows), $perPage, $page);
+        $items = array_slice($rows, ($page - 1) * $filters->perPage, $filters->perPage);
+        $paginator = new LengthAwarePaginator($items, count($rows), $filters->perPage, $page);
 
         return [
             'data' => $paginator->items(),

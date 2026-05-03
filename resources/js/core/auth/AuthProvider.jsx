@@ -1,21 +1,60 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Spin } from 'antd';
 import { endpoints } from '../api/endpoints';
-import { http } from '../api/http';
-import { appUrl } from '../utils/url';
+import { http, setApiToken } from '../api/http';
+import { appUrl, standaloneFrontend } from '../utils/url';
+import { ApiLogin } from './ApiLogin';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
     const [state, setState] = useState({ loading: true, user: null, branding: null });
 
-    const load = () => {
-        http.get(endpoints.me)
-            .then(({ data }) => setState({ loading: false, user: data.data, branding: data.branding }))
-            .catch(() => {
+    const load = useCallback(async () => {
+        try {
+            const { data } = await http.get(endpoints.me);
+            setState({ loading: false, user: data.data, branding: data.branding });
+        } catch {
+            if (standaloneFrontend) {
+                setState({ loading: false, user: null, branding: null });
+
+                return;
+            }
+
+            window.location.href = appUrl('/login');
+        }
+    }, []);
+
+    const login = useCallback(async (payload) => {
+        if (import.meta.env.VITE_PHARMANP_AUTH_MODE === 'session') {
+            await http.get(endpoints.csrfCookie);
+        }
+
+        const { data } = await http.post(endpoints.authLogin, {
+            ...payload,
+            issue_token: import.meta.env.VITE_PHARMANP_AUTH_MODE !== 'session',
+            device_name: 'PharmaNP Frontend',
+        });
+
+        if (data.token) {
+            setApiToken(data.token);
+        }
+
+        await load();
+    }, [load]);
+
+    const logout = useCallback(async () => {
+        try {
+            await http.post(endpoints.authLogout);
+        } finally {
+            setApiToken(null);
+            if (standaloneFrontend) {
+                setState({ loading: false, user: null, branding: null });
+            } else {
                 window.location.href = appUrl('/login');
-            });
-    };
+            }
+        }
+    }, []);
 
     useEffect(() => {
         load();
@@ -23,8 +62,10 @@ export function AuthProvider({ children }) {
 
     const value = useMemo(() => ({
         ...state,
+        login,
         reload: load,
-    }), [state]);
+        logout,
+    }), [state, login, load, logout]);
 
     if (state.loading) {
         return (
@@ -32,6 +73,10 @@ export function AuthProvider({ children }) {
                 <Spin />
             </div>
         );
+    }
+
+    if (! state.user && standaloneFrontend) {
+        return <ApiLogin onLogin={login} />;
     }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

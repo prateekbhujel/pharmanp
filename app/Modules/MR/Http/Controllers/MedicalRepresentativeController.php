@@ -52,15 +52,12 @@ class MedicalRepresentativeController extends Controller
         return response()->json(['message' => 'Medical representative deleted.']);
     }
 
-    public function options(Request $request): JsonResponse
+    public function options(Request $request, MrManagementService $service): JsonResponse
     {
         abort_unless($request->user()?->is_owner || $request->user()?->can('mr.view') || $request->user()?->can('sales.invoices.create'), 403);
 
         return response()->json([
-            'data' => MedicalRepresentative::query()
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(['id', 'name', 'employee_code', 'area_id', 'division_id', 'territory', 'monthly_target']),
+            'data' => $service->representativeOptions($request->user()),
         ]);
     }
 }

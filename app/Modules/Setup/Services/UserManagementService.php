@@ -4,95 +4,83 @@ namespace App\Modules\Setup\Services;
 
 use App\Core\DTOs\TableQueryData;
 use App\Models\User;
+use App\Modules\Setup\DTOs\UserData;
+use App\Modules\Setup\Repositories\Interfaces\UserRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class UserManagementService
 {
-    private const SORTS = [
-        'name' => 'users.name',
-        'email' => 'users.email',
-        'is_active' => 'users.is_active',
-        'last_login_at' => 'users.last_login_at',
-        'created_at' => 'users.created_at',
-        'updated_at' => 'users.updated_at',
-    ];
+    public function __construct(private readonly UserRepositoryInterface $users) {}
 
     public function paginate(TableQueryData $table, ?User $actor = null): LengthAwarePaginator
     {
-        $query = User::query()
-            ->with(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name'])
-            ->when($actor?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('users.tenant_id', $tenantId))
-            ->when($table->search, function (Builder $builder, string $search) {
-                $builder->where(function (Builder $inner) use ($search) {
-                    $inner->where('users.name', 'like', '%'.$search.'%')
-                        ->orWhere('users.email', 'like', '%'.$search.'%')
-                        ->orWhere('users.phone', 'like', '%'.$search.'%')
-                        ->orWhereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'like', '%'.$search.'%'));
-                });
-            })
-            ->when(array_key_exists('is_active', $table->filters), fn (Builder $builder) => $builder->where('users.is_active', (bool) $table->filters['is_active']))
-            ->when(array_key_exists('role_name', $table->filters), fn (Builder $builder) => $builder->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', $table->filters['role_name'])));
-
-        $sort = self::SORTS[$table->sortField] ?? self::SORTS['updated_at'];
-
-        return $query->orderBy($sort, $table->sortOrder)
-            ->paginate($table->perPage, ['*'], 'page', $table->page);
+        return $this->users->paginate($table, $actor);
     }
 
     public function create(array $data, User $actor): User
     {
-        return DB::transaction(function () use ($data, $actor) {
-            $user = User::query()->create([
+        $dto = UserData::fromArray($data);
+
+        return DB::transaction(function () use ($dto, $actor) {
+            $user = $this->users->create([
                 'tenant_id' => $actor->tenant_id,
                 'company_id' => $actor->company_id,
                 'store_id' => $actor->store_id,
-                'branch_id' => $data['branch_id'] ?? $actor->branch_id,
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'phone' => $data['phone'] ?? null,
-                'password' => Hash::make($data['password']),
-                'medical_representative_id' => $data['medical_representative_id'] ?? null,
-                'is_owner' => (bool) ($data['is_owner'] ?? false),
-                'is_active' => (bool) ($data['is_active'] ?? true),
+                'branch_id' => $dto->branchId ?? $actor->branch_id,
+                'name' => $dto->name,
+                'email' => $dto->email,
+                'phone' => $dto->phone,
+                'password' => Hash::make((string) $dto->password),
+                'medical_representative_id' => $dto->medicalRepresentativeId,
+                'is_owner' => $dto->isOwner,
+                'is_active' => $dto->isActive,
             ]);
 
-            $user->syncRoles($data['role_names']);
+            $this->users->syncRoles($user, $dto->roleNames);
 
-            return $user->load(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name']);
+            return $this->users->fresh($user);
         });
     }
 
     public function update(User $user, array $data, User $actor): User
     {
-        return DB::transaction(function () use ($user, $data, $actor) {
-            if ($actor->id === $user->id && array_key_exists('is_active', $data) && ! $data['is_active']) {
+        $dto = UserData::fromArray([
+            'name' => $user->name,
+            'email' => $user->email,
+            'is_active' => $user->is_active,
+            'is_owner' => $user->is_owner,
+            'role_names' => $user->roles->pluck('name')->all(),
+            ...$data,
+        ]);
+
+        return DB::transaction(function () use ($user, $dto, $data, $actor) {
+            if ($actor->id === $user->id && array_key_exists('is_active', $data) && ! $dto->isActive) {
                 throw ValidationException::withMessages([
                     'is_active' => 'You cannot deactivate your own account.',
                 ]);
             }
 
             $payload = [
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'phone' => $data['phone'] ?? null,
-                'branch_id' => $data['branch_id'] ?? $user->branch_id,
-                'medical_representative_id' => $data['medical_representative_id'] ?? null,
-                'is_active' => (bool) ($data['is_active'] ?? $user->is_active),
-                'is_owner' => (bool) ($data['is_owner'] ?? $user->is_owner),
+                'name' => $dto->name,
+                'email' => $dto->email,
+                'phone' => $dto->phone,
+                'branch_id' => $dto->branchId ?? $user->branch_id,
+                'medical_representative_id' => $dto->medicalRepresentativeId,
+                'is_active' => $dto->isActive,
+                'is_owner' => $dto->isOwner,
             ];
 
-            if (! empty($data['password'])) {
-                $payload['password'] = Hash::make($data['password']);
+            if ($dto->password) {
+                $payload['password'] = Hash::make($dto->password);
             }
 
-            $user->update($payload);
-            $user->syncRoles($data['role_names']);
+            $this->users->update($user, $payload);
+            $this->users->syncRoles($user, $dto->roleNames);
 
-            return $user->fresh(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name']);
+            return $this->users->fresh($user);
         });
     }
 
@@ -105,9 +93,9 @@ class UserManagementService
         }
 
         return DB::transaction(function () use ($user, $active) {
-            $user->update(['is_active' => $active]);
+            $this->users->update($user, ['is_active' => $active]);
 
-            return $user->fresh(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name']);
+            return $this->users->fresh($user);
         });
     }
 
@@ -120,8 +108,8 @@ class UserManagementService
         }
 
         DB::transaction(function () use ($user) {
-            $user->roles()->detach();
-            $user->delete();
+            $this->users->detachRoles($user);
+            $this->users->delete($user);
         });
     }
 
@@ -144,9 +132,9 @@ class UserManagementService
                 $payload['password'] = Hash::make($data['password']);
             }
 
-            $user->update($payload);
+            $this->users->update($user, $payload);
 
-            return $user->fresh(['roles:id,name', 'medicalRepresentative:id,name']);
+            return $this->users->fresh($user);
         });
     }
 }

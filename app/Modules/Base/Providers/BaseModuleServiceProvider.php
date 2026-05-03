@@ -12,7 +12,7 @@ abstract class BaseModuleServiceProvider extends ServiceProvider
         $apiPath = $modulePath.'/Routes/api.php';
 
         if (is_file($apiPath)) {
-            Route::middleware(['web', 'installed', 'pharmanp.api'])
+            Route::middleware(config('pharmanp-modules.api_middleware', ['api', 'installed', 'pharmanp.api']))
                 ->prefix(config('pharmanp-modules.api_prefix', 'api/v1'))
                 ->as('api.')
                 ->group($apiPath);

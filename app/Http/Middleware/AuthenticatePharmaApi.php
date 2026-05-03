@@ -18,6 +18,13 @@ class AuthenticatePharmaApi
 
     public function handle(Request $request, Closure $next): Response
     {
+        if ($sanctumUser = Auth::guard('sanctum')->user()) {
+            Auth::guard('web')->setUser($sanctumUser);
+            $request->setUserResolver(fn () => $sanctumUser);
+
+            return $next($request);
+        }
+
         if ($request->bearerToken()) {
             $bearerToken = $request->bearerToken();
             $user = $this->jwt->looksLikeJwt($bearerToken)

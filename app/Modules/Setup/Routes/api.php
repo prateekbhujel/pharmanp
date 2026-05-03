@@ -15,6 +15,7 @@ use App\Modules\Setup\Http\Controllers\SupplierTypeController;
 use App\Modules\Setup\Http\Controllers\TargetController;
 use App\Modules\Setup\Http\Controllers\UserImpersonationController;
 use App\Modules\Setup\Http\Controllers\UserManagementController;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/setup/features', FeatureCatalogController::class)->name('setup.features');
@@ -32,8 +33,10 @@ Route::delete('/setup/roles/{role}', [RolePermissionController::class, 'destroy'
 
 Route::get('/setup/users', [UserManagementController::class, 'index'])->name('setup.users.index');
 Route::post('/setup/users', [UserManagementController::class, 'store'])->name('setup.users.store');
-Route::post('/setup/users/stop-impersonating', [UserImpersonationController::class, 'stop'])->name('setup.users.impersonate.stop');
-Route::post('/setup/users/{user}/impersonate', [UserImpersonationController::class, 'start'])->name('setup.users.impersonate.start');
+Route::middleware([StartSession::class])->group(function () {
+    Route::post('/setup/users/stop-impersonating', [UserImpersonationController::class, 'stop'])->name('setup.users.impersonate.stop');
+    Route::post('/setup/users/{user}/impersonate', [UserImpersonationController::class, 'start'])->name('setup.users.impersonate.start');
+});
 Route::put('/setup/users/{user}', [UserManagementController::class, 'update'])->name('setup.users.update');
 Route::patch('/setup/users/{user}/status', [UserManagementController::class, 'toggleStatus'])->name('setup.users.status');
 Route::delete('/setup/users/{user}', [UserManagementController::class, 'destroy'])->name('setup.users.destroy');
