@@ -14,23 +14,26 @@ class {{ module }}Repository implements {{ module }}RepositoryInterface
 
     public function getAll(array $params = []): LengthAwarePaginator
     {
+        $requestedSort = (string) ($params['sort_by'] ?? 'updated_at');
+        $sortBy = in_array($requestedSort, ['id', 'name', 'is_active', 'created_at', 'updated_at'], true)
+            ? $requestedSort
+            : 'updated_at';
+        $sortOrder = strtolower((string) ($params['sort_order'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $perPage = min(max((int) ($params['per_page'] ?? 15), 5), 100);
+
         $query = $this->model->query()
             ->when($params['tenant_id'] ?? null, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($params['search'] ?? null, fn (Builder $builder, string $search) => $builder->where('name', 'like', '%'.$search.'%'))
             ->when(array_key_exists('is_active', $params), fn (Builder $builder) => $builder->where('is_active', (bool) $params['is_active']));
-
-        $sortBy = (string) ($params['sort_by'] ?? 'updated_at');
-        $sortOrder = strtolower((string) ($params['sort_order'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
-        $perPage = min(max((int) ($params['per_page'] ?? 15), 5), 100);
 
         return $query
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', max((int) ($params['page'] ?? 1), 1));
     }
 
-    public function getById(int|string $id): ?Model
+    public function getById(int|string $id): Model
     {
-        return $this->model->query()->find($id);
+        return $this->model->query()->findOrFail($id);
     }
 
     public function create(array $data): Model
@@ -38,14 +41,9 @@ class {{ module }}Repository implements {{ module }}RepositoryInterface
         return $this->model->query()->create($data);
     }
 
-    public function update(int|string $id, array $data): ?Model
+    public function update(int|string $id, array $data): Model
     {
         $item = $this->getById($id);
-
-        if (! $item) {
-            return null;
-        }
-
         $item->update($data);
 
         return $item;
@@ -55,6 +53,6 @@ class {{ module }}Repository implements {{ module }}RepositoryInterface
     {
         $item = $this->getById($id);
 
-        return $item ? (bool) $item->delete() : false;
+        return (bool) $item->delete();
     }
 }

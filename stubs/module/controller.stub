@@ -13,17 +13,42 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * @OA\Tag(name="{{ moduleTitle }}")
+ * @OA\Tag(
+ *     name="{{ moduleTitle }}",
+ *     description="API endpoints for {{ moduleTitle }} management"
+ * )
  */
 class {{ module }}Controller extends Controller
 {
     public function __construct(private readonly {{ module }}Service $service) {}
 
+    /**
+     * @OA\Get(
+     *     path="/{{ modulePluralKebab }}",
+     *     tags={"{{ moduleTitle }}"},
+     *     summary="List {{ moduleTitle }} records",
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
+     *     @OA\Response(response=200, description="Paginated {{ moduleTitle }} records")
+     * )
+     */
     public function index(Request $request): {{ module }}Collection
     {
         return new {{ module }}Collection($this->service->paginate($request->query()));
     }
 
+    /**
+     * @OA\Post(
+     *     path="/{{ modulePluralKebab }}",
+     *     tags={"{{ moduleTitle }}"},
+     *     summary="Create {{ moduleTitle }}",
+     *     security={{"bearerAuth": {}}},
+     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/{{ module }}Resource")),
+     *     @OA\Response(response=201, description="{{ moduleTitle }} created")
+     * )
+     */
     public function store(Store{{ module }}Request $request): JsonResponse
     {
         return response()->json([
@@ -31,6 +56,16 @@ class {{ module }}Controller extends Controller
         ], 201);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/{{ modulePluralKebab }}/{id}",
+     *     tags={"{{ moduleTitle }}"},
+     *     summary="Show {{ moduleTitle }}",
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="{{ moduleTitle }} detail")
+     * )
+     */
     public function show({{ module }} ${{ moduleVariable }}): JsonResponse
     {
         return response()->json([
@@ -38,6 +73,17 @@ class {{ module }}Controller extends Controller
         ]);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/{{ modulePluralKebab }}/{id}",
+     *     tags={"{{ moduleTitle }}"},
+     *     summary="Update {{ moduleTitle }}",
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/{{ module }}Resource")),
+     *     @OA\Response(response=200, description="{{ moduleTitle }} updated")
+     * )
+     */
     public function update(Update{{ module }}Request $request, {{ module }} ${{ moduleVariable }}): JsonResponse
     {
         return response()->json([
@@ -45,6 +91,16 @@ class {{ module }}Controller extends Controller
         ]);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/{{ modulePluralKebab }}/{id}",
+     *     tags={"{{ moduleTitle }}"},
+     *     summary="Delete {{ moduleTitle }}",
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="{{ moduleTitle }} deleted")
+     * )
+     */
     public function destroy({{ module }} ${{ moduleVariable }}): JsonResponse
     {
         $this->service->delete(${{ moduleVariable }});

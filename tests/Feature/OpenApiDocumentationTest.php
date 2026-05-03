@@ -30,7 +30,10 @@ class OpenApiDocumentationTest extends TestCase
         $this->assertContains('AUTH - Authentication', $tags);
         $this->assertContains('INVENTORY - Products', $tags);
         $this->assertContains('ACCOUNTING - Payments', $tags);
+        $this->assertContains('INVENTORY - Inventory', $tags);
         $this->assertArrayHasKey('/auth/login', $json['paths']);
         $this->assertArrayHasKey('/inventory/products', $json['paths']);
+        $this->assertSame('bearerAuth', array_key_first($json['paths']['/inventory/products']['get']['security'][0]));
+        $this->assertContains('per_page', collect($json['paths']['/inventory/products']['get']['parameters'])->pluck('name')->all());
     }
 }
