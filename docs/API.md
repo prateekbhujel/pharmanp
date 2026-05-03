@@ -13,7 +13,7 @@ For Swagger, mobile prototypes, Postman, Bruno, or a frontend running without a 
 php artisan pharmanp:api-token pratik@admin.com --name=Swagger --days=7
 ```
 
-Copy the token once and use it in Swagger UI through **Authorize** as:
+Copy the token once and paste the token value into Swagger UI through **Authorize**. For curl, Postman, Bruno, or custom clients, send:
 
 ```text
 Bearer <token>
