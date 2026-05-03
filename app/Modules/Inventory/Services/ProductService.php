@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Modules\Inventory\Contracts\ProductServiceInterface;
 use App\Modules\Inventory\DTOs\ProductData;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Repositories\Contracts\ProductRepositoryInterface;
+use App\Modules\Inventory\Repositories\Interfaces\ProductRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;

@@ -8,7 +8,7 @@ PharmaNP is a Laravel + React pharmacy ERP/POS application for Nepal-focused pha
 - React 19, Vite, Tailwind CSS
 - Ant Design
 - SQLite for simple shared-hosting installs; MySQL/MariaDB for demos and larger installs
-- Session/cookie/CSRF auth for same-domain SPA deployment, plus hashed bearer API tokens for Swagger/mobile/frontend integration testing
+- Session/cookie/CSRF auth for same-domain SPA deployment, plus hashed bearer tokens and signed JWTs for Swagger/mobile/frontend integration testing
 
 ## Local Setup
 
@@ -71,9 +71,36 @@ Swagger/API testing:
 
 ```bash
 php artisan pharmanp:api-token pratik@admin.com --name=Swagger --days=7
+php artisan pharmanp:jwt-token pratik@admin.com --days=1
 ```
 
-Open `/api-docs` and use the generated value in the Authorize dialog as a bearer token.
+Open `/api-docs` and use either generated value in the Authorize dialog as a bearer token.
+
+## Module Development
+
+Backend modules follow the same provider-driven pattern used in the larger MidasEdu modules:
+
+```text
+app/Modules/<Module>/
+  DTOs/
+  Http/Controllers/
+  Http/Requests/
+  Http/Resources/
+  Models/
+  Providers/
+  Repositories/Interfaces/
+  Repositories/
+  Routes/
+  Services/
+```
+
+Create a new module skeleton with:
+
+```bash
+php artisan module:make Targets
+```
+
+Controllers stay thin, services own business transactions, repositories hide reusable query details, and module providers bind repository interfaces and load module routes.
 
 ## Deployment
 
@@ -83,4 +110,4 @@ The live shared-hosting install is configured at:
 https://pharmanp.pratikbhujel.com.np
 ```
 
-Shared-hosting deployment notes and the GitHub Actions secret list are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Deployment uses the same Laravel codebase and built Vite assets. Keep `.env` private, run migrations only after backup, and use the release tag shown in `VERSION`/GitHub tags as the operational version source.

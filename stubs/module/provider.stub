@@ -1,0 +1,17 @@
+<?php
+
+namespace App\Modules\{{ module }}\Providers;
+
+use App\Modules\Base\Providers\BaseModuleServiceProvider;
+use App\Modules\{{ module }}\Repositories\Interfaces\{{ module }}RepositoryInterface;
+use App\Modules\{{ module }}\Repositories\{{ module }}Repository;
+
+class {{ module }}ServiceProvider extends BaseModuleServiceProvider
+{
+    protected function bindings(): array
+    {
+        return [
+            {{ module }}RepositoryInterface::class => {{ module }}Repository::class,
+        ];
+    }
+}

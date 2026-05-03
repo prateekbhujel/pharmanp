@@ -10,4 +10,11 @@ return [
     ],
 
     'version' => env('PHARMANP_VERSION'),
+
+    'jwt' => [
+        'issuer' => env('PHARMANP_JWT_ISSUER', env('APP_URL', 'pharmanp')),
+        'audience' => env('PHARMANP_JWT_AUDIENCE', 'pharmanp-api'),
+        'secret' => env('PHARMANP_JWT_SECRET'),
+        'ttl_minutes' => (int) env('PHARMANP_JWT_TTL', 60 * 24),
+    ],
 ];

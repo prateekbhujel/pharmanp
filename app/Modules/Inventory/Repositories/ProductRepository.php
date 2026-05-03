@@ -5,7 +5,7 @@ namespace App\Modules\Inventory\Repositories;
 use App\Core\DTOs\TableQueryData;
 use App\Models\User;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Repositories\Contracts\ProductRepositoryInterface;
+use App\Modules\Inventory\Repositories\Interfaces\ProductRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 

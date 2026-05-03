@@ -11,7 +11,7 @@ class OpenApiController extends Controller
 {
     public function __invoke(): JsonResponse
     {
-        $path = base_path('docs/openapi/pharmanp.v1.json');
+        $path = app_path('Modules/Core/OpenApi/pharmanp.v1.json');
 
         abort_unless(is_file($path), 404);
 

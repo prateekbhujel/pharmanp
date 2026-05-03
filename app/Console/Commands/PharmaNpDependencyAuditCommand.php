@@ -110,6 +110,7 @@ class PharmaNpDependencyAuditCommand extends Command
             'mockery/mockery',
             'nunomaduro/collision',
             'phpunit/phpunit',
+            'laravel/pint',
         ];
 
         $signals = [

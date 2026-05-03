@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Modules\{{ module }}\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\{{ module }}\Http\Requests\Store{{ module }}Request;
+use App\Modules\{{ module }}\Http\Requests\Update{{ module }}Request;
+use App\Modules\{{ module }}\Http\Resources\{{ module }}Collection;
+use App\Modules\{{ module }}\Http\Resources\{{ module }}Resource;
+use App\Modules\{{ module }}\Models\{{ module }};
+use App\Modules\{{ module }}\Services\{{ module }}Service;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+/**
+ * @OA\Tag(name="{{ moduleTitle }}")
+ */
+class {{ module }}Controller extends Controller
+{
+    public function __construct(private readonly {{ module }}Service $service) {}
+
+    public function index(Request $request): {{ module }}Collection
+    {
+        return new {{ module }}Collection($this->service->paginate($request->query()));
+    }
+
+    public function store(Store{{ module }}Request $request): JsonResponse
+    {
+        return response()->json([
+            'data' => new {{ module }}Resource($this->service->create($request->validated())),
+        ], 201);
+    }
+
+    public function show({{ module }} ${{ moduleVariable }}): JsonResponse
+    {
+        return response()->json([
+            'data' => new {{ module }}Resource(${{ moduleVariable }}),
+        ]);
+    }
+
+    public function update(Update{{ module }}Request $request, {{ module }} ${{ moduleVariable }}): JsonResponse
+    {
+        return response()->json([
+            'data' => new {{ module }}Resource($this->service->update(${{ moduleVariable }}, $request->validated())),
+        ]);
+    }
+
+    public function destroy({{ module }} ${{ moduleVariable }}): JsonResponse
+    {
+        $this->service->delete(${{ moduleVariable }});
+
+        return response()->json(['message' => '{{ moduleTitle }} deleted.']);
+    }
+}

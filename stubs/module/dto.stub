@@ -1,0 +1,14 @@
+<?php
+
+namespace App\Modules\{{ module }}\DTOs;
+
+use App\Modules\Base\DTOs\BaseDTO;
+
+final readonly class {{ module }}Data extends BaseDTO
+{
+    public function __construct(
+        public ?int $id = null,
+        public ?string $name = null,
+        public bool $isActive = true,
+    ) {}
+}

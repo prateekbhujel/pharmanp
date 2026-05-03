@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Modules\{{ module }}\Services;
+
+use App\Modules\{{ module }}\DTOs\{{ module }}Data;
+use App\Modules\{{ module }}\Models\{{ module }};
+use App\Modules\{{ module }}\Repositories\Interfaces\{{ module }}RepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+
+class {{ module }}Service
+{
+    public function __construct(private readonly {{ module }}RepositoryInterface $repository) {}
+
+    public function paginate(array $filters = []): LengthAwarePaginator
+    {
+        return $this->repository->paginate($filters);
+    }
+
+    public function create(array $payload): Model
+    {
+        return DB::transaction(function () use ($payload) {
+            return $this->repository->create({{ module }}Data::fromArray($payload)->toArray());
+        });
+    }
+
+    public function update({{ module }} ${{ moduleVariable }}, array $payload): Model
+    {
+        return DB::transaction(function () use (${{ moduleVariable }}, $payload) {
+            return $this->repository->update(${{ moduleVariable }}, {{ module }}Data::fromArray($payload)->toArray());
+        });
+    }
+
+    public function delete({{ module }} ${{ moduleVariable }}): void
+    {
+        DB::transaction(fn () => $this->repository->delete(${{ moduleVariable }}));
+    }
+}

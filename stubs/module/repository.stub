@@ -1,0 +1,24 @@
+<?php
+
+namespace App\Modules\{{ module }}\Repositories;
+
+use App\Modules\Base\Repositories\EloquentRepository;
+use App\Modules\{{ module }}\Models\{{ module }};
+use App\Modules\{{ module }}\Repositories\Interfaces\{{ module }}RepositoryInterface;
+use Illuminate\Database\Eloquent\Builder;
+
+class {{ module }}Repository extends EloquentRepository implements {{ module }}RepositoryInterface
+{
+    protected function modelClass(): string
+    {
+        return {{ module }}::class;
+    }
+
+    protected function applyFilters(Builder $query, array $filters): void
+    {
+        $query
+            ->when($filters['tenant_id'] ?? null, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when($filters['search'] ?? null, fn (Builder $builder, string $search) => $builder->where('name', 'like', '%'.$search.'%'))
+            ->when(array_key_exists('is_active', $filters), fn (Builder $builder) => $builder->where('is_active', (bool) $filters['is_active']));
+    }
+}

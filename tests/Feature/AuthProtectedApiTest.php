@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Setting;
 use App\Models\User;
 use App\Core\Services\ApiTokenService;
+use App\Core\Services\JwtTokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -72,5 +73,17 @@ class AuthProtectedApiTest extends TestCase
             ->getJson('/api/v1/dashboard/summary')
             ->assertUnauthorized()
             ->assertJsonPath('message', 'Invalid or expired API token.');
+    }
+
+    public function test_jwt_bearer_token_can_call_api_without_session_or_csrf(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create(['is_owner' => true, 'is_active' => true]);
+        $jwt = app(JwtTokenService::class)->issue($user);
+
+        $this->withHeader('Authorization', 'Bearer '.$jwt)
+            ->getJson('/api/v1/dashboard/summary')
+            ->assertOk()
+            ->assertJsonPath('data.stats.products', 0);
     }
 }

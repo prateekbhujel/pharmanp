@@ -52,7 +52,7 @@
 <body>
 <div class="api-docs-note">
     <strong>PharmaNP API Docs</strong>
-    <span>Use the Authorize button with a bearer token from <code>php artisan pharmanp:api-token user@example.com</code>, or log in normally for session testing.</span>
+    <span>Use Authorize with a bearer token from <code>php artisan pharmanp:api-token user@example.com</code> or <code>php artisan pharmanp:jwt-token user@example.com</code>.</span>
 </div>
 <div id="swagger-ui"></div>
 <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>

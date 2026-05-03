@@ -1,0 +1,7 @@
+<?php
+
+use App\Modules\{{ module }}\Http\Controllers\{{ module }}Controller;
+use Illuminate\Support\Facades\Route;
+
+Route::apiResource('{{ modulePluralKebab }}', {{ module }}Controller::class)
+    ->names('{{ modulePluralKebab }}');
