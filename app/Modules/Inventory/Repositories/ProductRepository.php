@@ -13,6 +13,8 @@ class ProductRepository implements ProductRepositoryInterface
 {
     private const SORTS = [
         'name' => 'products.name',
+        'product_code' => 'products.product_code',
+        'hs_code' => 'products.hs_code',
         'sku' => 'products.sku',
         'barcode' => 'products.barcode',
         'mrp' => 'products.mrp',

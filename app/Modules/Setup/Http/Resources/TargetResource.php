@@ -24,6 +24,32 @@ class TargetResource extends JsonResource
             'division_id' => $this->division_id,
             'employee_id' => $this->employee_id,
             'product_id' => $this->product_id,
+            'branch' => $this->whenLoaded('branch', fn () => [
+                'id' => $this->branch?->id,
+                'name' => $this->branch?->name,
+                'code' => $this->branch?->code,
+            ]),
+            'area' => $this->whenLoaded('area', fn () => [
+                'id' => $this->area?->id,
+                'name' => $this->area?->name,
+                'code' => $this->area?->code,
+            ]),
+            'division' => $this->whenLoaded('division', fn () => [
+                'id' => $this->division?->id,
+                'name' => $this->division?->name,
+                'code' => $this->division?->code,
+            ]),
+            'employee' => $this->whenLoaded('employee', fn () => [
+                'id' => $this->employee?->id,
+                'name' => $this->employee?->name,
+                'employee_code' => $this->employee?->employee_code,
+            ]),
+            'product' => $this->whenLoaded('product', fn () => [
+                'id' => $this->product?->id,
+                'name' => $this->product?->name,
+                'product_code' => $this->product?->product_code,
+                'sku' => $this->product?->sku,
+            ]),
             'notes' => $this->notes,
             'deleted_at' => $this->deleted_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),

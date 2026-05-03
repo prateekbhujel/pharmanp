@@ -14,6 +14,7 @@ use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Inventory\Contracts\ProductServiceInterface;
+use App\Modules\Setup\Models\Division;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,6 +27,7 @@ class ProductController extends Controller
         $products = $service->paginate(TableQueryData::fromRequest($request, [
             'company_id',
             'category_id',
+            'division_id',
             'is_active',
             'deleted',
         ]), $request->user());
@@ -105,6 +107,7 @@ class ProductController extends Controller
                 'companies' => Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
                 'units' => Unit::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
                 'categories' => ProductCategory::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+                'divisions' => Division::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']),
                 'formulations' => ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Ointment', 'Drops', 'Inhaler', 'Other'],
             ],
         ]);

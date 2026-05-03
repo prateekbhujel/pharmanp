@@ -6,8 +6,8 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
+use App\Modules\Setup\Models\Division;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -21,17 +21,22 @@ class ProductApiTest extends TestCase
         $user = User::factory()->create(['is_owner' => true]);
         $company = Company::query()->create(['name' => 'Himal Pharma']);
         $unit = Unit::query()->create(['company_id' => $company->id, 'name' => 'Strip', 'type' => 'both']);
-        $category = ProductCategory::query()->create(['company_id' => $company->id, 'name' => 'Medicine']);
+        $division = Division::query()->create(['company_id' => $company->id, 'name' => 'Cardio', 'code' => 'CARD']);
 
         $payload = [
             'company_id' => $company->id,
             'unit_id' => $unit->id,
-            'category_id' => $category->id,
             'sku' => 'PCM-500',
             'barcode' => '9900012345',
+            'product_code' => 'ITEM-0001',
+            'hs_code' => '3004.90',
+            'division_id' => $division->id,
             'name' => 'Paracetamol 500',
             'generic_name' => 'Paracetamol',
-            'formulation' => 'Tablet',
+            'group_name' => 'Analgesic',
+            'manufacturer_name' => 'Himal Pharma',
+            'packaging_type' => 'Strip',
+            'case_movement' => 'Fast moving',
             'mrp' => 20,
             'purchase_price' => 12,
             'selling_price' => 18,
@@ -41,6 +46,10 @@ class ProductApiTest extends TestCase
 
         $this->actingAs($user)->postJson('/api/v1/inventory/products', $payload)->assertSuccessful();
         $product = Product::query()->firstOrFail();
+        $this->assertSame('ITEM-0001', $product->product_code);
+        $this->assertSame('3004.90', $product->hs_code);
+        $this->assertSame($division->id, $product->division_id);
+        $this->assertNull($product->category_id);
 
         $this->actingAs($user)->getJson('/api/v1/inventory/products?search=Para&sort_field=name&sort_order=asc')
             ->assertOk()

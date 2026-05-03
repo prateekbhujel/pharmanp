@@ -64,6 +64,10 @@ function normalizeRow(row) {
     };
 }
 
+function defaultReturnType() {
+    return window.location.pathname.includes('expiry-returns') ? 'expiry' : 'regular';
+}
+
 export function SalesReturnsPanel() {
     const { notification } = App.useApp();
     const [form] = Form.useForm();
@@ -88,7 +92,10 @@ export function SalesReturnsPanel() {
     const deletedMode = Boolean(table.filters.deleted);
 
     useEffect(() => {
-        form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice' });
+        form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice', return_type: defaultReturnType() });
+        if (defaultReturnType() === 'expiry') {
+            table.setFilters((filters) => ({ ...filters, return_type: 'expiry' }));
+        }
         loadCustomers();
         searchProducts('');
     }, []);
@@ -216,6 +223,7 @@ export function SalesReturnsPanel() {
             const payload = {
                 customer_id: values.customer_id,
                 sales_invoice_id: values.return_mode === 'invoice' ? values.sales_invoice_id : null,
+                return_type: values.return_type || 'regular',
                 return_date: values.return_date.format('YYYY-MM-DD'),
                 reason: values.reason,
                 notes: values.notes,
@@ -241,7 +249,7 @@ export function SalesReturnsPanel() {
             setItems([]);
             setLineErrors({});
             form.resetFields();
-            form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice' });
+            form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice', return_type: defaultReturnType() });
             setView('list');
             table.reload();
             if (data?.print_url) {
@@ -266,6 +274,7 @@ export function SalesReturnsPanel() {
             customer_id: record.customer_id,
             sales_invoice_id: record.sales_invoice_id,
             return_mode: record.sales_invoice_id ? 'invoice' : 'product',
+            return_type: record.return_type || 'regular',
             return_date: dayjs(record.return_date),
             reason: record.reason,
             notes: record.notes,
@@ -384,6 +393,7 @@ export function SalesReturnsPanel() {
     const listColumns = [
         { title: 'Return No', dataIndex: 'return_no', field: 'return_no', sorter: true, width: 170 },
         { title: 'Date', dataIndex: 'return_date', field: 'return_date', sorter: true, width: 130, render: (value) => <DateText value={value} style="compact" /> },
+        { title: 'Type', dataIndex: 'return_type', field: 'return_type', sorter: true, width: 130, render: (value) => <PharmaBadge tone={value === 'expiry' ? 'warning' : 'info'}>{value === 'expiry' ? 'Expiry' : 'Regular'}</PharmaBadge> },
         { title: 'Customer', dataIndex: 'customer_name', width: 220, render: (v, row) => v || row.customer?.name || 'Walk-in' },
         { title: 'Invoice', dataIndex: 'invoice_no', width: 180, render: (v, row) => v || row.sales_invoice?.invoice_no || 'Manual' },
         { title: 'Items', dataIndex: 'items_count', width: 80, align: 'center' },
@@ -433,6 +443,12 @@ export function SalesReturnsPanel() {
                                         { value: 'product', label: 'By Product / Batch' },
                                     ]} />
                                 </Form.Item>
+                                <Form.Item name="return_type" label="Return Type" rules={[{ required: true }]}>
+                                    <Select options={[
+                                        { value: 'regular', label: 'Sales Return' },
+                                        { value: 'expiry', label: 'Sales Expiry Return' },
+                                    ]} />
+                                </Form.Item>
                                 <Form.Item name="return_date" label="Return Date" rules={[{ required: true }]}>
                                     <SmartDatePicker className="full-width" />
                                 </Form.Item>
@@ -472,7 +488,7 @@ export function SalesReturnsPanel() {
                                 ]}
                                 actions={(
                                     <Space>
-                                        <Button onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice' }); }}>Cancel</Button>
+                                        <Button onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice', return_type: defaultReturnType() }); }}>Cancel</Button>
                                         <Button type="primary" htmlType="submit" loading={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
                                     </Space>
                                 )}
@@ -481,7 +497,7 @@ export function SalesReturnsPanel() {
                     </div>
                 </Card>
             ) : (
-                <Card title="Sales Return List" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice' }); setView('form'); }}>New Return</Button>}>
+                <Card title="Sales Return List" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice', return_type: defaultReturnType() }); setView('form'); }}>New Return</Button>}>
                     <div className="table-toolbar table-toolbar-wide">
                         <Input.Search value={table.search} onChange={(event) => table.setSearch(event.target.value)} placeholder="Search return, customer or invoice" allowClear />
                         <Select
@@ -491,6 +507,15 @@ export function SalesReturnsPanel() {
                             placeholder="Customer"
                             options={customers.map((item) => ({ value: item.id, label: item.name }))}
                             onChange={(customer_id) => table.setFilters((filters) => ({ ...filters, customer_id }))}
+                        />
+                        <Select
+                            allowClear
+                            placeholder="Return Type"
+                            options={[
+                                { value: 'regular', label: 'Regular' },
+                                { value: 'expiry', label: 'Expiry' },
+                            ]}
+                            onChange={(return_type) => table.setFilters((filters) => ({ ...filters, return_type }))}
                         />
                         <SmartDatePicker.RangePicker value={range} onChange={setRange} />
                         <label className="table-switch">

@@ -8,7 +8,7 @@ import { http, validationErrors } from '../api/http';
 export function QuickProductModal({ open, onClose, onCreated }) {
     const { notification } = App.useApp();
     const [form] = Form.useForm();
-    const [meta, setMeta] = useState({ companies: [], units: [], categories: [], formulations: [] });
+    const [meta, setMeta] = useState({ companies: [], units: [], categories: [], divisions: [] });
     const [saving, setSaving] = useState(false);
     const [quickMaster, setQuickMaster] = useState(null);
     const [quickForm] = Form.useForm();
@@ -17,7 +17,6 @@ export function QuickProductModal({ open, onClose, onCreated }) {
         if (open) {
             http.get(endpoints.productMeta).then(({ data }) => setMeta(data.data));
             form.setFieldsValue({
-                formulation: 'Tablet',
                 purchase_price: 0,
                 mrp: 0,
                 selling_price: 0,
@@ -53,7 +52,6 @@ export function QuickProductModal({ open, onClose, onCreated }) {
         const config = {
             company: { endpoint: endpoints.quickCompany, label: 'Company' },
             unit: { endpoint: endpoints.quickUnit, label: 'Unit' },
-            category: { endpoint: endpoints.quickCategory, label: 'Category' },
         }[quickMaster];
 
         if (!config) return;
@@ -67,7 +65,6 @@ export function QuickProductModal({ open, onClose, onCreated }) {
 
             if (quickMaster === 'company') form.setFieldValue('company_id', data.data.id);
             if (quickMaster === 'unit') form.setFieldValue('unit_id', data.data.id);
-            if (quickMaster === 'category') form.setFieldValue('category_id', data.data.id);
         } catch (error) {
             quickForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
             notification.error({ message: `${config.label} save failed` });
@@ -81,13 +78,17 @@ export function QuickProductModal({ open, onClose, onCreated }) {
             onCancel={onClose}
             onOk={() => form.submit()}
             confirmLoading={saving}
-            width={720}
+            width={840}
             destroyOnHidden
         >
             <Form form={form} layout="vertical" onFinish={submit}>
                 <div className="form-grid">
                     <Form.Item name="name" label="Product Name" rules={[{ required: true }]}><Input autoFocus /></Form.Item>
                     <Form.Item name="barcode" label="Barcode"><BarcodeInput /></Form.Item>
+                </div>
+                <div className="form-grid">
+                    <Form.Item name="product_code" label="Product Code"><Input placeholder="Auto generated if empty" /></Form.Item>
+                    <Form.Item name="hs_code" label="HS Code"><Input /></Form.Item>
                 </div>
                 <div className="form-grid">
                     <Form.Item name="company_id" label="Company / Manufacturer" rules={[{ required: true }]}>
@@ -116,22 +117,24 @@ export function QuickProductModal({ open, onClose, onCreated }) {
                     </Form.Item>
                 </div>
                 <div className="form-grid">
-                    <Form.Item name="category_id" label="Category" rules={[{ required: true }]}>
-                        <Select 
-                            options={meta.categories?.map((item) => ({ value: item.id, label: item.name }))} 
-                            dropdownRender={(menu) => (
-                                <>
-                                    {menu}
-                                    <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickMaster('category')}>Quick add category</Button>
-                                </>
-                            )}
+                    <Form.Item name="division_id" label="Division">
+                        <Select
+                            allowClear
+                            showSearch
+                            optionFilterProp="label"
+                            options={meta.divisions?.map((item) => ({ value: item.id, label: item.code ? `${item.name} (${item.code})` : item.name }))}
                         />
                     </Form.Item>
-                    <Form.Item name="formulation" label="Formulation" rules={[{ required: true }]}>
-                        <Select options={meta.formulations?.map((item) => ({ value: item, label: item }))} />
-                    </Form.Item>
+                    <Form.Item name="group_name" label="Group Name"><Input /></Form.Item>
                 </div>
-                <Form.Item name="generic_name" label="Generic Name"><Input /></Form.Item>
+                <div className="form-grid">
+                    <Form.Item name="generic_name" label="Generic Name"><Input /></Form.Item>
+                    <Form.Item name="manufacturer_name" label="Manufacturer"><Input /></Form.Item>
+                </div>
+                <div className="form-grid">
+                    <Form.Item name="packaging_type" label="Packaging Type"><Input placeholder="Strip, bottle, box..." /></Form.Item>
+                    <Form.Item name="case_movement" label="Case Movement"><Input placeholder="Fast moving, cold chain..." /></Form.Item>
+                </div>
                 <div className="form-grid">
                     <Form.Item name="purchase_price" label="Purchase Price" rules={[{ required: true }]}><InputNumber min={0} className="full-width" /></Form.Item>
                     <Form.Item name="mrp" label="MRP" rules={[{ required: true }]}><InputNumber min={0} className="full-width" /></Form.Item>
@@ -171,7 +174,6 @@ export function QuickProductModal({ open, onClose, onCreated }) {
                             </div>
                         </>
                     )}
-                    {quickMaster === 'category' && <Form.Item name="code" label="Code"><Input /></Form.Item>}
                 </Form>
             </Modal>
         </Modal>

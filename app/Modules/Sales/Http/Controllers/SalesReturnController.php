@@ -47,6 +47,10 @@ class SalesReturnController
             $query->where('customer_id', $request->integer('customer_id'));
         }
 
+        if ($request->filled('return_type')) {
+            $query->where('return_type', $request->input('return_type'));
+        }
+
         $perPage = min((int) $request->input('per_page', 20), 100);
         $paginated = $query->paginate($perPage);
 

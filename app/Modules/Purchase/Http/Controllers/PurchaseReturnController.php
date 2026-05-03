@@ -24,6 +24,7 @@ class PurchaseReturnController extends Controller
         $sorts = [
             'return_no' => 'return_no',
             'return_date' => 'return_date',
+            'return_type' => 'return_type',
             'grand_total' => 'grand_total',
             'created_at' => 'created_at',
         ];
@@ -47,6 +48,7 @@ class PurchaseReturnController extends Controller
                 });
             })
             ->when(request()->filled('supplier_id'), fn (Builder $builder) => $builder->where('supplier_id', request()->integer('supplier_id')))
+            ->when(request()->filled('return_type'), fn (Builder $builder) => $builder->where('return_type', request('return_type')))
             ->when(request('return_mode') === 'bill', fn (Builder $builder) => $builder->whereNotNull('purchase_id'))
             ->when(in_array(request('return_mode'), ['manual', 'product'], true), fn (Builder $builder) => $builder->whereNull('purchase_id'))
             ->when(request()->filled('from'), fn (Builder $builder) => $builder->whereDate('return_date', '>=', request('from')))

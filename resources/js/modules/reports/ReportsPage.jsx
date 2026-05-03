@@ -18,12 +18,21 @@ const reportOptions = [
     { value: 'stock', label: 'Stock report' },
     { value: 'low-stock', label: 'Low stock report' },
     { value: 'expiry', label: 'Expiry report' },
+    { value: 'expiry-buckets', label: 'Expiry buckets' },
+    { value: 'dumping', label: 'Dumping / slow moving' },
     { value: 'smart-inventory', label: 'Smart inventory signals' },
     { value: 'supplier-performance', label: 'Supplier performance' },
+    { value: 'supplier-aging', label: 'Supplier aging' },
+    { value: 'customer-aging', label: 'Customer aging' },
     { value: 'supplier-ledger', label: 'Supplier ledger' },
     { value: 'customer-ledger', label: 'Customer ledger' },
     { value: 'product-movement', label: 'Product movement' },
     { value: 'mr-performance', label: 'MR performance' },
+    { value: 'mr-vs-product', label: 'MR vs product' },
+    { value: 'mr-vs-division', label: 'MR vs division' },
+    { value: 'mr-vs-sales', label: 'MR vs sales' },
+    { value: 'company-vs-customer', label: 'Company vs customer' },
+    { value: 'target-achievement', label: 'Target achievement' },
     { value: 'day-book', label: 'Day book' },
     { value: 'cash-book', label: 'Cash book' },
     { value: 'bank-book', label: 'Bank book' },
@@ -34,10 +43,10 @@ const reportOptions = [
 ];
 
 const reportGroups = {
-    sales: ['sales', 'purchase', 'supplier-performance'],
-    inventory: ['stock', 'low-stock', 'expiry', 'smart-inventory', 'product-movement'],
+    sales: ['sales', 'purchase', 'supplier-performance', 'supplier-aging', 'customer-aging', 'company-vs-customer'],
+    inventory: ['stock', 'low-stock', 'expiry', 'expiry-buckets', 'dumping', 'smart-inventory', 'product-movement'],
     accounting: ['day-book', 'cash-book', 'bank-book', 'ledger', 'account-tree', 'trial-balance', 'profit-loss', 'supplier-ledger', 'customer-ledger'],
-    mr: ['mr-performance'],
+    mr: ['mr-performance', 'mr-vs-product', 'mr-vs-division', 'mr-vs-sales', 'target-achievement'],
 };
 
 const searchableSelectProps = {
@@ -135,7 +144,7 @@ export function ReportsPage() {
     const [loading, setLoading] = useState(false);
     const [reportView, setReportView] = useState('table');
     const [productOptions, setProductOptions] = useState([]);
-    const [lookups, setLookups] = useState({ suppliers: [], customers: [], medicalRepresentatives: [], companies: [], categories: [] });
+    const [lookups, setLookups] = useState({ suppliers: [], customers: [], medicalRepresentatives: [], companies: [], categories: [], divisions: [], areas: [] });
 
     useEffect(() => {
         loadLookups();
@@ -154,11 +163,13 @@ export function ReportsPage() {
 
     async function loadLookups() {
         try {
-            const [{ data: supplierData }, { data: customerData }, { data: mrData }, { data: productMeta }] = await Promise.all([
+            const [{ data: supplierData }, { data: customerData }, { data: mrData }, { data: productMeta }, { data: divisionData }, { data: areaData }] = await Promise.all([
                 http.get(endpoints.supplierOptions),
                 http.get(endpoints.customerOptions),
                 http.get(endpoints.mrOptions),
                 http.get(endpoints.productMeta),
+                http.get(endpoints.setupDivisionOptions),
+                http.get(endpoints.setupAreaOptions),
             ]);
 
             setLookups({
@@ -167,9 +178,11 @@ export function ReportsPage() {
                 medicalRepresentatives: mrData.data || [],
                 companies: productMeta.data?.companies || [],
                 categories: productMeta.data?.categories || [],
+                divisions: divisionData.data || [],
+                areas: areaData.data || [],
             });
         } catch {
-            setLookups({ suppliers: [], customers: [], medicalRepresentatives: [], companies: [], categories: [] });
+            setLookups({ suppliers: [], customers: [], medicalRepresentatives: [], companies: [], categories: [], divisions: [], areas: [] });
         }
     }
 
@@ -251,6 +264,9 @@ export function ReportsPage() {
                         <Select {...searchableSelectProps} allowClear placeholder="Category" value={filters.category_id} onChange={(value) => updateFilter('category_id', value)} options={lookups.categories.map((item) => ({ value: item.id, label: item.name }))} />
                     </>
                 )}
+                {report === 'company-vs-customer' && (
+                    <Select {...searchableSelectProps} allowClear placeholder="Company / Manufacturer" value={filters.manufacturer_id} onChange={(value) => updateFilter('manufacturer_id', value)} options={lookups.companies.map((item) => ({ value: item.id, label: item.name }))} />
+                )}
                 {report === 'smart-inventory' && (
                     <Select
                         {...searchableSelectProps}
@@ -269,9 +285,47 @@ export function ReportsPage() {
                         ]}
                     />
                 )}
-                {report === 'supplier-ledger' && <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
-                {report === 'customer-ledger' && <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}
-                {report === 'product-movement' && (
+                {report === 'target-achievement' && (
+                    <>
+                        <Select {...searchableSelectProps} allowClear placeholder="Target type" value={filters.target_type} onChange={(value) => updateFilter('target_type', value)} options={[
+                            { value: 'primary', label: 'Primary' },
+                            { value: 'secondary', label: 'Secondary' },
+                        ]} />
+                        <Select {...searchableSelectProps} allowClear placeholder="Target period" value={filters.target_period} onChange={(value) => updateFilter('target_period', value)} options={[
+                            { value: 'monthly', label: 'Monthly' },
+                            { value: 'quarterly', label: 'Quarterly' },
+                            { value: 'annual', label: 'Annual' },
+                        ]} />
+                        <Select {...searchableSelectProps} allowClear placeholder="Target level" value={filters.target_level} onChange={(value) => updateFilter('target_level', value)} options={[
+                            { value: 'company', label: 'Company' },
+                            { value: 'division', label: 'Division' },
+                            { value: 'area', label: 'Area' },
+                            { value: 'employee', label: 'MR / Employee' },
+                            { value: 'product', label: 'Product' },
+                        ]} />
+                    </>
+                )}
+                {['supplier-ledger', 'supplier-aging', 'expiry-buckets'].includes(report) && <Select {...searchableSelectProps} allowClear placeholder="Supplier" value={filters.supplier_id} onChange={(value) => updateFilter('supplier_id', value)} options={lookups.suppliers.map((item) => ({ value: item.id, label: item.name }))} />}
+                {['customer-ledger', 'customer-aging', 'company-vs-customer'].includes(report) && <Select {...searchableSelectProps} allowClear placeholder="Customer" value={filters.customer_id} onChange={(value) => updateFilter('customer_id', value)} options={lookups.customers.map((item) => ({ value: item.id, label: item.name }))} />}
+                {['expiry-buckets', 'dumping', 'mr-vs-division', 'target-achievement'].includes(report) && <Select {...searchableSelectProps} allowClear placeholder="Division" value={filters.division_id} onChange={(value) => updateFilter('division_id', value)} options={lookups.divisions.map((item) => ({ value: item.id, label: item.code ? `${item.name} (${item.code})` : item.name }))} />}
+                {['mr-vs-sales', 'target-achievement'].includes(report) && <Select {...searchableSelectProps} allowClear placeholder="Area" value={filters.area_id} onChange={(value) => updateFilter('area_id', value)} options={lookups.areas.map((item) => ({ value: item.id, label: item.code ? `${item.name} (${item.code})` : item.name }))} />}
+                {['expiry-buckets'].includes(report) && (
+                    <Select
+                        {...searchableSelectProps}
+                        allowClear
+                        placeholder="Expiry bucket"
+                        value={filters.bucket}
+                        onChange={(value) => updateFilter('bucket', value)}
+                        options={[
+                            { value: 'expired', label: 'Expired' },
+                            { value: '30', label: 'Within 30 days' },
+                            { value: '60', label: '31 to 60 days' },
+                            { value: '90', label: '61 to 90 days' },
+                        ]}
+                    />
+                )}
+                {['mr-vs-product', 'mr-vs-sales', 'mr-performance'].includes(report) && <Select {...searchableSelectProps} allowClear placeholder="MR" value={filters.medical_representative_id} onChange={(value) => updateFilter('medical_representative_id', value)} options={lookups.medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))} />}
+                {['product-movement', 'expiry-buckets', 'dumping', 'mr-vs-product', 'target-achievement'].includes(report) && (
                     <Select
                         showSearch
                         allowClear

@@ -12,12 +12,26 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 import { useBranding } from '../../core/context/BrandingContext';
 import { placeOptionsForCountry } from '../../core/utils/placeSuggestions';
 import { dropdownAliasOptions, dropdownDataField, fallbackDropdownAliases } from '../../core/utils/dropdownOptions';
+import { appUrl } from '../../core/utils/url';
 import { PaymentModePanel } from './PaymentModePanel';
 
 const branchTypeOptions = [
     { value: 'hq', label: 'Head Office' },
     { value: 'branch', label: 'Branch' },
 ];
+
+const tabRoutes = {
+    'payment-modes': appUrl('/app/administration/payment-modes'),
+    branches: appUrl('/app/administration/branches'),
+    dropdowns: appUrl('/app/administration/data-lookup'),
+    'party-types': appUrl('/app/administration/party-types'),
+    'supplier-types': appUrl('/app/administration/supplier-types'),
+};
+
+function tabFromPath() {
+    const path = window.location.pathname;
+    return Object.entries(tabRoutes).find(([, route]) => route === path)?.[0] || 'payment-modes';
+}
 
 export function DataLookupPage() {
     const { data: dropdownResponse, reload: reloadDropdowns } = useApi(endpoints.dropdownOptions);
@@ -39,6 +53,7 @@ export function DataLookupPage() {
     const [supplierTypeModalOpen, setSupplierTypeModalOpen] = useState(false);
     const [editingSupplierType, setEditingSupplierType] = useState(null);
     const [supplierTypeForm] = Form.useForm();
+    const [activeTab, setActiveTab] = useState(tabFromPath);
 
     const filteredOptions = useMemo(() =>
         (dropdownOptions || []).filter(o => o.alias === dropdownAlias),
@@ -132,7 +147,14 @@ export function DataLookupPage() {
 
     return (
         <div className="page-stack">
-            <Tabs items={[
+            <Tabs
+                activeKey={activeTab}
+                onChange={(key) => {
+                    setActiveTab(key);
+                    window.history.pushState({}, '', tabRoutes[key] || tabRoutes.dropdowns);
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                items={[
                 {
                     key: 'payment-modes',
                     label: 'Payment Modes',

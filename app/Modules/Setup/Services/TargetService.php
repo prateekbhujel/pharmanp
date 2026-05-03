@@ -25,6 +25,13 @@ class TargetService implements TargetServiceInterface
     public function targets(TableQueryData $table, User $user): LengthAwarePaginator
     {
         $query = Target::query()
+            ->with([
+                'branch:id,name,code',
+                'area:id,name,code',
+                'division:id,name,code',
+                'employee:id,name,employee_code',
+                'product:id,name,product_code,sku',
+            ])
             ->when($user->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($user->company_id, fn (Builder $builder, int $companyId) => $builder->where('company_id', $companyId))
             ->when($table->filters['target_type'] ?? null, fn (Builder $builder, mixed $value) => $builder->where('target_type', $value))
@@ -68,7 +75,13 @@ class TargetService implements TargetServiceInterface
 
             $target->save();
 
-            return $target->fresh();
+            return $target->fresh([
+                'branch:id,name,code',
+                'area:id,name,code',
+                'division:id,name,code',
+                'employee:id,name,employee_code',
+                'product:id,name,product_code,sku',
+            ]);
         });
     }
 

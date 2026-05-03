@@ -25,7 +25,7 @@ import { SalesReturnsPanel } from './SalesReturnsPanel';
 function salesSection() {
     const section = window.location.pathname.split('/').filter(Boolean).pop();
 
-    if (['invoices', 'returns', 'pos'].includes(section)) {
+    if (['invoices', 'returns', 'expiry-returns', 'pos'].includes(section)) {
         return section;
     }
 
@@ -493,7 +493,7 @@ export function SalesPage() {
                 </Card>
             )}
 
-            {section === 'returns' && (
+            {['returns', 'expiry-returns'].includes(section) && (
                 <SalesReturnsPanel />
             )}
             <QuickProductModal

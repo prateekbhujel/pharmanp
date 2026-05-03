@@ -19,6 +19,11 @@ class TargetAchievementService implements TargetAchievementServiceInterface
             ->when($request->filled('target_type'), fn ($builder) => $builder->where('target_type', $request->query('target_type')))
             ->when($request->filled('target_period'), fn ($builder) => $builder->where('target_period', $request->query('target_period')))
             ->when($request->filled('target_level'), fn ($builder) => $builder->where('target_level', $request->query('target_level')))
+            ->when($request->filled('branch_id'), fn ($builder) => $builder->where('branch_id', $request->integer('branch_id')))
+            ->when($request->filled('area_id'), fn ($builder) => $builder->where('area_id', $request->integer('area_id')))
+            ->when($request->filled('division_id'), fn ($builder) => $builder->where('division_id', $request->integer('division_id')))
+            ->when($request->filled('employee_id'), fn ($builder) => $builder->where('employee_id', $request->integer('employee_id')))
+            ->when($request->filled('product_id'), fn ($builder) => $builder->where('product_id', $request->integer('product_id')))
             ->orderByDesc('start_date')
             ->orderByDesc('id');
 

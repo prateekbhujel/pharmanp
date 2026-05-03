@@ -45,7 +45,7 @@ const OCR_DRAFT_STORAGE_KEY = 'pharmanp-purchase-ocr-draft';
 function purchaseSection() {
     const section = window.location.pathname.split('/').filter(Boolean).pop();
 
-    if (['entry', 'orders', 'returns'].includes(section)) {
+    if (['entry', 'orders', 'returns', 'expiry-returns'].includes(section)) {
         return section;
     }
 
@@ -380,7 +380,7 @@ export function PurchasesPage() {
                 <PurchaseOrdersPanel />
             )}
 
-            {section === 'returns' && (
+            {['returns', 'expiry-returns'].includes(section) && (
                 <PurchaseReturnsPanel />
             )}
             <QuickProductModal

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2 - 2026-05-03
+
+- Aligned distributor ERP menus with purchase expiry returns, sales expiry returns, setup masters, targets, areas, divisions and employee hierarchy.
+- Updated product master workflow for product code, HS code, division, group, manufacturer, packaging type and case movement while keeping old data compatible.
+- Added setup structure screens for employees, areas, divisions and targets with server-side tables, modal forms, soft delete visibility and restore actions.
+- Expanded reports navigation for aging, expiry buckets, dumping, MR comparisons, company/customer analysis and target achievement.
+- Preserved accounting, voucher and payment flows as the financial backbone while routing sales/purchase payment entry points into accounting.
+
 ## 1.0.1 - 2026-04-30
 
 - Promoted the React pharmacy ERP foundation into the first production release line.

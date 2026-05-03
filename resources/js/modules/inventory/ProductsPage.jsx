@@ -17,7 +17,6 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { InventoryMasterTable } from './InventoryMasterTable';
-import { InventoryBatchesPanel } from './InventoryBatchesPanel';
 import { StockAdjustmentsPanel } from './StockAdjustmentsPanel';
 import { StockMovementsPanel } from './StockMovementsPanel';
 import { makeBarcodeCandidate } from '../../core/utils/code128';
@@ -26,7 +25,6 @@ const inventorySections = {
     companies: { title: 'Company', master: 'companies' },
     units: { title: 'Unit', master: 'units' },
     categories: { title: 'Category', master: 'categories' },
-    batches: { title: 'Batches' },
     'stock-adjustment': { title: 'Stock Adjustment' },
     'case-movement': { title: 'Case Movement' },
     products: { title: 'Product' },
@@ -165,7 +163,7 @@ export function ProductsPage() {
     const section = currentSection();
     const sectionConfig = inventorySections[section];
     const table = useServerTable({ endpoint: endpoints.products });
-    const [meta, setMeta] = useState({ companies: [], units: [], categories: [], formulations: [] });
+    const [meta, setMeta] = useState({ companies: [], units: [], categories: [], divisions: [] });
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -219,6 +217,7 @@ export function ProductsPage() {
             company_id: record.company?.id,
             unit_id: record.unit?.id,
             category_id: record.category?.id,
+            division_id: record.division?.id,
             image_upload: [],
             remove_image: false,
         });
@@ -250,7 +249,6 @@ export function ProductsPage() {
         const config = {
             company: { endpoint: endpoints.quickCompany, label: 'Company' },
             unit: { endpoint: endpoints.quickUnit, label: 'Unit' },
-            category: { endpoint: endpoints.quickCategory, label: 'Category' },
         }[quickMaster];
 
         if (!config) {
@@ -272,9 +270,6 @@ export function ProductsPage() {
             }
             if (quickMaster === 'unit') {
                 form.setFieldValue('unit_id', data.data.id);
-            }
-            if (quickMaster === 'category') {
-                form.setFieldValue('category_id', data.data.id);
             }
         } catch (error) {
             const errors = validationErrors(error);
@@ -353,8 +348,11 @@ export function ProductsPage() {
                 </div>
             ),
         },
-        { title: 'Company', dataIndex: ['company', 'name'], width: 160 },
-        { title: 'Formulation', dataIndex: 'formulation', width: 130 },
+        { title: 'Code', dataIndex: 'product_code', field: 'product_code', sorter: true, width: 130, render: (value, row) => value || row.sku || '-' },
+        { title: 'HS Code', dataIndex: 'hs_code', width: 120, render: (value) => value || '-' },
+        { title: 'Company', dataIndex: ['company', 'name'], width: 170 },
+        { title: 'Division', dataIndex: ['division', 'name'], width: 150, render: (value) => value || '-' },
+        { title: 'Case Movement', dataIndex: 'case_movement', width: 150, render: (value) => value || '-' },
         { title: 'Unit', dataIndex: ['unit', 'name'], width: 100 },
         { title: 'Reorder Level', dataIndex: 'reorder_level', field: 'reorder_level', sorter: true, align: 'right', width: 130 },
         { title: 'Stock Qty', dataIndex: 'stock_on_hand', field: 'stock_on_hand', sorter: true, align: 'right', width: 120 },
@@ -392,6 +390,14 @@ export function ProductsPage() {
                         options={meta.companies?.map((item) => ({ value: item.id, label: item.name }))}
                         onChange={(company_id) => table.setFilters((filters) => ({ ...filters, company_id }))}
                     />
+                    <Select
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        placeholder="Division"
+                        options={meta.divisions?.map((item) => ({ value: item.id, label: item.code ? `${item.name} (${item.code})` : item.name }))}
+                        onChange={(division_id) => table.setFilters((filters) => ({ ...filters, division_id }))}
+                    />
                     <div className="table-switch">
                         <Switch
                             checked={deletedMode}
@@ -409,10 +415,6 @@ export function ProductsPage() {
     function sectionBody() {
         if (sectionConfig.master) {
             return <InventoryMasterTable master={sectionConfig.master} />;
-        }
-
-        if (section === 'batches') {
-            return <InventoryBatchesPanel />;
         }
 
         if (section === 'stock-adjustment') {
@@ -486,22 +488,22 @@ export function ProductsPage() {
                                 )}
                             />
                         </Form.Item>
-                        <Form.Item name="category_id" label="Category" rules={[{ required: true }]}>
+                        <Form.Item name="division_id" label="Division">
                             <Select
-                                placeholder="Select category"
-                                options={meta.categories?.map((item) => ({ value: item.id, label: item.name }))}
-                                dropdownRender={(menu) => (
-                                    <>
-                                        {menu}
-                                        <Button type="link" icon={<PlusOutlined />} onClick={() => setQuickMaster('category')}>Quick add category</Button>
-                                    </>
-                                )}
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                placeholder="Select division"
+                                options={meta.divisions?.map((item) => ({ value: item.id, label: item.code ? `${item.name} (${item.code})` : item.name }))}
                             />
                         </Form.Item>
                     </div>
                     <div className="form-grid form-grid-3">
                         <Form.Item name="product_code" label="Product Code"><Input placeholder="Optional unique code" /></Form.Item>
+                        <Form.Item name="hs_code" label="HS Code"><Input placeholder="HS / customs code" /></Form.Item>
                         <Form.Item name="sku" label="SKU"><Input /></Form.Item>
+                    </div>
+                    <div className="form-grid form-grid-3">
                         <Form.Item label="Barcode">
                             <Space.Compact block>
                                 <Form.Item name="barcode" noStyle>
@@ -520,14 +522,12 @@ export function ProductsPage() {
                     <div className="form-grid form-grid-3">
                         <Form.Item name="name" label="Product Name" rules={[{ required: true }]}><Input placeholder="e.g. Paracetamol 500mg" /></Form.Item>
                         <Form.Item name="generic_name" label="Generic Name"><Input /></Form.Item>
-                        <Form.Item name="composition" label="Composition"><Input /></Form.Item>
+                        <Form.Item name="packaging_type" label="Packaging Type"><Input placeholder="Box, strip, bottle..." /></Form.Item>
                     </div>
                     <div className="form-grid form-grid-3">
                         <Form.Item name="group_name" label="Group Name"><Input /></Form.Item>
                         <Form.Item name="manufacturer_name" label="Manufacturer"><Input /></Form.Item>
-                        <Form.Item name="formulation" label="Formulation" rules={[{ required: true }]}>
-                            <Select options={meta.formulations?.map((item) => ({ value: item, label: item }))} />
-                        </Form.Item>
+                        <Form.Item name="case_movement" label="Case Movement"><Input placeholder="Fast moving, slow moving, cold chain..." /></Form.Item>
                     </div>
                     <div className="form-grid form-grid-3">
                         <Form.Item name="strength" label="Strength"><Input /></Form.Item>
@@ -557,9 +557,7 @@ export function ProductsPage() {
                         </div>
                     </div>
 
-                    <Divider orientation="left">Description and Image</Divider>
-                    <Form.Item name="keywords" label="Meta Keywords"><Input.TextArea rows={2} /></Form.Item>
-                    <Form.Item name="description" label="Product Description"><Input.TextArea rows={4} /></Form.Item>
+                    <Divider orientation="left">Notes and Image</Divider>
                     <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
                     {editing?.image_url && (
                         <div className="product-image-preview">
@@ -611,9 +609,6 @@ export function ProductsPage() {
                                 <Form.Item name="default_cc_rate" label="Default CC %"><InputNumber min={0} max={100} className="full-width" /></Form.Item>
                             </div>
                         </>
-                    )}
-                    {quickMaster === 'category' && (
-                        <Form.Item name="code" label="Code"><Input /></Form.Item>
                     )}
                 </Form>
             </Modal>

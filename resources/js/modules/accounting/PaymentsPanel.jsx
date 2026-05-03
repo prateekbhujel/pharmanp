@@ -17,6 +17,9 @@ import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 
 export function PaymentsPanel() {
     const { notification } = App.useApp();
+    const initialDirection = ['in', 'out'].includes(new URLSearchParams(window.location.search).get('direction'))
+        ? new URLSearchParams(window.location.search).get('direction')
+        : undefined;
     const [rows, setRows] = useState([]);
     const [meta, setMeta] = useState({ current_page: 1, per_page: 20, total: 0 });
     const [lookups, setLookups] = useState({ payment_modes: [] });
@@ -25,7 +28,7 @@ export function PaymentsPanel() {
     const [editingId, setEditingId] = useState(null);
     const [viewingPayment, setViewingPayment] = useState(null);
     const [range, setRange] = useState([]);
-    const [direction, setDirection] = useState(undefined);
+    const [direction, setDirection] = useState(initialDirection);
     const [deletedMode, setDeletedMode] = useState(false);
     const [outstandingBills, setOutstandingBills] = useState([]);
     const [allocations, setAllocations] = useState([]);
@@ -91,7 +94,11 @@ export function PaymentsPanel() {
             })));
         } else {
             setEditingId(null);
-            form.setFieldsValue({ payment_date: dayjs(), direction: 'out', party_type: 'supplier' });
+            form.setFieldsValue({
+                payment_date: dayjs(),
+                direction: direction || 'out',
+                party_type: (direction || 'out') === 'in' ? 'customer' : 'supplier',
+            });
         }
 
         setDrawerOpen(true);
@@ -197,7 +204,17 @@ export function PaymentsPanel() {
                     <Segmented
                         className="payment-direction-segmented"
                         value={direction || 'all'}
-                        onChange={(value) => setDirection(value === 'all' ? undefined : value)}
+                        onChange={(value) => {
+                            const nextDirection = value === 'all' ? undefined : value;
+                            setDirection(nextDirection);
+                            const url = new URL(window.location.href);
+                            if (nextDirection) {
+                                url.searchParams.set('direction', nextDirection);
+                            } else {
+                                url.searchParams.delete('direction');
+                            }
+                            window.history.replaceState({}, '', url.toString());
+                        }}
                         options={[
                             { value: 'all', label: 'All' },
                             { value: 'in', label: 'In' },

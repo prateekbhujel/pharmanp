@@ -34,7 +34,7 @@ class ProductStoreRequest extends FormRequest
             'hs_code' => ['nullable', 'string', 'max:80'],
             'company_id' => ['required', 'integer', 'exists:companies,id'],
             'store_id' => ['nullable', 'integer', 'exists:stores,id'],
-            'category_id' => ['required', 'integer', 'exists:product_categories,id'],
+            'category_id' => ['nullable', 'integer', 'exists:product_categories,id'],
             'manufacturer_id' => ['nullable', 'integer', 'exists:companies,id'],
             'division_id' => ['nullable', 'integer', 'exists:divisions,id'],
             'unit_id' => ['required', 'integer', 'exists:units,id'],

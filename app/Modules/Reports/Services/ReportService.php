@@ -117,8 +117,8 @@ class ReportService implements ReportServiceInterface
         })->all();
 
         $page['summary'] = [
-            'debit' => round((float) $this->accountTransactionSummaryQuery($request, $from, $to, $accountType)->sum('debit'), 2),
-            'credit' => round((float) $this->accountTransactionSummaryQuery($request, $from, $to, $accountType)->sum('credit'), 2),
+            'debit' => (float) $this->accountTransactionSummaryQuery($request, $from, $to, $accountType)->sum('debit'),
+            'credit' => (float) $this->accountTransactionSummaryQuery($request, $from, $to, $accountType)->sum('credit'),
         ];
 
         return $page;
