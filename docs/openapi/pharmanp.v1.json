@@ -3,7 +3,7 @@
   "info": {
     "title": "PharmaNP API",
     "version": "1.0.0",
-    "description": "Session-authenticated API for the PharmaNP Laravel and React pharmacy ERP/POS application."
+    "description": "PharmaNP ERP API. Same-domain React uses Laravel session cookies and CSRF. Swagger, mobile, and external frontend testing can use an API bearer token issued by php artisan pharmanp:api-token."
   },
   "servers": [
     {
@@ -12,6 +12,9 @@
     }
   ],
   "security": [
+    {
+      "bearerAuth": []
+    },
     {
       "sessionCookie": []
     },
@@ -129,6 +132,11 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-CSRF-TOKEN"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "PharmaNP API token"
       }
     },
     "responses": {
@@ -166,16 +174,24 @@
     "schemas": {
       "ProductWrite": {
         "type": "object",
-        "required": ["name", "company_id", "category_id", "unit_id", "formulation", "mrp", "purchase_price", "selling_price", "reorder_level"],
+        "required": ["name", "company_id", "unit_id", "mrp", "purchase_price", "selling_price", "reorder_level"],
         "properties": {
           "name": { "type": "string", "maxLength": 180 },
           "sku": { "type": "string", "nullable": true },
           "barcode": { "type": "string", "nullable": true },
           "product_code": { "type": "string", "nullable": true },
+          "hs_code": { "type": "string", "nullable": true },
           "company_id": { "type": "integer" },
-          "category_id": { "type": "integer" },
+          "manufacturer_id": { "type": "integer", "nullable": true },
+          "division_id": { "type": "integer", "nullable": true },
+          "category_id": { "type": "integer", "nullable": true },
           "unit_id": { "type": "integer" },
-          "formulation": { "type": "string" },
+          "group_name": { "type": "string", "nullable": true },
+          "generic_name": { "type": "string", "nullable": true },
+          "manufacturer_name": { "type": "string", "nullable": true },
+          "packaging_type": { "type": "string", "nullable": true },
+          "case_movement": { "type": "string", "nullable": true },
+          "formulation": { "type": "string", "nullable": true, "deprecated": true },
           "strength": { "type": "string", "nullable": true },
           "mrp": { "type": "number" },
           "purchase_price": { "type": "number" },

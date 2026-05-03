@@ -2,8 +2,24 @@
 
 Base path: `/api/v1`
 
-Authentication: Laravel session cookie with CSRF token. All app APIs are protected by `auth` and `installed` middleware.
+Authentication: APIs accept either Laravel session cookie authentication or a PharmaNP bearer token. All app APIs are protected by the installed check and authenticated user context.
 Swagger UI: `/api-docs`
+
+## API Tokens
+
+For Swagger, mobile prototypes, Postman, Bruno, or a frontend running without a Laravel session, issue a short-lived bearer token from CLI:
+
+```bash
+php artisan pharmanp:api-token pratik@admin.com --name=Swagger --days=7
+```
+
+Copy the token once and use it in Swagger UI through **Authorize** as:
+
+```text
+Bearer <token>
+```
+
+The plain token is never stored. The database stores only a SHA-256 hash, expiry, owner user, and last-used timestamp. Same-domain React still uses the normal Laravel session and CSRF flow.
 
 ## Endpoint Coverage
 
@@ -55,4 +71,4 @@ Curated source file:
 docs/openapi/pharmanp.v1.json
 ```
 
-Frontend developers can use this document in Swagger UI, Insomnia, Postman, Bruno, or any OpenAPI-compatible client while still using the same Laravel session and CSRF flow as the React app.
+Frontend developers can use this document in Swagger UI, Insomnia, Postman, Bruno, or any OpenAPI-compatible client with either session auth or bearer tokens.

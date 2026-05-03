@@ -7,8 +7,8 @@ PharmaNP is a Laravel + React pharmacy ERP/POS application for Nepal-focused pha
 - Laravel 12
 - React 19, Vite, Tailwind CSS
 - Ant Design
-- SQLite for simple shared-hosting installs; MySQL/MariaDB can be used for larger installs
-- Session/cookie/CSRF auth for same-domain SPA deployment
+- SQLite for simple shared-hosting installs; MySQL/MariaDB for demos and larger installs
+- Session/cookie/CSRF auth for same-domain SPA deployment, plus hashed bearer API tokens for Swagger/mobile/frontend integration testing
 
 ## Local Setup
 
@@ -64,6 +64,16 @@ php artisan pharmanp:demo-load --profile=showcase --yes
 ```
 
 The loader writes chunked multi-tenant pharmacy data and is meant for demo/performance databases, not customer production databases.
+
+For local XAMPP MySQL development, create a database such as `pharmanp_local`, set `.env` to `DB_CONNECTION=mysql`, `DB_HOST=127.0.0.1`, `DB_PORT=3306`, `DB_DATABASE=pharmanp_local`, `DB_USERNAME=root`, then run migrations and seeders.
+
+Swagger/API testing:
+
+```bash
+php artisan pharmanp:api-token pratik@admin.com --name=Swagger --days=7
+```
+
+Open `/api-docs` and use the generated value in the Authorize dialog as a bearer token.
 
 ## Deployment
 

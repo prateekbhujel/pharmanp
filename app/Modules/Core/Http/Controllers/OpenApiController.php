@@ -32,7 +32,8 @@ class OpenApiController extends Controller
                 continue;
             }
 
-            $path = '/'.$uri;
+            $path = '/'.ltrim(Str::after($uri, 'api/v1'), '/');
+            $path = $path === '/' ? '/' : $path;
             $methods = array_values(array_diff($route->methods(), ['HEAD']));
 
             foreach ($methods as $method) {

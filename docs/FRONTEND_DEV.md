@@ -21,7 +21,13 @@ If the frontend is served from Vite while the backend is on another host, set th
 VITE_PHARMANP_API_BASE_URL=http://127.0.0.1:8000 npm run dev
 ```
 
-The app still uses Laravel session auth and CSRF for browser safety. For write requests in a split-origin setup, log in through the backend first so the browser has the Laravel session cookie.
+The app still uses Laravel session auth and CSRF for the normal same-domain browser flow. For Swagger, Postman, mobile prototypes, or a split frontend that should not depend on browser session cookies, ask the backend developer for a short-lived token generated with:
+
+```bash
+php artisan pharmanp:api-token pratik@admin.com --name=FrontendDev --days=7
+```
+
+Use that value as a Bearer token. Do not commit tokens into frontend code or `.env` files.
 
 ## Sparse Checkout Workflow
 
@@ -45,6 +51,8 @@ Do not create a separate frontend repository unless deployment architecture chan
 - Backend module metadata is available from `GET /api/v1/modules`.
 - API contract testing starts from `GET /api/v1/openapi.json`.
 - Swagger UI is available at `/api-docs` on the backend host.
+- Local API docs are available at `http://127.0.0.1:8000/api-docs` after `php artisan serve`.
+- Live API docs are available at `https://pharmanp.pratikbhujel.com.np/api-docs`.
 
 When adding a module, create the screen under `resources/js/modules`, add the lazy route in `routeRegistry.jsx`, and add any endpoints to `resources/js/core/api/endpoints.js`.
 

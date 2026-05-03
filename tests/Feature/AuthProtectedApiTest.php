@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Setting;
 use App\Models\User;
+use App\Core\Services\ApiTokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -37,5 +38,39 @@ class AuthProtectedApiTest extends TestCase
                     'recent_purchases',
                 ],
             ]);
+    }
+
+    public function test_bearer_token_can_call_api_without_session_or_csrf(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create(['is_owner' => true, 'is_active' => true]);
+        $plainToken = app(ApiTokenService::class)->create($user, 'Swagger')['plain_text_token'];
+
+        $this->withHeader('Authorization', 'Bearer '.$plainToken)
+            ->getJson('/api/v1/dashboard/summary')
+            ->assertOk()
+            ->assertJsonPath('data.stats.products', 0);
+
+        $this->withHeader('Authorization', 'Bearer '.$plainToken)
+            ->putJson('/api/v1/setup/branding', [
+                'app_name' => 'PharmaNP Demo',
+                'country_code' => 'NP',
+                'currency_symbol' => 'Rs.',
+                'calendar_type' => 'bs',
+                'show_breadcrumbs' => true,
+                'sidebar_default_collapsed' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.app_name', 'PharmaNP Demo');
+    }
+
+    public function test_invalid_bearer_token_is_rejected(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+
+        $this->withHeader('Authorization', 'Bearer not-a-real-token')
+            ->getJson('/api/v1/dashboard/summary')
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Invalid or expired API token.');
     }
 }
