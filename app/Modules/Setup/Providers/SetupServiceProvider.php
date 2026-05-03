@@ -20,16 +20,19 @@ use App\Modules\Setup\Services\UserManagementService;
 
 class SetupServiceProvider extends BaseModuleServiceProvider
 {
-    protected function bindings(): array
+    public function register()
     {
-        return [
-            AccessControlServiceInterface::class => AccessControlService::class,
-            AccessScopeServiceInterface::class => AccessScopeService::class,
-            FeatureCatalogServiceInterface::class => FeatureCatalogService::class,
-            OrganizationStructureServiceInterface::class => OrganizationStructureService::class,
-            SetupServiceInterface::class => SetupService::class,
-            TargetServiceInterface::class => TargetService::class,
-            UserManagementServiceInterface::class => UserManagementService::class,
-        ];
+        $this->app->bind(AccessControlServiceInterface::class, AccessControlService::class);
+        $this->app->bind(AccessScopeServiceInterface::class, AccessScopeService::class);
+        $this->app->bind(FeatureCatalogServiceInterface::class, FeatureCatalogService::class);
+        $this->app->bind(OrganizationStructureServiceInterface::class, OrganizationStructureService::class);
+        $this->app->bind(SetupServiceInterface::class, SetupService::class);
+        $this->app->bind(TargetServiceInterface::class, TargetService::class);
+        $this->app->bind(UserManagementServiceInterface::class, UserManagementService::class);
+    }
+
+    public function boot()
+    {
+        $this->loadModuleRoutes(__DIR__.'/..');
     }
 }

@@ -1,8 +1,10 @@
 <?php
 
+use App\Core\Services\InstallationService;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\SpaController;
 use App\Modules\Accounting\Http\Controllers\PaymentController;
+use App\Modules\Core\Http\Controllers\OpenApiController;
 use App\Modules\Party\Http\Controllers\CustomerLedgerController;
 use App\Modules\Purchase\Http\Controllers\PurchaseController;
 use App\Modules\Purchase\Http\Controllers\PurchaseReturnController;
@@ -10,7 +12,7 @@ use App\Modules\Sales\Http\Controllers\SalesInvoiceController;
 use App\Modules\Setup\Http\Controllers\SetupController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/api/v1/openapi.json', \App\Modules\Core\Http\Controllers\OpenApiController::class)
+Route::get('/api/v1/openapi.json', OpenApiController::class)
     ->middleware('installed')
     ->name('api.openapi');
 
@@ -18,8 +20,12 @@ Route::view('/api-docs', 'api-docs')
     ->middleware('installed')
     ->name('api.docs');
 
+Route::view('/api/documentation', 'api-docs')
+    ->middleware('installed')
+    ->name('api.documentation');
+
 Route::get('/', function () {
-    if (! app(\App\Core\Services\InstallationService::class)->installed()) {
+    if (! app(InstallationService::class)->installed()) {
         return redirect()->route('setup.show');
     }
 

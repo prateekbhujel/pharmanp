@@ -4,36 +4,9 @@ namespace App\Modules\Base\Providers;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use ReflectionClass;
 
 abstract class BaseModuleServiceProvider extends ServiceProvider
 {
-    /**
-     * @return array<class-string, class-string>
-     */
-    protected function bindings(): array
-    {
-        return [];
-    }
-
-    public function register(): void
-    {
-        foreach ($this->bindings() as $abstract => $concrete) {
-            $this->app->bind($abstract, $concrete);
-        }
-    }
-
-    public function boot(): void
-    {
-        $this->loadModuleRoutes($this->modulePath());
-        $this->bootModule();
-    }
-
-    protected function bootModule(): void
-    {
-        //
-    }
-
     protected function loadModuleRoutes(string $modulePath): void
     {
         $apiPath = $modulePath.'/Routes/api.php';
@@ -50,10 +23,5 @@ abstract class BaseModuleServiceProvider extends ServiceProvider
         if (is_file($webPath)) {
             $this->loadRoutesFrom($webPath);
         }
-    }
-
-    protected function modulePath(): string
-    {
-        return dirname(dirname((new ReflectionClass($this))->getFileName()));
     }
 }

@@ -6,8 +6,10 @@ use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Purchase\Contracts\PurchaseEntryServiceInterface;
 use App\Modules\Purchase\Contracts\PurchaseOrderServiceInterface;
-use App\Modules\Purchase\Models\PurchaseOrder;
+use App\Modules\Purchase\DTOs\PurchaseOrderData;
 use App\Modules\Purchase\Models\Purchase;
+use App\Modules\Purchase\Models\PurchaseOrder;
+use App\Modules\Purchase\Repositories\Interfaces\PurchaseOrderRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,14 +17,18 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
 {
     public function __construct(
         private readonly DocumentNumberService $numbers,
+        private readonly PurchaseOrderRepositoryInterface $orders,
     ) {}
 
     public function create(array $data, User $user): PurchaseOrder
     {
-        return DB::transaction(function () use ($data, $user) {
+        $dto = PurchaseOrderData::fromArray($data);
+
+        return DB::transaction(function () use ($dto, $user) {
+            $data = $dto->toArray();
             [$subtotal, $discountTotal, $grandTotal] = $this->totals($data['items']);
 
-            $order = PurchaseOrder::query()->create([
+            $order = $this->orders->create([
                 'tenant_id' => $user->tenant_id,
                 'company_id' => $user->company_id,
                 'store_id' => $user->store_id,
@@ -46,7 +52,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
                 $gross = $quantity * $unitPrice;
                 $discount = round($gross * $discountPercent / 100, 2);
 
-                $order->items()->create([
+                $this->orders->createItem($order, [
                     'product_id' => $item['product_id'],
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
@@ -57,17 +63,16 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
                 ]);
             }
 
-            return $order->fresh(['supplier', 'items.product']);
+            return $this->orders->fresh($order);
         });
     }
 
     public function receive(PurchaseOrder $order, array $data, User $user, PurchaseEntryServiceInterface $purchases): Purchase
     {
         return DB::transaction(function () use ($order, $data, $user, $purchases) {
-            $order = PurchaseOrder::query()
-                ->with('items')
-                ->lockForUpdate()
-                ->findOrFail($order->id);
+            $dto = PurchaseOrderData::fromArray($data);
+            $data = $dto->toArray();
+            $order = $this->orders->orderForReceive((int) $order->id);
 
             if (in_array($order->status, ['received', 'paid'], true) || $order->received_purchase_id) {
                 throw ValidationException::withMessages([
@@ -76,7 +81,7 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
             }
 
             if ($order->status === 'ordered') {
-                $order->forceFill(['status' => 'approved', 'updated_by' => $user->id])->save();
+                $order = $this->orders->save($order, ['status' => 'approved', 'updated_by' => $user->id]);
             }
 
             $orderItems = $order->items->keyBy('id');
@@ -116,11 +121,11 @@ class PurchaseOrderService implements PurchaseOrderServiceInterface
                 'items' => $purchaseItems,
             ], $user);
 
-            $order->forceFill([
+            $this->orders->save($order, [
                 'status' => 'received',
                 'received_purchase_id' => $purchase->id,
                 'updated_by' => $user->id,
-            ])->save();
+            ]);
 
             return $purchase->fresh(['supplier', 'items.product', 'items.batch']);
         });

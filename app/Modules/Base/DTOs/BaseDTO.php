@@ -12,7 +12,7 @@ abstract readonly class BaseDTO
         $constructor = $class->getConstructor();
 
         if (! $constructor) {
-            return new static();
+            return new static;
         }
 
         $arguments = [];
@@ -23,11 +23,13 @@ abstract readonly class BaseDTO
 
             if (array_key_exists($name, $data)) {
                 $arguments[$name] = $data[$name];
+
                 continue;
             }
 
             if (array_key_exists($snake, $data)) {
                 $arguments[$name] = $data[$snake];
+
                 continue;
             }
 
@@ -44,6 +46,7 @@ abstract readonly class BaseDTO
         $values = get_object_vars($this);
 
         return collect($values)
+            ->filter(fn (mixed $value): bool => $value !== null)
             ->mapWithKeys(function (mixed $value, string $key): array {
                 $snake = strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $key));
 

@@ -2,9 +2,18 @@
 
 namespace App\Modules\{{ module }}\Repositories\Interfaces;
 
-use App\Modules\Base\Repositories\Interfaces\RepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Model;
 
-interface {{ module }}RepositoryInterface extends RepositoryInterface
+interface {{ module }}RepositoryInterface
 {
-    //
+    public function getAll(array $params = []): LengthAwarePaginator;
+
+    public function getById(int|string $id): ?Model;
+
+    public function create(array $data): Model;
+
+    public function update(int|string $id, array $data): ?Model;
+
+    public function delete(int|string $id): bool;
 }

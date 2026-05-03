@@ -2,23 +2,59 @@
 
 namespace App\Modules\{{ module }}\Repositories;
 
-use App\Modules\Base\Repositories\EloquentRepository;
 use App\Modules\{{ module }}\Models\{{ module }};
 use App\Modules\{{ module }}\Repositories\Interfaces\{{ module }}RepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
-class {{ module }}Repository extends EloquentRepository implements {{ module }}RepositoryInterface
+class {{ module }}Repository implements {{ module }}RepositoryInterface
 {
-    protected function modelClass(): string
+    public function __construct(private readonly {{ module }} $model) {}
+
+    public function getAll(array $params = []): LengthAwarePaginator
     {
-        return {{ module }}::class;
+        $query = $this->model->query()
+            ->when($params['tenant_id'] ?? null, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when($params['search'] ?? null, fn (Builder $builder, string $search) => $builder->where('name', 'like', '%'.$search.'%'))
+            ->when(array_key_exists('is_active', $params), fn (Builder $builder) => $builder->where('is_active', (bool) $params['is_active']));
+
+        $sortBy = (string) ($params['sort_by'] ?? 'updated_at');
+        $sortOrder = strtolower((string) ($params['sort_order'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $perPage = min(max((int) ($params['per_page'] ?? 15), 5), 100);
+
+        return $query
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate($perPage, ['*'], 'page', max((int) ($params['page'] ?? 1), 1));
     }
 
-    protected function applyFilters(Builder $query, array $filters): void
+    public function getById(int|string $id): ?Model
     {
-        $query
-            ->when($filters['tenant_id'] ?? null, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
-            ->when($filters['search'] ?? null, fn (Builder $builder, string $search) => $builder->where('name', 'like', '%'.$search.'%'))
-            ->when(array_key_exists('is_active', $filters), fn (Builder $builder) => $builder->where('is_active', (bool) $filters['is_active']));
+        return $this->model->query()->find($id);
+    }
+
+    public function create(array $data): Model
+    {
+        return $this->model->query()->create($data);
+    }
+
+    public function update(int|string $id, array $data): ?Model
+    {
+        $item = $this->getById($id);
+
+        if (! $item) {
+            return null;
+        }
+
+        $item->update($data);
+
+        return $item;
+    }
+
+    public function delete(int|string $id): bool
+    {
+        $item = $this->getById($id);
+
+        return $item ? (bool) $item->delete() : false;
     }
 }

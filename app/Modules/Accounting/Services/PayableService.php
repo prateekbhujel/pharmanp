@@ -3,20 +3,16 @@
 namespace App\Modules\Accounting\Services;
 
 use App\Modules\Accounting\Contracts\PayableServiceInterface;
-use App\Modules\Party\Models\Supplier;
+use App\Modules\Accounting\Repositories\Interfaces\PartyBalanceRepositoryInterface;
 
 class PayableService implements PayableServiceInterface
 {
+    public function __construct(
+        private readonly PartyBalanceRepositoryInterface $balances,
+    ) {}
+
     public function adjustSupplierBalance(int $supplierId, float $amount): void
     {
-        $supplier = Supplier::query()->lockForUpdate()->find($supplierId);
-
-        if (! $supplier) {
-            return;
-        }
-
-        $supplier->forceFill([
-            'current_balance' => max(0, (float) $supplier->current_balance + $amount),
-        ])->save();
+        $this->balances->adjustSupplierBalance($supplierId, $amount);
     }
 }

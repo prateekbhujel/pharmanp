@@ -19,19 +19,18 @@ use Illuminate\Support\Facades\Gate;
 
 class InventoryServiceProvider extends BaseModuleServiceProvider
 {
-    protected function bindings(): array
+    public function register()
     {
-        return [
-            ProductRepositoryInterface::class => ProductRepository::class,
-            ProductServiceInterface::class => ProductService::class,
-            BatchServiceInterface::class => BatchService::class,
-            StockAdjustmentServiceInterface::class => StockAdjustmentService::class,
-            StockMovementServiceInterface::class => StockMovementService::class,
-        ];
+        $this->app->bind(ProductRepositoryInterface::class, ProductRepository::class);
+        $this->app->bind(ProductServiceInterface::class, ProductService::class);
+        $this->app->bind(BatchServiceInterface::class, BatchService::class);
+        $this->app->bind(StockAdjustmentServiceInterface::class, StockAdjustmentService::class);
+        $this->app->bind(StockMovementServiceInterface::class, StockMovementService::class);
     }
 
-    protected function bootModule(): void
+    public function boot()
     {
+        $this->loadModuleRoutes(__DIR__.'/..');
         Gate::policy(Product::class, ProductPolicy::class);
     }
 }

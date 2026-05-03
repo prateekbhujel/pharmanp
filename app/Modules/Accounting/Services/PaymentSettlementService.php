@@ -8,10 +8,10 @@ use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
 use App\Modules\Accounting\Contracts\PayableServiceInterface;
 use App\Modules\Accounting\Contracts\PaymentSettlementServiceInterface;
 use App\Modules\Accounting\Contracts\ReceivableServiceInterface;
+use App\Modules\Accounting\DTOs\PaymentData;
 use App\Modules\Accounting\Models\Payment;
 use App\Modules\Accounting\Models\PaymentBillAllocation;
-use App\Modules\Party\Models\Customer;
-use App\Modules\Party\Models\Supplier;
+use App\Modules\Accounting\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Setup\Models\DropdownOption;
@@ -27,26 +27,25 @@ class PaymentSettlementService implements PaymentSettlementServiceInterface
         private readonly AccountTransactionPostingServiceInterface $accounts,
         private readonly PayableServiceInterface $payables,
         private readonly ReceivableServiceInterface $receivables,
+        private readonly PaymentRepositoryInterface $payments,
     ) {}
 
     public function save(array $data, User $user): Payment
     {
-        return DB::transaction(function () use ($data, $user) {
-            $payment = ! empty($data['id'])
-                ? Payment::query()->with('allocations')->lockForUpdate()->findOrFail($data['id'])
-                : new Payment();
+        $dto = PaymentData::fromArray($data);
+
+        return DB::transaction(function () use ($dto, $user) {
+            $data = $dto->toArray();
+            $payment = $this->payments->getForSettlement($dto->id);
 
             if ($payment->exists) {
                 $this->reverse($payment);
-                PaymentBillAllocation::query()->where('payment_id', $payment->id)->delete();
+                $this->payments->deleteAllocations((int) $payment->id);
                 $this->accounts->replaceForSource($user, 'payment', $payment->id, now()->toDateString(), []);
             }
 
-            $this->assertParty($data['party_type'], (int) $data['party_id'], $user);
-            $paymentMode = DropdownOption::query()
-                ->forAlias('payment_mode')
-                ->active()
-                ->findOrFail($data['payment_mode_id']);
+            $this->assertParty((string) $data['party_type'], (int) $data['party_id'], $user);
+            $paymentMode = $this->payments->paymentMode((int) $data['payment_mode_id']);
 
             $payment->fill([
                 'tenant_id' => $payment->tenant_id ?: $user->tenant_id,
@@ -96,7 +95,7 @@ class PaymentSettlementService implements PaymentSettlementServiceInterface
         DB::transaction(function () use ($payment, $user) {
             $payment->load('allocations');
             $this->reverse($payment);
-            PaymentBillAllocation::query()->where('payment_id', $payment->id)->delete();
+            $this->payments->deleteAllocations((int) $payment->id);
             $this->accounts->replaceForSource($user, 'payment', $payment->id, now()->toDateString(), []);
             $payment->delete();
         });
@@ -105,12 +104,7 @@ class PaymentSettlementService implements PaymentSettlementServiceInterface
     public function outstandingBills(string $partyType, int $partyId, ?User $user = null): Collection
     {
         if ($partyType === 'customer') {
-            return SalesInvoice::query()
-                ->where('customer_id', $partyId)
-                ->when($user?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-                ->whereIn('payment_status', ['unpaid', 'partial'])
-                ->latest('invoice_date')
-                ->get()
+            return $this->payments->outstandingCustomerBills($partyId, $user)
                 ->map(fn (SalesInvoice $invoice) => [
                     'bill_id' => $invoice->id,
                     'bill_type' => 'sales_invoice',
@@ -123,12 +117,7 @@ class PaymentSettlementService implements PaymentSettlementServiceInterface
                 ])->values();
         }
 
-        return Purchase::query()
-            ->where('supplier_id', $partyId)
-            ->when($user?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->whereIn('payment_status', ['unpaid', 'partial'])
-            ->latest('purchase_date')
-            ->get()
+        return $this->payments->outstandingSupplierBills($partyId, $user)
             ->map(fn (Purchase $purchase) => [
                 'bill_id' => $purchase->id,
                 'bill_type' => 'purchase',
@@ -203,7 +192,7 @@ class PaymentSettlementService implements PaymentSettlementServiceInterface
                 ]);
             }
 
-            PaymentBillAllocation::query()->create([
+            $this->payments->createAllocation([
                 'payment_id' => $payment->id,
                 'bill_id' => $bill->id,
                 'bill_type' => $allocation['bill_type'],
@@ -253,28 +242,12 @@ class PaymentSettlementService implements PaymentSettlementServiceInterface
 
     private function resolveBill(string $billType, int $billId, int $partyId, string $partyType): Model
     {
-        if ($billType === 'sales_invoice' && $partyType === 'customer') {
-            return SalesInvoice::query()->lockForUpdate()->where('customer_id', $partyId)->findOrFail($billId);
-        }
-
-        if ($billType === 'purchase' && $partyType === 'supplier') {
-            return Purchase::query()->lockForUpdate()->where('supplier_id', $partyId)->findOrFail($billId);
-        }
-
-        throw ValidationException::withMessages([
-            'allocations' => 'Selected bill does not belong to the chosen party.',
-        ]);
+        return $this->payments->resolveBill($billType, $billId, $partyId, $partyType);
     }
 
     private function assertParty(string $partyType, int $partyId, User $user): void
     {
-        $query = $partyType === 'customer' ? Customer::query() : Supplier::query();
-        $exists = $query
-            ->when($user->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
-            ->whereKey($partyId)
-            ->exists();
-
-        if (! $exists) {
+        if (! $this->payments->partyExists($partyType, $partyId, $user)) {
             throw ValidationException::withMessages(['party_id' => 'Selected party does not exist.']);
         }
     }

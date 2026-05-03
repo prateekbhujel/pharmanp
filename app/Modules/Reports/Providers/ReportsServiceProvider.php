@@ -18,15 +18,18 @@ use App\Modules\Reports\Services\TargetAchievementService;
 
 class ReportsServiceProvider extends BaseModuleServiceProvider
 {
-    protected function bindings(): array
+    public function register()
     {
-        return [
-            AgingReportServiceInterface::class => AgingReportService::class,
-            DumpingReportServiceInterface::class => DumpingReportService::class,
-            ExpiryReportServiceInterface::class => ExpiryReportService::class,
-            PerformanceReportServiceInterface::class => PerformanceReportService::class,
-            ReportServiceInterface::class => ReportService::class,
-            TargetAchievementServiceInterface::class => TargetAchievementService::class,
-        ];
+        $this->app->bind(AgingReportServiceInterface::class, AgingReportService::class);
+        $this->app->bind(DumpingReportServiceInterface::class, DumpingReportService::class);
+        $this->app->bind(ExpiryReportServiceInterface::class, ExpiryReportService::class);
+        $this->app->bind(PerformanceReportServiceInterface::class, PerformanceReportService::class);
+        $this->app->bind(ReportServiceInterface::class, ReportService::class);
+        $this->app->bind(TargetAchievementServiceInterface::class, TargetAchievementService::class);
+    }
+
+    public function boot()
+    {
+        $this->loadModuleRoutes(__DIR__.'/..');
     }
 }

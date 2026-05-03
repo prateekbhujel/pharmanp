@@ -10,11 +10,14 @@ use App\Modules\ImportExport\Services\PurchaseOcrService;
 
 class ImportExportServiceProvider extends BaseModuleServiceProvider
 {
-    protected function bindings(): array
+    public function register()
     {
-        return [
-            ImportPreviewServiceInterface::class => ImportPreviewService::class,
-            PurchaseOcrServiceInterface::class => PurchaseOcrService::class,
-        ];
+        $this->app->bind(ImportPreviewServiceInterface::class, ImportPreviewService::class);
+        $this->app->bind(PurchaseOcrServiceInterface::class, PurchaseOcrService::class);
+    }
+
+    public function boot()
+    {
+        $this->loadModuleRoutes(__DIR__.'/..');
     }
 }

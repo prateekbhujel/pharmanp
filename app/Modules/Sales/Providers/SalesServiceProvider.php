@@ -4,14 +4,20 @@ namespace App\Modules\Sales\Providers;
 
 use App\Modules\Base\Providers\BaseModuleServiceProvider;
 use App\Modules\Sales\Contracts\SalesInvoiceServiceInterface;
+use App\Modules\Sales\Repositories\Interfaces\SalesInvoiceRepositoryInterface;
+use App\Modules\Sales\Repositories\SalesInvoiceRepository;
 use App\Modules\Sales\Services\SalesInvoiceService;
 
 class SalesServiceProvider extends BaseModuleServiceProvider
 {
-    protected function bindings(): array
+    public function register()
     {
-        return [
-            SalesInvoiceServiceInterface::class => SalesInvoiceService::class,
-        ];
+        $this->app->bind(SalesInvoiceRepositoryInterface::class, SalesInvoiceRepository::class);
+        $this->app->bind(SalesInvoiceServiceInterface::class, SalesInvoiceService::class);
+    }
+
+    public function boot()
+    {
+        $this->loadModuleRoutes(__DIR__.'/..');
     }
 }

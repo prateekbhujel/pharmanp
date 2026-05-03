@@ -3,20 +3,16 @@
 namespace App\Modules\Accounting\Services;
 
 use App\Modules\Accounting\Contracts\ReceivableServiceInterface;
-use App\Modules\Party\Models\Customer;
+use App\Modules\Accounting\Repositories\Interfaces\PartyBalanceRepositoryInterface;
 
 class ReceivableService implements ReceivableServiceInterface
 {
+    public function __construct(
+        private readonly PartyBalanceRepositoryInterface $balances,
+    ) {}
+
     public function adjustCustomerBalance(int $customerId, float $amount): void
     {
-        $customer = Customer::query()->lockForUpdate()->find($customerId);
-
-        if (! $customer) {
-            return;
-        }
-
-        $customer->forceFill([
-            'current_balance' => max(0, (float) $customer->current_balance + $amount),
-        ])->save();
+        $this->balances->adjustCustomerBalance($customerId, $amount);
     }
 }

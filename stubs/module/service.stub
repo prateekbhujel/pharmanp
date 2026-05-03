@@ -15,7 +15,7 @@ class {{ module }}Service
 
     public function paginate(array $filters = []): LengthAwarePaginator
     {
-        return $this->repository->paginate($filters);
+        return $this->repository->getAll($filters);
     }
 
     public function create(array $payload): Model
@@ -28,12 +28,12 @@ class {{ module }}Service
     public function update({{ module }} ${{ moduleVariable }}, array $payload): Model
     {
         return DB::transaction(function () use (${{ moduleVariable }}, $payload) {
-            return $this->repository->update(${{ moduleVariable }}, {{ module }}Data::fromArray($payload)->toArray());
+            return $this->repository->update(${{ moduleVariable }}->getKey(), {{ module }}Data::fromArray($payload)->toArray());
         });
     }
 
     public function delete({{ module }} ${{ moduleVariable }}): void
     {
-        DB::transaction(fn () => $this->repository->delete(${{ moduleVariable }}));
+        DB::transaction(fn () => $this->repository->delete(${{ moduleVariable }}->getKey()));
     }
 }

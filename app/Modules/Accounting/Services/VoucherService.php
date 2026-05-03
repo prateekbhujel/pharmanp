@@ -3,12 +3,11 @@
 namespace App\Modules\Accounting\Services;
 
 use App\Core\Services\DocumentNumberService;
-use App\Modules\Accounting\Contracts\VoucherServiceInterface;
 use App\Models\User;
-use App\Modules\Accounting\Models\AccountTransaction;
+use App\Modules\Accounting\Contracts\VoucherServiceInterface;
+use App\Modules\Accounting\DTOs\VoucherData;
 use App\Modules\Accounting\Models\Voucher;
-use App\Modules\Party\Models\Customer;
-use App\Modules\Party\Models\Supplier;
+use App\Modules\Accounting\Repositories\Interfaces\VoucherRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -16,6 +15,7 @@ class VoucherService implements VoucherServiceInterface
 {
     public function __construct(
         private readonly DocumentNumberService $numbers,
+        private readonly VoucherRepositoryInterface $vouchers,
     ) {}
 
     public function create(array $data, User $user): Voucher
@@ -31,19 +31,18 @@ class VoucherService implements VoucherServiceInterface
     public function delete(Voucher $voucher): void
     {
         DB::transaction(function () use ($voucher) {
-            AccountTransaction::query()
-                ->where('source_type', 'voucher')
-                ->where('source_id', $voucher->id)
-                ->delete();
-
-            $voucher->entries()->delete();
-            $voucher->delete();
+            $this->vouchers->deleteTransactions($voucher);
+            $this->vouchers->deleteEntries($voucher);
+            $this->vouchers->delete($voucher);
         });
     }
 
     private function persist(array $data, User $user, ?Voucher $voucher = null): Voucher
     {
-        return DB::transaction(function () use ($data, $user, $voucher) {
+        $dto = VoucherData::fromArray($data);
+
+        return DB::transaction(function () use ($dto, $user, $voucher) {
+            $data = $dto->toArray();
             $debit = collect($data['entries'])->where('entry_type', 'debit')->sum(fn ($entry) => (float) $entry['amount']);
             $credit = collect($data['entries'])->where('entry_type', 'credit')->sum(fn ($entry) => (float) $entry['amount']);
 
@@ -52,13 +51,9 @@ class VoucherService implements VoucherServiceInterface
             }
 
             if ($voucher) {
-                AccountTransaction::query()
-                    ->where('source_type', 'voucher')
-                    ->where('source_id', $voucher->id)
-                    ->delete();
-
-                $voucher->entries()->delete();
-                $voucher->update([
+                $this->vouchers->deleteTransactions($voucher);
+                $this->vouchers->deleteEntries($voucher);
+                $voucher = $this->vouchers->update($voucher, [
                     'voucher_date' => $data['voucher_date'],
                     'voucher_type' => $data['voucher_type'],
                     'total_amount' => round($debit, 2),
@@ -66,7 +61,7 @@ class VoucherService implements VoucherServiceInterface
                     'updated_by' => $user->id,
                 ]);
             } else {
-                $voucher = Voucher::query()->create([
+                $voucher = $this->vouchers->create([
                     'tenant_id' => $user->tenant_id,
                     'company_id' => $user->company_id,
                     'voucher_no' => $this->nextNumber(),
@@ -82,7 +77,7 @@ class VoucherService implements VoucherServiceInterface
             foreach (array_values($data['entries']) as $index => $entry) {
                 $this->assertParty($entry['party_type'] ?? null, $entry['party_id'] ?? null);
 
-                $voucherEntry = $voucher->entries()->create([
+                $voucherEntry = $this->vouchers->createEntry($voucher, [
                     'line_no' => $index + 1,
                     'account_type' => $entry['account_type'],
                     'party_type' => $entry['party_type'] ?? null,
@@ -92,7 +87,7 @@ class VoucherService implements VoucherServiceInterface
                     'notes' => $entry['notes'] ?? null,
                 ]);
 
-                AccountTransaction::query()->create([
+                $this->vouchers->createTransaction([
                     'tenant_id' => $user->tenant_id,
                     'company_id' => $user->company_id,
                     'transaction_date' => $data['voucher_date'],
@@ -108,7 +103,7 @@ class VoucherService implements VoucherServiceInterface
                 ]);
             }
 
-            return $voucher->fresh('entries');
+            return $this->vouchers->fresh($voucher);
         });
     }
 
@@ -119,17 +114,7 @@ class VoucherService implements VoucherServiceInterface
 
     private function assertParty(?string $partyType, ?int $partyId): void
     {
-        if (! $partyType || ! $partyId || $partyType === 'other') {
-            return;
-        }
-
-        $exists = match ($partyType) {
-            'supplier' => Supplier::query()->whereKey($partyId)->exists(),
-            'customer' => Customer::query()->whereKey($partyId)->exists(),
-            default => true,
-        };
-
-        if (! $exists) {
+        if (! $this->vouchers->partyExists($partyType, $partyId)) {
             throw ValidationException::withMessages([
                 'party_id' => 'Selected party does not exist.',
             ]);

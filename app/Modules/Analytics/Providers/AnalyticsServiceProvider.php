@@ -8,10 +8,13 @@ use App\Modules\Base\Providers\BaseModuleServiceProvider;
 
 class AnalyticsServiceProvider extends BaseModuleServiceProvider
 {
-    protected function bindings(): array
+    public function register()
     {
-        return [
-            PharmaSignalServiceInterface::class => PharmaSignalService::class,
-        ];
+        $this->app->bind(PharmaSignalServiceInterface::class, PharmaSignalService::class);
+    }
+
+    public function boot()
+    {
+        $this->loadModuleRoutes(__DIR__.'/..');
     }
 }

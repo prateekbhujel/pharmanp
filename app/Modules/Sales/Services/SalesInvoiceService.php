@@ -5,12 +5,12 @@ namespace App\Modules\Sales\Services;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
-use App\Modules\Inventory\Models\Batch;
-use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
-use App\Modules\Party\Models\Customer;
+use App\Modules\Inventory\Models\Batch;
 use App\Modules\Sales\Contracts\SalesInvoiceServiceInterface;
+use App\Modules\Sales\DTOs\SalesInvoiceData;
 use App\Modules\Sales\Models\SalesInvoice;
+use App\Modules\Sales\Repositories\Interfaces\SalesInvoiceRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,11 +20,15 @@ class SalesInvoiceService implements SalesInvoiceServiceInterface
         private readonly StockMovementServiceInterface $stock,
         private readonly AccountTransactionPostingServiceInterface $accounts,
         private readonly DocumentNumberService $numbers,
+        private readonly SalesInvoiceRepositoryInterface $invoices,
     ) {}
 
     public function create(array $data, User $user): SalesInvoice
     {
-        return DB::transaction(function () use ($data, $user) {
+        $dto = SalesInvoiceData::fromArray($data);
+
+        return DB::transaction(function () use ($dto, $user) {
+            $data = $dto->toArray();
             [$subtotal, $discountTotal, $grandTotal] = $this->totals($data['items']);
             $paidAmount = (float) ($data['paid_amount'] ?? 0);
 
@@ -32,7 +36,7 @@ class SalesInvoiceService implements SalesInvoiceServiceInterface
                 throw ValidationException::withMessages(['paid_amount' => 'Paid amount cannot be greater than invoice total.']);
             }
 
-            $invoice = SalesInvoice::query()->create([
+            $invoice = $this->invoices->createInvoice([
                 'tenant_id' => $user->tenant_id,
                 'company_id' => $user->company_id,
                 'store_id' => $user->store_id,
@@ -61,9 +65,7 @@ class SalesInvoiceService implements SalesInvoiceServiceInterface
             }
 
             if (! empty($data['customer_id'])) {
-                Customer::query()
-                    ->whereKey($data['customer_id'])
-                    ->increment('current_balance', round($grandTotal - $paidAmount, 2));
+                $this->invoices->incrementCustomerBalance((int) $data['customer_id'], round($grandTotal - $paidAmount, 2));
             }
 
             $this->accounts->replaceForSource(
@@ -74,14 +76,14 @@ class SalesInvoiceService implements SalesInvoiceServiceInterface
                 $this->journalEntries($invoice, $paidAmount),
             );
 
-            return $invoice->fresh(['customer', 'medicalRepresentative', 'items.product', 'items.batch']);
+            return $this->invoices->fresh($invoice);
         });
     }
 
     public function updatePayment(SalesInvoice $invoice, array $data, User $user): SalesInvoice
     {
         return DB::transaction(function () use ($invoice, $data, $user) {
-            $invoice = SalesInvoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            $invoice = $this->invoices->invoiceForUpdate((int) $invoice->id);
             $paidAmount = round((float) $data['paid_amount'], 2);
 
             if ($paidAmount > (float) $invoice->grand_total) {
@@ -91,16 +93,14 @@ class SalesInvoiceService implements SalesInvoiceServiceInterface
             $oldDue = round((float) $invoice->grand_total - (float) $invoice->paid_amount, 2);
             $newDue = round((float) $invoice->grand_total - $paidAmount, 2);
 
-            $invoice->forceFill([
+            $this->invoices->saveInvoice($invoice, [
                 'paid_amount' => $paidAmount,
                 'payment_status' => $this->paymentStatus((float) $invoice->grand_total, $paidAmount),
                 'updated_by' => $user->id,
-            ])->save();
+            ]);
 
             if ($invoice->customer_id) {
-                Customer::query()
-                    ->whereKey($invoice->customer_id)
-                    ->increment('current_balance', round($newDue - $oldDue, 2));
+                $this->invoices->incrementCustomerBalance((int) $invoice->customer_id, round($newDue - $oldDue, 2));
             }
 
             $cashAccount = ($data['cash_account'] ?? 'cash') === 'bank' ? 'bank' : 'cash';
@@ -112,13 +112,13 @@ class SalesInvoiceService implements SalesInvoiceServiceInterface
                 $this->journalEntries($invoice, $paidAmount, $cashAccount),
             );
 
-            return $invoice->fresh(['customer', 'medicalRepresentative', 'items.product', 'items.batch', 'returns.items.product', 'returns.items.batch']);
+            return $this->invoices->fresh($invoice, includeReturns: true);
         });
     }
 
     private function postItem(SalesInvoice $invoice, array $item, User $user): void
     {
-        $product = Product::query()->findOrFail($item['product_id']);
+        $product = $this->invoices->product((int) $item['product_id']);
         $quantity = (float) $item['quantity'];
         $freeQuantity = (float) ($item['free_quantity'] ?? 0);
         $issueQuantity = $quantity + $freeQuantity;
@@ -132,7 +132,7 @@ class SalesInvoiceService implements SalesInvoiceServiceInterface
         $freeGoodsValue = round($freeQuantity * ($mrp * $ccRate / 100), 2);
         $lineTotal = round($gross - $discount, 2);
 
-        $invoice->items()->create([
+        $this->invoices->createItem($invoice, [
             'product_id' => $product->id,
             'batch_id' => $batch->id,
             'quantity' => $quantity,
@@ -167,20 +167,7 @@ class SalesInvoiceService implements SalesInvoiceServiceInterface
 
     private function resolveBatch(int $productId, float $quantity, ?int $batchId): Batch
     {
-        $query = Batch::query()
-            ->where('product_id', $productId)
-            ->where('is_active', true)
-            ->where('quantity_available', '>=', $quantity)
-            ->whereNull('deleted_at')
-            ->orderByRaw('expires_at IS NULL')
-            ->orderBy('expires_at')
-            ->orderBy('id');
-
-        if ($batchId) {
-            $query->whereKey($batchId);
-        }
-
-        $batch = $query->lockForUpdate()->first();
+        $batch = $this->invoices->availableBatch($productId, $quantity, $batchId);
 
         if (! $batch) {
             throw ValidationException::withMessages(['items' => 'No batch has enough available stock for one of the selected products.']);

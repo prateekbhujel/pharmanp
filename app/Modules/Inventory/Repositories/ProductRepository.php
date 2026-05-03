@@ -11,21 +11,21 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ProductRepository implements ProductRepositoryInterface
 {
-    private const SORTS = [
-        'name' => 'products.name',
-        'product_code' => 'products.product_code',
-        'hs_code' => 'products.hs_code',
-        'sku' => 'products.sku',
-        'barcode' => 'products.barcode',
-        'mrp' => 'products.mrp',
-        'reorder_level' => 'products.reorder_level',
-        'stock_on_hand' => 'stock_on_hand',
-        'created_at' => 'products.created_at',
-        'updated_at' => 'products.updated_at',
-    ];
-
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
+        $sorts = [
+            'name' => 'products.name',
+            'product_code' => 'products.product_code',
+            'hs_code' => 'products.hs_code',
+            'sku' => 'products.sku',
+            'barcode' => 'products.barcode',
+            'mrp' => 'products.mrp',
+            'reorder_level' => 'products.reorder_level',
+            'stock_on_hand' => 'stock_on_hand',
+            'created_at' => 'products.created_at',
+            'updated_at' => 'products.updated_at',
+        ];
+
         $query = Product::query()
             ->select('products.*')
             ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('products.tenant_id', $tenantId))
@@ -33,8 +33,28 @@ class ProductRepository implements ProductRepositoryInterface
             ->with(['company:id,name', 'unit:id,name', 'category:id,name', 'division:id,name'])
             ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available');
 
-        $this->applyFilters($query, $table);
-        $sortColumn = self::SORTS[$table->sortField] ?? self::SORTS['updated_at'];
+        $query
+            ->when($table->search, function (Builder $builder, string $search) {
+                $builder->where(function (Builder $inner) use ($search) {
+                    $inner->where('products.name', 'like', '%'.$search.'%')
+                        ->orWhere('products.product_code', 'like', '%'.$search.'%')
+                        ->orWhere('products.hs_code', 'like', '%'.$search.'%')
+                        ->orWhere('products.generic_name', 'like', '%'.$search.'%')
+                        ->orWhere('products.sku', 'like', '%'.$search.'%')
+                        ->orWhere('products.barcode', 'like', '%'.$search.'%')
+                        ->orWhere('products.composition', 'like', '%'.$search.'%')
+                        ->orWhere('products.group_name', 'like', '%'.$search.'%')
+                        ->orWhere('products.manufacturer_name', 'like', '%'.$search.'%')
+                        ->orWhere('products.packaging_type', 'like', '%'.$search.'%')
+                        ->orWhere('products.case_movement', 'like', '%'.$search.'%');
+                });
+            })
+            ->when(isset($table->filters['company_id']), fn (Builder $builder) => $builder->where('products.company_id', $table->filters['company_id']))
+            ->when(isset($table->filters['category_id']), fn (Builder $builder) => $builder->where('products.category_id', $table->filters['category_id']))
+            ->when(isset($table->filters['division_id']), fn (Builder $builder) => $builder->where('products.division_id', $table->filters['division_id']))
+            ->when(isset($table->filters['is_active']), fn (Builder $builder) => $builder->where('products.is_active', (bool) $table->filters['is_active']));
+
+        $sortColumn = $sorts[$table->sortField] ?? $sorts['updated_at'];
 
         if ($sortColumn === 'stock_on_hand') {
             $query->orderByRaw('COALESCE(stock_on_hand, 0) '.$table->sortOrder);
@@ -68,29 +88,5 @@ class ProductRepository implements ProductRepositoryInterface
             ->where('company_id', $companyId)
             ->where('sku', $sku)
             ->exists();
-    }
-
-    private function applyFilters(Builder $query, TableQueryData $table): void
-    {
-        $query
-            ->when($table->search, function (Builder $builder, string $search) {
-                $builder->where(function (Builder $inner) use ($search) {
-                    $inner->where('products.name', 'like', '%'.$search.'%')
-                        ->orWhere('products.product_code', 'like', '%'.$search.'%')
-                        ->orWhere('products.hs_code', 'like', '%'.$search.'%')
-                        ->orWhere('products.generic_name', 'like', '%'.$search.'%')
-                        ->orWhere('products.sku', 'like', '%'.$search.'%')
-                        ->orWhere('products.barcode', 'like', '%'.$search.'%')
-                        ->orWhere('products.composition', 'like', '%'.$search.'%')
-                        ->orWhere('products.group_name', 'like', '%'.$search.'%')
-                        ->orWhere('products.manufacturer_name', 'like', '%'.$search.'%')
-                        ->orWhere('products.packaging_type', 'like', '%'.$search.'%')
-                        ->orWhere('products.case_movement', 'like', '%'.$search.'%');
-                });
-            })
-            ->when(isset($table->filters['company_id']), fn (Builder $builder) => $builder->where('products.company_id', $table->filters['company_id']))
-            ->when(isset($table->filters['category_id']), fn (Builder $builder) => $builder->where('products.category_id', $table->filters['category_id']))
-            ->when(isset($table->filters['division_id']), fn (Builder $builder) => $builder->where('products.division_id', $table->filters['division_id']))
-            ->when(isset($table->filters['is_active']), fn (Builder $builder) => $builder->where('products.is_active', (bool) $table->filters['is_active']));
     }
 }

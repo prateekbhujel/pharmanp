@@ -4,14 +4,12 @@ namespace App\Modules\Purchase\Services;
 
 use App\Models\User;
 use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
-use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
-use App\Modules\Party\Models\Supplier;
 use App\Modules\Purchase\Contracts\PurchaseReturnServiceInterface;
+use App\Modules\Purchase\DTOs\PurchaseReturnData;
 use App\Modules\Purchase\Models\Purchase;
-use App\Modules\Purchase\Models\PurchaseItem;
 use App\Modules\Purchase\Models\PurchaseReturn;
-use App\Modules\Purchase\Models\PurchaseReturnItem;
+use App\Modules\Purchase\Repositories\Interfaces\PurchaseReturnRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,13 +18,17 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
     public function __construct(
         private readonly StockMovementServiceInterface $stock,
         private readonly AccountTransactionPostingServiceInterface $accounts,
+        private readonly PurchaseReturnRepositoryInterface $returns,
     ) {}
 
     public function save(array $data, User $user, ?PurchaseReturn $purchaseReturn = null): PurchaseReturn
     {
-        return DB::transaction(function () use ($data, $user, $purchaseReturn) {
+        $dto = PurchaseReturnData::fromArray($data);
+
+        return DB::transaction(function () use ($dto, $user, $purchaseReturn) {
+            $data = $dto->toArray();
             $purchase = ! empty($data['purchase_id'])
-                ? Purchase::query()->findOrFail($data['purchase_id'])
+                ? $this->returns->purchase((int) $data['purchase_id'])
                 : null;
 
             if ($purchase && (int) $purchase->supplier_id !== (int) $data['supplier_id']) {
@@ -36,10 +38,8 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
             if ($purchaseReturn) {
                 $purchaseReturn->load('items');
                 $this->restoreStock($purchaseReturn, $user, false);
-                Supplier::query()
-                    ->whereKey($purchaseReturn->supplier_id)
-                    ->increment('current_balance', (float) $purchaseReturn->grand_total);
-                PurchaseReturnItem::query()->where('purchase_return_id', $purchaseReturn->id)->delete();
+                $this->returns->adjustSupplierBalance((int) $purchaseReturn->supplier_id, (float) $purchaseReturn->grand_total);
+                $this->returns->deleteItems($purchaseReturn);
             }
 
             $rows = collect($data['items'])
@@ -50,8 +50,8 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
                 throw ValidationException::withMessages(['items' => 'Please enter return quantity for at least one line item.']);
             }
 
-            $purchaseReturn ??= new PurchaseReturn();
-            $purchaseReturn->fill([
+            $purchaseReturn ??= new PurchaseReturn;
+            $purchaseReturn = $this->returns->save($purchaseReturn, [
                 'tenant_id' => $user->tenant_id,
                 'company_id' => $user->company_id,
                 'store_id' => $user->store_id,
@@ -66,14 +66,9 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
                 'grand_total' => 0,
                 'notes' => $data['notes'] ?? null,
                 'returned_by' => $user->id,
+                'created_by' => $purchaseReturn->exists ? $purchaseReturn->created_by : $user->id,
                 'updated_by' => $user->id,
             ]);
-
-            if (! $purchaseReturn->exists) {
-                $purchaseReturn->created_by = $user->id;
-            }
-
-            $purchaseReturn->save();
 
             $subtotal = 0;
             $discountTotal = 0;
@@ -85,15 +80,13 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
                 $grandTotal += $lineTotal;
             }
 
-            $purchaseReturn->forceFill([
+            $purchaseReturn = $this->returns->save($purchaseReturn, [
                 'subtotal' => round($subtotal, 2),
                 'discount_total' => round($discountTotal, 2),
                 'grand_total' => round($grandTotal, 2),
-            ])->save();
+            ]);
 
-            Supplier::query()
-                ->whereKey($purchaseReturn->supplier_id)
-                ->decrement('current_balance', (float) $purchaseReturn->grand_total);
+            $this->returns->adjustSupplierBalance((int) $purchaseReturn->supplier_id, -1 * (float) $purchaseReturn->grand_total);
 
             $this->accounts->replaceForSource(
                 $user,
@@ -103,7 +96,7 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
                 $this->journalEntries($purchaseReturn),
             );
 
-            return $purchaseReturn->fresh(['supplier', 'purchase', 'items.product', 'items.batch']);
+            return $this->returns->fresh($purchaseReturn);
         });
     }
 
@@ -113,9 +106,7 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
             $purchaseReturn->load('items');
             $this->restoreStock($purchaseReturn, $user, true);
 
-            Supplier::query()
-                ->whereKey($purchaseReturn->supplier_id)
-                ->increment('current_balance', (float) $purchaseReturn->grand_total);
+            $this->returns->adjustSupplierBalance((int) $purchaseReturn->supplier_id, (float) $purchaseReturn->grand_total);
 
             $this->accounts->replaceForSource(
                 $user,
@@ -125,14 +116,14 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
                 [],
             );
 
-            PurchaseReturnItem::query()->where('purchase_return_id', $purchaseReturn->id)->delete();
-            $purchaseReturn->delete();
+            $this->returns->deleteItems($purchaseReturn);
+            $this->returns->delete($purchaseReturn);
         });
     }
 
     private function postItem(PurchaseReturn $purchaseReturn, ?Purchase $purchase, array $row, User $user): array
     {
-        $batch = Batch::query()->lockForUpdate()->findOrFail($row['batch_id']);
+        $batch = $this->returns->batchForUpdate((int) $row['batch_id']);
         $returnQty = (float) $row['return_qty'];
 
         if ((int) $batch->supplier_id !== (int) $purchaseReturn->supplier_id) {
@@ -148,18 +139,13 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
         $discountPercent = (float) ($row['discount_percent'] ?? 0);
 
         if ($purchase && ! empty($row['purchase_item_id'])) {
-            $purchaseItem = PurchaseItem::query()
-                ->where('purchase_id', $purchase->id)
-                ->findOrFail($row['purchase_item_id']);
+            $purchaseItem = $this->returns->purchaseItem((int) $purchase->id, (int) $row['purchase_item_id']);
 
             if ((int) $purchaseItem->product_id !== (int) $row['product_id']) {
                 throw ValidationException::withMessages(['items' => 'Purchase line product does not match the return row.']);
             }
 
-            $alreadyReturned = (float) PurchaseReturnItem::query()
-                ->where('purchase_item_id', $purchaseItem->id)
-                ->where('purchase_return_id', '<>', $purchaseReturn->id)
-                ->sum('return_qty');
+            $alreadyReturned = $this->returns->returnedQuantityForItem((int) $purchaseItem->id, (int) $purchaseReturn->id);
 
             $maxReturnable = max(0, (float) $purchaseItem->quantity + (float) $purchaseItem->free_quantity - $alreadyReturned);
 
@@ -177,7 +163,7 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
 
         [$discountAmount, $netRate, $returnAmount, $discountPercent] = $this->lineAmounts($returnQty, $rate, $discountPercent, $row);
 
-        PurchaseReturnItem::query()->create([
+        $this->returns->createItem([
             'purchase_return_id' => $purchaseReturn->id,
             'purchase_item_id' => $purchaseItem?->id,
             'batch_id' => $batch->id,
@@ -275,7 +261,7 @@ class PurchaseReturnService implements PurchaseReturnServiceInterface
 
     private function nextNumber(): string
     {
-        $nextId = ((int) DB::table('purchase_returns')->lockForUpdate()->max('id')) + 1;
+        $nextId = $this->returns->nextReturnSequence();
 
         return 'PRN-'.now()->format('Ymd').'-'.str_pad((string) $nextId, 5, '0', STR_PAD_LEFT);
     }

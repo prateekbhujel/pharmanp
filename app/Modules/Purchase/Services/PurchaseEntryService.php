@@ -5,12 +5,11 @@ namespace App\Modules\Purchase\Services;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
-use App\Modules\Inventory\Models\Batch;
-use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Contracts\StockMovementServiceInterface;
-use App\Modules\Party\Models\Supplier;
 use App\Modules\Purchase\Contracts\PurchaseEntryServiceInterface;
+use App\Modules\Purchase\DTOs\PurchaseData;
 use App\Modules\Purchase\Models\Purchase;
+use App\Modules\Purchase\Repositories\Interfaces\PurchaseRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,11 +19,15 @@ class PurchaseEntryService implements PurchaseEntryServiceInterface
         private readonly StockMovementServiceInterface $stock,
         private readonly AccountTransactionPostingServiceInterface $accounts,
         private readonly DocumentNumberService $numbers,
+        private readonly PurchaseRepositoryInterface $purchases,
     ) {}
 
     public function create(array $data, User $user): Purchase
     {
-        return DB::transaction(function () use ($data, $user) {
+        $dto = PurchaseData::fromArray($data);
+
+        return DB::transaction(function () use ($dto, $user) {
+            $data = $dto->toArray();
             [$subtotal, $discountTotal, $grandTotal] = $this->totals($data['items']);
             $paidAmount = (float) ($data['paid_amount'] ?? 0);
 
@@ -32,7 +35,7 @@ class PurchaseEntryService implements PurchaseEntryServiceInterface
                 throw ValidationException::withMessages(['paid_amount' => 'Paid amount cannot be greater than purchase total.']);
             }
 
-            $purchase = Purchase::query()->create([
+            $purchase = $this->purchases->createPurchase([
                 'tenant_id' => $user->tenant_id,
                 'company_id' => $user->company_id,
                 'store_id' => $user->store_id,
@@ -58,9 +61,7 @@ class PurchaseEntryService implements PurchaseEntryServiceInterface
                 $this->postItem($purchase, $item, $user);
             }
 
-            Supplier::query()
-                ->whereKey($data['supplier_id'])
-                ->increment('current_balance', round($grandTotal - $paidAmount, 2));
+            $this->purchases->incrementSupplierBalance((int) $data['supplier_id'], round($grandTotal - $paidAmount, 2));
 
             $this->accounts->replaceForSource(
                 $user,
@@ -70,13 +71,13 @@ class PurchaseEntryService implements PurchaseEntryServiceInterface
                 $this->journalEntries($purchase, $paidAmount),
             );
 
-            return $purchase->fresh(['supplier', 'items.product', 'items.batch']);
+            return $this->purchases->fresh($purchase);
         });
     }
 
     private function postItem(Purchase $purchase, array $item, User $user): void
     {
-        $product = Product::query()->lockForUpdate()->findOrFail($item['product_id']);
+        $product = $this->purchases->productForUpdate((int) $item['product_id']);
         $quantity = (float) $item['quantity'];
         $freeQuantity = (float) ($item['free_quantity'] ?? 0);
         $receivedQuantity = $quantity + $freeQuantity;
@@ -89,15 +90,10 @@ class PurchaseEntryService implements PurchaseEntryServiceInterface
         $freeGoodsValue = round($freeQuantity * ($mrp * $ccRate / 100), 2);
         $lineTotal = round($gross - $discount, 2);
 
-        $batch = Batch::query()
-            ->where('company_id', $purchase->company_id)
-            ->where('product_id', $product->id)
-            ->where('batch_no', $item['batch_no'])
-            ->lockForUpdate()
-            ->first();
+        $batch = $this->purchases->batchForPurchase((int) $purchase->company_id, (int) $product->id, (string) $item['batch_no']);
 
         if (! $batch) {
-            $batch = Batch::query()->create([
+            $batch = $this->purchases->createBatch([
                 'tenant_id' => $purchase->tenant_id,
                 'company_id' => $purchase->company_id,
                 'store_id' => $purchase->store_id,
@@ -118,7 +114,7 @@ class PurchaseEntryService implements PurchaseEntryServiceInterface
             ]);
         }
 
-        $batch->forceFill([
+        $batch = $this->purchases->saveBatch($batch, [
             'supplier_id' => $purchase->supplier_id,
             'purchase_id' => $purchase->id,
             'barcode' => $item['barcode'] ?? $batch->barcode,
@@ -128,9 +124,9 @@ class PurchaseEntryService implements PurchaseEntryServiceInterface
             'purchase_price' => $purchasePrice,
             'mrp' => $mrp,
             'updated_by' => $user->id,
-        ])->save();
+        ]);
 
-        $purchase->items()->create([
+        $this->purchases->createItem($purchase, [
             'product_id' => $product->id,
             'batch_id' => $batch->id,
             'batch_no' => $batch->batch_no,
@@ -147,12 +143,12 @@ class PurchaseEntryService implements PurchaseEntryServiceInterface
             'line_total' => $lineTotal,
         ]);
 
-        $product->forceFill([
+        $this->purchases->saveProduct($product, [
             'purchase_price' => $purchasePrice,
             'mrp' => $mrp,
             'selling_price' => max((float) $product->selling_price, $mrp),
             'updated_by' => $user->id,
-        ])->save();
+        ]);
 
         $this->stock->record([
             'tenant_id' => $purchase->tenant_id,

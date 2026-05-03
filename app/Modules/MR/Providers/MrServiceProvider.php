@@ -10,11 +10,14 @@ use App\Modules\MR\Services\MrPerformanceService;
 
 class MrServiceProvider extends BaseModuleServiceProvider
 {
-    protected function bindings(): array
+    public function register()
     {
-        return [
-            MrManagementServiceInterface::class => MrManagementService::class,
-            MrPerformanceServiceInterface::class => MrPerformanceService::class,
-        ];
+        $this->app->bind(MrManagementServiceInterface::class, MrManagementService::class);
+        $this->app->bind(MrPerformanceServiceInterface::class, MrPerformanceService::class);
+    }
+
+    public function boot()
+    {
+        $this->loadModuleRoutes(__DIR__.'/..');
     }
 }

@@ -4,15 +4,17 @@ namespace App\Modules\Accounting\Services;
 
 use App\Models\User;
 use App\Modules\Accounting\Contracts\AccountTransactionPostingServiceInterface;
-use App\Modules\Accounting\Models\AccountTransaction;
+use App\Modules\Accounting\Repositories\Interfaces\AccountTransactionRepositoryInterface;
 use App\Modules\Accounting\Support\AccountCatalog;
-use App\Modules\Party\Models\Customer;
-use App\Modules\Party\Models\Supplier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AccountTransactionPostingService implements AccountTransactionPostingServiceInterface
 {
+    public function __construct(
+        private readonly AccountTransactionRepositoryInterface $transactions,
+    ) {}
+
     public function replaceForSource(
         User $user,
         string $sourceType,
@@ -21,15 +23,12 @@ class AccountTransactionPostingService implements AccountTransactionPostingServi
         array $entries,
     ): void {
         DB::transaction(function () use ($user, $sourceType, $sourceId, $transactionDate, $entries) {
-            AccountTransaction::query()
-                ->where('source_type', $sourceType)
-                ->where('source_id', $sourceId)
-                ->delete();
+            $this->transactions->deleteBySource($sourceType, $sourceId);
 
             foreach ($entries as $entry) {
                 $this->assertEntry($entry);
 
-                AccountTransaction::query()->create([
+                $this->transactions->create([
                     'tenant_id' => $user->tenant_id,
                     'company_id' => $user->company_id,
                     'transaction_date' => $transactionDate,
@@ -62,13 +61,7 @@ class AccountTransactionPostingService implements AccountTransactionPostingServi
             return;
         }
 
-        $exists = match ($partyType) {
-            'supplier' => Supplier::query()->whereKey($partyId)->exists(),
-            'customer' => Customer::query()->whereKey($partyId)->exists(),
-            default => true,
-        };
-
-        if (! $exists) {
+        if (! $this->transactions->partyExists($partyType, (int) $partyId)) {
             throw ValidationException::withMessages([
                 'party_id' => 'Selected party does not exist.',
             ]);
