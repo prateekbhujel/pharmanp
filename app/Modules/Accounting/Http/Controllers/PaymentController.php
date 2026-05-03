@@ -4,6 +4,7 @@ namespace App\Modules\Accounting\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Support\ApiResponse;
+use App\Http\Controllers\ModularController;
 use App\Models\Setting;
 use App\Modules\Accounting\Models\Payment;
 use App\Modules\Accounting\Services\PaymentSettlementService;
@@ -14,12 +15,31 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
-class PaymentController
+/**
+ * @OA\Tag(
+ *     name="ACCOUNTING - Finance",
+ *     description="API endpoints for ACCOUNTING - Finance"
+ * )
+ */
+class PaymentController extends ModularController
 {
     public function __construct(
         private readonly PaymentSettlementService $payments,
     ) {}
 
+    /**
+     * @OA\Get(
+     *     path="/accounting/payments",
+     *     summary="Api Accounting Payments Index",
+     *     tags={"ACCOUNTING - Payments"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(Request $request): JsonResponse
     {
         $query = Payment::query()
@@ -61,6 +81,21 @@ class PaymentController
         ]);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/accounting/payments",
+     *     summary="Api Accounting Payments Store",
+     *     tags={"ACCOUNTING - Payments"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -91,6 +126,19 @@ class PaymentController
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/accounting/payments/outstanding-bills",
+     *     summary="Api Accounting Payments Outstanding Bills",
+     *     tags={"ACCOUNTING - Payments"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function outstandingBills(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -107,6 +155,19 @@ class PaymentController
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/accounting/payments/{payment}",
+     *     summary="Api Accounting Payments Show",
+     *     tags={"ACCOUNTING - Payments"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function show(Payment $payment): JsonResponse
     {
         return response()->json(['data' => $this->payments->payload($payment, true)]);
@@ -124,6 +185,19 @@ class PaymentController
             ->stream($payment->payment_no.'.pdf');
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/accounting/payments/{payment}",
+     *     summary="Api Accounting Payments Destroy",
+     *     tags={"ACCOUNTING - Payments"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function destroy(Request $request, Payment $payment): JsonResponse
     {
         $this->payments->delete($payment, $request->user());

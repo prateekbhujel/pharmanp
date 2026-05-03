@@ -4,6 +4,15 @@ namespace App\Modules\Setup\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @OA\Schema(
+ *     schema="UserIndexRequest",
+ *     title="User Index Request",
+ *     description="Validated request contract for User Index Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class UserIndexRequest extends FormRequest
 {
     public function authorize(): bool

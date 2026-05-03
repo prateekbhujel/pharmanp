@@ -5,6 +5,17 @@ namespace App\Modules\Accounting\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @OA\Schema(
+ *     schema="VoucherResource",
+ *     title="Voucher Resource",
+ *     description="PharmaNP Voucher Resource response contract",
+ *
+ *     @OA\Property(property="id", type="integer", nullable=true, example=1),
+ *     @OA\Property(property="created_at", type="string", format="date-time", nullable=true),
+ *     @OA\Property(property="updated_at", type="string", format="date-time", nullable=true)
+ * )
+ */
 class VoucherResource extends JsonResource
 {
     public function toArray(Request $request): array

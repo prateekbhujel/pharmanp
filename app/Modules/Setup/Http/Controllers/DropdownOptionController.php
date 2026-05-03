@@ -3,6 +3,9 @@
 namespace App\Modules\Setup\Http\Controllers;
 
 use App\Core\Support\AssetUrl;
+use App\Http\Controllers\ModularController;
+use App\Modules\Accounting\Models\Expense;
+use App\Modules\Accounting\Models\Payment;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,9 +13,28 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
-class DropdownOptionController
+/**
+ * @OA\Tag(
+ *     name="SETUP - Administration",
+ *     description="API endpoints for SETUP - Administration"
+ * )
+ */
+class DropdownOptionController extends ModularController
 {
     // Return all managed dropdown options grouped by alias.
+    /**
+     * @OA\Get(
+     *     path="/settings/dropdown-options",
+     *     summary="Api Settings Dropdown Options Index",
+     *     tags={"SETUP - Dropdown Options"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(Request $request): JsonResponse
     {
         $aliases = DropdownOption::managedAliases();
@@ -35,6 +57,21 @@ class DropdownOptionController
     }
 
     // Create a new dropdown option row.
+    /**
+     * @OA\Post(
+     *     path="/settings/dropdown-options",
+     *     summary="Api Settings Dropdown Options Store",
+     *     tags={"SETUP - Dropdown Options"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(Request $request): JsonResponse
     {
         $validated = $this->validatedPayload($request);
@@ -48,12 +85,27 @@ class DropdownOptionController
         ]);
 
         return response()->json([
-            'message' => $option->alias_label . ' saved successfully.',
+            'message' => $option->alias_label.' saved successfully.',
             'data' => $this->rowPayload($option),
         ]);
     }
 
     // Update one shared dropdown option row.
+    /**
+     * @OA\Put(
+     *     path="/settings/dropdown-options/{dropdownOption}",
+     *     summary="Api Settings Dropdown Options Update",
+     *     tags={"SETUP - Dropdown Options"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function update(Request $request, DropdownOption $dropdownOption): JsonResponse
     {
         $validated = $this->validatedPayload($request, $dropdownOption->id);
@@ -67,11 +119,26 @@ class DropdownOptionController
         ]);
 
         return response()->json([
-            'message' => $dropdownOption->alias_label . ' updated successfully.',
+            'message' => $dropdownOption->alias_label.' updated successfully.',
             'data' => $this->rowPayload($dropdownOption->fresh()),
         ]);
     }
 
+    /**
+     * @OA\Patch(
+     *     path="/settings/dropdown-options/{dropdownOption}/status",
+     *     summary="Api Settings Dropdown Options Status",
+     *     tags={"SETUP - Dropdown Options"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function toggleStatus(Request $request, DropdownOption $dropdownOption): JsonResponse
     {
         abort_unless((bool) $request->user()?->is_owner || (bool) $request->user()?->can('settings.manage'), 403);
@@ -91,6 +158,19 @@ class DropdownOptionController
     }
 
     // Delete only when the option is not already linked anywhere.
+    /**
+     * @OA\Delete(
+     *     path="/settings/dropdown-options/{dropdownOption}",
+     *     summary="Api Settings Dropdown Options Destroy",
+     *     tags={"SETUP - Dropdown Options"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function destroy(DropdownOption $dropdownOption): JsonResponse
     {
         $linked = $this->linkedUsageCount($dropdownOption);
@@ -182,9 +262,9 @@ class DropdownOptionController
     private function linkedUsageCount(DropdownOption $option): int
     {
         return match ($option->alias) {
-            'expense_category' => \App\Modules\Accounting\Models\Expense::query()->where('expense_category_id', $option->id)->count(),
-            'payment_mode' => \App\Modules\Accounting\Models\Expense::query()->where('payment_mode_id', $option->id)->count()
-                + \App\Modules\Accounting\Models\Payment::query()->where('payment_mode_id', $option->id)->count(),
+            'expense_category' => Expense::query()->where('expense_category_id', $option->id)->count(),
+            'payment_mode' => Expense::query()->where('payment_mode_id', $option->id)->count()
+                + Payment::query()->where('payment_mode_id', $option->id)->count(),
             default => 0,
         };
     }

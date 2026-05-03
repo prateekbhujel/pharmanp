@@ -4,6 +4,15 @@ namespace App\Modules\ImportExport\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @OA\Schema(
+ *     schema="ConfirmImportRequest",
+ *     title="Confirm Import Request",
+ *     description="Validated request contract for Confirm Import Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class ConfirmImportRequest extends FormRequest
 {
     public function authorize(): bool

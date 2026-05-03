@@ -5,6 +5,15 @@ namespace App\Modules\Setup\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
+/**
+ * @OA\Schema(
+ *     schema="CompleteSetupRequest",
+ *     title="Complete Setup Request",
+ *     description="Validated request contract for Complete Setup Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class CompleteSetupRequest extends FormRequest
 {
     public function authorize(): bool

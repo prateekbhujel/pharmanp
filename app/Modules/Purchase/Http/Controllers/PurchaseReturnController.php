@@ -2,7 +2,7 @@
 
 namespace App\Modules\Purchase\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Models\Setting;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Purchase\Http\Requests\PurchaseReturnRequest;
@@ -17,8 +17,27 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
-class PurchaseReturnController extends Controller
+/**
+ * @OA\Tag(
+ *     name="PURCHASE - Purchase Workflow",
+ *     description="API endpoints for PURCHASE - Purchase Workflow"
+ * )
+ */
+class PurchaseReturnController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/purchase/returns",
+     *     summary="Api Returns Index",
+     *     tags={"PURCHASE - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(): JsonResponse
     {
         $sorts = [
@@ -60,11 +79,39 @@ class PurchaseReturnController extends Controller
         return PurchaseReturnResource::collection($query)->response();
     }
 
+    /**
+     * @OA\Get(
+     *     path="/purchase/returns/{purchaseReturn}",
+     *     summary="Api Returns Show",
+     *     tags={"PURCHASE - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function show(PurchaseReturn $purchaseReturn): PurchaseReturnResource
     {
         return new PurchaseReturnResource($purchaseReturn->load(['supplier', 'purchase', 'items.product', 'items.batch']));
     }
 
+    /**
+     * @OA\Post(
+     *     path="/purchase/returns",
+     *     summary="Api Returns Store",
+     *     tags={"PURCHASE - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(PurchaseReturnRequest $request, PurchaseReturnService $service): JsonResponse
     {
         $purchaseReturn = $service->save($request->validated(), $request->user());
@@ -78,11 +125,39 @@ class PurchaseReturnController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/purchase/returns/{purchaseReturn}",
+     *     summary="Api Returns Update",
+     *     tags={"PURCHASE - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function update(PurchaseReturnRequest $request, PurchaseReturn $purchaseReturn, PurchaseReturnService $service): PurchaseReturnResource
     {
         return new PurchaseReturnResource($service->save($request->validated(), $request->user(), $purchaseReturn));
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/purchase/returns/{purchaseReturn}",
+     *     summary="Api Returns Destroy",
+     *     tags={"PURCHASE - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function destroy(PurchaseReturn $purchaseReturn, PurchaseReturnService $service): JsonResponse
     {
         $service->delete($purchaseReturn, request()->user());
@@ -90,6 +165,19 @@ class PurchaseReturnController extends Controller
         return response()->json(['message' => 'Purchase return deleted and stock restored.']);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/purchase/returns/purchases",
+     *     summary="Api Purchase Returns Purchases",
+     *     tags={"PURCHASE - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function purchases(): JsonResponse
     {
         $purchases = Purchase::query()
@@ -107,6 +195,19 @@ class PurchaseReturnController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/purchase/returns/purchases/{purchase}/items",
+     *     summary="Api Purchase Returns Purchase Items",
+     *     tags={"PURCHASE - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function items(Purchase $purchase): JsonResponse
     {
         $items = PurchaseItem::query()
@@ -146,6 +247,19 @@ class PurchaseReturnController extends Controller
         return response()->json(['data' => $items]);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/purchase/returns/batches",
+     *     summary="Api Purchase Returns Batches",
+     *     tags={"PURCHASE - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function supplierBatches(): JsonResponse
     {
         return response()->json([

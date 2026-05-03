@@ -4,6 +4,15 @@ namespace App\Modules\Party\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @OA\Schema(
+ *     schema="CustomerRequest",
+ *     title="Customer Request",
+ *     description="Validated request contract for Customer Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class CustomerRequest extends FormRequest
 {
     public function authorize(): bool

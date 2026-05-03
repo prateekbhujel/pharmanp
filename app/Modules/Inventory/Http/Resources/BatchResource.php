@@ -5,6 +5,17 @@ namespace App\Modules\Inventory\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @OA\Schema(
+ *     schema="BatchResource",
+ *     title="Batch Resource",
+ *     description="PharmaNP Batch Resource response contract",
+ *
+ *     @OA\Property(property="id", type="integer", nullable=true, example=1),
+ *     @OA\Property(property="created_at", type="string", format="date-time", nullable=true),
+ *     @OA\Property(property="updated_at", type="string", format="date-time", nullable=true)
+ * )
+ */
 class BatchResource extends JsonResource
 {
     public function toArray(Request $request): array

@@ -3,7 +3,7 @@
 namespace App\Modules\Inventory\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Modules\Inventory\DTOs\ProductData;
 use App\Modules\Inventory\Http\Requests\ProductIndexRequest;
 use App\Modules\Inventory\Http\Requests\ProductStoreRequest;
@@ -18,8 +18,27 @@ use App\Modules\Setup\Models\Division;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class ProductController extends Controller
+/**
+ * @OA\Tag(
+ *     name="INVENTORY - Products and Stock",
+ *     description="API endpoints for INVENTORY - Products and Stock"
+ * )
+ */
+class ProductController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/inventory/products",
+     *     summary="Api Products Index",
+     *     tags={"INVENTORY - Products"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(ProductIndexRequest $request, ProductService $service)
     {
         $this->authorize('viewAny', Product::class);
@@ -35,6 +54,21 @@ class ProductController extends Controller
         return ProductResource::collection($products);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/inventory/products",
+     *     summary="Api Products Store",
+     *     tags={"INVENTORY - Products"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(ProductStoreRequest $request, ProductService $service): JsonResponse
     {
         $this->authorize('create', Product::class);
@@ -51,6 +85,21 @@ class ProductController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/inventory/products/{product}",
+     *     summary="Api Products Update",
+     *     tags={"INVENTORY - Products"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function update(ProductUpdateRequest $request, Product $product, ProductService $service): ProductResource
     {
         $this->authorize('update', $product);
@@ -66,6 +115,19 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/inventory/products/{product}",
+     *     summary="Api Products Destroy",
+     *     tags={"INVENTORY - Products"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function destroy(Request $request, Product $product, ProductService $service): JsonResponse
     {
         $this->authorize('delete', $product);
@@ -75,6 +137,21 @@ class ProductController extends Controller
         return response()->json(['message' => 'Product deleted.']);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/inventory/products/{id}/restore",
+     *     summary="Api Inventory Products Restore",
+     *     tags={"INVENTORY - Products"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function restore(Request $request, int $id, ProductService $service): JsonResponse
     {
         abort_unless($request->user()?->is_owner || $request->user()?->can('inventory.products.update'), 403);
@@ -86,6 +163,21 @@ class ProductController extends Controller
             ->response();
     }
 
+    /**
+     * @OA\Patch(
+     *     path="/inventory/products/{product}/status",
+     *     summary="Api Inventory Products Status",
+     *     tags={"INVENTORY - Products"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function toggleStatus(Request $request, Product $product): JsonResponse
     {
         $this->authorize('update', $product);
@@ -98,6 +190,19 @@ class ProductController extends Controller
         return response()->json(['message' => 'Status updated.']);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/inventory/products/meta",
+     *     summary="Api Inventory Products Meta",
+     *     tags={"INVENTORY - Products"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function meta(): JsonResponse
     {
         $this->authorize('viewAny', Product::class);

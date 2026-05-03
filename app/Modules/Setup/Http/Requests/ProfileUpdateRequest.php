@@ -5,6 +5,15 @@ namespace App\Modules\Setup\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="ProfileUpdateRequest",
+ *     title="Profile Update Request",
+ *     description="Validated request contract for Profile Update Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class ProfileUpdateRequest extends FormRequest
 {
     public function authorize(): bool

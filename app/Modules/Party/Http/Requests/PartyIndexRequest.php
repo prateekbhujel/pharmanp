@@ -4,6 +4,15 @@ namespace App\Modules\Party\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @OA\Schema(
+ *     schema="PartyIndexRequest",
+ *     title="Party Index Request",
+ *     description="Validated request contract for Party Index Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class PartyIndexRequest extends FormRequest
 {
     public function authorize(): bool

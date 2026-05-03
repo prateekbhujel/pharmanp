@@ -6,7 +6,16 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @OA\Schema(schema="{{ module }}Resource")
+ * @OA\Schema(
+ *     schema="{{ module }}Resource",
+ *     title="{{ moduleTitle }} Resource",
+ *     description="{{ moduleTitle }} API resource contract",
+ *     @OA\Property(property="id", type="integer", example=1),
+ *     @OA\Property(property="name", type="string", example="Sample {{ moduleTitle }}"),
+ *     @OA\Property(property="is_active", type="boolean", example=true),
+ *     @OA\Property(property="created_at", type="string", format="date-time", nullable=true),
+ *     @OA\Property(property="updated_at", type="string", format="date-time", nullable=true)
+ * )
  */
 class {{ module }}Resource extends JsonResource
 {

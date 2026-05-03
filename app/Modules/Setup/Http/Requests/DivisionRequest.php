@@ -5,6 +5,15 @@ namespace App\Modules\Setup\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="DivisionRequest",
+ *     title="Division Request",
+ *     description="Validated request contract for Division Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class DivisionRequest extends FormRequest
 {
     public function authorize(): bool

@@ -6,6 +6,15 @@ use App\Modules\Setup\Models\Target;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="TargetRequest",
+ *     title="Target Request",
+ *     description="Validated request contract for Target Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class TargetRequest extends FormRequest
 {
     public function authorize(): bool

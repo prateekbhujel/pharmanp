@@ -2,15 +2,36 @@
 
 namespace App\Modules\Setup\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
-class UserImpersonationController extends Controller
+/**
+ * @OA\Tag(
+ *     name="SETUP - Administration",
+ *     description="API endpoints for SETUP - Administration"
+ * )
+ */
+class UserImpersonationController extends ModularController
 {
+    /**
+     * @OA\Post(
+     *     path="/setup/users/{user}/impersonate",
+     *     summary="Api Setup Users Impersonate Start",
+     *     tags={"SETUP - Users"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function start(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
@@ -47,6 +68,21 @@ class UserImpersonationController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/setup/users/stop-impersonating",
+     *     summary="Api Setup Users Impersonate Stop",
+     *     tags={"SETUP - Users"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function stop(Request $request): JsonResponse
     {
         $impersonatorId = $request->session()->get('impersonator_user_id');

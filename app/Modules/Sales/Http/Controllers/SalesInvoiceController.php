@@ -2,7 +2,7 @@
 
 namespace App\Modules\Sales\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Models\Setting;
 use App\Modules\Sales\Http\Requests\SalesInvoiceStoreRequest;
 use App\Modules\Sales\Http\Resources\SalesInvoiceResource;
@@ -15,8 +15,27 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
-class SalesInvoiceController extends Controller
+/**
+ * @OA\Tag(
+ *     name="SALES - POS and Invoices",
+ *     description="API endpoints for SALES - POS and Invoices"
+ * )
+ */
+class SalesInvoiceController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/sales/invoices",
+     *     summary="Api Invoices Index",
+     *     tags={"SALES - Invoices"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(): JsonResponse
     {
         $sorts = [
@@ -50,6 +69,21 @@ class SalesInvoiceController extends Controller
         return response()->json(SalesInvoiceResource::collection($invoices)->response()->getData(true));
     }
 
+    /**
+     * @OA\Post(
+     *     path="/sales/invoices",
+     *     summary="Api Invoices Store",
+     *     tags={"SALES - Invoices"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(SalesInvoiceStoreRequest $request, SalesInvoiceService $service): JsonResponse
     {
         $invoice = $service->create($request->validated(), $request->user());
@@ -63,11 +97,37 @@ class SalesInvoiceController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/sales/invoices/{invoice}",
+     *     summary="Api Invoices Show",
+     *     tags={"SALES - Invoices"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function show(SalesInvoice $invoice): SalesInvoiceResource
     {
         return new SalesInvoiceResource($invoice->load(['customer', 'medicalRepresentative', 'items.product', 'items.batch', 'returns.items.product', 'returns.items.batch']));
     }
 
+    /**
+     * @OA\Get(
+     *     path="/sales/invoices/{invoice}/items",
+     *     summary="Api Sales Invoices Items",
+     *     tags={"SALES - Invoices"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function items(SalesInvoice $invoice): JsonResponse
     {
         $invoice->load(['items.product', 'items.batch']);
@@ -77,6 +137,19 @@ class SalesInvoiceController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/sales/invoices/{invoice}/returns",
+     *     summary="Api Sales Invoices Returns",
+     *     tags={"SALES - Invoices"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function returns(SalesInvoice $invoice): JsonResponse
     {
         $invoice->load(['returns.items.product', 'returns.items.batch']);
@@ -86,6 +159,21 @@ class SalesInvoiceController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Patch(
+     *     path="/sales/invoices/{invoice}/payment",
+     *     summary="Api Sales Invoices Payment",
+     *     tags={"SALES - Invoices"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function updatePayment(Request $request, SalesInvoice $invoice, SalesInvoiceService $service): SalesInvoiceResource
     {
         $validated = $request->validate([

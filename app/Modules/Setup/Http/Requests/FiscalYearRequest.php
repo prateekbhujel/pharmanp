@@ -5,6 +5,15 @@ namespace App\Modules\Setup\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
+/**
+ * @OA\Schema(
+ *     schema="FiscalYearRequest",
+ *     title="Fiscal Year Request",
+ *     description="Validated request contract for Fiscal Year Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class FiscalYearRequest extends FormRequest
 {
     public function authorize(): bool

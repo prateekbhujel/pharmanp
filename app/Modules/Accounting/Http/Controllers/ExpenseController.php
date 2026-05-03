@@ -4,6 +4,7 @@ namespace App\Modules\Accounting\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Support\ApiResponse;
+use App\Http\Controllers\ModularController;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Models\Expense;
 use App\Modules\Setup\Models\DropdownOption;
@@ -12,9 +13,28 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
-class ExpenseController
+/**
+ * @OA\Tag(
+ *     name="ACCOUNTING - Finance",
+ *     description="API endpoints for ACCOUNTING - Finance"
+ * )
+ */
+class ExpenseController extends ModularController
 {
     // Return paginated expenses with filters and summary stats.
+    /**
+     * @OA\Get(
+     *     path="/accounting/expenses",
+     *     summary="Api Accounting Expenses Index",
+     *     tags={"ACCOUNTING - Expenses"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(Request $request): JsonResponse
     {
         $query = Expense::query()
@@ -97,6 +117,21 @@ class ExpenseController
     }
 
     // Create or update one expense and keep accounting entries in sync.
+    /**
+     * @OA\Post(
+     *     path="/accounting/expenses",
+     *     summary="Api Accounting Expenses Store",
+     *     tags={"ACCOUNTING - Expenses"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -178,6 +213,19 @@ class ExpenseController
     }
 
     // Delete one expense and remove its linked accounting entries.
+    /**
+     * @OA\Delete(
+     *     path="/accounting/expenses/{expense}",
+     *     summary="Api Accounting Expenses Destroy",
+     *     tags={"ACCOUNTING - Expenses"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function destroy(Expense $expense): JsonResponse
     {
         DB::transaction(function () use ($expense) {

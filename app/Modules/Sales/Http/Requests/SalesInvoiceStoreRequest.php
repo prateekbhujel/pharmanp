@@ -4,6 +4,15 @@ namespace App\Modules\Sales\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @OA\Schema(
+ *     schema="SalesInvoiceStoreRequest",
+ *     title="Sales Invoice Store Request",
+ *     description="Validated request contract for Sales Invoice Store Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class SalesInvoiceStoreRequest extends FormRequest
 {
     public function authorize(): bool

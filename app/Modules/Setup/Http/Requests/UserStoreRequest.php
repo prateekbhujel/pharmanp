@@ -5,6 +5,15 @@ namespace App\Modules\Setup\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="UserStoreRequest",
+ *     title="User Store Request",
+ *     description="Validated request contract for User Store Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class UserStoreRequest extends FormRequest
 {
     public function authorize(): bool

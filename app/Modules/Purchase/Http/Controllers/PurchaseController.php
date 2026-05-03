@@ -2,7 +2,7 @@
 
 namespace App\Modules\Purchase\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Models\Setting;
 use App\Modules\Purchase\Http\Requests\PurchaseStoreRequest;
 use App\Modules\Purchase\Http\Resources\PurchaseResource;
@@ -12,8 +12,27 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
-class PurchaseController extends Controller
+/**
+ * @OA\Tag(
+ *     name="PURCHASE - Purchase Workflow",
+ *     description="API endpoints for PURCHASE - Purchase Workflow"
+ * )
+ */
+class PurchaseController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/purchases",
+     *     summary="Api Purchases Index",
+     *     tags={"PURCHASE - Purchase Bills"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(): JsonResponse
     {
         $sorts = [
@@ -47,6 +66,21 @@ class PurchaseController extends Controller
         return response()->json(PurchaseResource::collection($purchases)->response()->getData(true));
     }
 
+    /**
+     * @OA\Post(
+     *     path="/purchases",
+     *     summary="Api Purchases Store",
+     *     tags={"PURCHASE - Purchase Bills"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(PurchaseStoreRequest $request, PurchaseEntryService $service): JsonResponse
     {
         $purchase = $service->create($request->validated(), $request->user());

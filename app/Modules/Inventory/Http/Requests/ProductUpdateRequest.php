@@ -6,6 +6,15 @@ use App\Modules\Inventory\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="ProductUpdateRequest",
+ *     title="Product Update Request",
+ *     description="Validated request contract for Product Update Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class ProductUpdateRequest extends FormRequest
 {
     public function authorize(): bool

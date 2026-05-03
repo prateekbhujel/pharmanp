@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Core\Modules\ModuleStructureInspector;
+use App\Core\OpenApi\OpenApiAnnotationInspector;
 use Tests\TestCase;
 
 class ModuleArchitectureTest extends TestCase
@@ -27,5 +28,16 @@ class ModuleArchitectureTest extends TestCase
             ->all();
 
         $this->assertSame([], $unbound);
+    }
+
+    public function test_api_modules_keep_pis_style_openapi_contracts(): void
+    {
+        $rows = app(OpenApiAnnotationInspector::class)->inspect();
+        $failures = collect($rows)
+            ->filter(fn (array $row): bool => $row['status'] === 'failed')
+            ->values()
+            ->all();
+
+        $this->assertSame([], $failures);
     }
 }

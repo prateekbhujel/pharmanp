@@ -8,8 +8,27 @@ use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class CurrentUserController extends Controller
+/**
+ * @OA\Tag(
+ *     name="CORE - Current User",
+ *     description="API endpoint for authenticated user, permissions and branding bootstrap"
+ * )
+ */
+class CurrentUserController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/me",
+     *     summary="Api Me",
+     *     tags={"CORE - Current User"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function __invoke(Request $request): JsonResponse
     {
         $user = $request->user()->loadMissing(['roles:id,name', 'branch:id,name,code,type', 'medicalRepresentative:id,name']);

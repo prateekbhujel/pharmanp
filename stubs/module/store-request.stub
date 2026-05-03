@@ -4,6 +4,16 @@ namespace App\Modules\{{ module }}\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @OA\Schema(
+ *     schema="Store{{ module }}Request",
+ *     title="Store {{ moduleTitle }} Request",
+ *     description="Validated create request contract for {{ moduleTitle }}",
+ *     required={"name"},
+ *     @OA\Property(property="name", type="string", example="Sample {{ moduleTitle }}"),
+ *     @OA\Property(property="is_active", type="boolean", example=true)
+ * )
+ */
 class Store{{ module }}Request extends FormRequest
 {
     public function authorize(): bool

@@ -2,7 +2,7 @@
 
 namespace App\Modules\{{ module }}\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Modules\{{ module }}\Http\Requests\Store{{ module }}Request;
 use App\Modules\{{ module }}\Http\Requests\Update{{ module }}Request;
 use App\Modules\{{ module }}\Http\Resources\{{ module }}Collection;
@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
  *     description="API endpoints for {{ moduleTitle }} management"
  * )
  */
-class {{ module }}Controller extends Controller
+class {{ module }}Controller extends ModularController
 {
     public function __construct(private readonly {{ module }}Service $service) {}
 
@@ -51,9 +51,11 @@ class {{ module }}Controller extends Controller
      */
     public function store(Store{{ module }}Request $request): JsonResponse
     {
-        return response()->json([
-            'data' => new {{ module }}Resource($this->service->create($request->validated())),
-        ], 201);
+        return $this->success(
+            new {{ module }}Resource($this->service->create($request->validated())),
+            '{{ moduleTitle }} created successfully',
+            201,
+        );
     }
 
     /**
@@ -68,9 +70,7 @@ class {{ module }}Controller extends Controller
      */
     public function show({{ module }} ${{ moduleVariable }}): JsonResponse
     {
-        return response()->json([
-            'data' => new {{ module }}Resource(${{ moduleVariable }}),
-        ]);
+        return $this->success(new {{ module }}Resource(${{ moduleVariable }}), '{{ moduleTitle }} retrieved successfully');
     }
 
     /**
@@ -86,9 +86,10 @@ class {{ module }}Controller extends Controller
      */
     public function update(Update{{ module }}Request $request, {{ module }} ${{ moduleVariable }}): JsonResponse
     {
-        return response()->json([
-            'data' => new {{ module }}Resource($this->service->update(${{ moduleVariable }}, $request->validated())),
-        ]);
+        return $this->success(
+            new {{ module }}Resource($this->service->update(${{ moduleVariable }}, $request->validated())),
+            '{{ moduleTitle }} updated successfully',
+        );
     }
 
     /**
@@ -105,6 +106,6 @@ class {{ module }}Controller extends Controller
     {
         $this->service->delete(${{ moduleVariable }});
 
-        return response()->json(['message' => '{{ moduleTitle }} deleted.']);
+        return $this->success(null, '{{ moduleTitle }} deleted successfully');
     }
 }

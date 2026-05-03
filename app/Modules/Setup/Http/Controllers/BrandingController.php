@@ -4,16 +4,35 @@ namespace App\Modules\Setup\Http\Controllers;
 
 use App\Core\Support\AssetUrl;
 use App\Core\Support\ProductMeta;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Models\Setting;
 use App\Modules\Setup\Http\Requests\BrandingSettingsRequest;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
-class BrandingController extends Controller
+/**
+ * @OA\Tag(
+ *     name="SETUP - Administration",
+ *     description="API endpoints for SETUP - Administration"
+ * )
+ */
+class BrandingController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/setup/branding",
+     *     summary="Api Setup Branding Show",
+     *     tags={"SETUP - Branding"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function show(): JsonResponse
     {
         abort_unless(request()->user()?->is_owner || request()->user()?->can('setup.manage'), 403);
@@ -21,6 +40,21 @@ class BrandingController extends Controller
         return response()->json(['data' => $this->branding()]);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/setup/branding",
+     *     summary="Api Setup Branding Store",
+     *     tags={"SETUP - Branding"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function update(BrandingSettingsRequest $request): JsonResponse
     {
         $current = $this->storedBranding();

@@ -5,6 +5,15 @@ namespace App\Modules\Inventory\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="BatchRequest",
+ *     title="Batch Request",
+ *     description="Validated request contract for Batch Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class BatchRequest extends FormRequest
 {
     public function authorize(): bool

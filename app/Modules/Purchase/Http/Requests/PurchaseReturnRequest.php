@@ -4,6 +4,15 @@ namespace App\Modules\Purchase\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @OA\Schema(
+ *     schema="PurchaseReturnRequest",
+ *     title="Purchase Return Request",
+ *     description="Validated request contract for Purchase Return Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class PurchaseReturnRequest extends FormRequest
 {
     public function authorize(): bool

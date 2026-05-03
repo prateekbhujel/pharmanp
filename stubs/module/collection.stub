@@ -5,6 +5,15 @@ namespace App\Modules\{{ module }}\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
+/**
+ * @OA\Schema(
+ *     schema="{{ module }}Collection",
+ *     title="{{ moduleTitle }} Collection",
+ *     description="Paginated {{ moduleTitle }} collection",
+ *     @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/{{ module }}Resource")),
+ *     @OA\Property(property="meta", type="object")
+ * )
+ */
 class {{ module }}Collection extends ResourceCollection
 {
     public $collects = {{ module }}Resource::class;

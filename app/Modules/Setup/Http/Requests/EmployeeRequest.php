@@ -5,6 +5,15 @@ namespace App\Modules\Setup\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="EmployeeRequest",
+ *     title="Employee Request",
+ *     description="Validated request contract for Employee Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class EmployeeRequest extends FormRequest
 {
     public function authorize(): bool

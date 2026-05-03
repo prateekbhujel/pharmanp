@@ -5,6 +5,15 @@ namespace App\Modules\ImportExport\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="PreviewImportRequest",
+ *     title="Preview Import Request",
+ *     description="Validated request contract for Preview Import Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class PreviewImportRequest extends FormRequest
 {
     public function authorize(): bool

@@ -3,7 +3,7 @@
 namespace App\Modules\MR\Http\Controllers;
 
 use App\Core\Support\ApiResponse;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Modules\MR\Models\Branch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -12,9 +12,28 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-class BranchController extends Controller
+/**
+ * @OA\Tag(
+ *     name="FIELD FORCE - MR Tracking",
+ *     description="API endpoints for FIELD FORCE - MR Tracking"
+ * )
+ */
+class BranchController extends ModularController
 {
     // Return flat list with optional hierarchy info, used for selects and management.
+    /**
+     * @OA\Get(
+     *     path="/mr/branches",
+     *     summary="Api Branches Index",
+     *     tags={"FIELD FORCE - Branches"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(Request $request): JsonResponse
     {
         $this->ensureCanManage($request);
@@ -56,6 +75,21 @@ class BranchController extends Controller
     }
 
     // Create a new branch.
+    /**
+     * @OA\Post(
+     *     path="/mr/branches",
+     *     summary="Api Branches Store",
+     *     tags={"FIELD FORCE - Branches"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(Request $request): JsonResponse
     {
         $this->ensureCanManage($request);
@@ -75,6 +109,21 @@ class BranchController extends Controller
     }
 
     // Update an existing branch.
+    /**
+     * @OA\Put(
+     *     path="/mr/branches/{branch}",
+     *     summary="Api Branches Update",
+     *     tags={"FIELD FORCE - Branches"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function update(Request $request, Branch $branch): JsonResponse
     {
         $this->ensureCanManage($request);
@@ -89,6 +138,21 @@ class BranchController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Patch(
+     *     path="/mr/branches/{branch}/status",
+     *     summary="Api Mr Branches Status",
+     *     tags={"FIELD FORCE - Branches"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function toggleStatus(Request $request, Branch $branch): JsonResponse
     {
         $this->ensureCanManage($request);
@@ -107,6 +171,19 @@ class BranchController extends Controller
     }
 
     // Delete a branch only when it has no assigned MRs.
+    /**
+     * @OA\Delete(
+     *     path="/mr/branches/{branch}",
+     *     summary="Api Branches Destroy",
+     *     tags={"FIELD FORCE - Branches"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function destroy(Request $request, Branch $branch): JsonResponse
     {
         $this->ensureCanManage($request);
@@ -132,6 +209,21 @@ class BranchController extends Controller
         return response()->json(['message' => 'Branch deleted.']);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/mr/branches/{id}/restore",
+     *     summary="Api Mr Branches Restore",
+     *     tags={"FIELD FORCE - Branches"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function restore(Request $request, int $id): JsonResponse
     {
         $this->ensureCanManage($request);
@@ -154,6 +246,19 @@ class BranchController extends Controller
     }
 
     // Lightweight options list for Select dropdowns.
+    /**
+     * @OA\Get(
+     *     path="/mr/branches/options",
+     *     summary="Api Mr Branches Options",
+     *     tags={"FIELD FORCE - Branches"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function options(Request $request): JsonResponse
     {
         $options = Branch::query()

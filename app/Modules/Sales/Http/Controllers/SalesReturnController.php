@@ -4,6 +4,7 @@ namespace App\Modules\Sales\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Support\ApiResponse;
+use App\Http\Controllers\ModularController;
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Inventory\Services\StockMovementService;
 use App\Modules\Sales\Models\SalesInvoice;
@@ -15,9 +16,28 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class SalesReturnController
+/**
+ * @OA\Tag(
+ *     name="SALES - POS and Invoices",
+ *     description="API endpoints for SALES - POS and Invoices"
+ * )
+ */
+class SalesReturnController extends ModularController
 {
     // Return paginated sales returns.
+    /**
+     * @OA\Get(
+     *     path="/sales/returns",
+     *     summary="Api Sales Returns Index",
+     *     tags={"SALES - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(Request $request): JsonResponse
     {
         $query = SalesReturn::query()
@@ -77,6 +97,19 @@ class SalesReturnController
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/sales/returns/{salesReturn}",
+     *     summary="Api Sales Returns Show",
+     *     tags={"SALES - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function show(SalesReturn $salesReturn): JsonResponse
     {
         return response()->json([
@@ -85,6 +118,21 @@ class SalesReturnController
     }
 
     // Create a sales return: reverse stock and post accounting entries.
+    /**
+     * @OA\Post(
+     *     path="/sales/returns",
+     *     summary="Api Sales Returns Store",
+     *     tags={"SALES - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(Request $request, StockMovementService $stock): JsonResponse
     {
         $validated = $this->validatePayload($request);
@@ -129,6 +177,21 @@ class SalesReturnController
         ]);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/sales/returns/{salesReturn}",
+     *     summary="Api Sales Returns Update",
+     *     tags={"SALES - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function update(Request $request, SalesReturn $salesReturn, StockMovementService $stock): JsonResponse
     {
         $validated = $this->validatePayload($request);
@@ -176,6 +239,19 @@ class SalesReturnController
     }
 
     // Delete a sales return and reverse its effects.
+    /**
+     * @OA\Delete(
+     *     path="/sales/returns/{salesReturn}",
+     *     summary="Api Sales Returns Destroy",
+     *     tags={"SALES - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function destroy(Request $request, SalesReturn $salesReturn, StockMovementService $stock): JsonResponse
     {
         DB::transaction(function () use ($salesReturn, $stock, $request) {
@@ -197,6 +273,19 @@ class SalesReturnController
     }
 
     // Return invoices available for return selection.
+    /**
+     * @OA\Get(
+     *     path="/sales/returns/invoice-options",
+     *     summary="Api Sales Returns Invoice Options",
+     *     tags={"SALES - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function invoiceOptions(Request $request): JsonResponse
     {
         $query = SalesInvoice::query()
@@ -227,6 +316,19 @@ class SalesReturnController
     }
 
     // Return items from a specific invoice for return form.
+    /**
+     * @OA\Get(
+     *     path="/sales/returns/invoices/{invoice}/items",
+     *     summary="Api Sales Returns Invoice Items",
+     *     tags={"SALES - Returns"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function invoiceItems(SalesInvoice $invoice): JsonResponse
     {
         return response()->json([

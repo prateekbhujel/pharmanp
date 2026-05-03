@@ -2,7 +2,7 @@
 
 namespace App\Modules\ImportExport\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Models\User;
 use App\Modules\Accounting\Models\Expense;
 use App\Modules\Accounting\Models\Payment;
@@ -20,12 +20,31 @@ use App\Modules\Sales\Models\SalesInvoice;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Rap2hpoutre\FastExcel\FastExcel;
 
-class ExportController extends Controller
+/**
+ * @OA\Tag(
+ *     name="IMPORT EXPORT - Imports and OCR",
+ *     description="API endpoints for IMPORT EXPORT - Imports and OCR"
+ * )
+ */
+class ExportController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/exports/inventory/masters/{master}/{format}",
+     *     summary="Api Exports Inventory Masters",
+     *     tags={"IMPORT EXPORT - Exports"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function inventoryMaster(Request $request, string $master, string $format)
     {
         $this->authorize('viewAny', Product::class);
@@ -41,6 +60,19 @@ class ExportController extends Controller
         return $this->download($format, $master.'.xlsx', $master.'.pdf', $title, $rows);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/exports/inventory/products/{format}",
+     *     summary="Api Exports Inventory Products",
+     *     tags={"IMPORT EXPORT - Exports"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function inventoryProducts(Request $request, string $format)
     {
         $this->authorize('viewAny', Product::class);
@@ -78,6 +110,19 @@ class ExportController extends Controller
         return $this->download($format, 'inventory-products.xlsx', 'inventory-products.pdf', 'Inventory Product List', $rows);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/exports/inventory/batches/{format}",
+     *     summary="Api Exports Inventory Batches",
+     *     tags={"IMPORT EXPORT - Exports"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function inventoryBatches(Request $request, string $format)
     {
         $this->authorize('viewAny', Product::class);
@@ -115,6 +160,19 @@ class ExportController extends Controller
         return $this->download($format, 'inventory-batches.xlsx', 'inventory-batches.pdf', 'Inventory Batch List', $rows);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/exports/{dataset}/{format}",
+     *     summary="Api Exports Dataset",
+     *     tags={"IMPORT EXPORT - Exports"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function dataset(Request $request, string $dataset, string $format)
     {
         [$title, $rows] = match ($dataset) {

@@ -5,6 +5,15 @@ namespace App\Modules\Inventory\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="InventoryMasterRequest",
+ *     title="Inventory Master Request",
+ *     description="Validated request contract for Inventory Master Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class InventoryMasterRequest extends FormRequest
 {
     public function authorize(): bool

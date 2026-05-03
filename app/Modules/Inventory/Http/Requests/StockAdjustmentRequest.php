@@ -6,6 +6,15 @@ use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="StockAdjustmentRequest",
+ *     title="Stock Adjustment Request",
+ *     description="Validated request contract for Stock Adjustment Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class StockAdjustmentRequest extends FormRequest
 {
     public function authorize(): bool

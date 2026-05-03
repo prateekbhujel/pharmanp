@@ -2,6 +2,7 @@
 
 namespace App\Modules\MR\Http\Controllers;
 
+use App\Http\Controllers\ModularController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -10,18 +11,37 @@ use Illuminate\Support\Facades\DB;
  * Product-level sales breakdown per MR and per branch.
  * HQ sees all branches. Branch manager sees their branch. MR sees their own data.
  */
-class MrBranchSalesController
+/**
+ * @OA\Tag(
+ *     name="FIELD FORCE - MR Tracking",
+ *     description="API endpoints for FIELD FORCE - MR Tracking"
+ * )
+ */
+class MrBranchSalesController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/mr/branch-sales",
+     *     summary="Api Mr Branch Sales",
+     *     tags={"FIELD FORCE - Branch Sales"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function __invoke(Request $request): JsonResponse
     {
-        $user   = $request->user();
+        $user = $request->user();
         $params = $request->query();
 
-        $from   = ! empty($params['from']) ? (string) $params['from'] : null;
-        $to     = ! empty($params['to']) ? (string) $params['to'] : null;
-        $branchId     = isset($params['branch_id'])   ? (int) $params['branch_id']   : null;
-        $representativeId = isset($params['mr_id']) ? (int) $params['mr_id']   : null;
-        $productId    = isset($params['product_id']) ? (int) $params['product_id'] : null;
+        $from = ! empty($params['from']) ? (string) $params['from'] : null;
+        $to = ! empty($params['to']) ? (string) $params['to'] : null;
+        $branchId = isset($params['branch_id']) ? (int) $params['branch_id'] : null;
+        $representativeId = isset($params['mr_id']) ? (int) $params['mr_id'] : null;
+        $productId = isset($params['product_id']) ? (int) $params['product_id'] : null;
 
         // Scope by role: MR sees only themselves, branch manager sees own branch
         if ($user->hasRole('MR') && $user->medical_representative_id) {
@@ -57,12 +77,13 @@ class MrBranchSalesController
         // Roll up totals per branch
         $branchSummary = $rows->groupBy('branch_id')->map(function ($items, $branchId) {
             $first = $items->first();
+
             return [
-                'branch_id'   => $branchId,
+                'branch_id' => $branchId,
                 'branch_name' => $first->branch_name ?? 'Unassigned',
                 'total_value' => (float) $items->sum('total_value'),
-                'total_qty'   => (float) $items->sum('total_qty'),
-                'mr_count'    => $items->pluck('mr_id')->filter()->unique()->count(),
+                'total_qty' => (float) $items->sum('total_qty'),
+                'mr_count' => $items->pluck('mr_id')->filter()->unique()->count(),
                 'top_product' => $items->sortByDesc('total_value')->first()?->product_name,
             ];
         })->values();
@@ -70,37 +91,38 @@ class MrBranchSalesController
         // Roll up totals per MR
         $mrSummary = $rows->groupBy('mr_id')->map(function ($items, $mrId) {
             $first = $items->first();
+
             return [
-                'mr_id'       => $mrId,
-                'mr_name'     => $first->mr_name ?? 'Unassigned',
-                'branch_id'   => $first->branch_id,
+                'mr_id' => $mrId,
+                'mr_name' => $first->mr_name ?? 'Unassigned',
+                'branch_id' => $first->branch_id,
                 'branch_name' => $first->branch_name ?? 'Unassigned',
                 'total_value' => (float) $items->sum('total_value'),
-                'total_qty'   => (float) $items->sum('total_qty'),
-                'products'    => $items->map(fn ($row) => [
-                    'product_id'   => $row->product_id,
+                'total_qty' => (float) $items->sum('total_qty'),
+                'products' => $items->map(fn ($row) => [
+                    'product_id' => $row->product_id,
                     'product_name' => $row->product_name,
-                    'qty'          => (float) $row->total_qty,
-                    'value'        => (float) $row->total_value,
+                    'qty' => (float) $row->total_qty,
+                    'value' => (float) $row->total_value,
                 ])->values(),
             ];
         })->values();
 
         return response()->json([
             'data' => [
-                'period'         => $from || $to ? (($from ?: 'Start') . ' – ' . ($to ?: 'Today')) : 'All time',
-                'grand_total'    => (float) $rows->sum('total_value'),
+                'period' => $from || $to ? (($from ?: 'Start').' – '.($to ?: 'Today')) : 'All time',
+                'grand_total' => (float) $rows->sum('total_value'),
                 'branch_summary' => $branchSummary,
-                'mr_summary'     => $mrSummary,
-                'rows'           => $rows->map(fn ($row) => [
-                    'branch_id'    => $row->branch_id,
-                    'branch_name'  => $row->branch_name ?? 'Unassigned',
-                    'mr_id'        => $row->mr_id,
-                    'mr_name'      => $row->mr_name ?? 'Unassigned',
-                    'product_id'   => $row->product_id,
+                'mr_summary' => $mrSummary,
+                'rows' => $rows->map(fn ($row) => [
+                    'branch_id' => $row->branch_id,
+                    'branch_name' => $row->branch_name ?? 'Unassigned',
+                    'mr_id' => $row->mr_id,
+                    'mr_name' => $row->mr_name ?? 'Unassigned',
+                    'product_id' => $row->product_id,
                     'product_name' => $row->product_name,
-                    'total_qty'    => (float) $row->total_qty,
-                    'total_value'  => (float) $row->total_value,
+                    'total_qty' => (float) $row->total_qty,
+                    'total_value' => (float) $row->total_value,
                 ])->values(),
             ],
         ]);

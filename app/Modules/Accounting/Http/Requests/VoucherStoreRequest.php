@@ -6,6 +6,15 @@ use App\Modules\Accounting\Support\AccountCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="VoucherStoreRequest",
+ *     title="Voucher Store Request",
+ *     description="Validated request contract for Voucher Store Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class VoucherStoreRequest extends FormRequest
 {
     public function authorize(): bool

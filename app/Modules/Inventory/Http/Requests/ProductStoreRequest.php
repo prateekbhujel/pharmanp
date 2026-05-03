@@ -5,6 +5,15 @@ namespace App\Modules\Inventory\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="ProductStoreRequest",
+ *     title="Product Store Request",
+ *     description="Validated request contract for Product Store Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class ProductStoreRequest extends FormRequest
 {
     public function authorize(): bool

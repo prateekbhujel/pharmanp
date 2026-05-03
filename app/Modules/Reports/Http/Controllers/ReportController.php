@@ -2,7 +2,8 @@
 
 namespace App\Modules\Reports\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
+use App\Modules\Reports\Http\Requests\ReportRunRequest;
 use App\Modules\Reports\Services\ReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -11,13 +12,32 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Rap2hpoutre\FastExcel\FastExcel;
 
-class ReportController extends Controller
+/**
+ * @OA\Tag(
+ *     name="REPORTS - Analytics and Exports",
+ *     description="API endpoints for REPORTS - Analytics and Exports"
+ * )
+ */
+class ReportController extends ModularController
 {
-    public function __invoke(string $report, Request $request, ReportService $service): JsonResponse
+    public function __invoke(string $report, ReportRunRequest $request, ReportService $service): JsonResponse
     {
         return response()->json($service->run($report, $request));
     }
 
+    /**
+     * @OA\Get(
+     *     path="/reports/{report}/export/{format}",
+     *     summary="Api Reports Export",
+     *     tags={"REPORTS - Operational Reports"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function export(string $report, string $format, Request $request, ReportService $service)
     {
         $request->merge(['per_page' => min((int) $request->query('per_page', 5000), 5000)]);

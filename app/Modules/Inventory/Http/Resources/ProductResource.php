@@ -6,6 +6,17 @@ use App\Core\Support\AssetUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @OA\Schema(
+ *     schema="ProductResource",
+ *     title="Product Resource",
+ *     description="PharmaNP Product Resource response contract",
+ *
+ *     @OA\Property(property="id", type="integer", nullable=true, example=1),
+ *     @OA\Property(property="created_at", type="string", format="date-time", nullable=true),
+ *     @OA\Property(property="updated_at", type="string", format="date-time", nullable=true)
+ * )
+ */
 class ProductResource extends JsonResource
 {
     public function toArray(Request $request): array

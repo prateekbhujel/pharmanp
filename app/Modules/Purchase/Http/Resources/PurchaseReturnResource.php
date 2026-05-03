@@ -5,6 +5,17 @@ namespace App\Modules\Purchase\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @OA\Schema(
+ *     schema="PurchaseReturnResource",
+ *     title="Purchase Return Resource",
+ *     description="PharmaNP Purchase Return Resource response contract",
+ *
+ *     @OA\Property(property="id", type="integer", nullable=true, example=1),
+ *     @OA\Property(property="created_at", type="string", format="date-time", nullable=true),
+ *     @OA\Property(property="updated_at", type="string", format="date-time", nullable=true)
+ * )
+ */
 class PurchaseReturnResource extends JsonResource
 {
     public function toArray(Request $request): array

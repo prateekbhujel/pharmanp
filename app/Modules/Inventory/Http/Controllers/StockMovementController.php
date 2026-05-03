@@ -2,14 +2,33 @@
 
 namespace App\Modules\Inventory\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Modules\Inventory\Http\Resources\StockMovementResource;
 use App\Modules\Inventory\Models\StockMovement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
-class StockMovementController extends Controller
+/**
+ * @OA\Tag(
+ *     name="INVENTORY - Products and Stock",
+ *     description="API endpoints for INVENTORY - Products and Stock"
+ * )
+ */
+class StockMovementController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/inventory/stock-movements",
+     *     summary="Api Inventory Stock Movements Index",
+     *     tags={"INVENTORY - Stock Movements"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(): JsonResponse
     {
         $sorts = [

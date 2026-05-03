@@ -4,6 +4,15 @@ namespace App\Modules\Setup\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @OA\Schema(
+ *     schema="BrandingSettingsRequest",
+ *     title="Branding Settings Request",
+ *     description="Validated request contract for Branding Settings Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class BrandingSettingsRequest extends FormRequest
 {
     public function authorize(): bool

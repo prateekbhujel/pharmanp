@@ -2,7 +2,7 @@
 
 namespace App\Modules\Inventory\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Modules\Inventory\Http\Requests\StockAdjustmentRequest;
 use App\Modules\Inventory\Http\Resources\StockAdjustmentResource;
 use App\Modules\Inventory\Models\StockAdjustment;
@@ -10,8 +10,27 @@ use App\Modules\Inventory\Services\StockAdjustmentService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
-class StockAdjustmentController extends Controller
+/**
+ * @OA\Tag(
+ *     name="INVENTORY - Products and Stock",
+ *     description="API endpoints for INVENTORY - Products and Stock"
+ * )
+ */
+class StockAdjustmentController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/inventory/stock-adjustments",
+     *     summary="Api Stock Adjustments Index",
+     *     tags={"INVENTORY - Stock Adjustments"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(): JsonResponse
     {
         $search = trim((string) request('search'));
@@ -39,6 +58,21 @@ class StockAdjustmentController extends Controller
         return StockAdjustmentResource::collection($query)->response();
     }
 
+    /**
+     * @OA\Post(
+     *     path="/inventory/stock-adjustments",
+     *     summary="Api Stock Adjustments Store",
+     *     tags={"INVENTORY - Stock Adjustments"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(StockAdjustmentRequest $request, StockAdjustmentService $service): JsonResponse
     {
         $adjustment = $service->save($request->validated(), $request->user());
@@ -49,11 +83,39 @@ class StockAdjustmentController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/inventory/stock-adjustments/{adjustment}",
+     *     summary="Api Stock Adjustments Update",
+     *     tags={"INVENTORY - Stock Adjustments"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function update(StockAdjustmentRequest $request, StockAdjustment $adjustment, StockAdjustmentService $service): StockAdjustmentResource
     {
         return new StockAdjustmentResource($service->save($request->validated(), $request->user(), $adjustment));
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/inventory/stock-adjustments/{adjustment}",
+     *     summary="Api Stock Adjustments Destroy",
+     *     tags={"INVENTORY - Stock Adjustments"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function destroy(StockAdjustment $adjustment, StockAdjustmentService $service): JsonResponse
     {
         $service->delete($adjustment, request()->user());

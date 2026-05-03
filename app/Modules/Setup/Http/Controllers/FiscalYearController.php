@@ -2,7 +2,7 @@
 
 namespace App\Modules\Setup\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Modules\Setup\Http\Requests\FiscalYearRequest;
 use App\Modules\Setup\Http\Resources\FiscalYearResource;
 use App\Modules\Setup\Models\FiscalYear;
@@ -10,8 +10,27 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
-class FiscalYearController extends Controller
+/**
+ * @OA\Tag(
+ *     name="SETUP - Administration",
+ *     description="API endpoints for SETUP - Administration"
+ * )
+ */
+class FiscalYearController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/settings/fiscal-years",
+     *     summary="Api Fiscal Years Index",
+     *     tags={"SETUP - Fiscal Years"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function index(): JsonResponse
     {
         $this->authorizeRequest();
@@ -44,10 +63,25 @@ class FiscalYearController extends Controller
         return response()->json(FiscalYearResource::collection($query)->response()->getData(true));
     }
 
+    /**
+     * @OA\Post(
+     *     path="/settings/fiscal-years",
+     *     summary="Api Fiscal Years Store",
+     *     tags={"SETUP - Fiscal Years"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function store(FiscalYearRequest $request): JsonResponse
     {
         $fiscalYear = DB::transaction(function () use ($request) {
-            return $this->persist(new FiscalYear(), $request->validated(), $request->user());
+            return $this->persist(new FiscalYear, $request->validated(), $request->user());
         });
 
         return (new FiscalYearResource($fiscalYear))
@@ -56,6 +90,21 @@ class FiscalYearController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/settings/fiscal-years/{fiscal_year}",
+     *     summary="Api Fiscal Years Update",
+     *     tags={"SETUP - Fiscal Years"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function update(FiscalYearRequest $request, FiscalYear $fiscalYear): FiscalYearResource
     {
         $this->ensureOwnedRecord($fiscalYear);
@@ -67,6 +116,19 @@ class FiscalYearController extends Controller
         return new FiscalYearResource($fiscalYear);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/settings/fiscal-years/{fiscal_year}",
+     *     summary="Api Fiscal Years Destroy",
+     *     tags={"SETUP - Fiscal Years"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function destroy(FiscalYear $fiscalYear): JsonResponse
     {
         $this->authorizeRequest();

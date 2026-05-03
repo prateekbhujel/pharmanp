@@ -3,16 +3,36 @@
 namespace App\Modules\Setup\Http\Controllers;
 
 use App\Core\Services\DocumentNumberService;
+use App\Http\Controllers\ModularController;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Throwable;
 
-class SettingsAdminController
+/**
+ * @OA\Tag(
+ *     name="SETUP - Administration",
+ *     description="API endpoints for SETUP - Administration"
+ * )
+ */
+class SettingsAdminController extends ModularController
 {
     // Return all app settings for the admin settings form.
+    /**
+     * @OA\Get(
+     *     path="/settings/admin",
+     *     summary="Api Settings Admin Show",
+     *     tags={"SETUP - Admin"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function show(): JsonResponse
     {
         return response()->json([
@@ -37,6 +57,21 @@ class SettingsAdminController
     }
 
     // Save admin settings.
+    /**
+     * @OA\Put(
+     *     path="/settings/admin",
+     *     summary="Api Settings Admin Update",
+     *     tags={"SETUP - Admin"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -83,6 +118,21 @@ class SettingsAdminController
     }
 
     // Send one test mail to validate SMTP config.
+    /**
+     * @OA\Post(
+     *     path="/settings/admin/test-mail",
+     *     summary="Api Settings Admin Test Mail",
+     *     tags={"SETUP - Admin"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function testMail(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -107,12 +157,12 @@ class SettingsAdminController
             });
         } catch (Throwable $throwable) {
             return response()->json([
-                'message' => 'Test mail failed: ' . $throwable->getMessage(),
+                'message' => 'Test mail failed: '.$throwable->getMessage(),
             ], 422);
         }
 
         return response()->json([
-            'message' => 'Test mail sent to ' . $recipient . '.',
+            'message' => 'Test mail sent to '.$recipient.'.',
         ]);
     }
 

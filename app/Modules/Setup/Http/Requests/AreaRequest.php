@@ -5,6 +5,15 @@ namespace App\Modules\Setup\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="AreaRequest",
+ *     title="Area Request",
+ *     description="Validated request contract for Area Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class AreaRequest extends FormRequest
 {
     public function authorize(): bool

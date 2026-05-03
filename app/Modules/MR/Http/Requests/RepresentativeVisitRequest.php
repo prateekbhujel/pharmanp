@@ -4,6 +4,15 @@ namespace App\Modules\MR\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * @OA\Schema(
+ *     schema="RepresentativeVisitRequest",
+ *     title="Representative Visit Request",
+ *     description="Validated request contract for Representative Visit Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class RepresentativeVisitRequest extends FormRequest
 {
     public function authorize(): bool

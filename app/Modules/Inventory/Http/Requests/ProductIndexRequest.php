@@ -5,6 +5,15 @@ namespace App\Modules\Inventory\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="ProductIndexRequest",
+ *     title="Product Index Request",
+ *     description="Validated request contract for Product Index Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class ProductIndexRequest extends FormRequest
 {
     public function authorize(): bool

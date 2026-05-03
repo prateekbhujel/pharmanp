@@ -2,6 +2,7 @@
 
 namespace App\Modules\Party\Http\Controllers;
 
+use App\Http\Controllers\ModularController;
 use App\Models\Setting;
 use App\Modules\Accounting\Models\Payment;
 use App\Modules\Party\Models\Customer;
@@ -12,9 +13,28 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-class CustomerLedgerController
+/**
+ * @OA\Tag(
+ *     name="PARTY - Customers and Suppliers",
+ *     description="API endpoints for PARTY - Customers and Suppliers"
+ * )
+ */
+class CustomerLedgerController extends ModularController
 {
     // Return customer ledger: invoices, returns, payments, and balance.
+    /**
+     * @OA\Get(
+     *     path="/customers/{customer}/ledger",
+     *     summary="Api Customers Ledger",
+     *     tags={"PARTY - Customers"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Forbidden"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function show(Request $request, Customer $customer): JsonResponse
     {
         return response()->json($this->ledgerPayload($request, $customer));

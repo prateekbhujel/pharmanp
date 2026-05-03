@@ -3,14 +3,29 @@
 namespace App\Modules\Setup\Http\Controllers;
 
 use App\Core\Services\InstallationService;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ModularController;
 use App\Modules\Setup\Http\Requests\CompleteSetupRequest;
 use App\Modules\Setup\Services\SetupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
-class SetupController extends Controller
+/**
+ * @OA\Tag(
+ *     name="SETUP - Administration",
+ *     description="API endpoints for SETUP - Administration"
+ * )
+ */
+class SetupController extends ModularController
 {
+    /**
+     * @OA\Get(
+     *     path="/setup/status",
+     *     summary="Read installation status",
+     *     tags={"SETUP - Administration"},
+     *
+     *     @OA\Response(response=200, description="Installation status response")
+     * )
+     */
     public function show(): View
     {
         return view('setup.show');

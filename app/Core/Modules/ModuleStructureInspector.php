@@ -76,9 +76,11 @@ final readonly class ModuleStructureInspector
             $missing[] = $module->provider;
         }
 
-        foreach (self::HTTP_DIRECTORIES as $directory) {
-            if (! File::isDirectory($path.'/'.$directory)) {
-                $warnings[] = $directory.' missing; add it before exposing HTTP endpoints from this module';
+        if ($this->moduleExposesRoutes($path)) {
+            foreach (self::HTTP_DIRECTORIES as $directory) {
+                if (! File::isDirectory($path.'/'.$directory)) {
+                    $missing[] = $directory;
+                }
             }
         }
 
@@ -113,6 +115,14 @@ final readonly class ModuleStructureInspector
         $relative = Str::after($module->namespace, 'App\\');
 
         return app_path(str_replace('\\', DIRECTORY_SEPARATOR, $relative));
+    }
+
+    private function moduleExposesRoutes(string $path): bool
+    {
+        $routeFile = $path.'/Routes/api.php';
+
+        return File::isFile($routeFile)
+            && str_contains((string) File::get($routeFile), 'Route::');
     }
 
     /**

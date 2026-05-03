@@ -5,6 +5,15 @@ namespace App\Modules\Inventory\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Schema(
+ *     schema="QuickCategoryRequest",
+ *     title="Quick Category Request",
+ *     description="Validated request contract for Quick Category Request",
+ *     type="object",
+ *     additionalProperties=true
+ * )
+ */
 class QuickCategoryRequest extends FormRequest
 {
     public function authorize(): bool
