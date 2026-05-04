@@ -7,7 +7,6 @@ import {
     Col,
     Collapse,
     Descriptions,
-    Divider,
     Form,
     Input,
     Row,
@@ -182,6 +181,75 @@ const architectureFlow = [
     { title: 'Resource', description: 'Frontend receives a stable envelope and response shape.' },
     { title: 'React Module', description: 'Endpoint key, page, table filters, modal/drawer/full-page form and validation rendering.' },
 ];
+
+const pharmaWorkflowAudit = [
+    {
+        area: 'Purchase',
+        status: 'implemented',
+        summary: 'Purchase bills support due date, payment type, payment mode, paid amount, batch/expiry creation and stock/accounting posting. Purchase return and purchase expiry return are separate menu flows.',
+        files: ['resources/js/modules/purchases/PurchasesPage.jsx', 'resources/js/modules/purchases/PurchaseReturnsPanel.jsx', 'app/Modules/Purchase'],
+    },
+    {
+        area: 'Sales',
+        status: 'implemented',
+        summary: 'Sales invoice/POS, sales return, sales expiry return and Payment In are exposed as dedicated workflows with batch-aware stock deduction and payment status.',
+        files: ['resources/js/modules/sales/SalesPage.jsx', 'resources/js/modules/sales/SalesReturnsPanel.jsx', 'app/Modules/Sales'],
+    },
+    {
+        area: 'Accounting Backbone',
+        status: 'implemented',
+        summary: 'Payment In/Out, vouchers, expenses, ledger, day book, cash book, bank book, trial balance and profit/loss stay in Accounting and are connected through services.',
+        files: ['resources/js/modules/accounting', 'app/Modules/Accounting'],
+    },
+    {
+        area: 'Products and Inventory',
+        status: 'implemented',
+        summary: 'Product code, HS code, division, group, generic name, company/manufacturer, packaging, barcode and stock/expiry summaries are in the product workflow. Separate batch-entry navigation is intentionally hidden; purchases create batch/expiry stock.',
+        files: ['resources/js/modules/inventory/ProductsPage.jsx', 'app/Modules/Inventory'],
+    },
+    {
+        area: 'Branch, Area and Division',
+        status: 'implemented',
+        summary: 'Territory is modeled as Area. One branch can have many areas; employees and MRs can be assigned to branch, area and division.',
+        files: ['resources/js/modules/settings/SetupStructurePage.jsx', 'app/Modules/Setup/Models/Area.php', 'app/Modules/Setup/Models/Division.php'],
+    },
+    {
+        area: 'Employees and MR Hierarchy',
+        status: 'implemented',
+        summary: 'Employee code is auto-generated when blank. Employee hierarchy uses reports_to_employee_id instead of hardcoding MR -> Manager -> Area Manager -> HQ.',
+        files: ['app/Modules/Setup/Services/OrganizationStructureService.php', 'resources/js/modules/settings/SetupStructurePage.jsx'],
+    },
+    {
+        area: 'Targets and Performance',
+        status: 'implemented',
+        summary: 'Primary/secondary targets support monthly, quarterly and annual periods across company, division, area, employee/MR and product levels, with achievement reports.',
+        files: ['app/Modules/Setup/Models/Target.php', 'app/Modules/Reports/Services/TargetAchievementService.php', 'resources/js/modules/reports/ReportsPage.jsx'],
+    },
+    {
+        area: 'Aging, Expiry and Dumping',
+        status: 'implemented',
+        summary: 'Supplier aging, customer aging, expiry buckets, stock reports and dumping/slow-moving reports are available under Reports and tied to purchase/sales/payment data.',
+        files: ['app/Modules/Reports/Services/AgingReportService.php', 'app/Modules/Reports/Services/ExpiryReportService.php', 'app/Modules/Reports/Services/DumpingReportService.php'],
+    },
+    {
+        area: 'MR Visits',
+        status: 'partial',
+        summary: 'Visit time and location name exist. Coordinates are stored internally only for map links; the UI should keep emphasizing searchable location name over raw latitude/longitude.',
+        files: ['resources/js/modules/mr/MrTrackingPage.jsx', 'app/Modules/MR/Http/Resources/RepresentativeVisitResource.php'],
+    },
+    {
+        area: 'UX polish still worth improving',
+        status: 'next',
+        summary: 'The workflows exist, but transaction screens and reports should continue getting keyboard-first entry, clearer empty states, and sharper report drilldowns as client feedback arrives.',
+        files: ['resources/js/modules/purchases', 'resources/js/modules/sales', 'resources/js/modules/reports'],
+    },
+];
+
+function auditTone(status) {
+    if (status === 'implemented') return 'green';
+    if (status === 'partial') return 'gold';
+    return 'blue';
+}
 
 function CommandBlock({ title, commands }) {
     return (
@@ -667,6 +735,37 @@ function ReferencePanel() {
     );
 }
 
+function PharmaWorkflowPanel() {
+    return (
+        <div className="developer-stack developer-stack-lg">
+            <Alert
+                type="info"
+                showIcon
+                message="This is the working pharma ERP checklist"
+                description="Use this tab to answer whether a requested pharma workflow is actually present, where it lives, and what still deserves improvement. It is intentionally tied to code paths instead of vague feature claims."
+            />
+            <Row gutter={[14, 14]}>
+                {pharmaWorkflowAudit.map((item) => (
+                    <Col xs={24} lg={12} key={item.area}>
+                        <Card
+                            className="developer-workflow-card"
+                            title={item.area}
+                            extra={<Tag color={auditTone(item.status)}>{item.status}</Tag>}
+                        >
+                            <div className="developer-stack">
+                                <Paragraph className="!m-0 text-slate-600">{item.summary}</Paragraph>
+                                <div className="developer-file-list">
+                                    {item.files.map((file) => <Text code key={file}>{file}</Text>)}
+                                </div>
+                            </div>
+                        </Card>
+                    </Col>
+                ))}
+            </Row>
+        </div>
+    );
+}
+
 function GuideTabLabel({ icon, label, note }) {
     return (
         <span className="developer-guide-tab-label">
@@ -769,6 +868,11 @@ export function DeveloperGuidePage() {
                             key: 'labs',
                             label: <GuideTabLabel icon={<BugOutlined />} label="Labs" note="Practice and verify" />,
                             children: <PracticePanel />,
+                        },
+                        {
+                            key: 'workflow',
+                            label: <GuideTabLabel icon={<DeploymentUnitOutlined />} label="Pharma Workflow" note="Feature map" />,
+                            children: <PharmaWorkflowPanel />,
                         },
                         {
                             key: 'reference',

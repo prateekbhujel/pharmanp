@@ -13,7 +13,6 @@ use App\Modules\Accounting\Services\VoucherService;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\StockAdjustment;
 use App\Modules\Inventory\Models\Store;
 use App\Modules\Inventory\Models\Unit;
@@ -28,9 +27,13 @@ use App\Modules\Purchase\Services\PurchaseOrderService;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Services\SalesInvoiceService;
 use App\Modules\Setup\Models\DropdownOption;
+use App\Modules\Setup\Models\Area;
+use App\Modules\Setup\Models\Division;
+use App\Modules\Setup\Models\Employee;
 use App\Modules\Setup\Models\FiscalYear;
 use App\Modules\Setup\Models\PartyType;
 use App\Modules\Setup\Models\SupplierType;
+use App\Modules\Setup\Models\Target;
 use App\Modules\Setup\Models\Tenant;
 use App\Modules\Setup\Services\AccessControlService;
 use Carbon\Carbon;
@@ -79,8 +82,9 @@ class DemoSeeder extends Seeder
 
         $context = DB::transaction(fn () => $this->seedFoundation());
 
-        $this->seedProducts($context);
         $this->seedRepresentatives($context);
+        $this->seedProducts($context);
+        $this->seedTargets($context);
         $this->seedPurchaseOrdersAndEntries($context);
         $this->seedSalesInvoices($context);
         $this->seedReturnsAndAdjustments($context);
@@ -190,7 +194,8 @@ class DemoSeeder extends Seeder
         $fiscalYear = $this->seedFiscalYear($tenant, $company, $owner);
         $manufacturers = $this->seedManufacturers($tenant, $owner);
         $units = $this->seedUnits($tenant, $company, $owner);
-        $categories = $this->seedCategories($tenant, $company, $owner);
+        $areas = $this->seedAreas($tenant, $company, $branches, $owner);
+        $divisions = $this->seedDivisions($tenant, $company, $owner);
         $suppliers = $this->seedSuppliers($tenant, $company, $owner, $supplierTypes);
         $customers = $this->seedCustomers($tenant, $company, $owner, $partyTypes);
 
@@ -206,7 +211,8 @@ class DemoSeeder extends Seeder
             'fiscalYear',
             'manufacturers',
             'units',
-            'categories',
+            'areas',
+            'divisions',
             'suppliers',
             'customers',
         );
@@ -303,12 +309,6 @@ class DemoSeeder extends Seeder
             ['adjustment_type', 'damaged', 'out', []],
             ['adjustment_type', 'expired', 'out', []],
             ['adjustment_type', 'return', 'in', []],
-            ['formulation', 'Tablet', null, []],
-            ['formulation', 'Capsule', null, []],
-            ['formulation', 'Syrup', null, []],
-            ['formulation', 'Injection', null, []],
-            ['formulation', 'Ointment', null, []],
-            ['formulation', 'Drops', null, []],
             ['sales_type', 'Retail', null, []],
             ['sales_type', 'Wholesale', null, []],
             ['sales_type', 'POS', null, []],
@@ -411,24 +411,58 @@ class DemoSeeder extends Seeder
         })->all();
     }
 
-    private function seedCategories(Tenant $tenant, Company $company, User $owner): array
+    private function seedAreas(Tenant $tenant, Company $company, $branches, User $owner): array
     {
-        return collect([
-            'Analgesic', 'Antibiotic', 'Antidiabetic', 'Cardiac', 'GI', 'Respiratory',
-            'Supplement', 'Antiseptic', 'Dermatology', 'IV Fluid', 'Eye / ENT', 'Emergency',
-        ])->mapWithKeys(function (string $name, int $index) use ($tenant, $company, $owner) {
-            $category = ProductCategory::query()->withTrashed()->updateOrCreate(
-                ['tenant_id' => $tenant->id, 'company_id' => $company->id, 'name' => $name],
+        $rows = [
+            ['Kathmandu Central', 'KTM-CEN', 'Kathmandu', 'Bagmati', 0],
+            ['Kathmandu East', 'KTM-EAST', 'Kathmandu', 'Bagmati', 0],
+            ['Patan South', 'PTN-S', 'Lalitpur', 'Bagmati', 2],
+            ['Pokhara Lakeside', 'PKR-LKS', 'Kaski', 'Gandaki', 1],
+            ['Pokhara Valley', 'PKR-VAL', 'Kaski', 'Gandaki', 1],
+        ];
+
+        return collect($rows)->mapWithKeys(function (array $row) use ($tenant, $company, $branches, $owner) {
+            [$name, $code, $district, $province, $branchIndex] = $row;
+            $branch = $branches[$branchIndex] ?? $branches->first();
+
+            $area = Area::query()->withTrashed()->updateOrCreate(
+                ['tenant_id' => $tenant->id, 'branch_id' => $branch->id, 'name' => $name],
                 [
-                    'code' => strtoupper(Str::slug($name, '')),
+                    'company_id' => $company->id,
+                    'code' => $code,
+                    'district' => $district,
+                    'province' => $province,
+                    'notes' => 'Demo area for branch-wise MR and customer coverage.',
                     'is_active' => true,
                     'created_by' => $owner->id,
                     'updated_by' => $owner->id,
                 ],
             );
-            $category->restore();
+            $area->restore();
 
-            return [$name => $category];
+            return [$name => $area];
+        })->all();
+    }
+
+    private function seedDivisions(Tenant $tenant, Company $company, User $owner): array
+    {
+        return collect([
+            'Analgesic', 'Antibiotic', 'Antidiabetic', 'Cardiac', 'GI', 'Respiratory',
+            'Supplement', 'Antiseptic', 'Dermatology', 'IV Fluid', 'Eye / ENT', 'Emergency',
+        ])->mapWithKeys(function (string $name) use ($tenant, $company, $owner) {
+            $division = Division::query()->withTrashed()->updateOrCreate(
+                ['tenant_id' => $tenant->id, 'company_id' => $company->id, 'name' => $name],
+                [
+                    'code' => strtoupper(Str::slug($name, '')),
+                    'notes' => 'Demo division for product, MR and target reporting.',
+                    'is_active' => true,
+                    'created_by' => $owner->id,
+                    'updated_by' => $owner->id,
+                ],
+            );
+            $division->restore();
+
+            return [$name => $division];
         })->all();
     }
 
@@ -521,29 +555,30 @@ class DemoSeeder extends Seeder
         $catalog = $this->productCatalog();
         $manufacturers = array_values($context['manufacturers']);
         $units = $context['units'];
-        $categories = $context['categories'];
+        $divisions = $context['divisions'];
         $products = [];
 
         foreach ($catalog as $index => $item) {
             $manufacturer = $manufacturers[$index % count($manufacturers)];
-            $unit = $this->unitForFormulation($item['formulation'], $units);
-            $category = $categories[$item['category']] ?? $categories['Supplement'];
+            $unit = $this->unitForPackaging($item['packaging_type'], $units);
+            $division = $divisions[$item['division']] ?? $divisions['Supplement'];
 
             $product = Product::query()->withTrashed()->updateOrCreate(
                 ['tenant_id' => $context['tenant']->id, 'sku' => $item['sku']],
                 [
                     'company_id' => $context['company']->id,
                     'store_id' => $context['store']->id,
-                    'category_id' => $category->id,
+                    'division_id' => $division->id,
                     'manufacturer_id' => $manufacturer->id,
                     'unit_id' => $unit->id,
                     'barcode' => 'NP'.str_pad((string) ($index + 1), 11, '0', STR_PAD_LEFT),
                     'product_code' => $item['sku'],
+                    'hs_code' => '3004.'.str_pad((string) ($index + 1), 4, '0', STR_PAD_LEFT),
                     'name' => $item['name'],
                     'generic_name' => $item['generic'],
                     'composition' => $item['composition'],
-                    'group_name' => $item['category'],
-                    'formulation' => $item['formulation'],
+                    'group_name' => $item['division'],
+                    'packaging_type' => $item['packaging_type'],
                     'strength' => $item['strength'],
                     'manufacturer_name' => $manufacturer->name,
                     'conversion' => $unit->factor,
@@ -558,8 +593,8 @@ class DemoSeeder extends Seeder
                     'reorder_quantity' => [50, 80, 120, 160][$index % 4],
                     'is_batch_tracked' => true,
                     'is_active' => true,
-                    'keywords' => Str::lower($item['name'].' '.$item['generic'].' '.$item['category']),
-                    'description' => $item['category'].' stock item for demo operations.',
+                    'keywords' => Str::lower($item['name'].' '.$item['generic'].' '.$item['division']),
+                    'description' => $item['division'].' stock item for demo operations.',
                     'notes' => null,
                     'created_by' => $context['owner']->id,
                     'updated_by' => $context['owner']->id,
@@ -575,17 +610,119 @@ class DemoSeeder extends Seeder
     private function seedRepresentatives(array &$context): void
     {
         $branches = $context['branches'];
-        $mrs = collect(range(0, 9))->map(function (int $index) use ($context, $branches) {
+        $areas = array_values($context['areas']);
+        $divisions = array_values($context['divisions']);
+        $employees = [];
+
+        $hq = Employee::query()->withTrashed()->updateOrCreate(
+            ['tenant_id' => $context['tenant']->id, 'employee_code' => 'EMP-HQ-001'],
+            [
+                'company_id' => $context['company']->id,
+                'user_id' => $context['owner']->id,
+                'branch_id' => $branches->first()->id,
+                'area_id' => null,
+                'division_id' => null,
+                'reports_to_employee_id' => null,
+                'name' => 'Pratik Admin',
+                'designation' => 'HQ',
+                'phone' => '9841000001',
+                'email' => 'pratik@admin.com',
+                'joined_on' => $this->today->copy()->subYears(3)->toDateString(),
+                'is_active' => true,
+                'created_by' => $context['owner']->id,
+                'updated_by' => $context['owner']->id,
+            ],
+        );
+        $hq->restore();
+        $employees[] = $hq;
+
+        $areaManagers = [];
+        $managers = [];
+        foreach ($areas as $index => $area) {
+            $branch = $branches->firstWhere('id', $area->branch_id) ?? $branches->first();
+
+            $areaManager = Employee::query()->withTrashed()->updateOrCreate(
+                ['tenant_id' => $context['tenant']->id, 'employee_code' => 'EMP-AM-'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT)],
+                [
+                    'company_id' => $context['company']->id,
+                    'branch_id' => $branch->id,
+                    'area_id' => $area->id,
+                    'division_id' => null,
+                    'reports_to_employee_id' => $hq->id,
+                    'name' => $this->personName($index + 15),
+                    'designation' => 'Area Manager',
+                    'phone' => '98'.(60000000 + $index * 7011),
+                    'email' => Str::slug($this->personName($index + 15), '.').'@team.test',
+                    'joined_on' => $this->today->copy()->subYears(2)->subDays($index * 10)->toDateString(),
+                    'is_active' => true,
+                    'created_by' => $context['owner']->id,
+                    'updated_by' => $context['owner']->id,
+                ],
+            );
+            $areaManager->restore();
+            $areaManagers[$area->id] = $areaManager;
+            $employees[] = $areaManager;
+
+            $manager = Employee::query()->withTrashed()->updateOrCreate(
+                ['tenant_id' => $context['tenant']->id, 'employee_code' => 'EMP-MGR-'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT)],
+                [
+                    'company_id' => $context['company']->id,
+                    'branch_id' => $branch->id,
+                    'area_id' => $area->id,
+                    'division_id' => $divisions[$index % count($divisions)]->id,
+                    'reports_to_employee_id' => $areaManager->id,
+                    'name' => $this->personName($index + 21),
+                    'designation' => 'Manager',
+                    'phone' => '98'.(61000000 + $index * 7011),
+                    'email' => Str::slug($this->personName($index + 21), '.').'@team.test',
+                    'joined_on' => $this->today->copy()->subYears(1)->subDays($index * 12)->toDateString(),
+                    'is_active' => true,
+                    'created_by' => $context['owner']->id,
+                    'updated_by' => $context['owner']->id,
+                ],
+            );
+            $manager->restore();
+            $managers[$area->id] = $manager;
+            $employees[] = $manager;
+        }
+
+        $mrs = collect(range(0, 9))->map(function (int $index) use ($context, $branches, $areas, $divisions, $managers, &$employees) {
             $name = $this->personName($index + 4);
+            $area = $areas[$index % count($areas)];
+            $division = $divisions[$index % count($divisions)];
+            $branch = $branches->firstWhere('id', $area->branch_id) ?? $branches[$index % $branches->count()];
+            $employee = Employee::query()->withTrashed()->updateOrCreate(
+                ['tenant_id' => $context['tenant']->id, 'employee_code' => 'EMP-MR-'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT)],
+                [
+                    'company_id' => $context['company']->id,
+                    'branch_id' => $branch->id,
+                    'area_id' => $area->id,
+                    'division_id' => $division->id,
+                    'reports_to_employee_id' => $managers[$area->id]?->id ?? null,
+                    'name' => $name,
+                    'designation' => 'MR',
+                    'phone' => '98'.(62000000 + $index * 3901),
+                    'email' => Str::slug($name, '.').'@mr.test',
+                    'joined_on' => $this->today->copy()->subMonths(10)->subDays($index * 5)->toDateString(),
+                    'is_active' => true,
+                    'created_by' => $context['owner']->id,
+                    'updated_by' => $context['owner']->id,
+                ],
+            );
+            $employee->restore();
+            $employees[] = $employee;
+
             $mr = MedicalRepresentative::query()->withTrashed()->updateOrCreate(
                 ['tenant_id' => $context['tenant']->id, 'employee_code' => 'MR-'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT)],
                 [
                     'company_id' => $context['company']->id,
-                    'branch_id' => $branches[$index % $branches->count()]->id,
+                    'branch_id' => $branch->id,
+                    'employee_id' => $employee->id,
+                    'area_id' => $area->id,
+                    'division_id' => $division->id,
                     'name' => $name,
                     'phone' => '98'.(62000000 + $index * 3901),
                     'email' => Str::slug($name, '.').'@mr.test',
-                    'territory' => $this->places[$index % count($this->places)],
                     'monthly_target' => [75000, 90000, 120000, 150000][$index % 4],
                     'is_active' => true,
                     'created_by' => $context['owner']->id,
@@ -602,6 +739,7 @@ class DemoSeeder extends Seeder
                     'store_id' => $context['store']->id,
                     'branch_id' => $mr->branch_id,
                     'medical_representative_id' => $mr->id,
+                    'employee_id' => $employee->id,
                     'name' => $name,
                     'phone' => $mr->phone,
                     'password' => Hash::make('password'),
@@ -611,11 +749,139 @@ class DemoSeeder extends Seeder
                 ],
             );
             $user->assignRole('MR');
+            $employee->forceFill(['user_id' => $user->id])->save();
 
             return $mr;
         })->values();
 
         $context['mrs'] = $mrs->all();
+        $context['employees'] = $employees;
+    }
+
+    private function seedTargets(array &$context): void
+    {
+        $owner = $context['owner'];
+        $start = $this->today->copy()->startOfMonth();
+        $end = $this->today->copy()->endOfMonth();
+        $quarterStart = $this->today->copy()->startOfQuarter();
+        $quarterEnd = $this->today->copy()->endOfQuarter();
+        $annualStart = Carbon::parse($context['fiscalYear']->starts_on);
+        $annualEnd = Carbon::parse($context['fiscalYear']->ends_on);
+        $targets = [];
+
+        $targets[] = [
+            'target_level' => 'company',
+            'target_type' => 'primary',
+            'target_period' => 'monthly',
+            'target_amount' => 1800000,
+            'target_quantity' => null,
+            'start_date' => $start->toDateString(),
+            'end_date' => $end->toDateString(),
+            'notes' => 'Monthly company primary sales target.',
+        ];
+
+        foreach (array_values($context['divisions']) as $index => $division) {
+            $targets[] = [
+                'division_id' => $division->id,
+                'target_level' => 'division',
+                'target_type' => 'primary',
+                'target_period' => 'monthly',
+                'target_amount' => 140000 + ($index * 9000),
+                'target_quantity' => null,
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'notes' => 'Division-wise primary sales target.',
+            ];
+        }
+
+        foreach (array_values($context['areas']) as $index => $area) {
+            $targets[] = [
+                'branch_id' => $area->branch_id,
+                'area_id' => $area->id,
+                'target_level' => 'area',
+                'target_type' => 'secondary',
+                'target_period' => 'quarterly',
+                'target_amount' => 320000 + ($index * 45000),
+                'target_quantity' => null,
+                'start_date' => $quarterStart->toDateString(),
+                'end_date' => $quarterEnd->toDateString(),
+                'notes' => 'Area-wise secondary target.',
+            ];
+        }
+
+        foreach (array_values($context['employees'] ?? []) as $index => $employee) {
+            if ($employee->designation !== 'MR') {
+                continue;
+            }
+
+            $targets[] = [
+                'branch_id' => $employee->branch_id,
+                'area_id' => $employee->area_id,
+                'division_id' => $employee->division_id,
+                'employee_id' => $employee->id,
+                'target_level' => 'employee',
+                'target_type' => $index % 2 === 0 ? 'primary' : 'secondary',
+                'target_period' => 'monthly',
+                'target_amount' => 85000 + ($index * 7000),
+                'target_quantity' => null,
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'notes' => 'Individual MR target.',
+            ];
+        }
+
+        foreach (array_slice($context['products'] ?? [], 0, 12) as $index => $product) {
+            $targets[] = [
+                'division_id' => $product->division_id,
+                'product_id' => $product->id,
+                'target_level' => 'product',
+                'target_type' => 'primary',
+                'target_period' => 'quarterly',
+                'target_amount' => null,
+                'target_quantity' => 180 + ($index * 12),
+                'start_date' => $quarterStart->toDateString(),
+                'end_date' => $quarterEnd->toDateString(),
+                'notes' => 'Product movement target for expiry and dumping control.',
+            ];
+        }
+
+        $targets[] = [
+            'target_level' => 'company',
+            'target_type' => 'secondary',
+            'target_period' => 'annual',
+            'target_amount' => 22000000,
+            'target_quantity' => null,
+            'start_date' => $annualStart->toDateString(),
+            'end_date' => $annualEnd->toDateString(),
+            'notes' => 'Annual cumulative company target.',
+        ];
+
+        foreach ($targets as $target) {
+            Target::query()->withTrashed()->updateOrCreate(
+                [
+                    'tenant_id' => $context['tenant']->id,
+                    'company_id' => $context['company']->id,
+                    'target_level' => $target['target_level'],
+                    'target_type' => $target['target_type'],
+                    'target_period' => $target['target_period'],
+                    'start_date' => $target['start_date'],
+                    'end_date' => $target['end_date'],
+                    'branch_id' => $target['branch_id'] ?? null,
+                    'area_id' => $target['area_id'] ?? null,
+                    'division_id' => $target['division_id'] ?? null,
+                    'employee_id' => $target['employee_id'] ?? null,
+                    'product_id' => $target['product_id'] ?? null,
+                ],
+                [
+                    'target_amount' => $target['target_amount'],
+                    'target_quantity' => $target['target_quantity'],
+                    'status' => 'active',
+                    'notes' => $target['notes'],
+                    'created_by' => $owner->id,
+                    'updated_by' => $owner->id,
+                ],
+            )->restore();
+        }
     }
 
     private function seedPurchaseOrdersAndEntries(array &$context): void
@@ -1031,17 +1297,17 @@ class DemoSeeder extends Seeder
             'name' => $row[0],
             'generic' => $row[1],
             'composition' => $row[2],
-            'formulation' => $row[3],
+            'packaging_type' => $row[3],
             'strength' => $row[4],
-            'category' => $row[5],
+            'division' => $row[5],
             'mrp' => $row[6],
             'purchase_price' => $row[7],
         ])->all();
     }
 
-    private function unitForFormulation(string $formulation, array $units): Unit
+    private function unitForPackaging(string $packagingType, array $units): Unit
     {
-        return match ($formulation) {
+        return match ($packagingType) {
             'Syrup', 'Bottle' => $units['Bottle'],
             'Injection' => $units['Vial'],
             'Ointment' => $units['Tube'],

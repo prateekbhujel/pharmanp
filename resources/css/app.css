@@ -253,7 +253,8 @@ body {
 }
 
 .developer-guide-hero,
-.developer-guide-card {
+.developer-guide-card,
+.developer-guide-tabs-card {
     border: 1px solid #dbe7ef;
     box-shadow: 0 14px 40px rgb(15 23 42 / 6%);
 }
@@ -262,6 +263,67 @@ body {
     background:
         linear-gradient(135deg, rgb(236 253 245 / 86%), rgb(239 246 255 / 92%)),
         #ffffff;
+}
+
+.developer-guide-tabs-card > .ant-card-body {
+    padding: 18px;
+}
+
+.developer-guide-tabs-card .ant-tabs-nav {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    margin-bottom: 18px;
+    padding: 8px;
+}
+
+.developer-guide-tabs-card .ant-tabs-tab {
+    border-radius: 10px;
+    margin: 0 !important;
+    padding: 10px 12px;
+}
+
+.developer-guide-tabs-card .ant-tabs-tab-active {
+    background: #ffffff;
+    box-shadow: 0 8px 22px rgb(15 23 42 / 7%);
+}
+
+.developer-guide-tabs-card .ant-tabs-ink-bar {
+    display: none;
+}
+
+.developer-guide-tabs-card .ant-tabs-nav-list {
+    gap: 6px;
+}
+
+.developer-guide-tab-label {
+    align-items: center;
+    display: inline-flex;
+    gap: 8px;
+    min-width: 132px;
+}
+
+.developer-guide-tab-label > .anticon {
+    color: var(--primary-color);
+}
+
+.developer-guide-tab-label span {
+    display: grid;
+    gap: 1px;
+    line-height: 1.2;
+    text-align: left;
+}
+
+.developer-guide-tab-label strong {
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.developer-guide-tab-label small {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .developer-command-block {
@@ -322,8 +384,15 @@ body {
 
 .developer-lab-card,
 .developer-lesson-card,
-.developer-playbook-card {
+.developer-playbook-card,
+.developer-workflow-card {
     background: #ffffff;
+}
+
+.developer-workflow-card {
+    border: 1px solid #dbe7ef;
+    border-radius: 12px;
+    height: 100%;
 }
 
 .developer-path-card {
@@ -491,6 +560,20 @@ body {
 .developer-inline-resource:hover {
     border-color: rgb(var(--primary-color-rgb), 0.34);
     color: var(--primary-color);
+}
+
+@media (max-width: 900px) {
+    .developer-guide-tabs-card > .ant-card-body {
+        padding: 12px;
+    }
+
+    .developer-guide-tabs-card .ant-tabs-nav {
+        overflow-x: auto;
+    }
+
+    .developer-guide-tab-label {
+        min-width: 112px;
+    }
 }
 
 

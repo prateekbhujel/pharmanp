@@ -64,8 +64,14 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Build standalone frontend shell
+        run: npm run frontend:build
+
       - name: Run backend tests
         run: php artisan test
+
+      - name: Check module and OpenAPI contracts
+        run: php artisan pharmanp:module-doctor --openapi
 
       - name: Optimize Composer autoloader for production
         run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader

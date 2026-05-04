@@ -5,9 +5,11 @@ on:
     branches:
       - main
       - dev
+      - 1.x
   pull_request:
     branches:
       - main
+      - 1.x
   workflow_dispatch:
 
 concurrency:
@@ -53,5 +55,11 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Build standalone frontend shell
+        run: npm run frontend:build
+
       - name: Run backend tests
         run: php artisan test
+
+      - name: Check module and OpenAPI contracts
+        run: php artisan pharmanp:module-doctor --openapi
