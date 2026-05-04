@@ -22,9 +22,9 @@ class AuthProtectedApiTest extends TestCase
     public function test_authenticated_dashboard_summary_loads(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);
-        $user = User::factory()->create(['is_owner' => true]);
+        $user = User::factory()->createOne(['is_owner' => true]);
 
-        $this->actingAs($user)
+        $this->actingAs(optional($user)->fresh(), 'web')
             ->getJson('/api/v1/dashboard/summary')
             ->assertOk()
             ->assertJsonPath('status', 'success')
