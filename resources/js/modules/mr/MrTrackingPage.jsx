@@ -26,6 +26,7 @@ import { ServerTable } from '../../core/components/ServerTable';
 import { Money } from '../../core/components/Money';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
+import { LocationSearch } from '../../core/components/LocationSearch';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
@@ -361,17 +362,35 @@ export function MrTrackingPage() {
         }
 
         navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                visitForm.setFieldsValue({
-                    latitude: pos.coords.latitude.toFixed(7),
-                    longitude: pos.coords.longitude.toFixed(7),
-                    location_name: visitForm.getFieldValue('location_name') || 'Current location captured',
-                });
+            async (pos) => {
+                const lat = pos.coords.latitude.toFixed(7);
+                const lon = pos.coords.longitude.toFixed(7);
+                visitForm.setFieldsValue({ latitude: lat, longitude: lon });
 
-                notification.success({ message: 'Location captured' });
+                try {
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+                        { headers: { 'Accept-Language': 'en' } },
+                    );
+                    const data = await response.json();
+                    if (data.display_name) {
+                        visitForm.setFieldValue('location_name', data.display_name);
+                    }
+                } catch {
+                    visitForm.setFieldValue('location_name', visitForm.getFieldValue('location_name') || `${lat}, ${lon}`);
+                }
+
+                notification.success({ message: 'Location captured and resolved' });
             },
             () => notification.warning({ message: 'Location access denied' }),
         );
+    }
+
+    function handleLocationSelect(locationName, coords) {
+        visitForm.setFieldValue('location_name', locationName);
+        if (coords) {
+            visitForm.setFieldsValue({ latitude: coords.lat, longitude: coords.lon });
+        }
     }
 
     const branchColumns = [
@@ -1135,22 +1154,25 @@ export function MrTrackingPage() {
                             </Form.Item>
                         </div>
 
-                        <Form.Item name="location_name" label="Location Name">
-                            <Input placeholder="Search/select by place name or type the location" />
+                        <Form.Item name="location_name" label="Location">
+                            <LocationSearch
+                                countrycodes="np"
+                                placeholder="Search location (city, ward, area, street)"
+                                onChange={handleLocationSelect}
+                            />
                         </Form.Item>
 
-                        <Card size="small" title="Check-in Location (optional)" style={{ marginBottom: 16 }}>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                             <Button
                                 icon={<EnvironmentOutlined />}
                                 onClick={captureLocation}
-                                style={{ marginBottom: 12 }}
                             >
-                                Capture Current Location
+                                Use My Current Location
                             </Button>
+                        </div>
 
-                            <Form.Item name="latitude" hidden><Input /></Form.Item>
-                            <Form.Item name="longitude" hidden><Input /></Form.Item>
-                        </Card>
+                        <Form.Item name="latitude" hidden><Input /></Form.Item>
+                        <Form.Item name="longitude" hidden><Input /></Form.Item>
 
                         <Form.Item name="purpose" label="Purpose">
                             <Input />

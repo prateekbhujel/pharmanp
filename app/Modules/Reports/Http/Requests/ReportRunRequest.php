@@ -24,7 +24,9 @@ class ReportRunRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        $user = $this->user();
+
+        return $user && ($user->is_owner || $user->can('reports.view'));
     }
 
     public function rules(): array

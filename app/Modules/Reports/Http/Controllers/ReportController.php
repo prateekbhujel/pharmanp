@@ -58,6 +58,8 @@ class ReportController extends ModularController
      */
     public function export(string $report, string $format, Request $request, ReportExportService $service)
     {
+        abort_unless($request->user()?->is_owner || $request->user()?->can('reports.view'), 403);
+
         return $service->export($report, $format, $request);
     }
 }
