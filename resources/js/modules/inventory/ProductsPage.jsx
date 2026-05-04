@@ -26,7 +26,6 @@ const inventorySections = {
     units: { title: 'Unit', master: 'units' },
     'stock-adjustment': { title: 'Stock Adjustment' },
     'stock-ledger': { title: 'Stock Ledger' },
-    'case-movement': { title: 'Stock Ledger' },
     products: { title: 'Product' },
 };
 
@@ -342,7 +341,7 @@ export function ProductsPage() {
                     {row.image_url ? <img src={row.image_url} alt="" /> : <span className="product-cell-fallback">{value?.slice(0, 1)}</span>}
                     <div>
                         <strong>{value}</strong>
-                        <small>{row.generic_name || row.composition || row.product_code || row.sku}</small>
+                        <small>{row.generic_name || row.product_code || row.sku}</small>
                     </div>
                 </div>
             ),
@@ -411,9 +410,9 @@ export function ProductsPage() {
                     <small>Margin <Money value={margin} /></small>
                 </div>
                 <div>
-                    <span>Meta</span>
-                    <strong>{record.keywords || 'No keywords'}</strong>
-                    <small>{record.description || record.notes || 'No description'}</small>
+                    <span>Notes</span>
+                    <strong>{record.notes || 'No notes'}</strong>
+                    <small>{record.group_name || record.generic_name || 'No group set'}</small>
                 </div>
             </div>
         );
@@ -465,7 +464,7 @@ export function ProductsPage() {
             return <StockAdjustmentsPanel />;
         }
 
-        if (section === 'stock-ledger' || section === 'case-movement') {
+        if (section === 'stock-ledger') {
             return <StockMovementsPanel />;
         }
 
@@ -571,10 +570,9 @@ export function ProductsPage() {
                     <div className="form-grid form-grid-3">
                         <Form.Item name="group_name" label="Group Name"><Input /></Form.Item>
                         <Form.Item name="manufacturer_name" label="Manufacturer"><Input /></Form.Item>
-                        <Form.Item name="keywords" label="Meta Keywords"><Input placeholder="antibiotic, fever, paediatric..." /></Form.Item>
+                        <Form.Item name="strength" label="Strength"><Input /></Form.Item>
                     </div>
                     <div className="form-grid form-grid-3">
-                        <Form.Item name="strength" label="Strength"><Input /></Form.Item>
                         <Form.Item name="conversion" label="Conversion"><InputNumber min={0.001} className="full-width" /></Form.Item>
                         <Form.Item name="rack_location" label="Rack Location"><Input /></Form.Item>
                     </div>
@@ -602,7 +600,6 @@ export function ProductsPage() {
                     </div>
 
                     <Divider orientation="left">Notes and Image</Divider>
-                    <Form.Item name="description" label="Description"><Input.TextArea rows={2} /></Form.Item>
                     <Form.Item name="notes" label="Internal Notes"><Input.TextArea rows={3} /></Form.Item>
                     {editing?.image_url && (
                         <div className="product-image-preview">
