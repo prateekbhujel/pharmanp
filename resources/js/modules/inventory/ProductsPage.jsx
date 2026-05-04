@@ -157,6 +157,38 @@ function ProductHistoryDrawer({ product, onClose }) {
     );
 }
 
+function CalculatedPricing({ form }) {
+    const watchedMrp = Number(Form.useWatch('mrp', form) || 0);
+    const watchedDiscount = Number(Form.useWatch('discount_percent', form) || 0);
+    const watchedPurchasePrice = Number(Form.useWatch('purchase_price', form) || 0);
+    const watchedConversion = Number(Form.useWatch('conversion', form) || 1);
+    const displayPrice = watchedMrp - (watchedMrp * watchedDiscount / 100);
+    const profit = displayPrice - (watchedPurchasePrice / (watchedConversion || 1));
+
+    return (
+        <>
+            <Form.Item label="Calculated Display"><InputNumber readOnly value={Number(displayPrice.toFixed(2))} className="full-width" /></Form.Item>
+            <Form.Item label="Profit"><InputNumber readOnly value={Number(profit.toFixed(2))} className="full-width" /></Form.Item>
+        </>
+    );
+}
+
+function BarcodePreview({ form, editing }) {
+    const watchedBarcode = Form.useWatch('barcode', form);
+    const watchedName = Form.useWatch('name', form);
+
+    if (!watchedBarcode) {
+        return null;
+    }
+
+    return (
+        <div className="barcode-form-preview">
+            <BarcodeLabel value={watchedBarcode} caption={watchedName || 'Product barcode'} compact />
+            <Button icon={<PrinterOutlined />} onClick={() => printBarcodeLabels([{ ...(editing || {}), name: watchedName, barcode: watchedBarcode }])}>Print</Button>
+        </div>
+    );
+}
+
 export function ProductsPage() {
     const { notification } = App.useApp();
     const section = currentSection();
@@ -171,15 +203,6 @@ export function ProductsPage() {
     const [form] = Form.useForm();
     const [quickForm] = Form.useForm();
     const deletedMode = Boolean(table.filters.deleted);
-
-    const watchedMrp = Number(Form.useWatch('mrp', form) || 0);
-    const watchedDiscount = Number(Form.useWatch('discount_percent', form) || 0);
-    const watchedPurchasePrice = Number(Form.useWatch('purchase_price', form) || 0);
-    const watchedConversion = Number(Form.useWatch('conversion', form) || 1);
-    const watchedBarcode = Form.useWatch('barcode', form);
-    const watchedName = Form.useWatch('name', form);
-    const displayPrice = useMemo(() => watchedMrp - (watchedMrp * watchedDiscount / 100), [watchedMrp, watchedDiscount]);
-    const profit = useMemo(() => displayPrice - (watchedPurchasePrice / (watchedConversion || 1)), [displayPrice, watchedPurchasePrice, watchedConversion]);
 
     useEffect(() => {
         loadMeta();
@@ -556,12 +579,7 @@ export function ProductsPage() {
                             </Space.Compact>
                         </Form.Item>
                     </div>
-                    {watchedBarcode ? (
-                        <div className="barcode-form-preview">
-                            <BarcodeLabel value={watchedBarcode} caption={watchedName || 'Product barcode'} compact />
-                            <Button icon={<PrinterOutlined />} onClick={() => printBarcodeLabels([{ ...(editing || {}), name: watchedName, barcode: watchedBarcode }])}>Print</Button>
-                        </div>
-                    ) : null}
+                    <BarcodePreview form={form} editing={editing} />
                     <div className="form-grid form-grid-3">
                         <Form.Item name="name" label="Product Name" rules={[{ required: true }]}><Input placeholder="e.g. Paracetamol 500mg" /></Form.Item>
                         <Form.Item name="generic_name" label="Generic Name"><Input /></Form.Item>
@@ -587,8 +605,7 @@ export function ProductsPage() {
                     <div className="form-grid form-grid-4">
                         <Form.Item name="discount_percent" label="Discount (%)"><InputNumber min={0} max={100} className="full-width" /></Form.Item>
                         <Form.Item name="selling_price" label="Display / Selling Price" rules={[{ required: true }]}><InputNumber min={0} className="full-width" /></Form.Item>
-                        <Form.Item label="Calculated Display"><InputNumber readOnly value={Number(displayPrice.toFixed(2))} className="full-width" /></Form.Item>
-                        <Form.Item label="Profit"><InputNumber readOnly value={Number(profit.toFixed(2))} className="full-width" /></Form.Item>
+                        <CalculatedPricing form={form} />
                     </div>
                     <div className="form-grid form-grid-3">
                         <Form.Item name="reorder_level" label="Reorder Level" rules={[{ required: true }]}><InputNumber min={0} className="full-width" /></Form.Item>
