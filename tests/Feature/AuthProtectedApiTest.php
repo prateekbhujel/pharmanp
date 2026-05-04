@@ -66,6 +66,37 @@ class AuthProtectedApiTest extends TestCase
             ->assertJsonPath('data.email', $user->email);
     }
 
+    public function test_web_session_can_issue_browser_token_after_login(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create([
+            'email' => 'admin@example.com',
+            'is_owner' => true,
+            'is_active' => true,
+        ]);
+
+        $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertRedirect('/app');
+
+        $token = $this->postJson('/api/v1/auth/token', [
+            'device_name' => 'PharmaNP Browser Session',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'Bearer token issued.')
+            ->json('token');
+
+        $this->assertNotEmpty($token);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/v1/dashboard/summary')
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.stats.products', 0);
+    }
+
     public function test_bearer_token_can_call_api_without_session_or_csrf(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);
