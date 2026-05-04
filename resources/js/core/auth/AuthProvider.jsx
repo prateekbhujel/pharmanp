@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Spin } from 'antd';
 import { endpoints } from '../api/endpoints';
-import { http, setApiToken } from '../api/http';
+import { authMode, http, setApiToken } from '../api/http';
 import { appUrl, standaloneFrontend } from '../utils/url';
 import { ApiLogin } from './ApiLogin';
 
@@ -26,13 +26,13 @@ export function AuthProvider({ children }) {
     }, []);
 
     const login = useCallback(async (payload) => {
-        if (import.meta.env.VITE_PHARMANP_AUTH_MODE === 'session') {
+        if (authMode === 'session') {
             await http.get(endpoints.csrfCookie);
         }
 
         const { data } = await http.post(endpoints.authLogin, {
             ...payload,
-            issue_token: import.meta.env.VITE_PHARMANP_AUTH_MODE !== 'session',
+            issue_token: authMode !== 'session',
             device_name: 'PharmaNP Frontend',
         });
 

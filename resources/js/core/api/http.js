@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 export const apiTokenStorageKey = 'pharmanp.api_token';
+export const authMode = import.meta.env.VITE_PHARMANP_AUTH_MODE || 'session';
+export const usesTokenAuth = authMode !== 'session';
 
 export const http = axios.create({
     headers: {
@@ -11,10 +13,16 @@ export const http = axios.create({
 });
 
 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
-const bootToken = import.meta.env.VITE_PHARMANP_API_TOKEN || localStorage.getItem(apiTokenStorageKey);
+const envToken = import.meta.env.VITE_PHARMANP_API_TOKEN;
+const storedToken = usesTokenAuth ? localStorage.getItem(apiTokenStorageKey) : null;
+const bootToken = envToken || storedToken;
 
 if (csrf) {
     http.defaults.headers.common['X-CSRF-TOKEN'] = csrf;
+}
+
+if (! usesTokenAuth) {
+    localStorage.removeItem(apiTokenStorageKey);
 }
 
 export function setApiToken(token) {

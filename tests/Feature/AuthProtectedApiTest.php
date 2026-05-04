@@ -46,6 +46,26 @@ class AuthProtectedApiTest extends TestCase
             ]);
     }
 
+    public function test_web_session_can_bootstrap_current_user_api(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create([
+            'email' => 'admin@example.com',
+            'is_owner' => true,
+            'is_active' => true,
+        ]);
+
+        $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertRedirect('/app');
+
+        $this->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.email', $user->email);
+    }
+
     public function test_bearer_token_can_call_api_without_session_or_csrf(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);

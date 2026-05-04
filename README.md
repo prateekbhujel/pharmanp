@@ -52,7 +52,7 @@ cp frontend/.env.example frontend/.env
 npm run frontend:dev
 ```
 
-Set `VITE_PHARMANP_API_BASE_URL` in `frontend/.env` to the backend API host, for example `http://127.0.0.1:8000` locally or the deployed demo API. `VITE_PHARMANP_AUTH_MODE=token` uses the API login/token flow, while the Laravel-served app can keep session/cookie auth. Production still uses `npm run build`; no Node server is required on shared hosting.
+Set `VITE_PHARMANP_API_BASE_URL` in `frontend/.env` to the backend API host, for example `http://127.0.0.1:8000` locally or `https://pharmanp.pratikbhujel.com.np` for the deployed demo. `VITE_PHARMANP_AUTH_MODE=token` uses the API login/token flow, while the Laravel-served app keeps session/cookie auth by default. Production still uses `npm run build`; no Node server is required on shared hosting.
 
 ## Product Position
 
