@@ -102,28 +102,17 @@ export function SalesPage() {
                     document.querySelector('.pos-product-search input')?.focus();
                 }
             }
-            if (section !== 'pos') return;
-            switch (event.key) {
-                case 'F2':
-                    event.preventDefault();
-                    document.getElementById('pos-barcode-input')?.focus();
-                    break;
-                case 'F3':
-                    event.preventDefault();
-                    document.querySelector('.pos-product-search input')?.focus();
-                    break;
-                case 'F4':
-                    event.preventDefault();
-                    document.getElementById('pos-paid-amount')?.focus();
-                    break;
-                case 'F8':
-                    event.preventDefault();
-                    submitInvoice();
-                    break;
-                case 'F9':
-                    event.preventDefault();
-                    setQuickProductOpen(true);
-                    break;
+            if (event.altKey && event.key === 'b') {
+                event.preventDefault();
+                if (section === 'pos') document.getElementById('pos-barcode-input')?.focus();
+            }
+            if (event.altKey && event.key === 'p') {
+                event.preventDefault();
+                if (section === 'pos') document.getElementById('pos-paid-amount')?.focus();
+            }
+            if (event.altKey && event.key === 'q') {
+                event.preventDefault();
+                if (section === 'pos') setQuickProductOpen(true);
             }
         }
 
