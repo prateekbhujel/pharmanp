@@ -11,9 +11,9 @@ import {
     Form,
     Input,
     Row,
-    Segmented,
     Space,
     Steps,
+    Tabs,
     Tag,
     Timeline,
     Typography,
@@ -572,8 +572,114 @@ function TutorialPanel({ mode }) {
     );
 }
 
+function PracticePanel() {
+    return (
+        <div className="developer-stack developer-stack-lg">
+            <Card title="Architecture Map" className="developer-guide-card">
+                <Steps
+                    current={-1}
+                    responsive
+                    items={architectureFlow.map((item) => ({
+                        title: item.title,
+                        description: item.description,
+                    }))}
+                />
+            </Card>
+
+            <Card title="Guided Practice Labs" className="developer-guide-card">
+                <Row gutter={[14, 14]}>
+                    {guidedLabs.map((lab) => (
+                        <Col xs={24} lg={12} key={lab.title}>
+                            <Card size="small" className="developer-lab-card" title={lab.title} extra={<Tag color="cyan">{lab.role}</Tag>}>
+                                <div className="developer-stack">
+                                    <Paragraph className="!m-0">{lab.task}</Paragraph>
+                                    <div>
+                                        <Text strong>Files to inspect</Text>
+                                        <div className="developer-file-list">
+                                            {lab.files.map((file) => <Text code key={file}>{file}</Text>)}
+                                        </div>
+                                    </div>
+                                    <Alert type="success" showIcon message="Verification" description={lab.verify} />
+                                </div>
+                            </Card>
+                        </Col>
+                    ))}
+                </Row>
+            </Card>
+        </div>
+    );
+}
+
+function ReferencePanel() {
+    return (
+        <div className="developer-stack developer-stack-lg">
+            <Row gutter={[16, 16]}>
+                {Object.values(rolePaths).map((item) => (
+                    <Col xs={24} md={12} xl={8} key={item.title}>
+                        <FocusCard item={item} />
+                    </Col>
+                ))}
+            </Row>
+
+            <Row gutter={[16, 16]}>
+                <Col xs={24} lg={12}>
+                    <Card title="Frontend module rules" className="developer-guide-card">
+                        <Checklist items={frontendModuleShape} />
+                    </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card title="Code review checklist" className="developer-guide-card">
+                        <Collapse
+                            bordered={false}
+                            items={[
+                                {
+                                    key: 'data',
+                                    label: 'Data and performance',
+                                    children: 'No list should load all rows. Use server-side pagination, searchable indexed columns, and clear per_page behavior. Do not hide N+1 queries under resources.',
+                                },
+                                {
+                                    key: 'stock',
+                                    label: 'Stock and accounting',
+                                    children: 'Purchases, sales, returns, payments, vouchers and stock adjustments must go through service transactions and shared posting services.',
+                                },
+                                {
+                                    key: 'frontend',
+                                    label: 'Frontend consistency',
+                                    children: 'Use shared table, badge, date, money, confirmation and drawer/modal components. Keep forms aligned with legacy behavior but not legacy Blade structure.',
+                                },
+                                {
+                                    key: 'security',
+                                    label: 'Security and auth',
+                                    children: 'No secrets in frontend env files. React, Swagger and mobile all use the same JWT bearer API auth.',
+                                },
+                            ]}
+                        />
+                    </Card>
+                </Col>
+            </Row>
+
+            <Card className="developer-guide-card">
+                <Paragraph className="!mb-0 text-slate-600">
+                    The fastest way to contribute is to change one module at a time, keep the API envelope stable, verify with tests/builds, and leave the next developer with fewer surprises than you found.
+                </Paragraph>
+            </Card>
+        </div>
+    );
+}
+
+function GuideTabLabel({ icon, label, note }) {
+    return (
+        <span className="developer-guide-tab-label">
+            {icon}
+            <span>
+                <strong>{label}</strong>
+                <small>{note}</small>
+            </span>
+        </span>
+    );
+}
+
 export function DeveloperGuidePage() {
-    const [mode, setMode] = useState('teacher');
     const [unlocked, setUnlocked] = useState(() => localStorage.getItem(developerGuideStorageKey) === 'true');
     const displayedApiBaseUrl = apiBaseUrl || window.location.origin;
     const swaggerUrl = apiUrl('/api/documentation');
@@ -634,93 +740,44 @@ export function DeveloperGuidePage() {
                 description="Do not open public/frontend-build/index.html directly. Run npm run frontend:dev for development or npm run frontend:build followed by npm run frontend:preview for build testing. If login loops after an auth change, clear localStorage key pharmanp.api_token and sign in again."
             />
 
-            <Segmented
-                block
-                value={mode}
-                onChange={setMode}
-                options={[
-                    { label: 'Teacher', value: 'teacher', icon: <RocketOutlined /> },
-                    { label: 'Frontend', value: 'frontend', icon: <CodeOutlined /> },
-                    { label: 'Backend', value: 'backend', icon: <DatabaseOutlined /> },
-                    { label: 'Full-stack', value: 'fullstack', icon: <BranchesOutlined /> },
-                ]}
-            />
-
-            <TutorialPanel mode={mode} />
-
-            <Card title="Architecture Map" className="developer-guide-card">
-                <Steps
-                    current={-1}
-                    responsive
-                    items={architectureFlow.map((item) => ({
-                        title: item.title,
-                        description: item.description,
-                    }))}
+            <Card className="developer-guide-tabs-card">
+                <Tabs
+                    size="large"
+                    destroyInactiveTabPane={false}
+                    items={[
+                        {
+                            key: 'start',
+                            label: <GuideTabLabel icon={<RocketOutlined />} label="Start Here" note="Learning paths" />,
+                            children: <TeacherPanel />,
+                        },
+                        {
+                            key: 'frontend',
+                            label: <GuideTabLabel icon={<CodeOutlined />} label="Frontend" note="React shell" />,
+                            children: <TutorialPanel mode="frontend" />,
+                        },
+                        {
+                            key: 'backend',
+                            label: <GuideTabLabel icon={<DatabaseOutlined />} label="Backend" note="Laravel modules" />,
+                            children: <TutorialPanel mode="backend" />,
+                        },
+                        {
+                            key: 'fullstack',
+                            label: <GuideTabLabel icon={<BranchesOutlined />} label="Full-stack" note="End-to-end slice" />,
+                            children: <TutorialPanel mode="fullstack" />,
+                        },
+                        {
+                            key: 'labs',
+                            label: <GuideTabLabel icon={<BugOutlined />} label="Labs" note="Practice and verify" />,
+                            children: <PracticePanel />,
+                        },
+                        {
+                            key: 'reference',
+                            label: <GuideTabLabel icon={<SafetyCertificateOutlined />} label="Reference" note="Rules and review" />,
+                            children: <ReferencePanel />,
+                        },
+                    ]}
                 />
             </Card>
-
-            <Card title="Guided Practice Labs" className="developer-guide-card">
-                <Row gutter={[14, 14]}>
-                    {guidedLabs.map((lab) => (
-                        <Col xs={24} lg={12} key={lab.title}>
-                            <Card size="small" className="developer-lab-card" title={lab.title} extra={<Tag color="cyan">{lab.role}</Tag>}>
-                                <div className="developer-stack">
-                                    <Paragraph className="!m-0">{lab.task}</Paragraph>
-                                    <div>
-                                        <Text strong>Files to inspect</Text>
-                                        <div className="developer-file-list">
-                                            {lab.files.map((file) => <Text code key={file}>{file}</Text>)}
-                                        </div>
-                                    </div>
-                                    <Alert type="success" showIcon message="Verification" description={lab.verify} />
-                                </div>
-                            </Card>
-                        </Col>
-                    ))}
-                </Row>
-            </Card>
-
-            <Row gutter={[16, 16]}>
-                <Col xs={24} lg={12}>
-                    <Card title="Frontend module rules" className="developer-guide-card">
-                        <Checklist items={frontendModuleShape} />
-                    </Card>
-                </Col>
-                <Col xs={24} lg={12}>
-                    <Card title="Code review checklist" className="developer-guide-card">
-                        <Collapse
-                            bordered={false}
-                            items={[
-                                {
-                                    key: 'data',
-                                    label: 'Data and performance',
-                                    children: 'No list should load all rows. Use server-side pagination, searchable indexed columns, and clear per_page behavior. Do not hide N+1 queries under resources.',
-                                },
-                                {
-                                    key: 'stock',
-                                    label: 'Stock and accounting',
-                                    children: 'Purchases, sales, returns, payments, vouchers and stock adjustments must go through service transactions and shared posting services.',
-                                },
-                                {
-                                    key: 'frontend',
-                                    label: 'Frontend consistency',
-                                    children: 'Use shared table, badge, date, money, confirmation and drawer/modal components. Keep forms aligned with legacy behavior but not legacy Blade structure.',
-                                },
-                                {
-                                    key: 'security',
-                                    label: 'Security and auth',
-                                    children: 'No secrets in frontend env files. React, Swagger and mobile all use the same JWT bearer API auth.',
-                                },
-                            ]}
-                        />
-                    </Card>
-                </Col>
-            </Row>
-
-            <Divider />
-            <Paragraph className="text-slate-500">
-                The fastest way to contribute is to change one module at a time, keep the API envelope stable, verify with tests/builds, and leave the next developer with fewer surprises than you found.
-            </Paragraph>
         </div>
     );
 }
