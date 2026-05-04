@@ -28,6 +28,15 @@ class AgingReportService
 
         $days = $this->daysOverdueExpression('sales_invoices.due_date', 'sales_invoices.invoice_date');
 
+        $query->when($request->filled('bucket'), function ($builder) use ($request, $days) {
+            $bucket = $request->query('bucket');
+            if ($bucket === '30') $builder->whereRaw("{$days} <= 30");
+            elseif ($bucket === '45') $builder->whereRaw("{$days} > 30 AND {$days} <= 45");
+            elseif ($bucket === '60') $builder->whereRaw("{$days} > 45 AND {$days} <= 60");
+            elseif ($bucket === '90') $builder->whereRaw("{$days} > 60 AND {$days} <= 90");
+            elseif ($bucket === '90_plus') $builder->whereRaw("{$days} > 90");
+        });
+
         $page = (clone $query)
             ->orderByRaw('COALESCE(sales_invoices.due_date, sales_invoices.invoice_date) asc')
             ->orderBy('sales_invoices.id')
@@ -64,6 +73,15 @@ class AgingReportService
             ->when($request->filled('supplier_id'), fn ($builder) => $builder->where('purchases.supplier_id', $request->integer('supplier_id')));
 
         $days = $this->daysOverdueExpression('purchases.due_date', 'purchases.purchase_date');
+
+        $query->when($request->filled('bucket'), function ($builder) use ($request, $days) {
+            $bucket = $request->query('bucket');
+            if ($bucket === '30') $builder->whereRaw("{$days} <= 30");
+            elseif ($bucket === '45') $builder->whereRaw("{$days} > 30 AND {$days} <= 45");
+            elseif ($bucket === '60') $builder->whereRaw("{$days} > 45 AND {$days} <= 60");
+            elseif ($bucket === '90') $builder->whereRaw("{$days} > 60 AND {$days} <= 90");
+            elseif ($bucket === '90_plus') $builder->whereRaw("{$days} > 90");
+        });
 
         $page = (clone $query)
             ->orderByRaw('COALESCE(purchases.due_date, purchases.purchase_date) asc')

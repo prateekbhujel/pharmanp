@@ -323,6 +323,22 @@ export function ReportsPage() {
                         ]}
                     />
                 )}
+                {['supplier-aging', 'customer-aging'].includes(report) && (
+                    <Select
+                        {...searchableSelectProps}
+                        allowClear
+                        placeholder="Aging bucket"
+                        value={filters.bucket}
+                        onChange={(value) => updateFilter('bucket', value)}
+                        options={[
+                            { value: '30', label: '0 - 30 days' },
+                            { value: '45', label: '31 - 45 days' },
+                            { value: '60', label: '46 - 60 days' },
+                            { value: '90', label: '61 - 90 days' },
+                            { value: '90_plus', label: 'Over 90 days' },
+                        ]}
+                    />
+                )}
                 {['mr-vs-product', 'mr-vs-sales', 'mr-performance'].includes(report) && <Select {...searchableSelectProps} allowClear placeholder="MR" value={filters.medical_representative_id} onChange={(value) => updateFilter('medical_representative_id', value)} options={lookups.medicalRepresentatives.map((item) => ({ value: item.id, label: item.name }))} />}
                 {['product-movement', 'expiry-buckets', 'dumping', 'mr-vs-product', 'target-achievement'].includes(report) && (
                     <Select

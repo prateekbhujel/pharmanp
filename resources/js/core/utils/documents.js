@@ -19,6 +19,18 @@ export async function openAuthenticatedDocument(url, options = {}) {
             headers: { Accept: options.accept || 'text/html,application/pdf,*/*' },
         });
         const type = response.headers?.['content-type'] || options.type || 'application/octet-stream';
+        
+        if (type.includes('text/html')) {
+            const html = await response.data.text();
+            const targetWindow = opened || window.open('', '_blank');
+            if (targetWindow) {
+                targetWindow.document.open();
+                targetWindow.document.write(html);
+                targetWindow.document.close();
+            }
+            return opened;
+        }
+
         const blob = new Blob([response.data], { type });
         const objectUrl = window.URL.createObjectURL(blob);
 
