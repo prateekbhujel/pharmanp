@@ -195,6 +195,20 @@ class AuthProtectedApiTest extends TestCase
             ->assertJsonPath('data.stats.products', 0);
     }
 
+    public function test_standalone_frontend_preview_origin_can_preflight_login(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+
+        $this->withHeaders([
+            'Origin' => 'http://127.0.0.1:4173',
+            'Access-Control-Request-Method' => 'POST',
+            'Access-Control-Request-Headers' => 'content-type,accept,x-requested-with',
+        ])
+            ->options('/api/v1/auth/login')
+            ->assertNoContent()
+            ->assertHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:4173');
+    }
+
     public function test_authenticated_jwt_can_issue_browser_token_for_swagger(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);

@@ -2,13 +2,13 @@
 
 $allowedOrigins = array_filter(array_map(
     fn (string $origin): string => trim($origin),
-    explode(',', (string) env('PHARMANP_CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174')),
+    explode(',', (string) env('PHARMANP_CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:4173,http://127.0.0.1:4173')),
 ));
 
 return [
     'paths' => ['api/*'],
     'allowed_methods' => ['*'],
-    'allowed_origins' => $allowedOrigins ?: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    'allowed_origins' => $allowedOrigins ?: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:4173', 'http://127.0.0.1:4173'],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
     'exposed_headers' => [],

@@ -309,7 +309,10 @@ body {
 }
 
 .developer-track-card,
-.developer-lab-card {
+.developer-lab-card,
+.developer-path-card,
+.developer-lesson-card,
+.developer-playbook-card {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
@@ -317,8 +320,106 @@ body {
     padding: 14px;
 }
 
-.developer-lab-card {
+.developer-lab-card,
+.developer-lesson-card,
+.developer-playbook-card {
     background: #ffffff;
+}
+
+.developer-path-card {
+    background:
+        linear-gradient(180deg, rgb(236 253 245 / 76%), #ffffff),
+        #ffffff;
+}
+
+.developer-path-steps {
+    display: grid;
+    gap: 8px;
+}
+
+.developer-path-steps button {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #dbe7ef;
+    border-radius: 10px;
+    color: #1e293b;
+    cursor: pointer;
+    display: flex;
+    gap: 9px;
+    padding: 9px 10px;
+    text-align: left;
+    text-decoration: none;
+    width: 100%;
+}
+
+.developer-path-steps button:hover {
+    border-color: rgb(var(--primary-color-rgb), 0.34);
+    color: var(--primary-color);
+}
+
+.developer-path-steps span {
+    align-items: center;
+    background: var(--primary-bg);
+    border-radius: 999px;
+    color: var(--primary-color);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 800;
+    height: 24px;
+    justify-content: center;
+    width: 24px;
+}
+
+.developer-principle-card {
+    background: #ffffff;
+    border: 1px solid #dbe7ef;
+    border-radius: 14px;
+    display: grid;
+    gap: 10px;
+    height: 100%;
+    padding: 16px;
+}
+
+.developer-principle-card > .anticon {
+    align-items: center;
+    background: var(--primary-bg);
+    border-radius: 12px;
+    color: var(--primary-color);
+    display: inline-flex;
+    font-size: 20px;
+    height: 40px;
+    justify-content: center;
+    width: 40px;
+}
+
+.developer-lesson-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.developer-lesson-card {
+    scroll-margin-top: 90px;
+}
+
+.developer-lesson-card .ant-card-head-title,
+.developer-playbook-card .ant-card-head-title {
+    white-space: normal;
+}
+
+.developer-glossary-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.developer-glossary-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    display: grid;
+    gap: 5px;
+    padding: 12px;
 }
 
 .developer-file-list {
@@ -374,6 +475,17 @@ body {
     gap: 8px;
     padding: 9px 11px;
     text-decoration: none;
+}
+
+.developer-inline-resource span {
+    display: grid;
+    gap: 2px;
+}
+
+.developer-inline-resource small {
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.35;
 }
 
 .developer-inline-resource:hover {
@@ -1746,7 +1858,10 @@ body {
 
 .auth-page {
     align-items: center;
-    background: #eef2f7;
+    background:
+        radial-gradient(circle at 20% 20%, rgb(15 118 110 / 10%), transparent 28%),
+        radial-gradient(circle at 78% 12%, rgb(37 99 235 / 8%), transparent 30%),
+        linear-gradient(180deg, #f8fafc 0%, #eef4f7 100%);
     display: flex;
     min-height: 100vh;
     justify-content: center;
@@ -1756,25 +1871,38 @@ body {
 .auth-card {
     background: #ffffff;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    box-shadow: 0 18px 45px rgb(15 23 42 / 8%);
-    max-width: 420px;
-    padding: 28px;
+    border-radius: 16px;
+    box-shadow: 0 24px 70px rgb(15 23 42 / 12%);
+    max-width: 460px;
+    padding: 30px;
     width: 100%;
 }
 
 .auth-brand {
     align-items: center;
-    display: grid;
-    gap: 4px;
-    margin-bottom: 20px;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 22px;
 }
 
 .auth-brand img {
-    border-radius: 8px;
-    height: 42px;
+    border-radius: 12px;
+    height: 48px;
     object-fit: contain;
-    width: 42px;
+    width: 48px;
+}
+
+.auth-brand-mark {
+    align-items: center;
+    background: linear-gradient(135deg, #0f766e, #2563eb);
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgb(15 118 110 / 20%);
+    color: #ffffff;
+    display: inline-flex;
+    font-size: 22px;
+    height: 48px;
+    justify-content: center;
+    width: 48px;
 }
 
 .auth-brand span,
@@ -1783,13 +1911,27 @@ body {
 }
 
 .auth-brand span {
-    color: #0891b2;
+    color: var(--primary-color);
+    font-size: 12px;
     font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 .auth-brand strong {
-    font-size: 24px;
+    font-size: 23px;
     color: #1e293b;
+    line-height: 1.1;
+}
+
+.auth-copy {
+    border-bottom: 1px solid #e5eaf0;
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+}
+
+.auth-copy h3 {
+    margin-bottom: 4px !important;
 }
 
 .auth-form {
@@ -1846,6 +1988,35 @@ body {
 .auth-form button:hover {
     box-shadow: 0 6px 16px rgba(8, 145, 178, 0.3);
     transform: translateY(-1px);
+}
+
+.auth-page .ant-btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), #2563eb);
+    border: 0;
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgb(15 118 110 / 18%);
+    font-weight: 800;
+}
+
+.auth-page .ant-btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary-hover), #1d4ed8) !important;
+}
+
+.auth-page .ant-input-affix-wrapper {
+    border-radius: 10px;
+}
+
+.auth-footnote {
+    border-top: 1px solid #edf2f7;
+    margin-top: 20px;
+    padding-top: 14px;
+}
+
+.auth-footnote span:not(.ant-typography) {
+    background: #cbd5e1;
+    border-radius: 999px;
+    height: 4px;
+    width: 4px;
 }
 
 .setup-page {

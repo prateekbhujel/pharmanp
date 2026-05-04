@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
     Alert,
     App,
@@ -10,8 +10,6 @@ import {
     Divider,
     Form,
     Input,
-    Progress,
-    Result,
     Row,
     Segmented,
     Space,
@@ -22,29 +20,28 @@ import {
 } from 'antd';
 import {
     ApiOutlined,
-    BookOutlined,
     BranchesOutlined,
     BugOutlined,
     CheckCircleOutlined,
     CodeOutlined,
     DatabaseOutlined,
     DeploymentUnitOutlined,
-    ExperimentOutlined,
-    FileSearchOutlined,
-    ForkOutlined,
-    LaptopOutlined,
     LockOutlined,
-    PlayCircleOutlined,
     RocketOutlined,
     SafetyCertificateOutlined,
-    ThunderboltOutlined,
-    ToolOutlined,
     VideoCameraOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { apiBaseUrl, apiUrl } from '../../core/utils/url';
+import {
+    glossary,
+    learningPaths as curriculumPaths,
+    lessons as curriculumLessons,
+    modulePlaybooks,
+    optionalReinforcement,
+} from './developerGuideCurriculum';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -52,7 +49,7 @@ const shellCommands = {
     frontend: [
         'git clone --filter=blob:none --sparse https://github.com/prateekbhujel/pharmanp.git pharmanp-frontend',
         'cd pharmanp-frontend',
-        'git sparse-checkout set --skip-checks frontend resources/js resources/css package.json package-lock.json',
+        'git sparse-checkout set --skip-checks frontend resources/js resources/css package.json package-lock.json vite.config.js',
         'npm install',
         'cp frontend/.env.example frontend/.env',
         'npm run frontend:dev',
@@ -144,73 +141,6 @@ VITE_PHARMANP_ENV=development
 VITE_PHARMANP_USE_PROXY=false`;
 
 const developerGuideStorageKey = 'pharmanp.developer_guide.unlocked';
-
-const learningTracks = [
-    {
-        title: 'React Foundations',
-        level: 'Intern / Frontend',
-        progress: 35,
-        icon: <CodeOutlined />,
-        outcome: 'Understand components, state, effects, controlled forms and how PharmaNP pages are assembled.',
-        steps: [
-            'Read React component basics and rebuild one small read-only card from scratch.',
-            'Trace ProductsPage from route registration to ServerTable response rendering.',
-            'Change one filter label, build, and verify that no API contract changed.',
-        ],
-        resources: [
-            ['React official Learn', 'https://react.dev/learn'],
-            ['React state and forms video search', 'https://www.youtube.com/results?search_query=React+controlled+forms+state+effects+tutorial'],
-        ],
-    },
-    {
-        title: 'Laravel API Foundations',
-        level: 'Intern / Backend',
-        progress: 42,
-        icon: <DatabaseOutlined />,
-        outcome: 'Understand requests, validation, resources, services, repositories, migrations and tests.',
-        steps: [
-            'Open one module route file and follow Controller -> Request -> Service -> Repository.',
-            'Add one validation rule in a FormRequest and verify the JSON error envelope.',
-            'Run the related feature test before touching frontend code.',
-        ],
-        resources: [
-            ['Laravel documentation', 'https://laravel.com/docs'],
-            ['Laravel API resources video search', 'https://www.youtube.com/results?search_query=Laravel+API+resources+FormRequest+service+repository+tutorial'],
-        ],
-    },
-    {
-        title: 'PharmaNP Modular Workflow',
-        level: 'Full-stack',
-        progress: 58,
-        icon: <DeploymentUnitOutlined />,
-        outcome: 'Ship one workflow without breaking auth, accounting, stock movement or frontend pagination.',
-        steps: [
-            'Start from database/indexing needs, then define API request/response examples.',
-            'Keep write logic in services and reusable query logic in repositories.',
-            'Wire React only after Swagger and tests prove the API contract.',
-        ],
-        resources: [
-            ['Swagger/OpenAPI docs', 'https://swagger.io/docs/specification/about/'],
-            ['OpenAPI Laravel tutorial search', 'https://www.youtube.com/results?search_query=Laravel+OpenAPI+Swagger+JWT+API+documentation'],
-        ],
-    },
-    {
-        title: 'ERP Domain Thinking',
-        level: 'Senior / Reviewer',
-        progress: 64,
-        icon: <SafetyCertificateOutlined />,
-        outcome: 'Reason about stock, accounting, due aging, targets, returns and reports before writing UI.',
-        steps: [
-            'Never post stock/accounting writes outside a transaction service.',
-            'Never make a report from fake manual summary tables when source transactions exist.',
-            'Always verify tenant/company/branch scope and indexed filters.',
-        ],
-        resources: [
-            ['Inventory accounting search', 'https://www.youtube.com/results?search_query=inventory+accounting+purchases+sales+returns+ledger+ERP'],
-            ['Database indexing search', 'https://www.youtube.com/results?search_query=MySQL+indexing+pagination+large+tables+Laravel'],
-        ],
-    },
-];
 
 const guidedLabs = [
     {
@@ -352,7 +282,194 @@ function DeveloperGuideGate({ onUnlock }) {
     );
 }
 
+function LessonCard({ lesson }) {
+    return (
+        <Card className="developer-lesson-card" title={lesson.title} extra={<Tag color="geekblue">{lesson.audience}</Tag>}>
+            <div className="developer-stack developer-stack-lg">
+                <Alert type="success" showIcon message="What you should be able to do" description={lesson.outcome} />
+                <Collapse
+                    bordered={false}
+                    defaultActiveKey={['model']}
+                    items={[
+                        {
+                            key: 'model',
+                            label: 'Mental model',
+                            children: <Checklist items={lesson.mentalModel} />,
+                        },
+                        {
+                            key: 'walkthrough',
+                            label: 'Teach me step by step',
+                            children: <Checklist items={lesson.walkThrough} />,
+                        },
+                        {
+                            key: 'example',
+                            label: 'Concrete example',
+                            children: <pre className="developer-command-block">{lesson.example}</pre>,
+                        },
+                        {
+                            key: 'practice',
+                            label: 'Practice inside this codebase',
+                            children: <Checklist items={lesson.practice} />,
+                        },
+                        {
+                            key: 'mistakes',
+                            label: 'Mistakes to avoid',
+                            children: <Checklist items={lesson.mistakes} />,
+                        },
+                    ]}
+                />
+            </div>
+        </Card>
+    );
+}
+
+function LearningPathCard({ path }) {
+    const pathLessons = path.lessons
+        .map((key) => curriculumLessons.find((lesson) => lesson.key === key))
+        .filter(Boolean);
+
+    return (
+        <Card className="developer-path-card" size="small">
+            <div className="developer-stack">
+                <Space align="center" wrap>
+                    <Tag color="blue">{path.minutes} min</Tag>
+                    <Text strong>{path.title}</Text>
+                </Space>
+                <Paragraph className="!m-0 text-slate-600">{path.promise}</Paragraph>
+                <div className="developer-path-steps">
+                    {pathLessons.map((lesson, index) => (
+                        <button
+                            type="button"
+                            key={lesson.key}
+                            onClick={() => document.getElementById(`lesson-${lesson.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        >
+                            <span>{index + 1}</span>
+                            <strong>{lesson.title}</strong>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+function ModulePlaybookCard({ playbook }) {
+    return (
+        <Card className="developer-playbook-card" title={playbook.title}>
+            <div className="developer-stack">
+                <Paragraph className="!m-0 text-slate-600">{playbook.summary}</Paragraph>
+                <Checklist items={playbook.steps} />
+            </div>
+        </Card>
+    );
+}
+
+function TeacherPanel() {
+    return (
+        <div className="developer-stack developer-stack-lg">
+            <Card title="Start Here: Choose the brain you are bringing today" className="developer-guide-card">
+                <Row gutter={[14, 14]}>
+                    {curriculumPaths.map((path) => (
+                        <Col xs={24} md={12} xl={8} key={path.key}>
+                            <LearningPathCard path={path} />
+                        </Col>
+                    ))}
+                </Row>
+            </Card>
+
+            <Card title="How PharmaNP wants you to think" className="developer-guide-card">
+                <Row gutter={[14, 14]}>
+                    <Col xs={24} lg={8}>
+                        <div className="developer-principle-card">
+                            <DeploymentUnitOutlined />
+                            <Text strong>Module first</Text>
+                            <Paragraph className="!m-0">
+                                Start from the business module. Inventory, Purchase, Sales, Accounting, Party, MR, Reports and Setup should not know each other through random shortcuts.
+                            </Paragraph>
+                        </div>
+                    </Col>
+                    <Col xs={24} lg={8}>
+                        <div className="developer-principle-card">
+                            <DatabaseOutlined />
+                            <Text strong>Transaction safe</Text>
+                            <Paragraph className="!m-0">
+                                Stock, accounting, payments, returns and import confirmation are service transactions. A half-saved invoice is worse than no invoice.
+                            </Paragraph>
+                        </div>
+                    </Col>
+                    <Col xs={24} lg={8}>
+                        <div className="developer-principle-card">
+                            <CodeOutlined />
+                            <Text strong>Frontend respects API</Text>
+                            <Paragraph className="!m-0">
+                                React pages consume endpoint keys and resources. They do not guess hidden Eloquent fields or invent second validation systems.
+                            </Paragraph>
+                        </div>
+                    </Col>
+                </Row>
+            </Card>
+
+            <Card title="Lesson Library" className="developer-guide-card">
+                <div className="developer-lesson-grid">
+                    {curriculumLessons.map((lesson) => (
+                        <div id={`lesson-${lesson.key}`} key={lesson.key}>
+                            <LessonCard lesson={lesson} />
+                        </div>
+                    ))}
+                </div>
+            </Card>
+
+            <Card title="Real module playbooks" className="developer-guide-card">
+                <Row gutter={[14, 14]}>
+                    {modulePlaybooks.map((playbook) => (
+                        <Col xs={24} lg={12} key={playbook.title}>
+                            <ModulePlaybookCard playbook={playbook} />
+                        </Col>
+                    ))}
+                </Row>
+            </Card>
+
+            <Row gutter={[16, 16]}>
+                <Col xs={24} lg={14}>
+                    <Card title="Vocabulary developers must share" className="developer-guide-card">
+                        <div className="developer-glossary-grid">
+                            {glossary.map(([term, definition]) => (
+                                <div className="developer-glossary-item" key={term}>
+                                    <Text strong>{term}</Text>
+                                    <Text type="secondary">{definition}</Text>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} lg={10}>
+                    <Card title="Optional reinforcement, not the lesson" className="developer-guide-card">
+                        <Paragraph className="text-slate-600">
+                            These links are only backup material. The PharmaNP-specific workflow is already explained above, so nobody should need to leave this page to understand what to build.
+                        </Paragraph>
+                        <div className="developer-resource-list">
+                            {optionalReinforcement.map((item) => (
+                                <a href={item.href} key={item.href} target="_blank" rel="noreferrer" className="developer-inline-resource">
+                                    <VideoCameraOutlined />
+                                    <span>
+                                        <strong>{item.title}</strong>
+                                        <small>{item.note}</small>
+                                    </span>
+                                </a>
+                            ))}
+                        </div>
+                    </Card>
+                </Col>
+            </Row>
+        </div>
+    );
+}
+
 function TutorialPanel({ mode }) {
+    if (mode === 'teacher') {
+        return <TeacherPanel />;
+    }
+
     if (mode === 'frontend') {
         return (
             <Row gutter={[16, 16]}>
@@ -456,72 +573,10 @@ function TutorialPanel({ mode }) {
 }
 
 export function DeveloperGuidePage() {
-    const [mode, setMode] = useState('overview');
+    const [mode, setMode] = useState('teacher');
     const [unlocked, setUnlocked] = useState(() => localStorage.getItem(developerGuideStorageKey) === 'true');
     const displayedApiBaseUrl = apiBaseUrl || window.location.origin;
     const swaggerUrl = apiUrl('/api/documentation');
-    const resources = useMemo(() => [
-        {
-            title: 'Swagger / API Docs',
-            href: swaggerUrl,
-            icon: <ApiOutlined />,
-            detail: 'Use Authorize with a bearer token. Frontend developers should test contracts here before wiring pages.',
-        },
-        {
-            title: 'React + Vite',
-            href: 'https://react.dev/learn',
-            icon: <CodeOutlined />,
-            detail: 'Component thinking, state, effects, and rendering behavior.',
-        },
-        {
-            title: 'Vite Guide',
-            href: 'https://vite.dev/guide/',
-            icon: <LaptopOutlined />,
-            detail: 'Frontend dev server, environment variables, builds and preview behavior.',
-        },
-        {
-            title: 'Laravel',
-            href: 'https://laravel.com/docs',
-            icon: <BookOutlined />,
-            detail: 'Requests, resources, services, migrations, queues, validation, and testing.',
-        },
-        {
-            title: 'PharmaNP API Flow',
-            href: 'https://www.youtube.com/results?search_query=JWT+Bearer+Swagger+React+Laravel+API+workflow',
-            icon: <ThunderboltOutlined />,
-            detail: 'JWT, Swagger Authorize, browser token copying and API debugging flow.',
-        },
-        {
-            title: 'Database Practice',
-            href: 'https://www.youtube.com/results?search_query=MySQL+indexes+server+side+pagination+Laravel+large+tables',
-            icon: <FileSearchOutlined />,
-            detail: 'Indexes, filtered queries, server pagination and slow-query thinking.',
-        },
-        {
-            title: 'Testing Workflow',
-            href: 'https://laravel.com/docs/testing',
-            icon: <ExperimentOutlined />,
-            detail: 'Feature tests, transaction tests and regression protection.',
-        },
-        {
-            title: 'Git Workflow',
-            href: 'https://www.youtube.com/results?search_query=Git+branch+pull+request+code+review+workflow+for+developers',
-            icon: <ForkOutlined />,
-            detail: 'Branch discipline, clean commits and review handoff.',
-        },
-        {
-            title: 'Ant Design',
-            href: 'https://ant.design/components/overview/',
-            icon: <ToolOutlined />,
-            detail: 'Tables, forms, drawers, modals and professional admin UI components.',
-        },
-        {
-            title: 'Video search map',
-            href: 'https://www.youtube.com/results?search_query=Laravel+React+Vite+API+architecture+server+side+tables',
-            icon: <PlayCircleOutlined />,
-            detail: 'Use videos as reinforcement after reading this page, not as the source of truth for this codebase.',
-        },
-    ], [swaggerUrl]);
 
     if (! unlocked) {
         return <DeveloperGuideGate onUnlock={() => setUnlocked(true)} />;
@@ -531,7 +586,7 @@ export function DeveloperGuidePage() {
         <div className="page-stack developer-guide-page">
             <PageHeader
                 title="Developer Guide"
-                subtitle="A practical map for frontend, backend and full-stack contributors working on PharmaNP."
+                description="An in-app teacher for frontend, backend and full-stack contributors working on PharmaNP."
                 actions={(
                     <Button
                         icon={<LockOutlined />}
@@ -554,9 +609,9 @@ export function DeveloperGuidePage() {
                                 <Tag color="green">Password: password</Tag>
                                 <Tag color="purple">API envelope first</Tag>
                             </Space>
-                            <Title level={2} className="!m-0">Work like the app is already yours.</Title>
+                            <Title level={2} className="!m-0">A teacher living inside the codebase.</Title>
                             <Paragraph className="!m-0 text-slate-600">
-                                This page is the contract between backend, frontend and full-stack work. Follow the flow here before changing module code, API shape, table behavior, auth, accounting or stock logic.
+                                This page teaches the way PharmaNP is built: React pages, Laravel modules, JWT, Swagger, repository contracts, DTOs, services, server tables, transaction safety and review habits. It is written so an intern can start and a senior can still use it as the project contract.
                             </Paragraph>
                         </div>
                     </Col>
@@ -579,34 +634,12 @@ export function DeveloperGuidePage() {
                 description="Do not open public/frontend-build/index.html directly. Run npm run frontend:dev for development or npm run frontend:build followed by npm run frontend:preview for build testing. If login loops after an auth change, clear localStorage key pharmanp.api_token and sign in again."
             />
 
-            <Card title="Choose Your Learning Track" className="developer-guide-card">
-                <Row gutter={[14, 14]}>
-                    {learningTracks.map((track) => (
-                        <Col xs={24} md={12} xl={6} key={track.title}>
-                            <div className="developer-track-card">
-                                <Space size={10} align="start">
-                                    <span className="developer-resource-icon">{track.icon}</span>
-                                    <div className="developer-stack">
-                                        <div>
-                                            <Text strong>{track.title}</Text>
-                                            <div><Text type="secondary">{track.level}</Text></div>
-                                        </div>
-                                        <Progress percent={track.progress} showInfo={false} strokeColor="#0f766e" trailColor="#e2e8f0" />
-                                        <Paragraph className="!m-0 text-slate-600">{track.outcome}</Paragraph>
-                                    </div>
-                                </Space>
-                            </div>
-                        </Col>
-                    ))}
-                </Row>
-            </Card>
-
             <Segmented
                 block
                 value={mode}
                 onChange={setMode}
                 options={[
-                    { label: 'Overview', value: 'overview', icon: <RocketOutlined /> },
+                    { label: 'Teacher', value: 'teacher', icon: <RocketOutlined /> },
                     { label: 'Frontend', value: 'frontend', icon: <CodeOutlined /> },
                     { label: 'Backend', value: 'backend', icon: <DatabaseOutlined /> },
                     { label: 'Full-stack', value: 'fullstack', icon: <BranchesOutlined /> },
@@ -647,39 +680,6 @@ export function DeveloperGuidePage() {
                 </Row>
             </Card>
 
-            <Card title="Tutorial Roadmap" className="developer-guide-card">
-                <Collapse
-                    bordered={false}
-                    items={learningTracks.map((track) => ({
-                        key: track.title,
-                        label: (
-                            <Space>
-                                {track.icon}
-                                <span>{track.title}</span>
-                                <Tag>{track.level}</Tag>
-                            </Space>
-                        ),
-                        children: (
-                            <Row gutter={[12, 12]}>
-                                <Col xs={24} lg={13}>
-                                    <Checklist items={track.steps} />
-                                </Col>
-                                <Col xs={24} lg={11}>
-                                    <div className="developer-resource-list">
-                                        {track.resources.map(([label, href]) => (
-                                            <a href={href} key={href} target="_blank" rel="noreferrer" className="developer-inline-resource">
-                                                <VideoCameraOutlined />
-                                                <span>{label}</span>
-                                            </a>
-                                        ))}
-                                    </div>
-                                </Col>
-                            </Row>
-                        ),
-                    }))}
-                />
-            </Card>
-
             <Row gutter={[16, 16]}>
                 <Col xs={24} lg={12}>
                     <Card title="Frontend module rules" className="developer-guide-card">
@@ -716,22 +716,6 @@ export function DeveloperGuidePage() {
                     </Card>
                 </Col>
             </Row>
-
-            <Card title="Reference links" className="developer-guide-card">
-                <Row gutter={[12, 12]}>
-                    {resources.map((item) => (
-                        <Col xs={24} md={12} xl={6} key={item.title}>
-                            <a className="developer-resource-link" href={item.href} target={item.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer">
-                                <div className="developer-stack">
-                                    <span className="developer-resource-icon">{item.icon}</span>
-                                    <Text strong>{item.title}</Text>
-                                    <Text type="secondary">{item.detail}</Text>
-                                </div>
-                            </a>
-                        </Col>
-                    ))}
-                </Row>
-            </Card>
 
             <Divider />
             <Paragraph className="text-slate-500">
