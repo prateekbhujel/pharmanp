@@ -80,7 +80,7 @@ Open `/api-docs` and use either generated value in the Authorize dialog as a bea
 
 ## Module Development
 
-Backend modules follow the same provider-driven pattern used in the larger MidasEdu modules:
+Backend modules follow a provider-driven modular Laravel pattern:
 
 ```text
 app/Modules/<Module>/

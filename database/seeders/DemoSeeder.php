@@ -355,7 +355,7 @@ class DemoSeeder extends Seeder
             'Deurali-Janta Pharmaceuticals', 'Lomus Pharmaceuticals', 'National Healthcare',
             'Asian Pharmaceuticals', 'Quest Pharmaceuticals', 'Nepal Pharmaceuticals Laboratory',
             'Magnus Pharma', 'Everest Parenterals', 'Sun Pharma Nepal', 'Himalayan Medicare',
-            'Midas Pharma Trading', 'Pokhara Remedies',
+            'Himal Pharma Trading', 'Pokhara Remedies',
         ];
 
         return collect($names)->mapWithKeys(function (string $name, int $index) use ($tenant, $owner) {
