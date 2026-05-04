@@ -45,18 +45,9 @@ export function ApiLogin({ onLogin }) {
                         <div className="auth-brand-mark"><SafetyCertificateOutlined /></div>
                     )}
                     <div>
-                        <span>Secure ERP Workspace</span>
                         <strong>{appName}</strong>
                     </div>
                 </div>
-
-                <div className="auth-copy">
-                    <Title level={3}>Sign in to continue</Title>
-                    <Text type="secondary">
-                        Use your PharmaNP account. The browser, Swagger and future mobile apps all use the same JWT bearer authentication.
-                    </Text>
-                </div>
-
                 {error ? <Alert className="mb-4" type="error" message={error} showIcon /> : null}
 
                 <Form layout="vertical" onFinish={submit} autoComplete="on">
@@ -71,13 +62,11 @@ export function ApiLogin({ onLogin }) {
                     </Button>
                 </Form>
 
-                <Space className="auth-footnote" size={8} wrap>
-                    <Text type="secondary">Token based</Text>
-                    <span />
-                    <Text type="secondary">Swagger ready</Text>
-                    <span />
-                    <Text type="secondary">Shared frontend/backend contract</Text>
-                </Space>
+                <div className="auth-copyright mt-[1.2rem] text-center">
+                    <Text type="secondary">
+                        © {new Date().getFullYear()} {appName}. All rights reserved.
+                    </Text>
+                </div>
             </div>
         </div>
     );
