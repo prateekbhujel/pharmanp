@@ -42,6 +42,30 @@ function currentAppPath() {
     return `${path}${window.location.search || ''}`;
 }
 
+function TopbarClock({ brandingData }) {
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+        const timer = window.setInterval(() => setNow(new Date()), 1000);
+        return () => window.clearInterval(timer);
+    }, []);
+
+    const timeLabel = formatCalendarDate(now, brandingData?.calendar_type || 'ad', {
+        style: brandingData?.calendar_type === 'bs' ? 'medium-long' : 'medium',
+        includeWeekday: true,
+        includeTime: true,
+        includeSeconds: false,
+        includeEra: false,
+    });
+
+    return (
+        <div className="topbar-clock">
+            <ClockCircleOutlined />
+            <span>{timeLabel}</span>
+        </div>
+    );
+}
+
 export function AppShell() {
     const { user: authUser, reload: reloadAuth, logout: logoutAuth } = useAuth();
     const { branding: brandingData, loading: brandingLoading } = useBranding();
@@ -52,8 +76,6 @@ export function AppShell() {
     const [isCompactViewport, setIsCompactViewport] = useState(false);
     const [pathname, setPathname] = useState(currentAppPath);
     const [searchVisible, setSearchVisible] = useState(false);
-    const [now, setNow] = useState(new Date());
-
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -64,11 +86,6 @@ export function AppShell() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
-
-    useEffect(() => {
-        const timer = window.setInterval(() => setNow(new Date()), 1000);
-        return () => window.clearInterval(timer);
     }, []);
 
     useEffect(() => {
@@ -220,13 +237,6 @@ export function AppShell() {
         { type: 'divider' },
         { key: 'logout', label: 'Sign Out', danger: true, onClick: logout },
     ];
-    const timeLabel = formatCalendarDate(now, brandingData?.calendar_type || 'ad', {
-        style: brandingData?.calendar_type === 'bs' ? 'medium-long' : 'medium',
-        includeWeekday: true,
-        includeTime: true,
-        includeSeconds: false,
-        includeEra: false,
-    });
     const isDashboardBreadcrumb = breadcrumbs.length === 1 && breadcrumbs[0].key === 'dashboard';
     const shouldShowBreadcrumbs = brandingData?.show_breadcrumbs !== false && !isDashboardBreadcrumb;
     const breadcrumbItems = [
@@ -333,10 +343,7 @@ export function AppShell() {
                         </div>
                     </Space>
                     <Space className="header-content-right" size={16}>
-                        <div className="topbar-clock">
-                            <ClockCircleOutlined />
-                            <span>{timeLabel}</span>
-                        </div>
+                        <TopbarClock brandingData={brandingData} />
                         <Dropdown
                             menu={{ items: notificationItems, onClick: handleNotificationClick }}
                             placement="bottomRight"
