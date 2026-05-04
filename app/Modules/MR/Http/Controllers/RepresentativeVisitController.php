@@ -3,9 +3,9 @@
 namespace App\Modules\MR\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
-use App\Core\Support\ApiResponse;
 use App\Http\Controllers\ModularController;
 use App\Modules\MR\Http\Requests\RepresentativeVisitRequest;
+use App\Modules\MR\Http\Resources\RepresentativeVisitResource;
 use App\Modules\MR\Models\RepresentativeVisit;
 use App\Modules\MR\Services\MrManagementService;
 use Illuminate\Http\JsonResponse;
@@ -36,12 +36,12 @@ class RepresentativeVisitController extends ModularController
     {
         abort_unless($request->user()?->is_owner || $request->user()?->can('mr.view') || $request->user()?->can('mr.visits.manage'), 403);
 
-        $page = $service->visits(TableQueryData::fromRequest($request, ['medical_representative_id', 'employee_id', 'status']), $request->user());
+        $page = $service->visits(
+            TableQueryData::fromRequest($request, ['medical_representative_id', 'employee_id', 'status', 'from', 'to']),
+            $request->user(),
+        );
 
-        return response()->json([
-            'data' => $page->items(),
-            'meta' => ApiResponse::paginationMeta($page),
-        ]);
+        return RepresentativeVisitResource::collection($page)->response();
     }
 
     /**
@@ -62,7 +62,7 @@ class RepresentativeVisitController extends ModularController
     public function store(RepresentativeVisitRequest $request, MrManagementService $service): JsonResponse
     {
         return response()->json([
-            'data' => $service->createVisit($request->validated(), $request->user()),
+            'data' => RepresentativeVisitResource::make($service->createVisit($request->validated(), $request->user())),
             'message' => 'Representative visit saved.',
         ], 201);
     }
@@ -85,7 +85,7 @@ class RepresentativeVisitController extends ModularController
     public function update(RepresentativeVisitRequest $request, RepresentativeVisit $visit, MrManagementService $service): JsonResponse
     {
         return response()->json([
-            'data' => $service->updateVisit($visit, $request->validated(), $request->user()),
+            'data' => RepresentativeVisitResource::make($service->updateVisit($visit, $request->validated(), $request->user())),
             'message' => 'Representative visit updated.',
         ]);
     }

@@ -5,7 +5,6 @@ namespace App\Modules\Sales\Repositories;
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
 use App\Models\User;
-use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesReturn;
 use App\Modules\Sales\Models\SalesReturnItem;
@@ -77,19 +76,6 @@ class SalesReturnRepository implements SalesReturnRepositoryInterface
     public function deleteItems(SalesReturn $salesReturn): void
     {
         SalesReturnItem::query()->where('sales_return_id', $salesReturn->id)->delete();
-    }
-
-    public function deleteTransactions(SalesReturn $salesReturn): void
-    {
-        AccountTransaction::query()
-            ->whereIn('source_type', ['SalesReturn', 'sales_return'])
-            ->where('source_id', $salesReturn->id)
-            ->delete();
-    }
-
-    public function createTransaction(array $payload): AccountTransaction
-    {
-        return AccountTransaction::query()->create($payload);
     }
 
     public function delete(SalesReturn $salesReturn): void

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Purchase\Http\Controllers;
 
+use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Models\Setting;
 use App\Modules\Inventory\Models\Batch;
@@ -15,6 +16,7 @@ use App\Modules\Purchase\Services\PurchaseReturnService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -38,43 +40,12 @@ class PurchaseReturnController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request, PurchaseReturnService $service): JsonResponse
     {
-        $sorts = [
-            'return_no' => 'return_no',
-            'return_date' => 'return_date',
-            'return_type' => 'return_type',
-            'grand_total' => 'grand_total',
-            'created_at' => 'created_at',
-        ];
-        $sortField = $sorts[request('sort_field', 'return_date')] ?? 'return_date';
-        $sortOrder = request('sort_order') === 'asc' ? 'asc' : 'desc';
-        $search = trim((string) request('search'));
-
-        $query = PurchaseReturn::query()
-            ->with(['supplier:id,name', 'purchase:id,purchase_no,supplier_invoice_no'])
-            ->withCount('items')
-            ->when(request()->user()?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
-            ->when(request()->boolean('deleted'), fn (Builder $builder) => $builder->onlyTrashed())
-            ->when($search !== '', function (Builder $builder) use ($search) {
-                $builder->where(function (Builder $inner) use ($search) {
-                    $inner->where('return_no', 'like', '%'.$search.'%')
-                        ->orWhere('notes', 'like', '%'.$search.'%')
-                        ->orWhereHas('supplier', fn (Builder $supplier) => $supplier->where('name', 'like', '%'.$search.'%'))
-                        ->orWhereHas('purchase', fn (Builder $purchase) => $purchase
-                            ->where('purchase_no', 'like', '%'.$search.'%')
-                            ->orWhere('supplier_invoice_no', 'like', '%'.$search.'%'));
-                });
-            })
-            ->when(request()->filled('supplier_id'), fn (Builder $builder) => $builder->where('supplier_id', request()->integer('supplier_id')))
-            ->when(request()->filled('return_type'), fn (Builder $builder) => $builder->where('return_type', request('return_type')))
-            ->when(request('return_mode') === 'bill', fn (Builder $builder) => $builder->whereNotNull('purchase_id'))
-            ->when(in_array(request('return_mode'), ['manual', 'product'], true), fn (Builder $builder) => $builder->whereNull('purchase_id'))
-            ->when(request()->filled('from'), fn (Builder $builder) => $builder->whereDate('return_date', '>=', request('from')))
-            ->when(request()->filled('to'), fn (Builder $builder) => $builder->whereDate('return_date', '<=', request('to')))
-            ->orderBy($sortField, $sortOrder)
-            ->orderByDesc('id')
-            ->paginate(min(100, max(5, request()->integer('per_page', 15))));
+        $query = $service->table(
+            TableQueryData::fromRequest($request, ['deleted', 'supplier_id', 'return_type', 'return_mode', 'from', 'to']),
+            $request->user(),
+        );
 
         return PurchaseReturnResource::collection($query)->response();
     }

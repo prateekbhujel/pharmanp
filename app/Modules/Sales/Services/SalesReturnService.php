@@ -5,6 +5,8 @@ namespace App\Modules\Sales\Services;
 use App\Core\DTOs\TableQueryData;
 use App\Core\Support\ApiResponse;
 use App\Models\User;
+use App\Modules\Accounting\Services\AccountTransactionPostingService;
+use App\Modules\Accounting\Services\ReceivableService;
 use App\Modules\Inventory\Services\StockMovementService;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesInvoiceItem;
@@ -19,6 +21,8 @@ class SalesReturnService
     public function __construct(
         private readonly SalesReturnRepositoryInterface $returns,
         private readonly StockMovementService $stock,
+        private readonly AccountTransactionPostingService $accounts,
+        private readonly ReceivableService $receivables,
     ) {}
 
     public function table(TableQueryData $table, ?User $user = null): array
@@ -58,6 +62,7 @@ class SalesReturnService
 
             $totalAmount = $this->postReturnItems($salesReturn, $data['items'], $user);
             $this->returns->save($salesReturn, ['total_amount' => round($totalAmount, 2)]);
+            $this->reduceReceivable((int) $customerId, $totalAmount);
             $this->postAccounting($salesReturn, (int) $customerId, $totalAmount, $user);
 
             return $this->returns->fresh($salesReturn);
@@ -68,9 +73,12 @@ class SalesReturnService
     {
         return DB::transaction(function () use ($salesReturn, $data, $user) {
             $salesReturn->load('items');
+            $oldCustomerId = (int) $salesReturn->customer_id;
+            $oldAmount = (float) $salesReturn->total_amount;
             $this->reverseReturnEffects($salesReturn, $user);
+            $this->restoreReceivable($oldCustomerId, $oldAmount);
             $this->returns->deleteItems($salesReturn);
-            $this->returns->deleteTransactions($salesReturn);
+            $this->accounts->replaceForSource($user, 'sales_return', $salesReturn->id, now()->toDateString(), []);
 
             $invoice = $this->returns->invoice($data['sales_invoice_id'] ?? null);
             $customerId = $invoice?->customer_id ?? ($data['customer_id'] ?? null);
@@ -91,6 +99,7 @@ class SalesReturnService
 
             $totalAmount = $this->postReturnItems($salesReturn, $data['items'], $user);
             $this->returns->save($salesReturn, ['total_amount' => round($totalAmount, 2)]);
+            $this->reduceReceivable((int) $customerId, $totalAmount);
             $this->postAccounting($salesReturn, (int) $customerId, $totalAmount, $user);
 
             return $this->returns->fresh($salesReturn);
@@ -102,7 +111,8 @@ class SalesReturnService
         DB::transaction(function () use ($salesReturn, $user): void {
             $salesReturn->load('items');
             $this->reverseReturnEffects($salesReturn, $user);
-            $this->returns->deleteTransactions($salesReturn);
+            $this->restoreReceivable((int) $salesReturn->customer_id, (float) $salesReturn->total_amount);
+            $this->accounts->replaceForSource($user, 'sales_return', $salesReturn->id, now()->toDateString(), []);
             $this->returns->deleteItems($salesReturn);
             $this->returns->delete($salesReturn);
         });
@@ -271,31 +281,41 @@ class SalesReturnService
 
     private function postAccounting(SalesReturn $salesReturn, int $customerId, float $totalAmount, User $user): void
     {
-        $base = [
-            'tenant_id' => $user->tenant_id,
-            'company_id' => $user->company_id,
-            'transaction_date' => $salesReturn->return_date,
-            'source_type' => 'SalesReturn',
-            'source_id' => $salesReturn->id,
-            'party_type' => 'customer',
-            'party_id' => $customerId,
-            'created_by' => $user->id,
-        ];
+        $this->accounts->replaceForSource(
+            $user,
+            'sales_return',
+            $salesReturn->id,
+            $salesReturn->return_date?->toDateString() ?: now()->toDateString(),
+            [
+                [
+                    'account_type' => 'sales',
+                    'debit' => $totalAmount,
+                    'credit' => 0,
+                    'notes' => 'Sales return '.$salesReturn->return_no,
+                ],
+                [
+                    'account_type' => 'receivable',
+                    'party_type' => 'customer',
+                    'party_id' => $customerId,
+                    'debit' => 0,
+                    'credit' => $totalAmount,
+                    'notes' => 'Receivable adjusted for return '.$salesReturn->return_no,
+                ],
+            ],
+        );
+    }
 
-        $this->returns->createTransaction([
-            ...$base,
-            'account_type' => 'sales',
-            'debit' => $totalAmount,
-            'credit' => 0,
-            'notes' => 'Sales return '.$salesReturn->return_no,
-        ]);
+    private function reduceReceivable(int $customerId, float $totalAmount): void
+    {
+        if ($customerId > 0 && $totalAmount > 0) {
+            $this->receivables->adjustCustomerBalance($customerId, -1 * round($totalAmount, 2));
+        }
+    }
 
-        $this->returns->createTransaction([
-            ...$base,
-            'account_type' => 'receivable',
-            'debit' => 0,
-            'credit' => $totalAmount,
-            'notes' => 'Receivable adjusted for return '.$salesReturn->return_no,
-        ]);
+    private function restoreReceivable(int $customerId, float $totalAmount): void
+    {
+        if ($customerId > 0 && $totalAmount > 0) {
+            $this->receivables->adjustCustomerBalance($customerId, round($totalAmount, 2));
+        }
     }
 }

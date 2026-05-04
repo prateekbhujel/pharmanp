@@ -32,6 +32,7 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { can } from '../../core/utils/permissions';
 import { mrVisitStatusOptions } from '../../core/utils/accountCatalog';
+import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
 const fieldForceSections = {
     dashboard: { title: 'Dashboard' },
@@ -86,6 +87,7 @@ export function MrTrackingPage() {
     const [customers, setCustomers] = useState([]);
 
     const [dateRange, setDateRange] = useState([]);
+    const [visitRange, setVisitRange] = useState([]);
     const [branchId, setBranchId] = useState(undefined);
     const [mrId, setMrId] = useState(undefined);
 
@@ -302,6 +304,13 @@ export function MrTrackingPage() {
                 visitTable.reload();
             },
         });
+    }
+
+    function updateVisitRange(range) {
+        setVisitRange(range || []);
+        visitTable.setFilters((current) => ({
+            ...applyDateRangeFilter(current, range),
+        }));
     }
 
     function openBranch(record = null) {
@@ -530,14 +539,14 @@ export function MrTrackingPage() {
             title: 'Location',
             width: 180,
             render: (_, record) => (
-                record.location_name || record.latitude ? (
+                record.location_name || record.has_coordinates ? (
                     <Tooltip title={record.location_name || 'Captured location'}>
                         <Button
                             type="link"
                             icon={<EnvironmentOutlined style={{ color: '#52c41a' }} />}
                             onClick={() => setMapVisit(record)}
                         >
-                            {record.location_name || 'View map'}
+                            {record.location_name || 'View location'}
                         </Button>
                     </Tooltip>
                 ) : (
@@ -943,6 +952,12 @@ export function MrTrackingPage() {
                                     options={mrVisitStatusOptions}
                                 />
 
+                                <SmartDatePicker.RangePicker
+                                    value={visitRange}
+                                    onChange={updateVisitRange}
+                                    placeholder={['Visit from', 'Visit to']}
+                                />
+
                                 <Button type="primary" icon={<PlusOutlined />} onClick={() => openVisit(null)}>
                                     Add Visit
                                 </Button>
@@ -1221,7 +1236,7 @@ export function MrTrackingPage() {
                             </p>
                         )}
 
-                        {mapVisit.latitude && mapVisit.longitude ? (
+                        {mapVisit.map_embed_url ? (
                             <>
                                 <iframe
                                     title="Visit Map"
@@ -1229,11 +1244,11 @@ export function MrTrackingPage() {
                                     height="380"
                                     style={{ border: 0, borderRadius: 8 }}
                                     loading="lazy"
-                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${+mapVisit.longitude - 0.01},${+mapVisit.latitude - 0.01},${+mapVisit.longitude + 0.01},${+mapVisit.latitude + 0.01}&layer=mapnik&marker=${mapVisit.latitude},${mapVisit.longitude}`}
+                                    src={mapVisit.map_embed_url}
                                 />
 
                                 <a
-                                    href={`https://www.openstreetmap.org/?mlat=${mapVisit.latitude}&mlon=${mapVisit.longitude}#map=15/${mapVisit.latitude}/${mapVisit.longitude}`}
+                                    href={mapVisit.map_view_url}
                                     target="_blank"
                                     rel="noreferrer"
                                     style={{ fontSize: 12 }}

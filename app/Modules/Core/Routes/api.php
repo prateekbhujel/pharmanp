@@ -12,6 +12,7 @@ Route::post('/auth/login', [ApiAuthController::class, 'login'])
     ->withoutMiddleware('pharmanp.api')
     ->middleware('throttle:6,1')
     ->name('auth.login');
+Route::post('/auth/token', [ApiAuthController::class, 'token'])->name('auth.token');
 Route::post('/auth/logout', [ApiAuthController::class, 'logout'])->name('auth.logout');
 
 Route::get('/me', CurrentUserController::class)->middleware([StartSession::class])->name('me');

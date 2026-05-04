@@ -31,6 +31,8 @@ class RepresentativeVisitRequest extends FormRequest
             'status' => ['required', 'in:planned,visited,missed,converted'],
             'purpose' => ['nullable', 'string', 'max:160'],
             'location_name' => ['nullable', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'order_value' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'remarks' => ['nullable', 'string', 'max:1000'],

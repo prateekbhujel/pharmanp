@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Spin } from 'antd';
 import { endpoints } from '../api/endpoints';
-import { authMode, http, setApiToken } from '../api/http';
+import { authMode, getApiToken, http, setApiToken } from '../api/http';
 import { appUrl, standaloneFrontend } from '../utils/url';
 import { ApiLogin } from './ApiLogin';
 
@@ -10,12 +10,32 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
     const [state, setState] = useState({ loading: true, user: null, branding: null });
 
+    const ensureBrowserToken = useCallback(async () => {
+        if (getApiToken()) {
+            return;
+        }
+
+        try {
+            const { data } = await http.post(endpoints.authToken, {
+                device_name: standaloneFrontend ? 'PharmaNP Standalone Frontend' : 'PharmaNP Browser Session',
+            });
+
+            if (data.token) {
+                setApiToken(data.token);
+            }
+        } catch {
+            // Session auth can still be valid even if token minting is blocked.
+        }
+    }, []);
+
     const load = useCallback(async () => {
         try {
             const { data } = await http.get(endpoints.me);
             setState({ loading: false, user: data.data, branding: data.branding });
+            await ensureBrowserToken();
         } catch {
             if (standaloneFrontend) {
+                setApiToken(null);
                 setState({ loading: false, user: null, branding: null });
 
                 return;
@@ -23,7 +43,7 @@ export function AuthProvider({ children }) {
 
             window.location.href = appUrl('/login');
         }
-    }, []);
+    }, [ensureBrowserToken]);
 
     const login = useCallback(async (payload) => {
         if (authMode === 'session') {
@@ -32,8 +52,8 @@ export function AuthProvider({ children }) {
 
         const { data } = await http.post(endpoints.authLogin, {
             ...payload,
-            issue_token: authMode !== 'session',
-            device_name: 'PharmaNP Frontend',
+            issue_token: true,
+            device_name: standaloneFrontend ? 'PharmaNP Standalone Frontend' : 'PharmaNP Browser Session',
         });
 
         if (data.token) {
@@ -58,7 +78,7 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         load();
-    }, []);
+    }, [load]);
 
     const value = useMemo(() => ({
         ...state,

@@ -63,13 +63,17 @@ class MrRepository implements MrRepositoryInterface
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('status', 'like', '%'.$search.'%')
                         ->orWhere('notes', 'like', '%'.$search.'%')
+                        ->orWhere('purpose', 'like', '%'.$search.'%')
+                        ->orWhere('location_name', 'like', '%'.$search.'%')
                         ->orWhereHas('medicalRepresentative', fn (Builder $mrQuery) => $mrQuery->where('name', 'like', '%'.$search.'%'))
                         ->orWhereHas('customer', fn (Builder $customerQuery) => $customerQuery->where('name', 'like', '%'.$search.'%'));
                 });
             })
             ->when(array_key_exists('medical_representative_id', $table->filters), fn (Builder $builder) => $builder->where('medical_representative_id', $table->filters['medical_representative_id']))
             ->when(array_key_exists('employee_id', $table->filters), fn (Builder $builder) => $builder->where('employee_id', $table->filters['employee_id']))
-            ->when(array_key_exists('status', $table->filters), fn (Builder $builder) => $builder->where('status', $table->filters['status']));
+            ->when(array_key_exists('status', $table->filters), fn (Builder $builder) => $builder->where('status', $table->filters['status']))
+            ->when($table->filters['from'] ?? null, fn (Builder $builder, mixed $from) => $builder->whereDate('visit_date', '>=', $from))
+            ->when($table->filters['to'] ?? null, fn (Builder $builder, mixed $to) => $builder->whereDate('visit_date', '<=', $to));
 
         return $query->orderBy(self::VISIT_SORTS[$table->sortField] ?? 'updated_at', $table->sortOrder)
             ->orderByDesc('id')

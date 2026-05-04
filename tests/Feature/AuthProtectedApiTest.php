@@ -145,4 +145,25 @@ class AuthProtectedApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.stats.products', 0);
     }
+
+    public function test_authenticated_session_can_issue_browser_token_for_swagger(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create(['is_owner' => true, 'is_active' => true]);
+
+        $token = $this->actingAs($user)
+            ->postJson('/api/v1/auth/token', [
+                'device_name' => 'Swagger UI',
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Bearer token issued.')
+            ->json('token');
+
+        $this->assertNotEmpty($token);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.email', $user->email);
+    }
 }

@@ -17,6 +17,8 @@ final readonly class RepresentativeVisitData extends BaseDTO
         public float $orderValue = 0,
         public ?string $notes = null,
         public ?string $locationName = null,
+        public ?float $latitude = null,
+        public ?float $longitude = null,
         public ?string $remarks = null,
     ) {}
 }

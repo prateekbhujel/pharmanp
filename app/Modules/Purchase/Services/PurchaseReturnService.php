@@ -2,6 +2,7 @@
 
 namespace App\Modules\Purchase\Services;
 
+use App\Core\DTOs\TableQueryData;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Services\StockMovementService;
@@ -9,6 +10,7 @@ use App\Modules\Purchase\DTOs\PurchaseReturnData;
 use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Purchase\Models\PurchaseReturn;
 use App\Modules\Purchase\Repositories\Interfaces\PurchaseReturnRepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -19,6 +21,11 @@ class PurchaseReturnService
         private readonly AccountTransactionPostingService $accounts,
         private readonly PurchaseReturnRepositoryInterface $returns,
     ) {}
+
+    public function table(TableQueryData $table, ?User $user = null): LengthAwarePaginator
+    {
+        return $this->returns->paginate($table, $user);
+    }
 
     public function save(array $data, User $user, ?PurchaseReturn $purchaseReturn = null): PurchaseReturn
     {

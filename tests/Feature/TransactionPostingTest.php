@@ -8,6 +8,7 @@ use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Models\Unit;
+use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
 use App\Modules\Purchase\Models\PurchaseOrder;
@@ -157,6 +158,7 @@ class TransactionPostingTest extends TestCase
         ])->assertCreated();
 
         $this->assertSame('10.000', (string) $batch->fresh()->quantity_available);
+        $this->assertSame('16.00', (string) $customer->fresh()->current_balance);
 
         $returnResponse = $this->actingAs($user)->postJson('/api/v1/sales/returns', [
             'customer_id' => $customer->id,
@@ -173,12 +175,25 @@ class TransactionPostingTest extends TestCase
         ])->assertOk();
 
         $this->assertSame('11.000', (string) $batch->fresh()->quantity_available);
+        $this->assertSame('8.00', (string) $customer->fresh()->current_balance);
         $this->assertDatabaseHas('stock_movements', ['movement_type' => 'sales_return_in', 'quantity_in' => 1]);
+        $this->assertDatabaseHas('account_transactions', [
+            'source_type' => 'sales_return',
+            'source_id' => $returnResponse->json('data.id'),
+            'account_type' => 'receivable',
+            'debit' => 0,
+            'credit' => 8,
+        ]);
 
         $this->actingAs($user)->deleteJson('/api/v1/sales/returns/'.$returnResponse->json('data.id'))->assertOk();
 
         $this->assertSame('10.000', (string) $batch->fresh()->quantity_available);
+        $this->assertSame('16.00', (string) $customer->fresh()->current_balance);
         $this->assertDatabaseHas('stock_movements', ['movement_type' => 'sales_return_reverse', 'quantity_out' => 1]);
+        $this->assertDatabaseMissing('account_transactions', [
+            'source_type' => 'sales_return',
+            'source_id' => $returnResponse->json('data.id'),
+        ]);
     }
 
     public function test_sales_invoice_payment_update_refreshes_customer_balance_and_ledger(): void
@@ -357,6 +372,46 @@ class TransactionPostingTest extends TestCase
             ->getJson('/api/v1/accounting/payments?deleted=1')
             ->assertOk()
             ->assertJsonPath('data.0.id', $paymentId);
+    }
+
+    public function test_mr_visit_response_hides_raw_coordinates_and_supports_date_filters(): void
+    {
+        [$user, $product, $supplier, $customer] = $this->fixture();
+
+        $representative = MedicalRepresentative::query()->create([
+            'company_id' => $user->company_id,
+            'name' => 'Pratik Bhujel',
+            'employee_code' => 'MR-001',
+            'is_active' => true,
+        ]);
+
+        $createResponse = $this->actingAs($user)->postJson('/api/v1/mr/visits', [
+            'medical_representative_id' => $representative->id,
+            'customer_id' => $customer->id,
+            'visit_date' => '2026-04-26',
+            'visit_time' => '10:30',
+            'status' => 'visited',
+            'location_name' => 'Maharajgunj, Kathmandu',
+            'latitude' => 27.7395000,
+            'longitude' => 85.3360000,
+            'order_value' => 1200,
+        ])->assertCreated();
+
+        $visit = $createResponse->json('data');
+        $this->assertArrayNotHasKey('latitude', $visit);
+        $this->assertArrayNotHasKey('longitude', $visit);
+        $this->assertTrue($visit['has_coordinates']);
+        $this->assertStringContainsString('openstreetmap.org', $visit['map_view_url']);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/mr/visits?from=2026-04-01&to=2026-04-30')
+            ->assertOk()
+            ->assertJsonPath('data.0.location_name', 'Maharajgunj, Kathmandu');
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/mr/visits?from=2026-05-01&to=2026-05-30')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
     }
 
     private function fixture(): array

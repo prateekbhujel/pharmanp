@@ -35,7 +35,7 @@ function currentAppPath() {
 }
 
 export function AppShell() {
-    const { user: authUser, reload: reloadAuth } = useAuth();
+    const { user: authUser, reload: reloadAuth, logout: logoutAuth } = useAuth();
     const { branding: brandingData, loading: brandingLoading } = useBranding();
     const { colorPrimary } = useTheme();
 
@@ -187,9 +187,7 @@ export function AppShell() {
     }
 
     function logout() {
-        http.post(appUrl('/logout')).finally(() => {
-            window.location.href = appUrl('/login');
-        });
+        logoutAuth?.();
     }
 
     function stopImpersonating() {

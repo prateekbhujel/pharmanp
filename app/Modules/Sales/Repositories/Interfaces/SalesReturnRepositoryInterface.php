@@ -4,7 +4,6 @@ namespace App\Modules\Sales\Repositories\Interfaces;
 
 use App\Core\DTOs\TableQueryData;
 use App\Models\User;
-use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesReturn;
 use App\Modules\Sales\Models\SalesReturnItem;
@@ -22,10 +21,6 @@ interface SalesReturnRepositoryInterface
     public function createItem(SalesReturn $salesReturn, array $payload): SalesReturnItem;
 
     public function deleteItems(SalesReturn $salesReturn): void;
-
-    public function deleteTransactions(SalesReturn $salesReturn): void;
-
-    public function createTransaction(array $payload): AccountTransaction;
 
     public function delete(SalesReturn $salesReturn): void;
 

@@ -92,6 +92,37 @@ class ApiAuthController extends ModularController
 
     /**
      * @OA\Post(
+     *     path="/auth/token",
+     *     summary="Issue browser bearer token",
+     *     tags={"AUTH - Authentication"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\RequestBody(required=false, @OA\JsonContent(
+     *         type="object",
+     *         @OA\Property(property="device_name", type="string", example="Swagger UI")
+     *     )),
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=401, description="Unauthenticated")
+     * )
+     */
+    public function token(Request $request): JsonResponse
+    {
+        $issued = $this->tokens->create(
+            user: $request->user(),
+            name: $request->string('device_name')->trim()->value() ?: 'PharmaNP Browser Session',
+            expiresAt: $this->tokens->expiryForFrontendLogin(),
+            createdBy: $request->user(),
+        );
+
+        return response()->json([
+            'message' => 'Bearer token issued.',
+            'token' => $issued['plain_text_token'],
+        ]);
+    }
+
+    /**
+     * @OA\Post(
      *     path="/auth/logout",
      *     summary="Api Auth Logout",
      *     tags={"AUTH - Authentication"},
