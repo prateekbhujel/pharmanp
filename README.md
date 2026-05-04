@@ -34,22 +34,25 @@ The setup wizard asks for the first admin account during installation. Do not sh
 
 ## Frontend Development
 
+Same-repo Laravel/Vite development:
+
 ```bash
 npm install
 npm run dev
 ```
 
-For a frontend-only sparse checkout:
+Frontend-only development is supported through the `frontend/` Vite shell. A React developer does not need PHP, Composer, XAMPP, or a local Laravel server when they point the app at a shared/backend API URL.
 
 ```bash
 git clone --filter=blob:none --sparse https://github.com/prateekbhujel/pharmanp.git pharmanp-frontend
 cd pharmanp-frontend
-git sparse-checkout set --skip-checks resources/js resources/css resources/views package.json package-lock.json vite.config.js
+git sparse-checkout set --skip-checks frontend resources/js resources/css package.json package-lock.json
 npm install
-npm run dev
+cp frontend/.env.example frontend/.env
+npm run frontend:dev
 ```
 
-The frontend still expects a running Laravel backend from the same app URL. Production uses `npm run build`; no Node server is required on shared hosting.
+Set `VITE_PHARMANP_API_BASE_URL` in `frontend/.env` to the backend API host, for example `http://127.0.0.1:8000` locally or the deployed demo API. `VITE_PHARMANP_AUTH_MODE=token` uses the API login/token flow, while the Laravel-served app can keep session/cookie auth. Production still uses `npm run build`; no Node server is required on shared hosting.
 
 ## Product Position
 
