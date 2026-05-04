@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * @OA\Schema(
  *     schema="ApiLoginRequest",
  *     title="API Login Request",
- *     description="Sanctum token/session login contract for Swagger and SPA clients",
+ *     description="Session login and optional PharmaNP bearer token contract for Swagger and standalone SPA clients",
  *     required={"email", "password"},
  *
  *     @OA\Property(property="email", type="string", format="email", example="pratik@admin.com"),

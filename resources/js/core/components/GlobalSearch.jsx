@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, Input, List, Typography, Space, Spin } from 'antd';
-import { SearchOutlined, FileTextOutlined, ShoppingCartOutlined, UserOutlined, SettingOutlined, ArrowRightOutlined, TeamOutlined, ShopOutlined } from '@ant-design/icons';
+import { SearchOutlined, FileTextOutlined, ShoppingCartOutlined, SettingOutlined, ArrowRightOutlined, TeamOutlined, ShopOutlined, WalletOutlined, BarChartOutlined, CloudUploadOutlined, UserSwitchOutlined } from '@ant-design/icons';
 import { http } from '../api/http';
 import { endpoints } from '../api/endpoints';
 import { isMacPlatform } from '../utils/platform';
@@ -11,12 +11,18 @@ const ICON_MAP = {
     'Product': <ShoppingCartOutlined />,
     'Sales': <FileTextOutlined />,
     'Purchase': <ShopOutlined />,
+    'Accounting & Finance': <WalletOutlined />,
+    'Report': <BarChartOutlined />,
+    'Import': <CloudUploadOutlined />,
+    'Field Force': <UserSwitchOutlined />,
+    'Master': <SettingOutlined />,
     'Admin': <SettingOutlined />,
+    'Party': <TeamOutlined />,
     'Customer': <TeamOutlined />,
     'Supplier': <ShopOutlined />,
 };
 
-export function GlobalSearch({ visible, onCancel, onNavigate }) {
+export function GlobalSearch({ visible, onCancel, onNavigate, defaultItems = [] }) {
     const [search, setSearch] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -28,22 +34,7 @@ export function GlobalSearch({ visible, onCancel, onNavigate }) {
 
     useEffect(() => {
         if (!search) {
-            setResults([
-                { key: 'dashboard', label: 'Dashboard', type: 'Page', description: 'Overview of your business metrics', route: '/app' },
-                { key: 'products', label: 'Products', type: 'Inventory', description: 'Manage medicine inventory and stock', route: '/app/inventory/products' },
-                { key: 'sales', label: 'Sales Invoices', type: 'Sales', description: 'View and create customer invoices', route: '/app/sales/invoices' },
-                { key: 'purchases', label: 'Purchase Bills', type: 'Purchase', description: 'Supplier purchase bills and receiving', route: '/app/purchases/bills' },
-                { key: 'users', label: 'Users', type: 'Admin', description: 'Staff accounts and access control', route: '/app/administration/users' },
-                { key: 'roles', label: 'Roles & Permissions', type: 'Admin', description: 'Readable access control matrix', route: '/app/administration/roles' },
-                { key: 'employees', label: 'Employees', type: 'Admin', description: 'Staff profile and reporting hierarchy', route: '/app/administration/employees' },
-                { key: 'branches', label: 'Branches', type: 'Admin', description: 'Branch setup and locations', route: '/app/administration/branches' },
-                { key: 'areas', label: 'Areas', type: 'Admin', description: 'Branch area setup for MR work', route: '/app/administration/areas' },
-                { key: 'divisions', label: 'Divisions', type: 'Admin', description: 'Division-wise product and target grouping', route: '/app/administration/divisions' },
-                { key: 'targets', label: 'Targets', type: 'Admin', description: 'Primary and secondary targets', route: '/app/administration/targets' },
-                { key: 'dropdowns', label: 'Dropdown Masters', type: 'Admin', description: 'Payment modes, types and reusable dropdowns', route: '/app/administration/data-lookup' },
-                { key: 'reports', label: 'Reports', type: 'Page', description: 'Sales, stock, aging, target and accounting reports', route: '/app/reports' },
-                { key: 'settings', label: 'Settings', type: 'Admin', description: 'System configuration and branding', route: '/app/settings' },
-            ]);
+            setResults(defaultItems);
             return;
         }
 
@@ -60,7 +51,7 @@ export function GlobalSearch({ visible, onCancel, onNavigate }) {
         }, 300);
 
         return () => clearTimeout(handler);
-    }, [search]);
+    }, [defaultItems, search]);
 
     const handleSelect = (item) => {
         if (item.route) {

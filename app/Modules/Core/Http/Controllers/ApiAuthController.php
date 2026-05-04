@@ -2,6 +2,7 @@
 
 namespace App\Modules\Core\Http\Controllers;
 
+use App\Core\Services\ApiTokenService;
 use App\Http\Controllers\ModularController;
 use App\Models\User;
 use App\Modules\Core\Http\Requests\ApiLoginRequest;
@@ -21,6 +22,8 @@ use Illuminate\Validation\ValidationException;
  */
 class ApiAuthController extends ModularController
 {
+    public function __construct(private readonly ApiTokenService $tokens) {}
+
     /**
      * @OA\Post(
      *     path="/auth/login",
@@ -71,7 +74,14 @@ class ApiAuthController extends ModularController
 
         $token = null;
         if ((bool) ($credentials['issue_token'] ?? false)) {
-            $token = $user->createToken($credentials['device_name'] ?? 'PharmaNP Frontend')->plainTextToken;
+            $issued = $this->tokens->create(
+                user: $user,
+                name: $credentials['device_name'] ?? 'PharmaNP Frontend',
+                expiresAt: $this->tokens->expiryForFrontendLogin(),
+                createdBy: $user,
+            );
+
+            $token = $issued['plain_text_token'];
         }
 
         return response()->json([
@@ -97,6 +107,10 @@ class ApiAuthController extends ModularController
      */
     public function logout(Request $request): JsonResponse
     {
+        if ($request->bearerToken()) {
+            $this->tokens->revokePlainTextToken($request->bearerToken(), $request->user());
+        }
+
         if ($request->user()?->currentAccessToken()) {
             $request->user()->currentAccessToken()->delete();
         }

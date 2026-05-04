@@ -116,7 +116,7 @@ class AuthProtectedApiTest extends TestCase
             ->assertJsonPath('data.stats.products', 0);
     }
 
-    public function test_api_login_can_issue_sanctum_token_for_standalone_frontend(): void
+    public function test_api_login_can_issue_pharmanp_token_for_standalone_frontend(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);
         $user = User::factory()->create([

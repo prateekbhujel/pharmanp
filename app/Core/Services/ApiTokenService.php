@@ -62,6 +62,31 @@ class ApiTokenService
         ])->save();
     }
 
+    public function revokePlainTextToken(?string $plainTextToken, ?User $updatedBy = null): bool
+    {
+        if (! filled($plainTextToken)) {
+            return false;
+        }
+
+        $token = ApiToken::query()
+            ->where('token_hash', $this->hash($plainTextToken))
+            ->whereNull('revoked_at')
+            ->first();
+
+        if (! $token) {
+            return false;
+        }
+
+        $this->revoke($token, $updatedBy);
+
+        return true;
+    }
+
+    public function expiryForFrontendLogin(): CarbonInterface
+    {
+        return now()->addDays(30);
+    }
+
     public function hash(string $plainTextToken): string
     {
         return hash('sha256', $plainTextToken);

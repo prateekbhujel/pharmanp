@@ -3,7 +3,7 @@
   "info": {
     "title": "PharmaNP API",
     "version": "1.0.4",
-    "description": "PharmaNP ERP API. Same-domain React uses Sanctum/session cookies and CSRF. Standalone React, Swagger, and mobile clients can use Sanctum personal access tokens, PharmaNP API tokens, or signed JWT tokens during development."
+    "description": "PharmaNP ERP API. Same-domain React uses session cookies and CSRF. Standalone React, Swagger, and mobile clients can use PharmaNP API tokens or signed JWT tokens during development."
   },
   "servers": [
     {
@@ -26,7 +26,7 @@
     "/auth/login": {
       "post": {
         "tags": ["Auth"],
-        "summary": "Authenticate and optionally issue a Sanctum token",
+        "summary": "Authenticate and optionally issue a PharmaNP bearer token",
         "security": [],
         "requestBody": {
           "required": true,
@@ -39,7 +39,7 @@
                   "email": { "type": "string", "format": "email" },
                   "password": { "type": "string", "format": "password" },
                   "remember": { "type": "boolean" },
-                  "issue_token": { "type": "boolean", "description": "Return a Sanctum bearer token for standalone clients." },
+                  "issue_token": { "type": "boolean", "description": "Return a PharmaNP bearer token for standalone clients." },
                   "device_name": { "type": "string" }
                 }
               }
@@ -55,7 +55,7 @@
     "/auth/logout": {
       "post": {
         "tags": ["Auth"],
-        "summary": "Logout current session or revoke current Sanctum token",
+        "summary": "Logout current session or revoke current bearer token",
         "responses": {
           "200": { "description": "Logged out" },
           "401": { "$ref": "#/components/responses/Unauthenticated" }
@@ -175,7 +175,7 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "Sanctum token, JWT, or PharmaNP API token"
+        "bearerFormat": "JWT or PharmaNP API token"
       }
     },
     "responses": {

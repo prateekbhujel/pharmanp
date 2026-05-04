@@ -54,6 +54,15 @@ npm run frontend:dev
 
 Set `VITE_PHARMANP_API_BASE_URL` in `frontend/.env` to the backend API host, for example `https://pharmanp.pratikbhujel.com.np` for the deployed demo. The Laravel-served app keeps `VITE_PHARMANP_API_BASE_URL` empty so API calls stay same-origin with session/cookie auth. `VITE_PHARMANP_AUTH_MODE=token` is for the frontend-only shell. Production still uses `npm run build`; no Node server is required on shared hosting.
 
+For frontend-only production-build testing, run:
+
+```bash
+npm run frontend:build
+npm run frontend:preview
+```
+
+Do not open `public/frontend-build/index.html` directly. Previewing through Vite avoids asset-path and browser-history reload issues.
+
 ## Product Position
 
 PharmaNP is shipped as a standalone Laravel application. A pharmacy installs it, completes the first-run setup, configures branding/fiscal year/roles, and begins daily operation from the same codebase. It uses one database with tenant, company, branch and store scoped columns where the workflow needs them, which keeps shared-hosting deployment simple while still protecting data boundaries inside the app.
