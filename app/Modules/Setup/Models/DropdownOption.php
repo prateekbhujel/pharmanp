@@ -14,10 +14,6 @@ class DropdownOption extends Model
             'label' => 'Product Status',
             'supports_data' => false,
         ],
-        'formulation' => [
-            'label' => 'Formulation',
-            'supports_data' => false,
-        ],
         'sales_type' => [
             'label' => 'Sales Type',
             'supports_data' => false,

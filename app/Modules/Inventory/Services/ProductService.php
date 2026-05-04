@@ -37,7 +37,7 @@ class ProductService
             $payload['updated_by'] = $user?->id;
             $payload['image_path'] = $image ? $this->storeImage($image) : null;
 
-            return $this->products->create($payload)->fresh(['company', 'unit', 'category']);
+            return $this->products->create($payload)->fresh(['company', 'unit', 'division']);
         });
     }
 
@@ -57,7 +57,7 @@ class ProductService
 
             $this->products->update($product, $payload);
 
-            return $product->fresh(['company', 'unit', 'category']);
+            return $product->fresh(['company', 'unit', 'division']);
         });
     }
 
@@ -84,7 +84,7 @@ class ProductService
                 'updated_by' => $user?->id,
             ])->save();
 
-            return $product->fresh(['company', 'unit', 'category']);
+            return $product->fresh(['company', 'unit', 'division']);
         });
     }
 

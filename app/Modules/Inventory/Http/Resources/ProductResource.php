@@ -34,7 +34,6 @@ class ProductResource extends JsonResource
             'strength' => $this->strength,
             'manufacturer_name' => $this->manufacturer_name,
             'packaging_type' => $this->packaging_type,
-            'case_movement' => $this->case_movement,
             'conversion' => (float) $this->conversion,
             'rack_location' => $this->rack_location,
             'previous_price' => (float) $this->previous_price,
@@ -49,6 +48,8 @@ class ProductResource extends JsonResource
             'is_active' => (bool) $this->is_active,
             'stock_on_hand' => (float) ($this->stock_on_hand ?? 0),
             'notes' => $this->notes,
+            'keywords' => $this->keywords,
+            'description' => $this->description,
             'image_path' => $this->image_path,
             'image_url' => $this->image_path ? AssetUrl::resolve(AssetUrl::publicStorage($this->image_path)) : null,
             'deleted_at' => $this->deleted_at?->toISOString(),
@@ -60,13 +61,10 @@ class ProductResource extends JsonResource
                 'id' => $this->unit?->id,
                 'name' => $this->unit?->name,
             ]),
-            'category' => $this->whenLoaded('category', fn () => [
-                'id' => $this->category?->id,
-                'name' => $this->category?->name,
-            ]),
             'division' => $this->whenLoaded('division', fn () => [
                 'id' => $this->division?->id,
                 'name' => $this->division?->name,
+                'code' => $this->division?->code,
             ]),
             'batches' => $this->whenLoaded('batches', fn () => $this->batches->map(fn ($batch) => [
                 'id' => $batch->id,

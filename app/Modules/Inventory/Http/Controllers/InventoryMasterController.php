@@ -5,7 +5,6 @@ namespace App\Modules\Inventory\Http\Controllers;
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Modules\Inventory\Http\Requests\InventoryMasterRequest;
-use App\Modules\Inventory\Http\Requests\QuickCategoryRequest;
 use App\Modules\Inventory\Http\Requests\QuickCompanyRequest;
 use App\Modules\Inventory\Http\Requests\QuickUnitRequest;
 use App\Modules\Inventory\Models\Product;
@@ -205,26 +204,4 @@ class InventoryMasterController extends ModularController
         return response()->json(['message' => 'Unit added.', 'data' => $unit->only(['id', 'name'])], 201);
     }
 
-    /**
-     * @OA\Post(
-     *     path="/inventory/categories/quick",
-     *     summary="Api Inventory Categories Quick",
-     *     tags={"INVENTORY - Categories"},
-     *     security={{"bearerAuth": {}}},
-     *
-     *     @OA\RequestBody(required=false, @OA\JsonContent(type="object", additionalProperties=true)),
-     *
-     *     @OA\Response(response=200, description="Successful response"),
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(response=403, description="Forbidden"),
-     *     @OA\Response(response=422, description="Validation error")
-     * )
-     */
-    public function category(QuickCategoryRequest $request): JsonResponse
-    {
-        $this->authorize('create', Product::class);
-        $category = $this->masters->quickCategory($request->validated(), $request->user());
-
-        return response()->json(['message' => 'Category added.', 'data' => $category->only(['id', 'name'])], 201);
-    }
 }

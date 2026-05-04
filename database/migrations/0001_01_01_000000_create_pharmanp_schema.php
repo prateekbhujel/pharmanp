@@ -48,7 +48,6 @@ return new class extends Migration
             'customers',
             'suppliers',
             'products',
-            'product_categories',
             'units',
             'stores',
             'companies',
@@ -503,21 +502,9 @@ return new class extends Migration
             $table->unique(['company_id', 'name'], 'units_company_name_unique');
         });
 
-        Schema::create('product_categories', function (Blueprint $table) {
-            $table->id();
-            $this->tenantColumns($table);
-            $table->string('name');
-            $table->string('code', 60)->nullable()->index();
-            $table->boolean('is_active')->default(true)->index();
-            $this->auditColumns($table);
-            $table->softDeletes();
-            $table->timestamps();
-        });
-
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $this->tenantColumns($table, true);
-            $table->unsignedBigInteger('category_id')->nullable()->index();
             $table->unsignedBigInteger('manufacturer_id')->nullable()->index();
             $table->unsignedBigInteger('division_id')->nullable()->index();
             $table->unsignedBigInteger('unit_id')->nullable()->index();
@@ -531,8 +518,6 @@ return new class extends Migration
             $table->string('group_name', 120)->nullable()->index();
             $table->string('manufacturer_name', 180)->nullable()->index();
             $table->string('packaging_type', 120)->nullable()->index();
-            $table->string('case_movement', 120)->nullable()->index();
-            $table->string('formulation', 80)->nullable()->index();
             $table->string('strength', 80)->nullable();
             $table->decimal('conversion', 12, 3)->default(1);
             $table->string('rack_location', 80)->nullable();
@@ -555,6 +540,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['company_id', 'sku'], 'products_company_sku_unique');
             $table->unique(['company_id', 'barcode'], 'products_company_barcode_unique');
+            $table->unique(['company_id', 'product_code'], 'products_company_code_unique');
             $table->index(['name', 'generic_name'], 'products_name_generic_idx');
             $table->index(['is_active', 'deleted_at'], 'products_active_deleted_idx');
             $table->index(['tenant_id', 'company_id', 'deleted_at', 'updated_at'], 'products_tenant_company_recent_idx');
@@ -648,7 +634,7 @@ return new class extends Migration
             $this->auditColumns($table);
             $table->softDeletes();
             $table->timestamps();
-            $table->index(['tenant_id', 'supplier_code'], 'suppliers_tenant_code_idx');
+            $table->unique(['tenant_id', 'supplier_code'], 'suppliers_tenant_code_unique');
             $table->index(['tenant_id', 'company_id', 'deleted_at', 'updated_at'], 'suppliers_tenant_company_recent_idx');
         });
 
@@ -982,12 +968,12 @@ return new class extends Migration
             $table->string('employee_code', 80)->nullable()->index();
             $table->string('phone', 40)->nullable()->index();
             $table->string('email')->nullable();
-            $table->string('territory')->nullable()->index();
             $table->decimal('monthly_target', 14, 2)->default(0);
             $table->boolean('is_active')->default(true)->index();
             $this->auditColumns($table);
             $table->softDeletes();
             $table->timestamps();
+            $table->unique(['tenant_id', 'employee_code'], 'medical_representatives_tenant_code_unique');
             $table->index(['tenant_id', 'company_id', 'is_active', 'deleted_at'], 'mrs_tenant_company_active_idx');
             $table->index(['tenant_id', 'branch_id', 'is_active'], 'mrs_tenant_branch_active_idx');
         });

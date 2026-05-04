@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Inventory\Models\Company;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Party\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,12 +43,11 @@ class ImportPreviewTest extends TestCase
         Storage::fake('local');
         $company = Company::query()->create(['name' => 'Import Pharma']);
         Unit::query()->create(['company_id' => $company->id, 'name' => 'Piece']);
-        ProductCategory::query()->create(['company_id' => $company->id, 'name' => 'Medicine']);
         $user = User::factory()->create(['company_id' => $company->id, 'is_owner' => true]);
 
         $file = UploadedFile::fake()->createWithContent(
             'products.csv',
-            "sku,name,formulation,mrp,purchase_price,selling_price\nCET-10,Cetirizine 10,Tablet,10,6,9\n",
+            "sku,name,generic_name,mrp,purchase_price,selling_price\nCET-10,Cetirizine 10,Cetirizine,10,6,9\n",
         );
 
         $preview = $this->actingAs($user)->postJson('/api/v1/imports/preview', [
@@ -62,7 +60,7 @@ class ImportPreviewTest extends TestCase
             'mapping' => [
                 'sku' => 'sku',
                 'name' => 'name',
-                'formulation' => 'formulation',
+                'generic_name' => 'generic_name',
                 'mrp' => 'mrp',
                 'purchase_price' => 'purchase_price',
                 'selling_price' => 'selling_price',

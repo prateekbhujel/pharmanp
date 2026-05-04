@@ -3,6 +3,7 @@
 namespace App\Modules\Purchase\Models;
 
 use App\Modules\Party\Models\Supplier;
+use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -49,6 +50,11 @@ class Purchase extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function paymentMode(): BelongsTo
+    {
+        return $this->belongsTo(DropdownOption::class, 'payment_mode_id');
     }
 
     public function items(): HasMany

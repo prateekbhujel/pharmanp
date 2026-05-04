@@ -83,7 +83,7 @@ class PharmaSignalService
             'name' => (string) $row['name'],
             'sku' => $row['sku'] ?: '-',
             'company' => $row['company'] ?: '-',
-            'category' => $row['category'] ?: '-',
+            'division' => $row['division'] ?: '-',
             'stock_on_hand' => $stock,
             'reorder_level' => $reorderLevel,
             'sold_30' => $sold30,

@@ -950,6 +950,55 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
+.expanded-summary-grid {
+    background: #f8fbfb;
+    border: 1px solid #dbe7e5;
+    border-radius: 10px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    padding: 14px;
+}
+
+.expanded-summary-grid > div {
+    min-width: 0;
+}
+
+.expanded-summary-grid span,
+.expanded-summary-grid .summary-label {
+    color: #64748b;
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+}
+
+.expanded-summary-grid strong {
+    color: #1f2937;
+    display: block;
+    font-size: 13px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.expanded-summary-grid small {
+    color: #64748b;
+    display: block;
+    font-size: 12px;
+    line-height: 1.35;
+    margin-top: 3px;
+    overflow-wrap: anywhere;
+}
+
+.expanded-summary-actions {
+    align-content: start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .metric-card {
     min-height: 78px;
     background: #ffffff;

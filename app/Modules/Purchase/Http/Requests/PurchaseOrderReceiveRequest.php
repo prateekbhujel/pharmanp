@@ -25,6 +25,9 @@ class PurchaseOrderReceiveRequest extends FormRequest
         return [
             'supplier_invoice_no' => ['nullable', 'string', 'max:120'],
             'purchase_date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:purchase_date'],
+            'payment_mode_id' => ['nullable', 'integer', 'exists:dropdown_options,id'],
+            'payment_type' => ['nullable', 'string', 'max:40'],
             'paid_amount' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1'],

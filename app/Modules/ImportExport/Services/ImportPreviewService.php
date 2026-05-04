@@ -3,17 +3,18 @@
 namespace App\Modules\ImportExport\Services;
 
 use App\Models\User;
+use App\Core\Services\ProductCodeGenerator;
 use App\Modules\ImportExport\DTOs\ImportJobData;
 use App\Modules\ImportExport\Models\ImportJob;
 use App\Modules\ImportExport\Repositories\Interfaces\ImportJobRepositoryInterface;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Inventory\Services\StockMovementService;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
+use App\Modules\Setup\Models\Division;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,7 @@ class ImportPreviewService
     private const PREVIEW_ROW_LIMIT = 25;
 
     public const TARGET_FIELDS = [
-        'products' => ['sku', 'barcode', 'name', 'generic_name', 'composition', 'formulation', 'mrp', 'purchase_price', 'selling_price', 'reorder_level'],
+        'products' => ['product_code', 'sku', 'barcode', 'hs_code', 'name', 'generic_name', 'group_name', 'company', 'manufacturer_name', 'division', 'packaging_type', 'keywords', 'description', 'mrp', 'purchase_price', 'selling_price', 'reorder_level'],
         'suppliers' => ['name', 'contact_person', 'phone', 'email', 'pan_number', 'address', 'opening_balance'],
         'customers' => ['name', 'contact_person', 'phone', 'email', 'pan_number', 'address', 'credit_limit', 'opening_balance'],
         'units' => ['name', 'code', 'type', 'factor'],
@@ -248,20 +249,28 @@ class ImportPreviewService
 
     private function insertProduct(array $data, ?User $user): void
     {
-        $unitId = Unit::query()->where('company_id', $user?->company_id)->value('id');
-        $categoryId = ProductCategory::query()->where('company_id', $user?->company_id)->value('id');
+        $companyId = $this->resolveCompanyId($data, $user);
+        $unitId = Unit::query()->where('company_id', $companyId)->value('id')
+            ?: Unit::query()->value('id');
+        $divisionId = $this->resolveDivisionId($data, $user);
 
         Product::query()->firstOrCreate(
-            ['company_id' => $user?->company_id, 'sku' => $data['sku'] ?? null, 'name' => $this->requiredValue($data, 'name')],
+            ['company_id' => $companyId, 'sku' => $data['sku'] ?? null, 'name' => $this->requiredValue($data, 'name')],
             [
                 'tenant_id' => $user?->tenant_id,
                 'store_id' => $user?->store_id,
+                'product_code' => $data['product_code'] ?? app(ProductCodeGenerator::class)->next(),
                 'barcode' => $data['barcode'] ?? null,
+                'hs_code' => $data['hs_code'] ?? null,
                 'unit_id' => $unitId,
-                'category_id' => $categoryId,
+                'division_id' => $divisionId,
                 'generic_name' => $data['generic_name'] ?? null,
                 'composition' => $data['composition'] ?? null,
-                'formulation' => $data['formulation'] ?? 'Other',
+                'group_name' => $data['group_name'] ?? null,
+                'manufacturer_name' => $data['manufacturer_name'] ?? ($data['company'] ?? null),
+                'packaging_type' => $data['packaging_type'] ?? null,
+                'keywords' => $data['keywords'] ?? null,
+                'description' => $data['description'] ?? null,
                 'mrp' => (float) ($data['mrp'] ?? 0),
                 'purchase_price' => (float) ($data['purchase_price'] ?? 0),
                 'selling_price' => (float) ($data['selling_price'] ?? $data['mrp'] ?? 0),
@@ -270,6 +279,34 @@ class ImportPreviewService
                 'updated_by' => $user?->id,
             ],
         );
+    }
+
+    private function resolveCompanyId(array $data, ?User $user): ?int
+    {
+        $name = trim((string) ($data['company'] ?? ''));
+
+        if ($name === '') {
+            return $user?->company_id;
+        }
+
+        return Company::query()->firstOrCreate(
+            ['tenant_id' => $user?->tenant_id, 'name' => $name],
+            ['created_by' => $user?->id, 'updated_by' => $user?->id],
+        )->id;
+    }
+
+    private function resolveDivisionId(array $data, ?User $user): ?int
+    {
+        $value = trim((string) ($data['division'] ?? ''));
+
+        if ($value === '') {
+            return null;
+        }
+
+        return Division::query()->firstOrCreate(
+            ['company_id' => $user?->company_id, 'name' => $value],
+            ['tenant_id' => $user?->tenant_id, 'code' => strtoupper(substr(preg_replace('/[^a-z0-9]+/i', '', $value), 0, 12)), 'created_by' => $user?->id, 'updated_by' => $user?->id],
+        )->id;
     }
 
     private function insertBatch(array $data, ?User $user): void

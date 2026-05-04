@@ -22,7 +22,6 @@ class MedicalRepresentative extends Model
         'employee_code',
         'phone',
         'email',
-        'territory',
         'monthly_target',
         'is_active',
         'created_by',

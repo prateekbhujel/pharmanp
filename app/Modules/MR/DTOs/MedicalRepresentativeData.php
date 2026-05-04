@@ -15,7 +15,6 @@ final readonly class MedicalRepresentativeData extends BaseDTO
         public ?string $employeeCode = null,
         public ?string $phone = null,
         public ?string $email = null,
-        public ?string $territory = null,
         public float $monthlyTarget = 0,
         public bool $isActive = true,
     ) {}

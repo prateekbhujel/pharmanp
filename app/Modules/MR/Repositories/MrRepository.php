@@ -16,7 +16,6 @@ class MrRepository implements MrRepositoryInterface
     private const REPRESENTATIVE_SORTS = [
         'name' => 'name',
         'employee_code' => 'employee_code',
-        'territory' => 'territory',
         'monthly_target' => 'monthly_target',
         'created_at' => 'created_at',
         'updated_at' => 'updated_at',
@@ -40,8 +39,9 @@ class MrRepository implements MrRepositoryInterface
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('name', 'like', '%'.$search.'%')
                         ->orWhere('employee_code', 'like', '%'.$search.'%')
-                        ->orWhere('territory', 'like', '%'.$search.'%')
-                        ->orWhere('phone', 'like', '%'.$search.'%');
+                        ->orWhere('phone', 'like', '%'.$search.'%')
+                        ->orWhereHas('area', fn (Builder $areaQuery) => $areaQuery->where('name', 'like', '%'.$search.'%')->orWhere('code', 'like', '%'.$search.'%'))
+                        ->orWhereHas('division', fn (Builder $divisionQuery) => $divisionQuery->where('name', 'like', '%'.$search.'%')->orWhere('code', 'like', '%'.$search.'%'));
                 });
             })
             ->when(array_key_exists('is_active', $table->filters), fn (Builder $builder) => $builder->where('is_active', (bool) $table->filters['is_active']))
@@ -119,7 +119,8 @@ class MrRepository implements MrRepositoryInterface
             ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($user && $this->isRepresentativeUser($user), fn (Builder $builder) => $builder->whereKey($user->medical_representative_id))
             ->orderBy('name')
-            ->get(['id', 'name', 'employee_code', 'area_id', 'division_id', 'territory', 'monthly_target']);
+            ->with(['area:id,name,code', 'division:id,name,code'])
+            ->get(['id', 'name', 'employee_code', 'area_id', 'division_id', 'monthly_target']);
     }
 
     public function isRepresentativeUser(User $user): bool

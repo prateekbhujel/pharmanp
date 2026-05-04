@@ -14,7 +14,7 @@ export const inventoryRoutes = appRoutes([
     '/app/inventory/products',
     '/app/inventory/companies',
     '/app/inventory/units',
-    '/app/inventory/categories',
     '/app/inventory/stock-adjustment',
+    '/app/inventory/stock-ledger',
     '/app/inventory/case-movement',
 ], ProductsPage);

@@ -198,12 +198,11 @@ class PharmaNpDemoLoadCommand extends Command
         $areaIds = $this->seedAreas($tenantId, $companyId, $branchIds, $ownerId, $tenantNo, $now);
         $divisionIds = $this->seedDivisions($tenantId, $companyId, $ownerId, $tenantNo, $now);
         $unitIds = $this->seedUnits($tenantId, $companyId, $ownerId, $now);
-        $categoryIds = $this->seedCategories($tenantId, $companyId, $ownerId, $now);
         $supplierTypeIds = $this->seedSupplierTypes($now);
         $partyTypeIds = $this->seedPartyTypes($now);
         $this->seedDropdowns($now);
 
-        return compact('tenantId', 'companyId', 'storeId', 'branchIds', 'areaIds', 'divisionIds', 'ownerId', 'unitIds', 'categoryIds', 'supplierTypeIds', 'partyTypeIds', 'tenantNo');
+        return compact('tenantId', 'companyId', 'storeId', 'branchIds', 'areaIds', 'divisionIds', 'ownerId', 'unitIds', 'supplierTypeIds', 'partyTypeIds', 'tenantNo');
     }
 
     private function seedBranches(int $tenantId, int $companyId, int $storeId, int $count, int $tenantNo, mixed $now): array
@@ -345,25 +344,6 @@ class PharmaNpDemoLoadCommand extends Command
         }
 
         return DB::table('units')->where('tenant_id', $tenantId)->pluck('id')->map(fn ($id) => (int) $id)->all();
-    }
-
-    private function seedCategories(int $tenantId, int $companyId, int $ownerId, mixed $now): array
-    {
-        foreach ($this->categories as $name) {
-            DB::table('product_categories')->updateOrInsert(
-                ['tenant_id' => $tenantId, 'company_id' => $companyId, 'name' => $name],
-                [
-                    'code' => Str::upper(Str::slug($name, '')),
-                    'is_active' => true,
-                    'created_by' => $ownerId,
-                    'updated_by' => $ownerId,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ],
-            );
-        }
-
-        return DB::table('product_categories')->where('tenant_id', $tenantId)->pluck('id')->map(fn ($id) => (int) $id)->all();
     }
 
     private function seedSupplierTypes(mixed $now): array
@@ -579,7 +559,7 @@ class PharmaNpDemoLoadCommand extends Command
             ->get(['id', 'branch_id', 'area_id', 'division_id', 'name', 'employee_code', 'phone', 'email']);
 
         for ($i = 1; $i <= $count; $i++) {
-            $employee = $employees[($i - 1) % max($employees->count(), 1)] ?? null;
+            $employee = $i <= $employees->count() ? $employees[$i - 1] : null;
             $name = $employee?->name ?: $this->personName($i + 20);
             $rows[] = [
                 'tenant_id' => $context['tenantId'],
@@ -592,7 +572,6 @@ class PharmaNpDemoLoadCommand extends Command
                 'employee_code' => $employee?->employee_code ?: 'MR-'.$context['tenantNo'].'-'.$runCode.'-'.$i,
                 'phone' => $employee?->phone ?: '98'.str_pad((string) (83000000 + $context['tenantNo'] * 10000 + $i), 8, '0', STR_PAD_LEFT),
                 'email' => $employee?->email ?: 'mr'.$context['tenantNo'].'-'.$runCode.'-'.$i.'@demo.pharmanp.test',
-                'territory' => $this->places[$i % count($this->places)],
                 'monthly_target' => [75000, 100000, 150000, 200000][$i % 4],
                 'is_active' => true,
                 'created_by' => $context['ownerId'],
@@ -621,7 +600,6 @@ class PharmaNpDemoLoadCommand extends Command
                 'tenant_id' => $context['tenantId'],
                 'company_id' => $context['companyId'],
                 'store_id' => $context['storeId'],
-                'category_id' => $context['categoryIds'][$i % count($context['categoryIds'])] ?? null,
                 'division_id' => $context['divisionIds'][$i % count($context['divisionIds'])] ?? null,
                 'unit_id' => $context['unitIds'][$i % count($context['unitIds'])] ?? null,
                 'sku' => $sku,
@@ -632,11 +610,9 @@ class PharmaNpDemoLoadCommand extends Command
                 'generic_name' => $categoryName.' Generic',
                 'composition' => $categoryName.' '.$formulation,
                 'group_name' => $categoryName,
-                'formulation' => $formulation,
                 'strength' => ((($i % 5) + 1) * 100).'mg',
                 'manufacturer_name' => $this->places[$i % count($this->places)].' Pharma Labs',
                 'packaging_type' => ['Strip', 'Box', 'Bottle', 'Vial', 'Tube'][$i % 5],
-                'case_movement' => ['Fast', 'Regular', 'Slow', 'Seasonal'][$i % 4],
                 'conversion' => 1,
                 'rack_location' => 'R'.(($i % 24) + 1).'-S'.(($i % 8) + 1),
                 'previous_price' => round($mrp * 0.95, 2),

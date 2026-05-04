@@ -36,16 +36,6 @@ const configs = {
             { title: 'Added At', dataIndex: 'created_at', width: 130, render: (value) => <DateText value={value} style="compact" /> },
         ],
     },
-    categories: {
-        title: 'Categories / Types',
-        createLabel: 'New Category',
-        fields: ['name', 'code'],
-        columns: [
-            { title: 'Name', dataIndex: 'name', field: 'name', sorter: true },
-            { title: 'Code', dataIndex: 'code', width: 160 },
-            { title: 'Added At', dataIndex: 'created_at', width: 130, render: (value) => <DateText value={value} style="compact" /> },
-        ],
-    },
 };
 
 const companyTypeOptions = [

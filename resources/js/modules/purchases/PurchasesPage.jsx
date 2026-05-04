@@ -41,6 +41,11 @@ const emptyOrderItem = {
     discount_percent: 0,
 };
 const OCR_DRAFT_STORAGE_KEY = 'pharmanp-purchase-ocr-draft';
+const fallbackPaymentTypes = [
+    { value: 'cash', label: 'Cash' },
+    { value: 'credit', label: 'Credit' },
+    { value: 'partial', label: 'Partial' },
+];
 
 function purchaseSection() {
     const section = window.location.pathname.split('/').filter(Boolean).pop();
@@ -62,6 +67,8 @@ export function PurchasesPage() {
     const section = purchaseSection();
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
+    const [paymentModes, setPaymentModes] = useState([]);
+    const [paymentTypes, setPaymentTypes] = useState(fallbackPaymentTypes);
     const [purchaseItems, setPurchaseItems] = useState([{ ...emptyPurchaseItem }]);
     const [orderItems, setOrderItems] = useState([{ ...emptyOrderItem }]);
     const [purchaseLineErrors, setPurchaseLineErrors] = useState({});
@@ -82,6 +89,7 @@ export function PurchasesPage() {
 
     useEffect(() => {
         loadSuppliers();
+        loadPaymentLookups();
         searchProducts('');
         loadOcrDraft();
     }, []);
@@ -101,6 +109,21 @@ export function PurchasesPage() {
     async function loadSuppliers() {
         const { data } = await http.get(endpoints.supplierOptions);
         setSuppliers(data.data);
+    }
+
+    async function loadPaymentLookups() {
+        try {
+            const { data } = await http.get(endpoints.dropdownOptions);
+            const rows = Array.isArray(data.data) ? data.data : [];
+            setPaymentModes(rows.filter((item) => item.alias === 'payment_mode' && item.is_active !== false));
+            const types = rows
+                .filter((item) => item.alias === 'payment_type' && item.is_active !== false)
+                .map((item) => ({ value: item.data || item.name?.toLowerCase(), label: item.name }));
+            setPaymentTypes(types.length ? types : fallbackPaymentTypes);
+        } catch {
+            setPaymentModes([]);
+            setPaymentTypes(fallbackPaymentTypes);
+        }
     }
 
     function loadOcrDraft() {
@@ -160,6 +183,7 @@ export function PurchasesPage() {
             const payload = {
                 ...values,
                 purchase_date: values.purchase_date.format('YYYY-MM-DD'),
+                due_date: values.due_date?.format('YYYY-MM-DD'),
                 items: purchaseItems.map((item) => ({
                     ...item,
                     expires_at: item.expires_at?.format('YYYY-MM-DD'),
@@ -269,6 +293,8 @@ export function PurchasesPage() {
         { title: 'Date', dataIndex: 'purchase_date', field: 'purchase_date', sorter: true, width: 130, render: (value) => <DateText value={value} style="compact" /> },
         { title: 'Supplier Bill', dataIndex: 'supplier_invoice_no', width: 150 },
         { title: 'Supplier', dataIndex: ['supplier', 'name'] },
+        { title: 'Due Date', dataIndex: 'due_date', width: 130, render: (value) => value ? <DateText value={value} style="compact" /> : '-' },
+        { title: 'Mode', dataIndex: ['payment_mode', 'name'], width: 130, render: (value, row) => value || row.payment_type || '-' },
         { title: 'Payment', dataIndex: 'payment_status', width: 130, render: (value) => <PaymentStatusBadge value={value} /> },
         { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 140, render: (value) => <Money value={value} /> },
         {
@@ -299,7 +325,7 @@ export function PurchasesPage() {
             {section === 'entry' && (
                 <Card>
                     <div ref={purchaseEntryRef} data-keyboard-flow="true">
-                        <Form form={purchaseForm} layout="vertical" onFinish={submitPurchase} initialValues={{ purchase_date: dayjs(), paid_amount: 0 }}>
+                        <Form form={purchaseForm} layout="vertical" onFinish={submitPurchase} initialValues={{ purchase_date: dayjs(), paid_amount: 0, payment_type: 'credit' }}>
                             {ocrDraft && (
                                 <Alert
                                     type="info"
@@ -310,7 +336,7 @@ export function PurchasesPage() {
                                     action={<Button size="small" onClick={clearOcrDraft}>Clear</Button>}
                                 />
                             )}
-                            <div className="form-grid">
+                            <div className="form-grid form-grid-4">
                                 <Form.Item name="supplier_id" label="Supplier" rules={[{ required: true }]}>
                                     <Select
                                         showSearch
@@ -326,6 +352,18 @@ export function PurchasesPage() {
                                 </Form.Item>
                                 <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
                                 <Form.Item name="purchase_date" label="Purchase Date" rules={[{ required: true }]}><SmartDatePicker /></Form.Item>
+                                <Form.Item name="due_date" label="Due Date"><SmartDatePicker /></Form.Item>
+                            </div>
+                            <div className="form-grid form-grid-3">
+                                <Form.Item name="payment_type" label="Payment Type"><Select options={paymentTypes} /></Form.Item>
+                                <Form.Item name="payment_mode_id" label="Payment Mode">
+                                    <Select
+                                        allowClear
+                                        showSearch
+                                        optionFilterProp="label"
+                                        options={paymentModes.map((item) => ({ value: item.id, label: item.name }))}
+                                    />
+                                </Form.Item>
                                 <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
                             </div>
                             <Form.Item name="notes" label="Remarks"><Input.TextArea rows={3} /></Form.Item>

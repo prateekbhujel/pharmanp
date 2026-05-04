@@ -89,7 +89,7 @@ class SalesInvoiceController extends ModularController
      */
     public function show(SalesInvoice $invoice): SalesInvoiceResource
     {
-        return new SalesInvoiceResource($invoice->load(['customer', 'medicalRepresentative', 'items.product', 'items.batch', 'returns.items.product', 'returns.items.batch']));
+        return new SalesInvoiceResource($invoice->load(['customer', 'medicalRepresentative', 'paymentMode', 'items.product', 'items.batch', 'returns.items.product', 'returns.items.batch']));
     }
 
     /**
@@ -157,6 +157,7 @@ class SalesInvoiceController extends ModularController
 
         $invoice = $service->updatePayment($invoice, [
             'paid_amount' => $validated['paid_amount'],
+            'payment_mode_id' => $validated['payment_mode_id'] ?? null,
             'cash_account' => $service->cashAccountForPaymentMode($validated['payment_mode_id'] ?? null),
         ], $request->user());
 
@@ -178,7 +179,7 @@ class SalesInvoiceController extends ModularController
     private function printData(SalesInvoice $invoice): array
     {
         return [
-            'invoice' => $invoice->load(['customer', 'medicalRepresentative', 'items.product', 'items.batch']),
+            'invoice' => $invoice->load(['customer', 'medicalRepresentative', 'paymentMode', 'items.product', 'items.batch']),
             'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
         ];
     }

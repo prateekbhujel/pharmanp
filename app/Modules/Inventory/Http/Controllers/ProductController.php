@@ -11,7 +11,6 @@ use App\Modules\Inventory\Http\Requests\ProductUpdateRequest;
 use App\Modules\Inventory\Http\Resources\ProductResource;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Inventory\Services\ProductService;
 use App\Modules\Setup\Models\Division;
@@ -45,7 +44,6 @@ class ProductController extends ModularController
 
         $products = $service->paginate(TableQueryData::fromRequest($request, [
             'company_id',
-            'category_id',
             'division_id',
             'is_active',
             'deleted',
@@ -211,9 +209,7 @@ class ProductController extends ModularController
             'data' => [
                 'companies' => Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
                 'units' => Unit::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
-                'categories' => ProductCategory::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
                 'divisions' => Division::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']),
-                'formulations' => ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Ointment', 'Drops', 'Inhaler', 'Other'],
             ],
         ]);
     }

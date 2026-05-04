@@ -8,7 +8,7 @@ import { http, validationErrors } from '../api/http';
 export function QuickProductModal({ open, onClose, onCreated }) {
     const { notification } = App.useApp();
     const [form] = Form.useForm();
-    const [meta, setMeta] = useState({ companies: [], units: [], categories: [], divisions: [] });
+    const [meta, setMeta] = useState({ companies: [], units: [], divisions: [] });
     const [saving, setSaving] = useState(false);
     const [quickMaster, setQuickMaster] = useState(null);
     const [quickForm] = Form.useForm();
@@ -133,7 +133,7 @@ export function QuickProductModal({ open, onClose, onCreated }) {
                 </div>
                 <div className="form-grid">
                     <Form.Item name="packaging_type" label="Packaging Type"><Input placeholder="Strip, bottle, box..." /></Form.Item>
-                    <Form.Item name="case_movement" label="Case Movement"><Input placeholder="Fast moving, cold chain..." /></Form.Item>
+                    <Form.Item name="keywords" label="Meta Keywords"><Input placeholder="fever, antibiotic, paediatric..." /></Form.Item>
                 </div>
                 <div className="form-grid">
                     <Form.Item name="purchase_price" label="Purchase Price" rules={[{ required: true }]}><InputNumber min={0} className="full-width" /></Form.Item>

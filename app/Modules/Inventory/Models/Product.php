@@ -17,7 +17,6 @@ class Product extends Model
         'tenant_id',
         'company_id',
         'store_id',
-        'category_id',
         'manufacturer_id',
         'division_id',
         'unit_id',
@@ -29,11 +28,9 @@ class Product extends Model
         'generic_name',
         'composition',
         'group_name',
-        'formulation',
         'strength',
         'manufacturer_name',
         'packaging_type',
-        'case_movement',
         'conversion',
         'rack_location',
         'previous_price',
@@ -78,11 +75,6 @@ class Product extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
-    }
-
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(ProductCategory::class, 'category_id');
     }
 
     public function division(): BelongsTo

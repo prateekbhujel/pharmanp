@@ -24,9 +24,9 @@ import { makeBarcodeCandidate } from '../../core/utils/code128';
 const inventorySections = {
     companies: { title: 'Company', master: 'companies' },
     units: { title: 'Unit', master: 'units' },
-    categories: { title: 'Category', master: 'categories' },
     'stock-adjustment': { title: 'Stock Adjustment' },
-    'case-movement': { title: 'Case Movement' },
+    'stock-ledger': { title: 'Stock Ledger' },
+    'case-movement': { title: 'Stock Ledger' },
     products: { title: 'Product' },
 };
 
@@ -163,7 +163,7 @@ export function ProductsPage() {
     const section = currentSection();
     const sectionConfig = inventorySections[section];
     const table = useServerTable({ endpoint: endpoints.products });
-    const [meta, setMeta] = useState({ companies: [], units: [], categories: [], divisions: [] });
+    const [meta, setMeta] = useState({ companies: [], units: [], divisions: [] });
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -216,7 +216,6 @@ export function ProductsPage() {
             ...record,
             company_id: record.company?.id,
             unit_id: record.unit?.id,
-            category_id: record.category?.id,
             division_id: record.division?.id,
             image_upload: [],
             remove_image: false,
@@ -350,9 +349,9 @@ export function ProductsPage() {
         },
         { title: 'Code', dataIndex: 'product_code', field: 'product_code', sorter: true, width: 130, render: (value, row) => value || row.sku || '-' },
         { title: 'HS Code', dataIndex: 'hs_code', width: 120, render: (value) => value || '-' },
-        { title: 'Company', dataIndex: ['company', 'name'], width: 170 },
+        { title: 'Company', dataIndex: ['company', 'name'], width: 170, render: (value) => value || '-' },
         { title: 'Division', dataIndex: ['division', 'name'], width: 150, render: (value) => value || '-' },
-        { title: 'Case Movement', dataIndex: 'case_movement', width: 150, render: (value) => value || '-' },
+        { title: 'Packaging', dataIndex: 'packaging_type', width: 140, render: (value) => value || '-' },
         { title: 'Unit', dataIndex: ['unit', 'name'], width: 100 },
         { title: 'Reorder Level', dataIndex: 'reorder_level', field: 'reorder_level', sorter: true, align: 'right', width: 130 },
         { title: 'Stock Qty', dataIndex: 'stock_on_hand', field: 'stock_on_hand', sorter: true, align: 'right', width: 120 },
@@ -378,6 +377,47 @@ export function ProductsPage() {
             ),
         },
     ];
+
+    function productExpandedRow(record) {
+        const stock = Number(record.stock_on_hand || 0);
+        const reorder = Number(record.reorder_level || 0);
+        const margin = Number(record.selling_price || 0) - Number(record.purchase_price || 0);
+
+        return (
+            <div className="expanded-summary-grid">
+                <div>
+                    <span>Division</span>
+                    <strong>{record.division?.name || 'Unassigned'}</strong>
+                    <small>{record.division?.code || 'No division code'}</small>
+                </div>
+                <div>
+                    <span>Manufacturer</span>
+                    <strong>{record.manufacturer_name || record.company?.name || '-'}</strong>
+                    <small>{record.group_name || record.generic_name || 'No group/generic set'}</small>
+                </div>
+                <div>
+                    <span>HS / Packaging</span>
+                    <strong>{record.hs_code || '-'}</strong>
+                    <small>{record.packaging_type || '-'}</small>
+                </div>
+                <div>
+                    <span>Stock Health</span>
+                    <strong>{stock.toLocaleString()} available</strong>
+                    <small>{stock <= reorder ? 'Below or near reorder level' : 'Healthy against reorder level'}</small>
+                </div>
+                <div>
+                    <span>Pricing</span>
+                    <strong><Money value={record.selling_price} /></strong>
+                    <small>Margin <Money value={margin} /></small>
+                </div>
+                <div>
+                    <span>Meta</span>
+                    <strong>{record.keywords || 'No keywords'}</strong>
+                    <small>{record.description || record.notes || 'No description'}</small>
+                </div>
+            </div>
+        );
+    }
 
     function productList() {
         return (
@@ -407,7 +447,11 @@ export function ProductsPage() {
                     </div>
                     <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                 </div>
-                <ServerTable table={table} columns={columns} />
+                <ServerTable
+                    table={table}
+                    columns={columns}
+                    expandable={{ expandedRowRender: productExpandedRow }}
+                />
             </Card>
         );
     }
@@ -421,7 +465,7 @@ export function ProductsPage() {
             return <StockAdjustmentsPanel />;
         }
 
-        if (section === 'case-movement') {
+        if (section === 'stock-ledger' || section === 'case-movement') {
             return <StockMovementsPanel />;
         }
 
@@ -527,7 +571,7 @@ export function ProductsPage() {
                     <div className="form-grid form-grid-3">
                         <Form.Item name="group_name" label="Group Name"><Input /></Form.Item>
                         <Form.Item name="manufacturer_name" label="Manufacturer"><Input /></Form.Item>
-                        <Form.Item name="case_movement" label="Case Movement"><Input placeholder="Fast moving, slow moving, cold chain..." /></Form.Item>
+                        <Form.Item name="keywords" label="Meta Keywords"><Input placeholder="antibiotic, fever, paediatric..." /></Form.Item>
                     </div>
                     <div className="form-grid form-grid-3">
                         <Form.Item name="strength" label="Strength"><Input /></Form.Item>
@@ -558,7 +602,8 @@ export function ProductsPage() {
                     </div>
 
                     <Divider orientation="left">Notes and Image</Divider>
-                    <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
+                    <Form.Item name="description" label="Description"><Input.TextArea rows={2} /></Form.Item>
+                    <Form.Item name="notes" label="Internal Notes"><Input.TextArea rows={3} /></Form.Item>
                     {editing?.image_url && (
                         <div className="product-image-preview">
                             <img src={editing.image_url} alt="" />

@@ -144,7 +144,7 @@ export function ReportsPage() {
     const [loading, setLoading] = useState(false);
     const [reportView, setReportView] = useState('table');
     const [productOptions, setProductOptions] = useState([]);
-    const [lookups, setLookups] = useState({ suppliers: [], customers: [], medicalRepresentatives: [], companies: [], categories: [], divisions: [], areas: [] });
+    const [lookups, setLookups] = useState({ suppliers: [], customers: [], medicalRepresentatives: [], companies: [], divisions: [], areas: [] });
 
     useEffect(() => {
         loadLookups();
@@ -177,12 +177,11 @@ export function ReportsPage() {
                 customers: customerData.data || [],
                 medicalRepresentatives: mrData.data || [],
                 companies: productMeta.data?.companies || [],
-                categories: productMeta.data?.categories || [],
                 divisions: divisionData.data || [],
                 areas: areaData.data || [],
             });
         } catch {
-            setLookups({ suppliers: [], customers: [], medicalRepresentatives: [], companies: [], categories: [], divisions: [], areas: [] });
+            setLookups({ suppliers: [], customers: [], medicalRepresentatives: [], companies: [], divisions: [], areas: [] });
         }
     }
 
@@ -261,7 +260,7 @@ export function ReportsPage() {
                 {['stock', 'low-stock', 'smart-inventory'].includes(report) && (
                     <>
                         <Select {...searchableSelectProps} allowClear placeholder="Company" value={filters.company_id} onChange={(value) => updateFilter('company_id', value)} options={lookups.companies.map((item) => ({ value: item.id, label: item.name }))} />
-                        <Select {...searchableSelectProps} allowClear placeholder="Category" value={filters.category_id} onChange={(value) => updateFilter('category_id', value)} options={lookups.categories.map((item) => ({ value: item.id, label: item.name }))} />
+                        <Select {...searchableSelectProps} allowClear placeholder="Division" value={filters.division_id} onChange={(value) => updateFilter('division_id', value)} options={lookups.divisions.map((item) => ({ value: item.id, label: item.code ? `${item.name} (${item.code})` : item.name }))} />
                     </>
                 )}
                 {report === 'company-vs-customer' && (

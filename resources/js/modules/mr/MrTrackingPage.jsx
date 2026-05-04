@@ -80,6 +80,8 @@ export function MrTrackingPage() {
     const { user } = useAuth();
 
     const [branchOptions, setBranchOptions] = useState([]);
+    const [areaOptions, setAreaOptions] = useState([]);
+    const [divisionOptions, setDivisionOptions] = useState([]);
     const [mrOptions, setMrOptions] = useState([]);
     const [customers, setCustomers] = useState([]);
 
@@ -141,15 +143,19 @@ export function MrTrackingPage() {
 
     async function loadLookups() {
         try {
-            const [{ data: br }, { data: mr }, { data: cu }] = await Promise.all([
+            const [{ data: br }, { data: mr }, { data: cu }, { data: areas }, { data: divisions }] = await Promise.all([
                 http.get(endpoints.mrBranchOptions),
                 http.get(endpoints.mrOptions),
                 http.get(endpoints.customerOptions),
+                http.get(endpoints.setupAreaOptions),
+                http.get(endpoints.setupDivisionOptions),
             ]);
 
             setBranchOptions(br.data || []);
             setMrOptions(mr.data || []);
             setCustomers(cu.data || []);
+            setAreaOptions(areas.data || []);
+            setDivisionOptions(divisions.data || []);
         } catch {
             // silent
         }
@@ -350,6 +356,7 @@ export function MrTrackingPage() {
                 visitForm.setFieldsValue({
                     latitude: pos.coords.latitude.toFixed(7),
                     longitude: pos.coords.longitude.toFixed(7),
+                    location_name: visitForm.getFieldValue('location_name') || 'Current location captured',
                 });
 
                 notification.success({ message: 'Location captured' });
@@ -436,9 +443,16 @@ export function MrTrackingPage() {
             render: (value) => value || <span style={{ color: '#aaa' }}>—</span>,
         },
         {
-            title: 'Territory',
-            dataIndex: 'territory',
+            title: 'Area',
+            dataIndex: ['area', 'name'],
             width: 140,
+            render: (value) => value || '—',
+        },
+        {
+            title: 'Division',
+            dataIndex: ['division', 'name'],
+            width: 140,
+            render: (value) => value || '—',
         },
         {
             title: 'Target',
@@ -514,16 +528,17 @@ export function MrTrackingPage() {
         },
         {
             title: 'Location',
-            width: 90,
-            align: 'center',
+            width: 180,
             render: (_, record) => (
-                record.latitude ? (
-                    <Tooltip title={record.location_name || `${record.latitude}, ${record.longitude}`}>
+                record.location_name || record.latitude ? (
+                    <Tooltip title={record.location_name || 'Captured location'}>
                         <Button
                             type="link"
                             icon={<EnvironmentOutlined style={{ color: '#52c41a' }} />}
                             onClick={() => setMapVisit(record)}
-                        />
+                        >
+                            {record.location_name || 'View map'}
+                        </Button>
                     </Tooltip>
                 ) : (
                     <span style={{ color: '#ccc' }}>—</span>
@@ -768,8 +783,14 @@ export function MrTrackingPage() {
                                         dataIndex: 'name',
                                     },
                                     {
-                                        title: 'Territory',
-                                        dataIndex: 'territory',
+                                        title: 'Area',
+                                        dataIndex: 'area',
+                                        render: (value) => value || '—',
+                                    },
+                                    {
+                                        title: 'Division',
+                                        dataIndex: 'division',
+                                        render: (value) => value || '—',
                                     },
                                     {
                                         title: 'Visits',
@@ -836,7 +857,7 @@ export function MrTrackingPage() {
                                 <Input.Search
                                     value={mrTable.search}
                                     onChange={(event) => mrTable.setSearch(event.target.value)}
-                                    placeholder="Search name, code or territory"
+                                    placeholder="Search name, code, area or phone"
                                     allowClear
                                 />
 
@@ -1003,9 +1024,31 @@ export function MrTrackingPage() {
                             </Form.Item>
                         </div>
 
-                        <Form.Item name="territory" label="Territory">
-                            <Input />
-                        </Form.Item>
+                        <div className="form-grid">
+                            <Form.Item name="area_id" label="Area">
+                                <Select
+                                    allowClear
+                                    showSearch
+                                    optionFilterProp="label"
+                                    options={areaOptions.map((area) => ({
+                                        value: area.id,
+                                        label: area.code ? `${area.name} (${area.code})` : area.name,
+                                    }))}
+                                />
+                            </Form.Item>
+
+                            <Form.Item name="division_id" label="Division">
+                                <Select
+                                    allowClear
+                                    showSearch
+                                    optionFilterProp="label"
+                                    options={divisionOptions.map((division) => ({
+                                        value: division.id,
+                                        label: division.code ? `${division.name} (${division.code})` : division.name,
+                                    }))}
+                                />
+                            </Form.Item>
+                        </div>
 
                         <Form.Item name="monthly_target" label="Monthly Target (NPR)">
                             <InputNumber min={0} className="full-width" />
@@ -1067,12 +1110,18 @@ export function MrTrackingPage() {
                             </Form.Item>
                         </div>
 
-                        <Form.Item name="order_value" label="Order Value">
-                            <InputNumber min={0} className="full-width" />
-                        </Form.Item>
+                        <div className="form-grid">
+                            <Form.Item name="visit_time" label="Visit Time">
+                                <Input type="time" />
+                            </Form.Item>
 
-                        <Form.Item name="notes" label="Notes">
-                            <Input.TextArea rows={2} />
+                            <Form.Item name="order_value" label="Order Value">
+                                <InputNumber min={0} className="full-width" />
+                            </Form.Item>
+                        </div>
+
+                        <Form.Item name="location_name" label="Location Name">
+                            <Input placeholder="Search/select by place name or type the location" />
                         </Form.Item>
 
                         <Card size="small" title="Check-in Location (optional)" style={{ marginBottom: 16 }}>
@@ -1084,20 +1133,17 @@ export function MrTrackingPage() {
                                 Capture Current Location
                             </Button>
 
-                            <div className="form-grid">
-                                <Form.Item name="latitude" label="Latitude">
-                                    <Input />
-                                </Form.Item>
-
-                                <Form.Item name="longitude" label="Longitude">
-                                    <Input />
-                                </Form.Item>
-                            </div>
-
-                            <Form.Item name="location_name" label="Location Name (optional)">
-                                <Input />
-                            </Form.Item>
+                            <Form.Item name="latitude" hidden><Input /></Form.Item>
+                            <Form.Item name="longitude" hidden><Input /></Form.Item>
                         </Card>
+
+                        <Form.Item name="purpose" label="Purpose">
+                            <Input />
+                        </Form.Item>
+
+                        <Form.Item name="notes" label="Notes">
+                            <Input.TextArea rows={2} />
+                        </Form.Item>
 
                         <Button type="primary" htmlType="submit">
                             Save Visit
@@ -1169,33 +1215,42 @@ export function MrTrackingPage() {
             >
                 {mapVisit && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <p style={{ margin: 0 }}>
-                            <strong>Coordinates:</strong> {mapVisit.latitude}, {mapVisit.longitude}
-                        </p>
-
                         {mapVisit.location_name && (
                             <p style={{ margin: 0 }}>
                                 <strong>Location:</strong> {mapVisit.location_name}
                             </p>
                         )}
 
-                        <iframe
-                            title="Visit Map"
-                            width="100%"
-                            height="380"
-                            style={{ border: 0, borderRadius: 8 }}
-                            loading="lazy"
-                            src={`https://www.openstreetmap.org/export/embed.html?bbox=${+mapVisit.longitude - 0.01},${+mapVisit.latitude - 0.01},${+mapVisit.longitude + 0.01},${+mapVisit.latitude + 0.01}&layer=mapnik&marker=${mapVisit.latitude},${mapVisit.longitude}`}
-                        />
+                        {mapVisit.latitude && mapVisit.longitude ? (
+                            <>
+                                <iframe
+                                    title="Visit Map"
+                                    width="100%"
+                                    height="380"
+                                    style={{ border: 0, borderRadius: 8 }}
+                                    loading="lazy"
+                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${+mapVisit.longitude - 0.01},${+mapVisit.latitude - 0.01},${+mapVisit.longitude + 0.01},${+mapVisit.latitude + 0.01}&layer=mapnik&marker=${mapVisit.latitude},${mapVisit.longitude}`}
+                                />
 
-                        <a
-                            href={`https://www.openstreetmap.org/?mlat=${mapVisit.latitude}&mlon=${mapVisit.longitude}#map=15/${mapVisit.latitude}/${mapVisit.longitude}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ fontSize: 12 }}
-                        >
-                            Open in OpenStreetMap ↗
-                        </a>
+                                <a
+                                    href={`https://www.openstreetmap.org/?mlat=${mapVisit.latitude}&mlon=${mapVisit.longitude}#map=15/${mapVisit.latitude}/${mapVisit.longitude}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{ fontSize: 12 }}
+                                >
+                                    Open in OpenStreetMap
+                                </a>
+                            </>
+                        ) : mapVisit.location_name ? (
+                            <a
+                                href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(mapVisit.location_name)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ fontSize: 12 }}
+                            >
+                                Search this location in OpenStreetMap
+                            </a>
+                        ) : null}
                     </div>
                 )}
             </Drawer>

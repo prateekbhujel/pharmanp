@@ -30,7 +30,7 @@ class SalesInvoiceRepository implements SalesInvoiceRepositoryInterface
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
         $query = SalesInvoice::query()
-            ->with(['customer:id,name', 'medicalRepresentative:id,name']);
+            ->with(['customer:id,name', 'medicalRepresentative:id,name', 'paymentMode:id,name,data']);
 
         $this->tables->tenant($query, $user, 'tenant_id');
 
@@ -112,7 +112,7 @@ class SalesInvoiceRepository implements SalesInvoiceRepositoryInterface
 
     public function fresh(SalesInvoice $invoice, bool $includeReturns = false): SalesInvoice
     {
-        $relations = ['customer', 'medicalRepresentative', 'items.product', 'items.batch'];
+        $relations = ['customer', 'medicalRepresentative', 'paymentMode', 'items.product', 'items.batch'];
 
         if ($includeReturns) {
             $relations[] = 'returns.items.product';

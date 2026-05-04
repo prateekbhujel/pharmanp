@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesInvoiceItem;
@@ -24,17 +23,14 @@ class SmartSignalsTest extends TestCase
 
         $company = Company::query()->create(['name' => 'Signal Pharma']);
         $unit = Unit::query()->create(['company_id' => $company->id, 'name' => 'Piece']);
-        $category = ProductCategory::query()->create(['company_id' => $company->id, 'name' => 'Medicine']);
         $user = User::factory()->create(['company_id' => $company->id, 'is_owner' => true]);
 
         foreach ([0, 4, 8, 20, 45, 90] as $index => $soldQuantity) {
             $product = Product::query()->create([
                 'company_id' => $company->id,
                 'unit_id' => $unit->id,
-                'category_id' => $category->id,
                 'name' => 'Signal Product '.$index,
                 'sku' => 'SIG-'.$index,
-                'formulation' => 'Tablet',
                 'mrp' => 20,
                 'purchase_price' => 10,
                 'selling_price' => 18,

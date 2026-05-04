@@ -89,7 +89,7 @@ class SalesInvoiceService
                 'sales_invoice',
                 $invoice->id,
                 $invoice->invoice_date->toDateString(),
-                $this->journalEntries($invoice, $paidAmount),
+                $this->journalEntries($invoice, $paidAmount, $this->cashAccountForPaymentMode($invoice->payment_mode_id)),
             );
 
             return $this->invoices->fresh($invoice);
@@ -111,6 +111,7 @@ class SalesInvoiceService
 
             $this->invoices->saveInvoice($invoice, [
                 'paid_amount' => $paidAmount,
+                'payment_mode_id' => $data['payment_mode_id'] ?? $invoice->payment_mode_id,
                 'payment_status' => $this->paymentStatus((float) $invoice->grand_total, $paidAmount),
                 'updated_by' => $user->id,
             ]);

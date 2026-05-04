@@ -7,7 +7,6 @@ use App\Core\Support\AssetUrl;
 use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Inventory\Models\Company;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Store;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\MR\Models\Branch;
@@ -143,10 +142,6 @@ class SetupService
             ['tenant_id' => $tenantId, 'code' => 'PCS', 'type' => 'both', 'factor' => 1, 'created_by' => $userId, 'updated_by' => $userId],
         );
 
-        ProductCategory::query()->firstOrCreate(
-            ['company_id' => $companyId, 'name' => 'Medicine'],
-            ['tenant_id' => $tenantId, 'code' => 'MED', 'created_by' => $userId, 'updated_by' => $userId],
-        );
     }
 
     private function createFiscalYear(array $data, int $tenantId, int $companyId, int $userId): void

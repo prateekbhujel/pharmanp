@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { App, AutoComplete, Button, Card, Form, Input, Modal, Select, Space, Switch, Table, Tabs } from 'antd';
+import { App, AutoComplete, Button, Card, Form, Input, Modal, Select, Space, Switch, Table } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UndoOutlined } from '@ant-design/icons';
 import { StatusToggle } from '../../core/components/StatusToggle';
 import { StatusTag } from '../../core/components/StatusTag';
@@ -145,120 +145,108 @@ export function DataLookupPage() {
         });
     };
 
+    function renderDropdownPanel() {
+        return (
+            <Card
+                title="Shared Dropdown Options"
+                extra={
+                    <Space>
+                        <Select
+                            value={dropdownAlias}
+                            onChange={setDropdownAlias}
+                            style={{ width: 200 }}
+                            options={aliasOptions}
+                        />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openDropdownOption()}>Add Option</Button>
+                    </Space>
+                }
+            >
+                <Table
+                    rowKey="id"
+                    dataSource={filteredOptions}
+                    pagination={false}
+                    columns={[
+                        { title: 'Name', dataIndex: 'name' },
+                        {
+                            title: selectedAliasMeta.supports_data ? (dataField?.label || 'Data') : 'Data',
+                            dataIndex: 'data',
+                            render: (v) => v || '-',
+                        },
+                        { title: 'Status', dataIndex: 'is_active', width: 150, render: (v, record) => <StatusToggle value={v} id={record.id} endpoint={endpoints.dropdownOptions} /> },
+                        {
+                            title: 'Action', width: 112, render: (_, record) => (
+                                <Space>
+                                    <Button icon={<EditOutlined />} onClick={() => openDropdownOption(record)} />
+                                    <Button danger icon={<DeleteOutlined />} onClick={() => deleteDropdownOption(record)} />
+                                </Space>
+                            ),
+                        },
+                    ]}
+                />
+            </Card>
+        );
+    }
+
+    function renderPartyTypePanel() {
+        return (
+            <Card title="Party Types" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => openPartyType()}>New Party Type</Button>}>
+                <Table
+                    rowKey="id"
+                    dataSource={partyTypes}
+                    pagination={false}
+                    columns={[
+                        { title: 'Name', dataIndex: 'name' },
+                        { title: 'Code', dataIndex: 'code', render: (v) => v || '-' },
+                        {
+                            title: 'Action', width: 112, render: (_, record) => (
+                                <Space>
+                                    <Button icon={<EditOutlined />} onClick={() => openPartyType(record)} />
+                                    <Button danger icon={<DeleteOutlined />} onClick={() => deletePartyType(record)} />
+                                </Space>
+                            ),
+                        },
+                    ]}
+                />
+            </Card>
+        );
+    }
+
+    function renderSupplierTypePanel() {
+        return (
+            <Card title="Supplier Types" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => openSupplierType()}>New Supplier Type</Button>}>
+                <Table
+                    rowKey="id"
+                    dataSource={supplierTypes}
+                    pagination={false}
+                    columns={[
+                        { title: 'Name', dataIndex: 'name' },
+                        { title: 'Code', dataIndex: 'code', render: (v) => v || '-' },
+                        {
+                            title: 'Action', width: 112, render: (_, record) => (
+                                <Space>
+                                    <Button icon={<EditOutlined />} onClick={() => openSupplierType(record)} />
+                                    <Button danger icon={<DeleteOutlined />} onClick={() => deleteSupplierType(record)} />
+                                </Space>
+                            ),
+                        },
+                    ]}
+                />
+            </Card>
+        );
+    }
+
+    function renderActivePanel() {
+        if (activeTab === 'branches') return <BranchMasterPanel />;
+        if (activeTab === 'dropdowns') return renderDropdownPanel();
+        if (activeTab === 'party-types') return renderPartyTypePanel();
+        if (activeTab === 'supplier-types') return renderSupplierTypePanel();
+
+        return <PaymentModePanel />;
+    }
+
     return (
         <div className="page-stack">
-            <Tabs
-                activeKey={activeTab}
-                onChange={(key) => {
-                    setActiveTab(key);
-                    window.history.pushState({}, '', tabRoutes[key] || tabRoutes.dropdowns);
-                    window.dispatchEvent(new PopStateEvent('popstate'));
-                }}
-                items={[
-                {
-                    key: 'payment-modes',
-                    label: 'Payment Modes',
-                    children: <PaymentModePanel />,
-                },
-                {
-                    key: 'branches',
-                    label: 'Branches',
-                    children: <BranchMasterPanel />,
-                },
-                {
-                    key: 'dropdowns',
-                    label: 'General Options',
-                    children: (
-                        <Card
-                            title="Shared Dropdown Options"
-                            extra={
-                                <Space>
-                                    <Select
-                                        value={dropdownAlias}
-                                        onChange={setDropdownAlias}
-                                        style={{ width: 200 }}
-                                        options={aliasOptions}
-                                    />
-                                    <Button type="primary" icon={<PlusOutlined />} onClick={() => openDropdownOption()}>Add Option</Button>
-                                </Space>
-                            }
-                        >
-                            <Table
-                                rowKey="id"
-                                dataSource={filteredOptions}
-                                pagination={false}
-                                columns={[
-                                    { title: 'Name', dataIndex: 'name' },
-                                    {
-                                        title: selectedAliasMeta.supports_data ? (dataField?.label || 'Data') : 'Data',
-                                        dataIndex: 'data',
-                                        render: (v) => v || '-',
-                                    },
-                                    { title: 'Status', dataIndex: 'is_active', width: 150, render: (v, record) => <StatusToggle value={v} id={record.id} endpoint={endpoints.dropdownOptions} /> },
-                                    {
-                                        title: 'Action', width: 112, render: (_, record) => (
-                                            <Space>
-                                                <Button icon={<EditOutlined />} onClick={() => openDropdownOption(record)} />
-                                                <Button danger icon={<DeleteOutlined />} onClick={() => deleteDropdownOption(record)} />
-                                            </Space>
-                                        ),
-                                    },
-                                ]}
-                            />
-                        </Card>
-                    )
-                },
-                {
-                    key: 'party-types',
-                    label: 'Party Types',
-                    children: (
-                        <Card title="Party Types" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => openPartyType()}>New Party Type</Button>}>
-                            <Table
-                                rowKey="id"
-                                dataSource={partyTypes}
-                                pagination={false}
-                                columns={[
-                                    { title: 'Name', dataIndex: 'name' },
-                                    { title: 'Code', dataIndex: 'code', render: (v) => v || '-' },
-                                    {
-                                        title: 'Action', width: 112, render: (_, record) => (
-                                            <Space>
-                                                <Button icon={<EditOutlined />} onClick={() => openPartyType(record)} />
-                                                <Button danger icon={<DeleteOutlined />} onClick={() => deletePartyType(record)} />
-                                            </Space>
-                                        ),
-                                    },
-                                ]}
-                            />
-                        </Card>
-                    )
-                },
-                {
-                    key: 'supplier-types',
-                    label: 'Supplier Types',
-                    children: (
-                        <Card title="Supplier Types" extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => openSupplierType()}>New Supplier Type</Button>}>
-                            <Table
-                                rowKey="id"
-                                dataSource={supplierTypes}
-                                pagination={false}
-                                columns={[
-                                    { title: 'Name', dataIndex: 'name' },
-                                    { title: 'Code', dataIndex: 'code', render: (v) => v || '-' },
-                                    {
-                                        title: 'Action', width: 112, render: (_, record) => (
-                                            <Space>
-                                                <Button icon={<EditOutlined />} onClick={() => openSupplierType(record)} />
-                                                <Button danger icon={<DeleteOutlined />} onClick={() => deleteSupplierType(record)} />
-                                            </Space>
-                                        ),
-                                    },
-                                ]}
-                            />
-                        </Card>
-                    )
-                }
-            ]} />
+            {renderActivePanel()}
 
             {/* Modals */}
             <Modal centered className="intent-modal" title={editingOption ? 'Edit Option' : 'New Option'} open={dropdownModalOpen} onCancel={() => setDropdownModalOpen(false)} onOk={() => dropdownForm.submit()} destroyOnHidden>

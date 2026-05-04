@@ -5,7 +5,6 @@ namespace App\Modules\Inventory\Repositories;
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
 use App\Modules\Inventory\Models\Company;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Inventory\Repositories\Interfaces\InventoryMasterRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -70,7 +69,6 @@ class InventoryMasterRepository implements InventoryMasterRepositoryInterface
         return match ($master) {
             'companies' => Company::class,
             'units' => Unit::class,
-            'categories' => ProductCategory::class,
             default => throw ValidationException::withMessages(['master' => 'Unknown inventory master.']),
         };
     }

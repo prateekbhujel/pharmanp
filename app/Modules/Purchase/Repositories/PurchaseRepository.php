@@ -29,7 +29,7 @@ class PurchaseRepository implements PurchaseRepositoryInterface
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
         $query = Purchase::query()
-            ->with('supplier:id,name');
+            ->with(['supplier:id,name', 'paymentMode:id,name,data']);
 
         $this->tables->tenant($query, $user, 'tenant_id');
 

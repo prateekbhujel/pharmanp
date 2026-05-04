@@ -3,7 +3,7 @@ import { Table } from 'antd';
 
 const pageSizeOptions = ['10', '15', '20', '25', '50', '100'];
 
-export function ServerTable({ table, columns, rowKey = 'id', serial = true, scroll = { x: 'max-content' }, size = 'middle' }) {
+export function ServerTable({ table, columns, rowKey = 'id', serial = true, scroll = { x: 'max-content' }, size = 'middle', ...tableProps }) {
     const serialColumn = {
         title: 'SN',
         key: '__serial',
@@ -32,6 +32,7 @@ export function ServerTable({ table, columns, rowKey = 'id', serial = true, scro
             }}
             onChange={table.handleTableChange}
             scroll={scroll}
+            {...tableProps}
         />
     );
 }

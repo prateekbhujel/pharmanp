@@ -48,12 +48,6 @@ class InventoryMasterRequest extends FormRequest
                 'company_id' => ['nullable', 'integer', 'exists:companies,id'],
                 'is_active' => ['sometimes', 'boolean'],
             ],
-            'categories' => [
-                'name' => ['required', 'string', 'max:120'],
-                'code' => ['nullable', 'string', 'max:40'],
-                'company_id' => ['nullable', 'integer', 'exists:companies,id'],
-                'is_active' => ['sometimes', 'boolean'],
-            ],
             default => [],
         };
     }

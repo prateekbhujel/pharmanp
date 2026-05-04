@@ -34,7 +34,6 @@ class MedicalRepresentativeRequest extends FormRequest
             'employee_code' => ['nullable', 'string', 'max:80', Rule::unique('medical_representatives', 'employee_code')->ignore($representative?->id)],
             'phone' => ['nullable', 'string', 'max:40'],
             'email' => ['nullable', 'email', 'max:255'],
-            'territory' => ['nullable', 'string', 'max:255'],
             'monthly_target' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             'is_active' => ['nullable', 'boolean'],
         ];

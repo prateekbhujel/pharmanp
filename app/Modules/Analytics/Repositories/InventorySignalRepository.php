@@ -47,11 +47,11 @@ class InventorySignalRepository implements InventorySignalRepositoryInterface
             ->leftJoinSub($sales30, 'sales30', 'sales30.product_id', '=', 'products.id')
             ->leftJoinSub($stock, 'stock', 'stock.product_id', '=', 'products.id')
             ->leftJoin('companies', 'companies.id', '=', 'products.company_id')
-            ->leftJoin('product_categories', 'product_categories.id', '=', 'products.category_id')
+            ->leftJoin('divisions', 'divisions.id', '=', 'products.division_id')
             ->whereNull('products.deleted_at')
             ->where('products.is_active', true)
             ->when($filters->companyId, fn ($builder, int $companyId) => $builder->where('products.company_id', $companyId))
-            ->when($filters->categoryId, fn ($builder, int $categoryId) => $builder->where('products.category_id', $categoryId))
+            ->when($filters->divisionId, fn ($builder, int $divisionId) => $builder->where('products.division_id', $divisionId))
             ->when($filters->search, function ($builder, string $search) {
                 $keyword = '%'.strtolower($search).'%';
                 $builder->where(function ($inner) use ($keyword) {
@@ -69,7 +69,7 @@ class InventorySignalRepository implements InventorySignalRepositoryInterface
                 products.purchase_price,
                 products.selling_price,
                 companies.name as company,
-                product_categories.name as category,
+                divisions.name as division,
                 COALESCE(stock.stock_on_hand, 0) as stock_on_hand,
                 COALESCE(stock.expiring_quantity, 0) as expiring_quantity,
                 stock.nearest_expiry,

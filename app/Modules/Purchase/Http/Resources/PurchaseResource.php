@@ -36,6 +36,11 @@ class PurchaseResource extends JsonResource
             'status' => $this->status,
             'payment_status' => $this->payment_status,
             'payment_mode_id' => $this->payment_mode_id,
+            'payment_mode' => $this->whenLoaded('paymentMode', fn () => [
+                'id' => $this->paymentMode?->id,
+                'name' => $this->paymentMode?->name,
+                'data' => $this->paymentMode?->data,
+            ]),
             'payment_type' => $this->payment_type,
             'subtotal' => (float) $this->subtotal,
             'discount_total' => (float) $this->discount_total,

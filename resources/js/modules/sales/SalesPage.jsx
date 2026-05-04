@@ -22,6 +22,13 @@ import { appUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 import { SalesReturnsPanel } from './SalesReturnsPanel';
 
+const fallbackPaymentTypes = [
+    { value: 'cash', label: 'Cash' },
+    { value: 'credit', label: 'Credit' },
+    { value: 'partial', label: 'Partial' },
+    { value: 'qr', label: 'QR / Digital Wallet' },
+];
+
 function salesSection() {
     const section = window.location.pathname.split('/').filter(Boolean).pop();
 
@@ -48,7 +55,12 @@ export function SalesPage() {
     const [customerId, setCustomerId] = useState(null);
     const [medicalRepresentativeId, setMedicalRepresentativeId] = useState(undefined);
     const [invoiceDate, setInvoiceDate] = useState(dayjs());
+    const [dueDate, setDueDate] = useState(null);
     const [invoiceRange, setInvoiceRange] = useState([]);
+    const [paymentType, setPaymentType] = useState('cash');
+    const [paymentModeId, setPaymentModeId] = useState(undefined);
+    const [paymentModes, setPaymentModes] = useState([]);
+    const [paymentTypes, setPaymentTypes] = useState(fallbackPaymentTypes);
     const [paidAmount, setPaidAmount] = useState(0);
     const [lastPrintUrl, setLastPrintUrl] = useState(null);
     const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
@@ -71,6 +83,7 @@ export function SalesPage() {
     useEffect(() => {
         loadCustomers();
         loadMedicalRepresentatives();
+        loadPaymentLookups();
 
         function handleKeyDown(event) {
             if (event.altKey && event.key === 's') {
@@ -154,6 +167,24 @@ export function SalesPage() {
         }
     }
 
+    async function loadPaymentLookups() {
+        try {
+            const { data } = await http.get(endpoints.dropdownOptions);
+            const options = data.data || [];
+            const modes = options.filter((item) => item.alias === 'payment_mode' && item.is_active !== false);
+            const types = options
+                .filter((item) => item.alias === 'payment_type' && item.is_active !== false)
+                .map((item) => ({ value: item.code || item.name?.toLowerCase(), label: item.name }))
+                .filter((item) => item.value && item.label);
+
+            setPaymentModes(modes);
+            setPaymentTypes(types.length ? types : fallbackPaymentTypes);
+        } catch {
+            setPaymentModes([]);
+            setPaymentTypes(fallbackPaymentTypes);
+        }
+    }
+
     async function scan(value) {
         const { data } = await http.get(endpoints.salesProductLookup, { params: { barcode: value } });
         const product = data.data?.[0];
@@ -215,14 +246,20 @@ export function SalesPage() {
                 customer_id: customerId,
                 medical_representative_id: medicalRepresentativeId,
                 invoice_date: invoiceDate.format('YYYY-MM-DD'),
+                due_date: dueDate?.format('YYYY-MM-DD'),
                 sale_type: 'pos',
                 paid_amount: paidAmount,
+                payment_type: paymentType,
+                payment_mode_id: paymentModeId,
                 items,
             });
             notification.success({ message: 'Invoice posted and stock deducted' });
             setItems([]);
             setLineErrors({});
             setPaidAmount(0);
+            setPaymentType('cash');
+            setPaymentModeId(undefined);
+            setDueDate(null);
             setCustomerId(null);
             setLastPrintUrl(data.print_url);
             invoiceTable.reload();
@@ -281,7 +318,10 @@ export function SalesPage() {
     function openPaymentUpdate(invoice = viewingInvoice) {
         if (!invoice) return;
         paymentForm.resetFields();
-        paymentForm.setFieldsValue({ paid_amount: invoice.paid_amount || 0 });
+        paymentForm.setFieldsValue({
+            paid_amount: invoice.paid_amount || 0,
+            payment_mode_id: invoice.payment_mode_id || invoice.payment_mode?.id,
+        });
         setPaymentModalOpen(true);
     }
 
@@ -324,8 +364,10 @@ export function SalesPage() {
     const invoiceColumns = [
         { title: 'Invoice', dataIndex: 'invoice_no', field: 'invoice_no', sorter: true },
         { title: 'Date', dataIndex: 'invoice_date', field: 'invoice_date', sorter: true, width: 130, render: (value) => <DateText value={value} style="compact" /> },
+        { title: 'Due Date', dataIndex: 'due_date', width: 130, render: (value) => value ? <DateText value={value} style="compact" /> : '-' },
         { title: 'Customer', dataIndex: ['customer', 'name'], render: (value) => value || 'Walk-in' },
         { title: 'MR', dataIndex: ['medical_representative', 'name'], render: (value) => value || '-' },
+        { title: 'Mode', dataIndex: ['payment_mode', 'name'], width: 130, render: (value, row) => value || row.payment_type || '-' },
         { title: 'Payment', dataIndex: 'payment_status', width: 130, render: (v) => <PaymentStatusBadge value={v} /> },
         { title: 'Total', dataIndex: 'grand_total', align: 'right', width: 140, render: (v) => <Money value={v} /> },
         { title: 'Status', dataIndex: 'is_active', width: 110, render: (v) => <StatusBadge value={v} /> },
@@ -392,6 +434,23 @@ export function SalesPage() {
                                 )}
                             />
                             <SmartDatePicker value={invoiceDate} onChange={setInvoiceDate} className="full-width" placeholder="Invoice Date" />
+                            <SmartDatePicker value={dueDate} onChange={setDueDate} className="full-width" placeholder="Due Date" />
+                            <Select
+                                allowClear
+                                placeholder="Payment Type"
+                                value={paymentType}
+                                onChange={(value) => setPaymentType(value || 'cash')}
+                                options={paymentTypes}
+                            />
+                            <Select
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                placeholder="Payment Mode"
+                                value={paymentModeId}
+                                onChange={setPaymentModeId}
+                                options={paymentModes.map((item) => ({ value: item.id, label: item.name }))}
+                            />
                             <InputNumber id="pos-paid-amount" min={0} value={paidAmount} onChange={setPaidAmount} placeholder="Paid" />
                         </div>
                         <div className="pos-walkin-strip">
@@ -528,7 +587,7 @@ export function SalesPage() {
                 <Form form={mrForm} layout="vertical" onFinish={submitMr}>
                     <Form.Item name="name" label="MR Name" rules={[{ required: true }]}><Input autoFocus /></Form.Item>
                     <div className="form-grid">
-                        <Form.Item name="territory" label="Territory"><Input /></Form.Item>
+                        <Form.Item name="employee_code" label="Employee Code"><Input placeholder="Auto if blank" /></Form.Item>
                         <Form.Item name="monthly_target" label="Monthly Target"><InputNumber min={0} className="full-width" /></Form.Item>
                     </div>
                     <div className="form-grid">
@@ -576,8 +635,10 @@ export function SalesPage() {
                         <Descriptions bordered size="small" column={3}>
                             <Descriptions.Item label="Customer">{viewingInvoice.customer?.name || 'Walk-in'}</Descriptions.Item>
                             <Descriptions.Item label="Date"><DateText value={viewingInvoice.invoice_date} style="compact" /></Descriptions.Item>
+                            <Descriptions.Item label="Due Date">{viewingInvoice.due_date ? <DateText value={viewingInvoice.due_date} style="compact" /> : '-'}</Descriptions.Item>
                             <Descriptions.Item label="Payment"><PaymentStatusBadge value={viewingInvoice.payment_status} /></Descriptions.Item>
                             <Descriptions.Item label="MR">{viewingInvoice.medical_representative?.name || '-'}</Descriptions.Item>
+                            <Descriptions.Item label="Payment Mode">{viewingInvoice.payment_mode?.name || viewingInvoice.payment_type || '-'}</Descriptions.Item>
                             <Descriptions.Item label="Total"><Money value={viewingInvoice.grand_total} /></Descriptions.Item>
                             <Descriptions.Item label="Paid"><Money value={viewingInvoice.paid_amount} /></Descriptions.Item>
                         </Descriptions>
@@ -631,6 +692,14 @@ export function SalesPage() {
                         </Descriptions>
                         <Form.Item name="paid_amount" label="Paid Amount" rules={[{ required: true }]}>
                             <InputNumber min={0} max={Number(viewingInvoice?.grand_total || 0)} className="full-width" />
+                        </Form.Item>
+                        <Form.Item name="payment_mode_id" label="Payment Mode">
+                            <Select
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                options={paymentModes.map((item) => ({ value: item.id, label: item.name }))}
+                            />
                         </Form.Item>
                     </Form>
                 </div>

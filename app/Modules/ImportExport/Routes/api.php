@@ -14,7 +14,7 @@ Route::post('/imports/ocr/draft-purchase', [PurchaseOcrController::class, 'draft
 Route::get('/imports/{job}/rejected.csv', [ImportWizardController::class, 'rejected'])->name('imports.rejected');
 
 Route::get('/exports/inventory/masters/{master}/{format}', [ExportController::class, 'inventoryMaster'])
-    ->whereIn('master', ['companies', 'units', 'categories'])
+    ->whereIn('master', ['companies', 'units'])
     ->whereIn('format', ['xlsx', 'pdf'])
     ->name('exports.inventory.masters');
 Route::get('/exports/inventory/products/{format}', [ExportController::class, 'inventoryProducts'])

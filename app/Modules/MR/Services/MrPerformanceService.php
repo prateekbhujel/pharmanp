@@ -37,12 +37,15 @@ class MrPerformanceService
         $rows = DB::table('medical_representatives')
             ->whereNull('medical_representatives.deleted_at')
             ->when($representativeId, fn ($query) => $query->where('medical_representatives.id', $representativeId))
+            ->leftJoin('areas', 'areas.id', '=', 'medical_representatives.area_id')
+            ->leftJoin('divisions', 'divisions.id', '=', 'medical_representatives.division_id')
             ->leftJoinSub($visitTotals, 'visit_totals', 'visit_totals.medical_representative_id', '=', 'medical_representatives.id')
             ->leftJoinSub($invoiceTotals, 'invoice_totals', 'invoice_totals.medical_representative_id', '=', 'medical_representatives.id')
             ->selectRaw('
                 medical_representatives.id,
                 medical_representatives.name,
-                medical_representatives.territory,
+                areas.name as area,
+                divisions.name as division,
                 medical_representatives.monthly_target,
                 medical_representatives.is_active,
                 COALESCE(visit_totals.visits, 0) as visits,
@@ -55,7 +58,8 @@ class MrPerformanceService
             ->map(fn ($row) => [
                 'id' => $row->id,
                 'name' => $row->name,
-                'territory' => $row->territory,
+                'area' => $row->area,
+                'division' => $row->division,
                 'monthly_target' => (float) $row->monthly_target,
                 'visits' => (int) $row->visits,
                 'visit_order_value' => (float) $row->visit_order_value,

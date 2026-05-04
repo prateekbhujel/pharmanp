@@ -23,6 +23,13 @@ const emptyOrderItem = {
     discount_percent: 0,
 };
 
+const fallbackPaymentTypes = [
+    { value: 'cash', label: 'Cash' },
+    { value: 'credit', label: 'Credit' },
+    { value: 'partial', label: 'Partial' },
+    { value: 'qr', label: 'QR / Digital Wallet' },
+];
+
 export function PurchaseOrdersPanel() {
     const { notification } = App.useApp();
     const [suppliers, setSuppliers] = useState([]);
@@ -32,6 +39,8 @@ export function PurchaseOrdersPanel() {
     const [receivingOrder, setReceivingOrder] = useState(null);
     const [orderItems, setOrderItems] = useState([{ ...emptyOrderItem }]);
     const [receiveItems, setReceiveItems] = useState([]);
+    const [paymentModes, setPaymentModes] = useState([]);
+    const [paymentTypes, setPaymentTypes] = useState(fallbackPaymentTypes);
     const [orderLineErrors, setOrderLineErrors] = useState({});
     const [receiveLineErrors, setReceiveLineErrors] = useState({});
     const [orderForm] = Form.useForm();
@@ -48,6 +57,7 @@ export function PurchaseOrdersPanel() {
     useEffect(() => {
         loadSuppliers();
         searchProducts('');
+        loadPaymentLookups();
     }, []);
 
     useEffect(() => {
@@ -78,6 +88,24 @@ export function PurchaseOrdersPanel() {
     async function searchProducts(q) {
         const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
         setProducts(data.data || []);
+    }
+
+    async function loadPaymentLookups() {
+        try {
+            const { data } = await http.get(endpoints.dropdownOptions);
+            const options = data.data || [];
+            const modes = options.filter((item) => item.alias === 'payment_mode' && item.is_active !== false);
+            const types = options
+                .filter((item) => item.alias === 'payment_type' && item.is_active !== false)
+                .map((item) => ({ value: item.code || item.name?.toLowerCase(), label: item.name }))
+                .filter((item) => item.value && item.label);
+
+            setPaymentModes(modes);
+            setPaymentTypes(types.length ? types : fallbackPaymentTypes);
+        } catch {
+            setPaymentModes([]);
+            setPaymentTypes(fallbackPaymentTypes);
+        }
     }
 
     function productOptions() {
@@ -179,6 +207,7 @@ export function PurchaseOrdersPanel() {
                 purchase_date: dayjs(),
                 supplier_invoice_no: fullOrder.order_no,
                 paid_amount: 0,
+                payment_type: 'credit',
             });
             setReceiveItems((fullOrder.items || []).map((item) => ({
                 purchase_order_item_id: item.id,
@@ -211,6 +240,7 @@ export function PurchaseOrdersPanel() {
             const { data } = await http.post(endpoints.purchaseOrderReceive(receivingOrder.id), {
                 ...values,
                 purchase_date: values.purchase_date.format('YYYY-MM-DD'),
+                due_date: values.due_date?.format('YYYY-MM-DD'),
                 items: receiveItems.map((item) => ({
                     ...item,
                     expires_at: item.expires_at?.format('YYYY-MM-DD'),
@@ -412,6 +442,16 @@ export function PurchaseOrdersPanel() {
                         <div className="form-grid">
                             <Form.Item name="supplier_invoice_no" label="Supplier Bill No"><Input /></Form.Item>
                             <Form.Item name="purchase_date" label="Receive Date" rules={[{ required: true }]}><SmartDatePicker className="full-width" /></Form.Item>
+                            <Form.Item name="due_date" label="Due Date"><SmartDatePicker className="full-width" /></Form.Item>
+                            <Form.Item name="payment_type" label="Payment Type"><Select options={paymentTypes} /></Form.Item>
+                            <Form.Item name="payment_mode_id" label="Payment Mode">
+                                <Select
+                                    allowClear
+                                    showSearch
+                                    optionFilterProp="label"
+                                    options={paymentModes.map((item) => ({ value: item.id, label: item.name }))}
+                                />
+                            </Form.Item>
                             <Form.Item name="paid_amount" label="Paid Amount"><InputNumber min={0} className="full-width" /></Form.Item>
                         </div>
                         <Form.Item name="notes" label="Receive Notes"><Input.TextArea rows={2} /></Form.Item>

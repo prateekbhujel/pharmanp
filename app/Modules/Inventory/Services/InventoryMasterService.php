@@ -6,7 +6,6 @@ use App\Core\DTOs\TableQueryData;
 use App\Core\Support\ApiResponse;
 use App\Models\User;
 use App\Modules\Inventory\Models\Company;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Inventory\Repositories\Interfaces\InventoryMasterRepositoryInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -107,18 +106,6 @@ class InventoryMasterService
         ]));
     }
 
-    public function quickCategory(array $data, User $user): ProductCategory
-    {
-        return DB::transaction(fn () => ProductCategory::query()->create([
-            'tenant_id' => $user->tenant_id,
-            'company_id' => $data['company_id'] ?? $user->company_id,
-            'name' => $data['name'],
-            'code' => $data['code'] ?? null,
-            'created_by' => $user->id,
-            'updated_by' => $user->id,
-        ]));
-    }
-
     public function payload(string $master, Model $row): array
     {
         return match ($master) {
@@ -129,11 +116,6 @@ class InventoryMasterService
             ],
             'units' => [
                 ...$row->only(['id', 'company_id', 'name', 'code', 'type', 'factor', 'description', 'is_active']),
-                'deleted_at' => $row->deleted_at?->toISOString(),
-                'created_at' => $row->created_at?->toDateString(),
-            ],
-            'categories' => [
-                ...$row->only(['id', 'company_id', 'name', 'code', 'is_active']),
                 'deleted_at' => $row->deleted_at?->toISOString(),
                 'created_at' => $row->created_at?->toDateString(),
             ],
@@ -167,12 +149,6 @@ class InventoryMasterService
                 'type' => $data['type'] ?? 'both',
                 'factor' => $data['factor'] ?? 1,
                 'description' => $data['description'] ?? null,
-            ],
-            'categories' => [
-                ...$base,
-                'company_id' => $data['company_id'] ?? $user->company_id,
-                'name' => $data['name'],
-                'code' => $data['code'] ?? null,
             ],
         };
     }

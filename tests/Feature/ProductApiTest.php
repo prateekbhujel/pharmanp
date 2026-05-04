@@ -36,7 +36,6 @@ class ProductApiTest extends TestCase
             'group_name' => 'Analgesic',
             'manufacturer_name' => 'Himal Pharma',
             'packaging_type' => 'Strip',
-            'case_movement' => 'Fast moving',
             'mrp' => 20,
             'purchase_price' => 12,
             'selling_price' => 18,
@@ -49,7 +48,6 @@ class ProductApiTest extends TestCase
         $this->assertSame('ITEM-0001', $product->product_code);
         $this->assertSame('3004.90', $product->hs_code);
         $this->assertSame($division->id, $product->division_id);
-        $this->assertNull($product->category_id);
 
         $this->actingAs($user)->getJson('/api/v1/inventory/products?search=Para&sort_field=name&sort_order=asc')
             ->assertOk()

@@ -4,6 +4,7 @@ namespace App\Modules\Sales\Models;
 
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\Party\Models\Customer;
+use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -57,6 +58,11 @@ class SalesInvoice extends Model
     public function medicalRepresentative(): BelongsTo
     {
         return $this->belongsTo(MedicalRepresentative::class, 'medical_representative_id');
+    }
+
+    public function paymentMode(): BelongsTo
+    {
+        return $this->belongsTo(DropdownOption::class, 'payment_mode_id');
     }
 
     public function items(): HasMany

@@ -17,7 +17,6 @@ class ExportService
         $title = match ($master) {
             'companies' => 'Company List',
             'units' => 'Unit List',
-            'categories' => 'Category List',
             default => abort(404),
         };
 

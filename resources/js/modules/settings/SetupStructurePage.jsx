@@ -3,6 +3,7 @@ import { App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Swit
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UndoOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DateText } from '../../core/components/DateText';
+import { Money } from '../../core/components/Money';
 import { ServerTable } from '../../core/components/ServerTable';
 import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
@@ -290,6 +291,59 @@ export function SetupStructurePage() {
         ];
     }, [resource, table.pagination.current, table.pagination.pageSize]);
 
+    function expandedRow(record) {
+        if (resource === 'areas') {
+            return (
+                <div className="expanded-summary-grid">
+                    <div><span>Branch</span><strong>{record.branch?.name || '-'}</strong></div>
+                    <div><span>Location</span><strong>{[record.district, record.province].filter(Boolean).join(', ') || '-'}</strong></div>
+                    <div><span>Notes</span><strong>{record.notes || '-'}</strong></div>
+                    <div className="expanded-summary-actions">
+                        <Button size="small" onClick={() => window.location.href = `/app/reports/target-achievement?area_id=${record.id}`}>Targets</Button>
+                        <Button size="small" onClick={() => window.location.href = `/app/reports/mr-vs-sales?area_id=${record.id}`}>MR Sales</Button>
+                    </div>
+                </div>
+            );
+        }
+
+        if (resource === 'divisions') {
+            return (
+                <div className="expanded-summary-grid">
+                    <div><span>Products</span><strong>{Number(record.products_count || 0).toLocaleString()}</strong></div>
+                    <div><span>Employees</span><strong>{Number(record.employees_count || 0).toLocaleString()}</strong></div>
+                    <div><span>Notes</span><strong>{record.notes || '-'}</strong></div>
+                    <div className="expanded-summary-actions">
+                        <Button size="small" onClick={() => window.location.href = `/app/reports/mr-vs-division?division_id=${record.id}`}>MR vs Division</Button>
+                        <Button size="small" onClick={() => window.location.href = `/app/reports/stock?division_id=${record.id}`}>Stock</Button>
+                    </div>
+                </div>
+            );
+        }
+
+        if (resource === 'targets') {
+            return (
+                <div className="expanded-summary-grid">
+                    <div><span>Target Scope</span><strong>{record.product?.name || record.employee?.name || record.division?.name || record.area?.name || record.branch?.name || 'Company'}</strong></div>
+                    <div><span>Amount / Quantity</span><strong><Money value={record.target_amount} /> / {Number(record.target_quantity || 0).toLocaleString()}</strong></div>
+                    <div><span>Window</span><strong><DateText value={record.start_date} style="compact" /> - <DateText value={record.end_date} style="compact" /></strong></div>
+                    <div><span>Notes</span><strong>{record.notes || '-'}</strong></div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="expanded-summary-grid">
+                <div><span>Hierarchy</span><strong>{record.manager?.name ? `${record.name} reports to ${record.manager.name}` : 'No reporting manager set'}</strong></div>
+                <div><span>Assignment</span><strong>{[record.branch?.name, record.area?.name, record.division?.name].filter(Boolean).join(' / ') || '-'}</strong></div>
+                <div><span>Contact</span><strong>{record.phone || record.email || '-'}</strong></div>
+                <div className="expanded-summary-actions">
+                    <Button size="small" onClick={() => window.location.href = `/app/reports/target-achievement?employee_id=${record.id}`}>Targets</Button>
+                    <Button size="small" onClick={() => window.location.href = `/app/reports/mr-performance?employee_id=${record.id}`}>Performance</Button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="page-stack">
             <Card
@@ -313,7 +367,7 @@ export function SetupStructurePage() {
                     </div>
                     <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                 </div>
-                <ServerTable table={table} columns={columns} />
+                <ServerTable table={table} columns={columns} expandable={{ expandedRowRender: expandedRow }} />
             </Card>
 
             <Modal

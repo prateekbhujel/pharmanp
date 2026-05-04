@@ -5,7 +5,6 @@ export const paymentModeTypeOptions = [
 
 export const fallbackDropdownAliases = {
     product_status: { label: 'Product Status', supports_data: false },
-    formulation: { label: 'Formulation', supports_data: false },
     sales_type: { label: 'Sales Type', supports_data: false },
     payment_mode: { label: 'Payment Mode', supports_data: true },
     payment_type: { label: 'Payment Type', supports_data: false },

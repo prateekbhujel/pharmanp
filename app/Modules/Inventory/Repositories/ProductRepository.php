@@ -31,7 +31,7 @@ class ProductRepository implements ProductRepositoryInterface
 
         $query = Product::query()
             ->select('products.*')
-            ->with(['company:id,name', 'unit:id,name', 'category:id,name', 'division:id,name'])
+            ->with(['company:id,name', 'unit:id,name', 'division:id,name,code'])
             ->withSum(['batches as stock_on_hand' => fn ($query) => $query->where('is_active', true)], 'quantity_available');
 
         $this->tables->tenant($query, $user, 'products.tenant_id');
@@ -47,12 +47,11 @@ class ProductRepository implements ProductRepositoryInterface
             'products.group_name',
             'products.manufacturer_name',
             'products.packaging_type',
-            'products.case_movement',
+            'products.keywords',
         ]);
 
         $query
             ->when(isset($table->filters['company_id']), fn (Builder $builder) => $builder->where('products.company_id', $table->filters['company_id']))
-            ->when(isset($table->filters['category_id']), fn (Builder $builder) => $builder->where('products.category_id', $table->filters['category_id']))
             ->when(isset($table->filters['division_id']), fn (Builder $builder) => $builder->where('products.division_id', $table->filters['division_id']));
         $this->tables->activeFilter($query, $table, 'products.is_active');
 

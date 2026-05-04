@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
@@ -365,15 +364,12 @@ class TransactionPostingTest extends TestCase
         Setting::putValue('app.installed', ['installed' => true]);
         $company = Company::query()->create(['name' => 'Fixture Pharma']);
         $unit = Unit::query()->create(['company_id' => $company->id, 'name' => 'Piece']);
-        $category = ProductCategory::query()->create(['company_id' => $company->id, 'name' => 'Medicine']);
         $user = User::factory()->create(['company_id' => $company->id, 'is_owner' => true]);
         $product = Product::query()->create([
             'company_id' => $company->id,
             'unit_id' => $unit->id,
-            'category_id' => $category->id,
             'name' => 'Paracetamol 500',
             'sku' => 'PCM-500',
-            'formulation' => 'Tablet',
             'mrp' => 8,
             'purchase_price' => 5,
             'selling_price' => 8,

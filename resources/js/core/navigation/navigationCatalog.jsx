@@ -144,9 +144,8 @@ export function buildNavigationModel(user, pathname) {
                 child('inventory-product', 'Products', appUrl('/app/inventory/products'), { description: 'Product master, pricing, barcode and stock setup' }),
                 child('inventory-company', 'Companies (MFR)', appUrl('/app/inventory/companies'), { description: 'Manufacturer and company master records' }),
                 child('inventory-unit', 'Units', appUrl('/app/inventory/units'), { description: 'Product units and packaging units' }),
-                child('inventory-categories', 'Categories', appUrl('/app/inventory/categories'), { description: 'Product grouping and classification' }),
                 child('inventory-adjustment', 'Stock Adjustment', appUrl('/app/inventory/stock-adjustment'), { description: 'Manual stock correction with ledger impact' }),
-                child('inventory-movement', 'Case Movement', appUrl('/app/inventory/case-movement'), { description: 'Stock movement ledger and remaining stock flow' }),
+                child('inventory-movement', 'Stock Ledger', appUrl('/app/inventory/stock-ledger'), { description: 'Stock movement ledger and remaining stock flow' }),
             ],
         },
         {

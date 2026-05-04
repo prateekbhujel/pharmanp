@@ -3,6 +3,7 @@
 namespace App\Modules\MR\Services;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Services\EmployeeCodeGenerator;
 use App\Models\User;
 use App\Modules\MR\DTOs\MedicalRepresentativeData;
 use App\Modules\MR\DTOs\RepresentativeVisitData;
@@ -14,7 +15,10 @@ use Illuminate\Support\Facades\DB;
 
 class MrManagementService
 {
-    public function __construct(private readonly MrRepositoryInterface $mrs) {}
+    public function __construct(
+        private readonly MrRepositoryInterface $mrs,
+        private readonly EmployeeCodeGenerator $employeeCodes,
+    ) {}
 
     public function representatives(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
@@ -28,6 +32,9 @@ class MrManagementService
 
     public function createRepresentative(array $data, User $user): MedicalRepresentative
     {
+        if (! filled($data['employee_code'] ?? null)) {
+            $data['employee_code'] = $this->employeeCodes->next();
+        }
         $dto = MedicalRepresentativeData::fromArray($data);
 
         return DB::transaction(function () use ($dto, $user) {

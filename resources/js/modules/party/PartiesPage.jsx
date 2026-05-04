@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { App, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Switch, Table, Tabs } from 'antd';
+import { App, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Switch, Table } from 'antd';
 import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined, UndoOutlined } from '@ant-design/icons';
 import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { ServerTable } from '../../core/components/ServerTable';
@@ -108,7 +108,43 @@ function PartyTab({ type, onViewLedger }) {
         });
     }
 
+    function expandedRow(record) {
+        const code = type === 'suppliers' ? record.supplier_code : record.customer_code;
+        const agingReport = type === 'suppliers' ? 'supplier-aging' : 'customer-aging';
+        const ledgerReport = type === 'suppliers' ? 'supplier-ledger' : 'customer-ledger';
+        const partyKey = type === 'suppliers' ? 'supplier_id' : 'customer_id';
+
+        return (
+            <div className="expanded-summary-grid">
+                <div>
+                    <span className="summary-label">Code</span>
+                    <strong>{code || '-'}</strong>
+                </div>
+                <div>
+                    <span className="summary-label">Contact</span>
+                    <strong>{record.contact_person || record.phone || '-'}</strong>
+                </div>
+                <div>
+                    <span className="summary-label">Opening / Current</span>
+                    <strong><Money value={record.opening_balance} /> / <Money value={record.current_balance} /></strong>
+                </div>
+                {type === 'customers' && (
+                    <div>
+                        <span className="summary-label">Credit Limit</span>
+                        <strong><Money value={record.credit_limit} /></strong>
+                    </div>
+                )}
+                <div className="expanded-summary-actions">
+                    <Button size="small" onClick={() => window.location.href = appUrl(`/app/reports/${agingReport}?${partyKey}=${record.id}`)}>Aging</Button>
+                    <Button size="small" onClick={() => window.location.href = appUrl(`/app/reports/${ledgerReport}?${partyKey}=${record.id}`)}>Ledger</Button>
+                    {type === 'customers' && <Button size="small" icon={<BookOutlined />} onClick={() => onViewLedger?.(record)}>Customer History</Button>}
+                </div>
+            </div>
+        );
+    }
+
     const columns = [
+        { title: 'Code', dataIndex: type === 'suppliers' ? 'supplier_code' : 'customer_code', sorter: true, field: type === 'suppliers' ? 'supplier_code' : 'customer_code', width: 140, render: (value) => value || '-' },
         { title: 'Name', dataIndex: 'name', sorter: true, field: 'name' },
         { title: 'Type', dataIndex: typeNameField, width: 160, render: (value) => value || '-' },
         { title: 'Phone', dataIndex: 'phone', width: 140 },
@@ -144,7 +180,7 @@ function PartyTab({ type, onViewLedger }) {
                 <ExportButtons basePath={endpoints.datasetExport(type)} params={{ search: table.search, deleted: deletedMode ? 1 : undefined }} />
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>New {type === 'suppliers' ? 'Supplier' : 'Customer'}</Button>
             </div>
-            <ServerTable table={table} columns={columns} />
+            <ServerTable table={table} columns={columns} expandable={{ expandedRowRender: expandedRow }} />
 
             <FormDrawer
                 title={editing ? 'Edit Party' : 'New Party'}
@@ -198,6 +234,8 @@ function PartyTab({ type, onViewLedger }) {
 }
 
 export function PartiesPage() {
+    const section = window.location.pathname.split('/').filter(Boolean).pop();
+    const activeType = section === 'customers' ? 'customers' : 'suppliers';
     const [ledgerOpen, setLedgerOpen] = useState(false);
     const [ledgerCustomer, setLedgerCustomer] = useState(null);
     const [ledgerData, setLedgerData] = useState(null);
@@ -232,10 +270,7 @@ export function PartiesPage() {
 
     return (
         <div className="page-stack">
-            <Tabs items={[
-                { key: 'suppliers', label: 'Suppliers', children: <PartyTab type="suppliers" /> },
-                { key: 'customers', label: 'Customers', children: <PartyTab type="customers" onViewLedger={viewLedger} /> },
-            ]} />
+            <PartyTab type={activeType} onViewLedger={viewLedger} />
 
             <Drawer title={`Ledger — ${ledgerCustomer?.name || ''}`} open={ledgerOpen} onClose={() => setLedgerOpen(false)} width={720} loading={ledgerLoading}>
                 {ledgerData && (

@@ -10,7 +10,6 @@ use App\Modules\ImportExport\Repositories\Interfaces\ExportRepositoryInterface;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
@@ -29,7 +28,6 @@ class ExportRepository implements ExportRepositoryInterface
         $model = match ($master) {
             'companies' => Company::class,
             'units' => Unit::class,
-            'categories' => ProductCategory::class,
             default => abort(404),
         };
 
@@ -53,21 +51,16 @@ class ExportRepository implements ExportRepositoryInterface
                     'Status' => $row->deleted_at ? 'Deleted' : ($row->is_active ? 'Active' : 'Inactive'),
                     'Added Date' => $row->created_at?->toDateString(),
                 ],
-                'categories' => [
-                    'Category Name' => $row->name,
-                    'Code' => $row->code ?: '-',
-                    'Status' => $row->deleted_at ? 'Deleted' : ($row->is_active ? 'Active' : 'Inactive'),
-                    'Added Date' => $row->created_at?->toDateString(),
-                ],
             });
     }
 
     public function inventoryProductRows(Request $request): Collection
     {
         return Product::query()
-            ->with(['company:id,name', 'unit:id,name', 'category:id,name'])
+            ->with(['company:id,name', 'unit:id,name', 'division:id,name,code'])
             ->withSum(['batches as stock_on_hand' => fn (Builder $query) => $query->where('is_active', true)], 'quantity_available')
             ->when($request->filled('company_id'), fn (Builder $query) => $query->where('company_id', $request->integer('company_id')))
+            ->when($request->filled('division_id'), fn (Builder $query) => $query->where('division_id', $request->integer('division_id')))
             ->when($this->search($request) !== '', function (Builder $query) use ($request): void {
                 $search = $this->search($request);
                 $query->where(function (Builder $inner) use ($search): void {
@@ -85,6 +78,9 @@ class ExportRepository implements ExportRepositoryInterface
                 'Product' => $product->name,
                 'Generic Name' => $product->generic_name ?: '-',
                 'Company' => $product->company?->name ?: '-',
+                'Division' => $product->division?->name ?: '-',
+                'HS Code' => $product->hs_code ?: '-',
+                'Packaging' => $product->packaging_type ?: '-',
                 'Unit' => $product->unit?->name ?: '-',
                 'Reorder Level' => (float) $product->reorder_level,
                 'Current Stock' => (float) $product->stock_on_hand,

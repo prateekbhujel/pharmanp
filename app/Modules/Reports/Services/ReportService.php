@@ -124,7 +124,7 @@ class ReportService
     {
         return $this->paged($this->reports->stockQuery($request->user(), [
             'company_id' => $request->query('company_id'),
-            'category_id' => $request->query('category_id'),
+            'division_id' => $request->query('division_id'),
         ]), $perPage);
     }
 
@@ -132,7 +132,7 @@ class ReportService
     {
         return $this->paged($this->reports->lowStockQuery($request->user(), [
             'company_id' => $request->query('company_id'),
-            'category_id' => $request->query('category_id'),
+            'division_id' => $request->query('division_id'),
         ]), $perPage);
     }
 

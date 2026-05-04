@@ -13,7 +13,6 @@ export const endpoints = {
     productRestore: (id) => apiUrl(`/api/v1/inventory/products/${id}/restore`),
     quickCompany: apiUrl('/api/v1/inventory/companies/quick'),
     quickUnit: apiUrl('/api/v1/inventory/units/quick'),
-    quickCategory: apiUrl('/api/v1/inventory/categories/quick'),
     inventoryMaster: (master) => apiUrl(`/api/v1/inventory/masters/${master}`),
     inventoryMasterRestore: (master, id) => apiUrl(`/api/v1/inventory/masters/${master}/${id}/restore`),
     inventoryMasterExport: (master) => apiUrl(`/api/v1/exports/inventory/masters/${master}`),

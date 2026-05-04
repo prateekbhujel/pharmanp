@@ -255,21 +255,22 @@ class DashboardRepository implements DashboardRepositoryInterface
     private function topRepresentatives(string $from, string $to, ?User $user = null): array
     {
         return $this->scopeTenant(DB::table('medical_representatives'), $user, 'medical_representatives')
+            ->leftJoin('areas', 'areas.id', '=', 'medical_representatives.area_id')
             ->leftJoin('sales_invoices', function ($join) use ($from, $to) {
                 $join->on('sales_invoices.medical_representative_id', '=', 'medical_representatives.id')
                     ->whereNull('sales_invoices.deleted_at')
                     ->whereBetween('sales_invoices.invoice_date', [$from, $to]);
             })
             ->whereNull('medical_representatives.deleted_at')
-            ->groupBy('medical_representatives.id', 'medical_representatives.name', 'medical_representatives.territory')
+            ->groupBy('medical_representatives.id', 'medical_representatives.name', 'areas.name')
             ->orderByDesc(DB::raw('COALESCE(SUM(sales_invoices.grand_total), 0)'))
             ->limit(6)
-            ->selectRaw('medical_representatives.id, medical_representatives.name, medical_representatives.territory, COUNT(sales_invoices.id) as invoices, COALESCE(SUM(sales_invoices.grand_total), 0) as amount')
+            ->selectRaw('medical_representatives.id, medical_representatives.name, areas.name as area, COUNT(sales_invoices.id) as invoices, COALESCE(SUM(sales_invoices.grand_total), 0) as amount')
             ->get()
             ->map(fn ($row) => [
                 'id' => $row->id,
                 'name' => $row->name,
-                'territory' => $row->territory,
+                'area' => $row->area,
                 'invoices' => (int) $row->invoices,
                 'amount' => (float) $row->amount,
             ])

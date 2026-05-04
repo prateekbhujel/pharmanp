@@ -9,7 +9,7 @@ final readonly class InventorySignalFilterData
 {
     public function __construct(
         public ?int $companyId = null,
-        public ?int $categoryId = null,
+        public ?int $divisionId = null,
         public ?string $search = null,
         public ?string $signal = null,
         public int $perPage = TableQueryData::DEFAULT_PER_PAGE,
@@ -19,7 +19,7 @@ final readonly class InventorySignalFilterData
     {
         return new self(
             companyId: $request->filled('company_id') ? $request->integer('company_id') : null,
-            categoryId: $request->filled('category_id') ? $request->integer('category_id') : null,
+            divisionId: $request->filled('division_id') ? $request->integer('division_id') : null,
             search: $request->filled('search') ? trim((string) $request->query('search')) : null,
             signal: $request->filled('signal') ? (string) $request->query('signal') : null,
             perPage: TableQueryData::normalizePerPage($perPage ?? $request->query('per_page')),

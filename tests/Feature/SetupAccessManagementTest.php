@@ -29,7 +29,6 @@ class SetupAccessManagementTest extends TestCase
         $mr = MedicalRepresentative::query()->create([
             'company_id' => $company->id,
             'name' => 'Nabin MR',
-            'territory' => 'Kathmandu',
             'monthly_target' => 50000,
             'is_active' => true,
         ]);

@@ -39,7 +39,7 @@ class ProductLookupController extends ModularController
             ->with([
                 'company:id,name',
                 'unit:id,name',
-                'category:id,name',
+                'division:id,name,code',
                 'batches' => fn ($query) => $query
                     ->where('is_active', true)
                     ->where('quantity_available', '>', 0)

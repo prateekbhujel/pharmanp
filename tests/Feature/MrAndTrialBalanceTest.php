@@ -6,7 +6,6 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
-use App\Modules\Inventory\Models\ProductCategory;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\Party\Models\Customer;
@@ -85,15 +84,12 @@ class MrAndTrialBalanceTest extends TestCase
         Setting::putValue('app.installed', ['installed' => true]);
         $company = Company::query()->create(['name' => 'Trial Pharma']);
         $unit = Unit::query()->create(['company_id' => $company->id, 'name' => 'Piece']);
-        $category = ProductCategory::query()->create(['company_id' => $company->id, 'name' => 'Medicine']);
         $user = User::factory()->create(['company_id' => $company->id, 'is_owner' => true]);
         $product = Product::query()->create([
             'company_id' => $company->id,
             'unit_id' => $unit->id,
-            'category_id' => $category->id,
             'name' => 'Cetirizine',
             'sku' => 'CTZ-10',
-            'formulation' => 'Tablet',
             'mrp' => 8,
             'purchase_price' => 5,
             'selling_price' => 8,
@@ -103,7 +99,6 @@ class MrAndTrialBalanceTest extends TestCase
         $mr = MedicalRepresentative::query()->create([
             'company_id' => $company->id,
             'name' => 'Nabin MR',
-            'territory' => 'Lalitpur',
             'monthly_target' => 100000,
             'is_active' => true,
         ]);

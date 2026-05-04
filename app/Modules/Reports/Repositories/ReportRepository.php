@@ -65,10 +65,11 @@ class ReportRepository implements ReportRepositoryInterface
             ->when($user->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('products.tenant_id', $tenantId))
             ->when($user->company_id, fn (Builder $builder, int $companyId) => $builder->where('products.company_id', $companyId))
             ->when($filters['company_id'] ?? null, fn (Builder $builder, mixed $id) => $builder->where('products.company_id', $id))
-            ->when($filters['category_id'] ?? null, fn (Builder $builder, mixed $id) => $builder->where('products.category_id', $id))
-            ->groupBy('products.id', 'products.name', 'products.sku', 'products.reorder_level')
+            ->when($filters['division_id'] ?? null, fn (Builder $builder, mixed $id) => $builder->where('products.division_id', $id))
+            ->leftJoin('divisions', 'divisions.id', '=', 'products.division_id')
+            ->groupBy('products.id', 'products.name', 'products.product_code', 'products.sku', 'products.reorder_level', 'divisions.name')
             ->orderBy('products.name')
-            ->selectRaw('products.id, products.name, products.sku, products.reorder_level, COALESCE(SUM(batches.quantity_available), 0) as stock_on_hand');
+            ->selectRaw('products.id, products.name, products.product_code, products.sku, divisions.name as division, products.reorder_level, COALESCE(SUM(batches.quantity_available), 0) as stock_on_hand');
     }
 
     public function lowStockQuery(User $user, array $filters = []): Builder
