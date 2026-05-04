@@ -44,6 +44,14 @@ if (bootToken) {
     setApiToken(bootToken);
 }
 
+export function responseToken(body) {
+    return body?.token
+        || body?.access_token
+        || body?.data?.token
+        || body?.data?.access_token
+        || null;
+}
+
 export function validationErrors(error) {
     return error?.response?.data?.errors || {};
 }

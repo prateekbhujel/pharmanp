@@ -8,16 +8,11 @@ window.axios.defaults.headers.common.Accept = 'application/json';
 window.axios.defaults.withCredentials = true;
 
 const token = document.querySelector('meta[name="csrf-token"]')?.content;
-const authMode = import.meta.env.VITE_PHARMANP_AUTH_MODE || 'session';
 const apiToken = import.meta.env.VITE_PHARMANP_API_TOKEN
-    || (authMode !== 'session' ? localStorage.getItem(apiTokenStorageKey) : null);
+    || localStorage.getItem(apiTokenStorageKey);
 
 if (token) {
     window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
-}
-
-if (authMode === 'session') {
-    localStorage.removeItem(apiTokenStorageKey);
 }
 
 if (apiToken) {

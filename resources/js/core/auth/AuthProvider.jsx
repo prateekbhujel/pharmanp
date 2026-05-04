@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Spin } from 'antd';
 import { endpoints } from '../api/endpoints';
-import { authMode, getApiToken, http, setApiToken } from '../api/http';
+import { authMode, getApiToken, http, responseToken, setApiToken } from '../api/http';
 import { appUrl, standaloneFrontend } from '../utils/url';
 import { ApiLogin } from './ApiLogin';
 
@@ -20,8 +20,10 @@ export function AuthProvider({ children }) {
                 device_name: standaloneFrontend ? 'PharmaNP Standalone Frontend' : 'PharmaNP Browser Session',
             });
 
-            if (data.token) {
-                setApiToken(data.token);
+            const token = responseToken(data);
+
+            if (token) {
+                setApiToken(token);
             }
         } catch {
             // Session auth can still be valid even if token minting is blocked.
@@ -29,11 +31,27 @@ export function AuthProvider({ children }) {
     }, []);
 
     const load = useCallback(async () => {
-        try {
+        const loadCurrentUser = async () => {
             const { data } = await http.get(endpoints.me);
-            setState({ loading: false, user: data.data, branding: data.branding });
             await ensureBrowserToken();
-        } catch {
+            setState({ loading: false, user: data.data, branding: data.branding });
+        };
+
+        try {
+            await loadCurrentUser();
+        } catch (error) {
+            if (error?.response?.status === 401 && getApiToken()) {
+                setApiToken(null);
+
+                try {
+                    await loadCurrentUser();
+
+                    return;
+                } catch {
+                    // Fall through to the normal unauthenticated state.
+                }
+            }
+
             if (standaloneFrontend) {
                 setApiToken(null);
                 setState({ loading: false, user: null, branding: null });
@@ -56,8 +74,10 @@ export function AuthProvider({ children }) {
             device_name: standaloneFrontend ? 'PharmaNP Standalone Frontend' : 'PharmaNP Browser Session',
         });
 
-        if (data.token) {
-            setApiToken(data.token);
+        const token = responseToken(data);
+
+        if (token) {
+            setApiToken(token);
         }
 
         await load();
