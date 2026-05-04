@@ -49,6 +49,9 @@ class CurrentUserController extends ModularController
         }
         $branding['product'] = ProductMeta::payload();
 
+        $jwtPayload = $request->attributes->get('jwt_payload', []);
+        $impersonatorId = $jwtPayload['impersonator_user_id'] ?? null;
+
         return response()->json([
             'data' => [
                 'id' => $user->id,
@@ -73,8 +76,8 @@ class CurrentUserController extends ModularController
                     'id' => $user->medicalRepresentative->id,
                     'name' => $user->medicalRepresentative->name,
                 ] : null,
-                'impersonating' => $request->session()->has('impersonator_user_id'),
-                'impersonator_user_id' => $request->session()->get('impersonator_user_id'),
+                'impersonating' => (bool) $impersonatorId,
+                'impersonator_user_id' => $impersonatorId,
             ],
             'branding' => $branding,
         ]);

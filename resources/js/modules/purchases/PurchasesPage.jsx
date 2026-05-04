@@ -19,6 +19,7 @@ import { itemFreeGoodsValue, itemGross, itemNet, summarizeItems, validationError
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
+import { openAuthenticatedDocument } from '../../core/utils/documents';
 import { PurchaseReturnsPanel } from './PurchaseReturnsPanel';
 import { PurchaseOrdersPanel } from './PurchaseOrdersPanel';
 
@@ -302,8 +303,8 @@ export function PurchasesPage() {
             width: 150,
             render: (_, row) => (
                 <Space>
-                    <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/purchases/${row.id}/print`), '_blank')}>Print</Button>
-                    <Button onClick={() => window.open(appUrl(`/purchases/${row.id}/pdf`), '_blank')}>PDF</Button>
+                    <Button icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(appUrl(`/purchases/${row.id}/print`))}>Print</Button>
+                    <Button onClick={() => openAuthenticatedDocument(appUrl(`/purchases/${row.id}/pdf`), { accept: 'application/pdf' })}>PDF</Button>
                 </Space>
             ),
         },
@@ -317,7 +318,7 @@ export function PurchasesPage() {
                         {section !== 'entry' && <Button type="primary" icon={<PlusOutlined />} onClick={() => goToApp('/app/purchases/entry')}>New Purchase</Button>}
                         {section !== 'bills' && <Button onClick={() => goToApp('/app/purchases/bills')}>Purchase Bills</Button>}
                         <Button icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick Product</Button>
-                        <Button disabled={!lastPurchasePrintUrl} icon={<PrinterOutlined />} onClick={() => window.open(lastPurchasePrintUrl, '_blank')}>Print Last Purchase</Button>
+                        <Button disabled={!lastPurchasePrintUrl} icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(lastPurchasePrintUrl)}>Print Last Purchase</Button>
                     </Space>
                 )}
             />

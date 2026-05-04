@@ -20,6 +20,7 @@ import { itemFreeGoodsValue, itemNet, summarizeItems, validationErrorsByLine } f
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
+import { openAuthenticatedDocument } from '../../core/utils/documents';
 import { SalesReturnsPanel } from './SalesReturnsPanel';
 
 const fallbackPaymentTypes = [
@@ -378,8 +379,8 @@ export function SalesPage() {
                 <Space>
                     <Button icon={<EyeOutlined />} onClick={() => viewInvoice(row)}>View</Button>
                     <Button icon={<DollarOutlined />} onClick={() => openInvoicePayment(row)}>Payment</Button>
-                    <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/sales/invoices/${row.id}/print`), '_blank')}>Print</Button>
-                    <Button onClick={() => window.open(appUrl(`/sales/invoices/${row.id}/pdf`), '_blank')}>PDF</Button>
+                    <Button icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(appUrl(`/sales/invoices/${row.id}/print`))}>Print</Button>
+                    <Button onClick={() => openAuthenticatedDocument(appUrl(`/sales/invoices/${row.id}/pdf`), { accept: 'application/pdf' })}>PDF</Button>
                 </Space>
             ),
         },
@@ -393,7 +394,7 @@ export function SalesPage() {
                         {section !== 'pos' && <Button type="primary" onClick={() => goToApp('/app/sales/pos')}>New Sales</Button>}
                         {section !== 'invoices' && <Button onClick={() => goToApp('/app/sales')}>Sales</Button>}
                         <Button icon={<PlusOutlined />} onClick={() => setQuickProductOpen(true)}>Quick Product</Button>
-                        <Button disabled={!lastPrintUrl} icon={<PrinterOutlined />} onClick={() => window.open(lastPrintUrl, '_blank')}>Print Last Invoice</Button>
+                        <Button disabled={!lastPrintUrl} icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(lastPrintUrl)}>Print Last Invoice</Button>
                     </Space>
                 )}
             />
@@ -624,7 +625,7 @@ export function SalesPage() {
                 onCancel={() => setViewingInvoice(null)}
                 footer={[
                     <Button key="payment" icon={<DollarOutlined />} onClick={() => openPaymentUpdate()}>Update Payment</Button>,
-                    <Button key="print" icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/sales/invoices/${viewingInvoice?.id}/print`), '_blank')}>Print</Button>,
+                    <Button key="print" icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(appUrl(`/sales/invoices/${viewingInvoice?.id}/print`))}>Print</Button>,
                     <Button key="close" onClick={() => setViewingInvoice(null)}>Close</Button>,
                 ]}
                 width={980}

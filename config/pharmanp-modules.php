@@ -12,18 +12,12 @@ use App\Modules\Purchase\Providers\PurchaseServiceProvider;
 use App\Modules\Reports\Providers\ReportsServiceProvider;
 use App\Modules\Sales\Providers\SalesServiceProvider;
 use App\Modules\Setup\Providers\SetupServiceProvider;
-use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Session\Middleware\StartSession;
 
 return [
     'api_prefix' => 'api/v1',
 
     'api_middleware' => [
         'api',
-        EncryptCookies::class,
-        AddQueuedCookiesToResponse::class,
-        StartSession::class,
         WrapApiResponse::class,
         'installed',
         'pharmanp.api',

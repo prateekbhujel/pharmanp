@@ -15,8 +15,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->statefulApi();
-
         $middleware->alias([
             'installed' => EnsurePharmaNpIsInstalled::class,
             'not_installed' => RedirectIfPharmaNpIsInstalled::class,

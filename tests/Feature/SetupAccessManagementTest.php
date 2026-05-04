@@ -133,7 +133,7 @@ class SetupAccessManagementTest extends TestCase
             ->assertOk();
     }
 
-    public function test_owner_can_impersonate_and_return_to_admin_session(): void
+    public function test_owner_can_impersonate_and_return_to_admin_with_jwt(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);
         $company = Company::query()->create(['name' => 'Impersonation Pharma']);
@@ -147,20 +147,31 @@ class SetupAccessManagementTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->actingAs($owner)->postJson("/api/v1/setup/users/{$staff->id}/impersonate")
+        $impersonate = $this->actingAs($owner)->postJson("/api/v1/setup/users/{$staff->id}/impersonate")
             ->assertOk();
 
-        $this->assertAuthenticatedAs($staff);
+        $staffToken = $impersonate->json('token');
+        $this->assertNotEmpty($staffToken);
 
-        $this->getJson('/api/v1/me')
+        $this->withHeader('Authorization', 'Bearer '.$staffToken)
+            ->getJson('/api/v1/me')
             ->assertOk()
+            ->assertJsonPath('data.email', $staff->email)
             ->assertJsonPath('data.impersonating', true)
             ->assertJsonPath('data.impersonator_user_id', $owner->id);
 
-        $this->postJson('/api/v1/setup/users/stop-impersonating')
+        $returned = $this->withHeader('Authorization', 'Bearer '.$staffToken)
+            ->postJson('/api/v1/setup/users/stop-impersonating')
             ->assertOk();
 
-        $this->assertAuthenticatedAs($owner);
+        $ownerToken = $returned->json('token');
+        $this->assertNotEmpty($ownerToken);
+
+        $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+            ->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.email', $owner->email)
+            ->assertJsonPath('data.impersonating', false);
     }
 
     public function test_owner_can_manage_branches_as_master_data(): void

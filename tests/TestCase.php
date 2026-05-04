@@ -2,6 +2,8 @@
 
 namespace Tests;
 
+use App\Core\Services\JwtTokenService;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Support\Facades\File;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
@@ -12,5 +14,16 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         File::delete(storage_path('app/installed'));
+    }
+
+    public function actingAs(AuthenticatableContract $user, $guard = null)
+    {
+        parent::actingAs($user, $guard);
+
+        if ($guard === null || $guard === 'web') {
+            $this->withHeader('Authorization', 'Bearer '.app(JwtTokenService::class)->issue($user));
+        }
+
+        return $this;
     }
 }

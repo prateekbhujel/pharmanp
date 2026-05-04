@@ -5,7 +5,7 @@ window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 window.axios.defaults.headers.common.Accept = 'application/json';
-window.axios.defaults.withCredentials = true;
+window.axios.defaults.withCredentials = false;
 
 const token = document.querySelector('meta[name="csrf-token"]')?.content;
 const apiToken = import.meta.env.VITE_PHARMANP_API_TOKEN

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Core\Services\ApiTokenService;
 use App\Core\Services\JwtTokenService;
 use App\Models\Setting;
 use App\Models\User;
@@ -46,7 +45,7 @@ class AuthProtectedApiTest extends TestCase
             ]);
     }
 
-    public function test_web_session_can_bootstrap_current_user_api(): void
+    public function test_api_login_can_bootstrap_current_user_with_jwt(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);
         $user = User::factory()->create([
@@ -55,37 +54,55 @@ class AuthProtectedApiTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->post('/login', [
+        $token = $this->postJson('/api/v1/auth/login', [
             'email' => $user->email,
             'password' => 'password',
-        ])->assertRedirect('/app');
+        ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Authenticated.')
+            ->json('token');
 
-        $this->getJson('/api/v1/me')
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('data.email', $user->email);
     }
 
-    public function test_web_session_can_issue_browser_token_after_login(): void
+    public function test_logout_revokes_current_jwt_token(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);
-        $user = User::factory()->create([
-            'email' => 'admin@example.com',
-            'is_owner' => true,
-            'is_active' => true,
-        ]);
+        $user = User::factory()->create(['is_owner' => true, 'is_active' => true]);
+        $jwt = app(JwtTokenService::class)->issue($user);
 
-        $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'password',
-        ])->assertRedirect('/app');
+        $this->withHeader('Authorization', 'Bearer '.$jwt)
+            ->getJson('/api/v1/me')
+            ->assertOk();
 
-        $token = $this->postJson('/api/v1/auth/token', [
-            'device_name' => 'PharmaNP Browser Session',
-        ])
+        $this->withHeader('Authorization', 'Bearer '.$jwt)
+            ->postJson('/api/v1/auth/logout')
+            ->assertOk()
+            ->assertJsonPath('message', 'Logged out.');
+
+        $this->withHeader('Authorization', 'Bearer '.$jwt)
+            ->getJson('/api/v1/me')
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Invalid or expired JWT token.');
+    }
+
+    public function test_jwt_can_rotate_browser_token(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create(['is_owner' => true, 'is_active' => true]);
+        $jwt = app(JwtTokenService::class)->issue($user);
+
+        $token = $this->withHeader('Authorization', 'Bearer '.$jwt)
+            ->postJson('/api/v1/auth/token', [
+                'device_name' => 'PharmaNP Browser Session',
+            ])
             ->assertOk()
             ->assertJsonPath('status', 'success')
-            ->assertJsonPath('message', 'Bearer token issued.')
+            ->assertJsonPath('message', 'JWT token issued.')
             ->json('token');
 
         $this->assertNotEmpty($token);
@@ -101,7 +118,7 @@ class AuthProtectedApiTest extends TestCase
     {
         Setting::putValue('app.installed', ['installed' => true]);
         $user = User::factory()->create(['is_owner' => true, 'is_active' => true]);
-        $plainToken = app(ApiTokenService::class)->create($user, 'Swagger')['plain_text_token'];
+        $plainToken = app(JwtTokenService::class)->issue($user);
 
         $this->withHeader('Authorization', 'Bearer '.$plainToken)
             ->getJson('/api/v1/dashboard/summary')
@@ -130,7 +147,7 @@ class AuthProtectedApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer not-a-real-token')
             ->getJson('/api/v1/dashboard/summary')
             ->assertUnauthorized()
-            ->assertJsonPath('message', 'Invalid or expired API token.');
+            ->assertJsonPath('message', 'Invalid or expired JWT token.');
     }
 
     public function test_jwt_bearer_token_can_call_api_without_session_or_csrf(): void
@@ -167,6 +184,7 @@ class AuthProtectedApiTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('code', 200)
             ->assertJsonPath('message', 'Authenticated.')
+            ->assertJsonPath('token_type', 'Bearer')
             ->json('token');
 
         $this->assertNotEmpty($token);
@@ -177,17 +195,18 @@ class AuthProtectedApiTest extends TestCase
             ->assertJsonPath('data.stats.products', 0);
     }
 
-    public function test_authenticated_session_can_issue_browser_token_for_swagger(): void
+    public function test_authenticated_jwt_can_issue_browser_token_for_swagger(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);
         $user = User::factory()->create(['is_owner' => true, 'is_active' => true]);
+        $jwt = app(JwtTokenService::class)->issue($user);
 
-        $token = $this->actingAs($user)
+        $token = $this->withHeader('Authorization', 'Bearer '.$jwt)
             ->postJson('/api/v1/auth/token', [
                 'device_name' => 'Swagger UI',
             ])
             ->assertOk()
-            ->assertJsonPath('message', 'Bearer token issued.')
+            ->assertJsonPath('message', 'JWT token issued.')
             ->json('token');
 
         $this->assertNotEmpty($token);

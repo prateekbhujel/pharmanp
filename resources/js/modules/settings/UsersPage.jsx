@@ -8,14 +8,14 @@ import { StatusToggle } from '../../core/components/StatusToggle';
 import { DateText } from '../../core/components/DateText';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
-import { http } from '../../core/api/http';
+import { http, responseToken, setApiToken } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { appUrl } from '../../core/utils/url';
 
 export function UsersPage() {
     const { notification } = App.useApp();
-    const { user } = useAuth();
+    const { user, reload } = useAuth();
     const [userDrawerOpen, setUserDrawerOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [userForm] = Form.useForm();
@@ -75,7 +75,14 @@ export function UsersPage() {
             okText: 'Start Impersonation',
             danger: false,
             onOk: async () => {
-                await http.post(endpoints.userImpersonate(record.id));
+                const { data } = await http.post(endpoints.userImpersonate(record.id));
+                const token = responseToken(data);
+
+                if (token) {
+                    setApiToken(token);
+                    await reload?.();
+                }
+
                 notification.success({ message: `Viewing as ${record.name}` });
                 window.location.href = appUrl('/app');
             },

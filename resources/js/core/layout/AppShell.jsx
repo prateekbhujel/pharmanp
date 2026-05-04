@@ -1,17 +1,25 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { Avatar, Badge, Breadcrumb, Button, Drawer, Dropdown, Layout, Menu, Space, Spin, Typography } from 'antd';
-import {
-    BellOutlined,
-    ClockCircleOutlined,
-    DownOutlined,
-    MenuFoldOutlined,
-    MenuUnfoldOutlined,
-    SettingOutlined,
-    SafetyCertificateOutlined,
-    UserSwitchOutlined,
-    SearchOutlined,
-} from '@ant-design/icons';
-import { http } from '../api/http';
+import Avatar from 'antd/es/avatar';
+import Badge from 'antd/es/badge';
+import Breadcrumb from 'antd/es/breadcrumb';
+import Button from 'antd/es/button';
+import Drawer from 'antd/es/drawer';
+import Dropdown from 'antd/es/dropdown';
+import Layout from 'antd/es/layout';
+import Menu from 'antd/es/menu';
+import Space from 'antd/es/space';
+import Spin from 'antd/es/spin';
+import Typography from 'antd/es/typography';
+import BellOutlined from '@ant-design/icons/es/icons/BellOutlined';
+import ClockCircleOutlined from '@ant-design/icons/es/icons/ClockCircleOutlined';
+import DownOutlined from '@ant-design/icons/es/icons/DownOutlined';
+import MenuFoldOutlined from '@ant-design/icons/es/icons/MenuFoldOutlined';
+import MenuUnfoldOutlined from '@ant-design/icons/es/icons/MenuUnfoldOutlined';
+import SettingOutlined from '@ant-design/icons/es/icons/SettingOutlined';
+import SafetyCertificateOutlined from '@ant-design/icons/es/icons/SafetyCertificateOutlined';
+import UserSwitchOutlined from '@ant-design/icons/es/icons/UserSwitchOutlined';
+import SearchOutlined from '@ant-design/icons/es/icons/SearchOutlined';
+import { http, responseToken, setApiToken } from '../api/http';
 import { endpoints } from '../api/endpoints';
 import { useAuth } from '../auth/AuthProvider';
 import { isMacPlatform } from '../utils/platform';
@@ -191,7 +199,13 @@ export function AppShell() {
     }
 
     function stopImpersonating() {
-        http.post(endpoints.stopImpersonation).finally(() => {
+        http.post(endpoints.stopImpersonation).then(({ data }) => {
+            const token = responseToken(data);
+
+            if (token) {
+                setApiToken(token);
+            }
+        }).finally(() => {
             reloadAuth?.();
             window.location.href = appUrl('/app/administration/users');
         });

@@ -28,9 +28,23 @@ export default defineConfig({
         chunkSizeWarningLimit: 1400,
         rollupOptions: {
             output: {
-                manualChunks: {
-                    antd: ['antd', '@ant-design/icons'],
-                    axios: ['axios'],
+                manualChunks(id) {
+                    if (id.includes('/node_modules/react') || id.includes('/node_modules/react-dom')) {
+                        return 'react';
+                    }
+
+                    if (
+                        id.includes('/node_modules/antd/')
+                        || id.includes('/node_modules/@ant-design/icons/')
+                        || id.includes('/node_modules/@rc-component/')
+                        || id.includes('/node_modules/rc-')
+                    ) {
+                        return 'antd';
+                    }
+
+                    if (id.includes('/node_modules/axios/')) {
+                        return 'axios';
+                    }
                 },
             },
         },

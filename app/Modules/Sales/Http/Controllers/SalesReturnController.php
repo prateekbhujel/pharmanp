@@ -4,12 +4,15 @@ namespace App\Modules\Sales\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
+use App\Models\Setting;
 use App\Modules\Sales\Http\Requests\SalesReturnRequest;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesReturn;
 use App\Modules\Sales\Services\SalesReturnService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 /**
  * @OA\Tag(
@@ -82,6 +85,7 @@ class SalesReturnController extends ModularController
         return response()->json([
             'message' => 'Sales return created.',
             'data' => ['id' => $return->id, 'return_no' => $return->return_no],
+            'print_url' => route('sales.returns.print', $return),
         ]);
     }
 
@@ -105,6 +109,7 @@ class SalesReturnController extends ModularController
         return response()->json([
             'message' => 'Sales return updated.',
             'data' => $this->returns->payload($this->returns->update($salesReturn, $request->validated(), $request->user())),
+            'print_url' => route('sales.returns.print', $salesReturn),
         ]);
     }
 
@@ -165,5 +170,25 @@ class SalesReturnController extends ModularController
     public function invoiceItems(SalesInvoice $invoice): JsonResponse
     {
         return response()->json($this->returns->invoiceItems($invoice));
+    }
+
+    public function print(SalesReturn $salesReturn): View
+    {
+        return view('prints.sales-return', $this->printData($salesReturn));
+    }
+
+    public function pdf(SalesReturn $salesReturn)
+    {
+        return Pdf::loadView('prints.sales-return', $this->printData($salesReturn))
+            ->setPaper('a4', 'portrait')
+            ->stream($salesReturn->return_no.'.pdf');
+    }
+
+    private function printData(SalesReturn $salesReturn): array
+    {
+        return [
+            'salesReturn' => $salesReturn->load(['customer', 'invoice', 'items.product', 'items.batch']),
+            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
+        ];
     }
 }

@@ -12,6 +12,7 @@ import { TransactionLineItems } from '../../core/components/TransactionLineItems
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
+import { openAuthenticatedDocument } from '../../core/utils/documents';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
 import { appUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
@@ -253,7 +254,7 @@ export function SalesReturnsPanel() {
             setView('list');
             table.reload();
             if (data?.print_url) {
-                window.open(data.print_url, '_blank');
+                openAuthenticatedDocument(data.print_url);
             }
         } catch (error) {
             const errors = validationErrors(error);
@@ -409,7 +410,7 @@ export function SalesReturnsPanel() {
                 ) : (
                     <Space>
                         <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => editReturn(row)} />
-                        <Button icon={<PrinterOutlined />} onClick={() => window.open(appUrl(`/sales/returns/${row.id}/print`), '_blank')}>Print</Button>
+                        <Button icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(appUrl(`/sales/returns/${row.id}/print`))}>Print</Button>
                         <Button danger icon={<DeleteOutlined />} onClick={() => deleteReturn(row)} />
                     </Space>
                 )

@@ -77,7 +77,7 @@ export function SetupWizard() {
                 },
             }));
             notification.success({ message: 'Setup completed' });
-            window.location.href = appUrl('/login');
+            window.location.href = appUrl('/app');
         } catch (error) {
             const errors = validationErrors(error);
             form.setFields(Object.entries(errors).map(([name, messages]) => ({ name: name.split('.'), errors: messages })));

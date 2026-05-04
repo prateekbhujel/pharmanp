@@ -2,11 +2,12 @@
 
 namespace App\Modules\Setup\Http\Controllers;
 
+use App\Core\Services\JwtTokenService;
 use App\Http\Controllers\ModularController;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -17,6 +18,8 @@ use Illuminate\Validation\ValidationException;
  */
 class UserImpersonationController extends ModularController
 {
+    public function __construct(private readonly JwtTokenService $jwt) {}
+
     /**
      * @OA\Post(
      *     path="/setup/users/{user}/impersonate",
@@ -57,14 +60,16 @@ class UserImpersonationController extends ModularController
             abort(404);
         }
 
-        $impersonatorId = $actor->id;
-
-        Auth::login($user);
-        $request->session()->regenerate();
-        $request->session()->put('impersonator_user_id', $impersonatorId);
+        $expiresAt = $this->tokenExpiry();
 
         return response()->json([
             'message' => "Now viewing as {$user->name}.",
+            'token_type' => 'Bearer',
+            'token' => $this->jwt->issue($user, $expiresAt, claims: [
+                'impersonator_user_id' => $actor->id,
+                'impersonator_name' => $actor->name,
+            ]),
+            'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }
 
@@ -85,25 +90,33 @@ class UserImpersonationController extends ModularController
      */
     public function stop(Request $request): JsonResponse
     {
-        $impersonatorId = $request->session()->get('impersonator_user_id');
+        $payload = $request->attributes->get('jwt_payload', []);
+        $impersonatorId = $payload['impersonator_user_id'] ?? null;
 
         if (! $impersonatorId) {
             return response()->json(['message' => 'No impersonation session is active.']);
         }
 
         $impersonator = User::query()->findOrFail($impersonatorId);
+        $expiresAt = $this->tokenExpiry();
 
-        Auth::login($impersonator);
-        $request->session()->regenerate();
-        $request->session()->forget('impersonator_user_id');
+        $this->jwt->revoke($request->bearerToken());
 
         return response()->json([
             'message' => "Returned to {$impersonator->name}.",
+            'token_type' => 'Bearer',
+            'token' => $this->jwt->issue($impersonator, $expiresAt),
+            'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }
 
     private function canImpersonate(?User $actor): bool
     {
         return (bool) $actor?->is_owner || (bool) $actor?->can('users.manage');
+    }
+
+    private function tokenExpiry(): CarbonInterface
+    {
+        return now()->addMinutes(max((int) config('pharmanp.jwt.ttl_minutes', 1440), 5));
     }
 }

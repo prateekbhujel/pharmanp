@@ -12,12 +12,20 @@ Set `VITE_PHARMANP_API_BASE_URL` in `frontend/.env` to the Laravel backend URL. 
 
 ```dotenv
 VITE_PHARMANP_API_BASE_URL=https://pharmanp.pratikbhujel.com.np
+VITE_PHARMANP_APP_BASE_URL=https://pharmanp.pratikbhujel.com.np
+VITE_PHARMANP_MEDIA_BASE_URL=https://pharmanp.pratikbhujel.com.np/storage
 VITE_PHARMANP_STANDALONE=true
 VITE_PHARMANP_AUTH_MODE=token
 VITE_PHARMANP_API_TOKEN=
+VITE_PHARMANP_ENV=development
+VITE_PHARMANP_USE_PROXY=false
+VITE_PHARMANP_NTFY_SERVER_URL=
+VITE_PHARMANP_NTFY_TOPIC=
 ```
 
 The blank token is intentional. The frontend login screen calls `/api/v1/auth/login`, receives a PharmaNP bearer token, stores it in browser local storage, and then calls the protected API without Laravel, PHP, Composer, or XAMPP on the frontend developer machine.
+
+Swagger uses the same token. After login, a frontend or mobile developer can copy `localStorage.getItem('pharmanp.api_token')`, open `/api/documentation`, click **Authorize**, paste `Bearer <token>`, and reproduce the same API calls the app is making.
 
 The frontend imports the real app from `resources/js`, so module work still lives in:
 

@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Form, Input } from 'antd';
+import Alert from 'antd/es/alert';
+import Button from 'antd/es/button';
+import Card from 'antd/es/card';
+import Form from 'antd/es/form';
+import Input from 'antd/es/input';
 
 export function ApiLogin({ onLogin }) {
     const [loading, setLoading] = useState(false);

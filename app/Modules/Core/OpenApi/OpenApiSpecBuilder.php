@@ -152,7 +152,7 @@ final readonly class OpenApiSpecBuilder
         }
 
         if (! str_contains($uri, '/auth/login')) {
-            $operation['security'] = [['bearerAuth' => []], ['sessionCookie' => []]];
+            $operation['security'] = [['bearerAuth' => []]];
         }
 
         return $operation;

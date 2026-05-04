@@ -118,6 +118,15 @@ const apiEnvelope = `{
   }
 }`;
 
+const frontendEnv = `VITE_PHARMANP_API_BASE_URL=https://pharmanp.pratikbhujel.com.np
+VITE_PHARMANP_APP_BASE_URL=https://pharmanp.pratikbhujel.com.np
+VITE_PHARMANP_MEDIA_BASE_URL=https://pharmanp.pratikbhujel.com.np/storage
+VITE_PHARMANP_STANDALONE=true
+VITE_PHARMANP_AUTH_MODE=token
+VITE_PHARMANP_API_TOKEN=
+VITE_PHARMANP_ENV=development
+VITE_PHARMANP_USE_PROXY=false`;
+
 function CommandBlock({ title, commands }) {
     return (
         <Card size="small" className="developer-guide-card">
@@ -178,6 +187,17 @@ function TutorialPanel({ mode }) {
                                 { title: 'Verify in frontend shell and Laravel build', description: 'Run npm run frontend:dev while developing, then npm run frontend:build before handoff.' },
                             ]}
                         />
+                    </Card>
+                </Col>
+                <Col xs={24}>
+                    <Card title="Frontend .env contract" className="developer-guide-card">
+                        <Paragraph className="text-slate-600">
+                            PharmaNP uses Vite env names, not CRA-style REACT_APP names. The frontend shell talks to the backend through one JWT API base URL.
+                        </Paragraph>
+                        <pre className="developer-command-block">{frontendEnv}</pre>
+                        <Paragraph className="!mb-0 text-slate-600">
+                            To debug a client issue in Swagger, sign in from the frontend shell and run <Text code>localStorage.getItem('pharmanp.api_token')</Text>. Paste it into Swagger as <Text code>Bearer token</Text>.
+                        </Paragraph>
                     </Card>
                 </Col>
             </Row>
@@ -317,7 +337,7 @@ export function DeveloperGuidePage() {
                 showIcon
                 icon={<BugOutlined />}
                 title="If the frontend shell appears to reload on click"
-                description="Do not open public/frontend-build/index.html directly. Run npm run frontend:dev for development or npm run frontend:build followed by npm run frontend:preview for build testing. If login loops after a backend auth change, clear localStorage key pharmanp.api_token and sign in again."
+                description="Do not open public/frontend-build/index.html directly. Run npm run frontend:dev for development or npm run frontend:build followed by npm run frontend:preview for build testing. If login loops after an auth change, clear localStorage key pharmanp.api_token and sign in again."
             />
 
             <Segmented
@@ -363,7 +383,7 @@ export function DeveloperGuidePage() {
                                 {
                                     key: 'security',
                                     label: 'Security and auth',
-                                    children: 'No secrets in frontend env files. Token mode is for standalone dev/mobile/API testing; same-domain app uses session auth.',
+                                    children: 'No secrets in frontend env files. React, Swagger and mobile all use the same JWT bearer API auth.',
                                 },
                             ]}
                         />

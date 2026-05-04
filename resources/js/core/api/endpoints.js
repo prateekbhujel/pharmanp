@@ -1,7 +1,6 @@
 import { apiUrl } from '../utils/url';
 
 export const endpoints = {
-    csrfCookie: apiUrl('/sanctum/csrf-cookie'),
     authLogin: apiUrl('/api/v1/auth/login'),
     authLogout: apiUrl('/api/v1/auth/logout'),
     authToken: apiUrl('/api/v1/auth/token'),

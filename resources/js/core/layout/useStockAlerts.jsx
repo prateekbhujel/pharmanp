@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { HistoryOutlined, WarningOutlined } from '@ant-design/icons';
+import HistoryOutlined from '@ant-design/icons/es/icons/HistoryOutlined';
+import WarningOutlined from '@ant-design/icons/es/icons/WarningOutlined';
 import { http } from '../api/http';
 import { endpoints } from '../api/endpoints';
 import { formatCalendarDate } from '../utils/calendar';

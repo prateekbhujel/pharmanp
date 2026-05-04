@@ -1,7 +1,8 @@
 import './bootstrap';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { ConfigProvider, App as AntApp } from 'antd';
+import AntApp from 'antd/es/app';
+import ConfigProvider from 'antd/es/config-provider';
 import 'antd/dist/reset.css';
 import { AuthProvider } from './core/auth/AuthProvider';
 import { AppShell } from './core/layout/AppShell';

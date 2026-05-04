@@ -2,13 +2,13 @@
 
 namespace App\Modules\Core\Http\Controllers;
 
-use App\Core\Services\ApiTokenService;
+use App\Core\Services\JwtTokenService;
 use App\Http\Controllers\ModularController;
 use App\Models\User;
 use App\Modules\Core\Http\Requests\ApiLoginRequest;
+use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -22,7 +22,7 @@ use Illuminate\Validation\ValidationException;
  */
 class ApiAuthController extends ModularController
 {
-    public function __construct(private readonly ApiTokenService $tokens) {}
+    public function __construct(private readonly JwtTokenService $jwt) {}
 
     /**
      * @OA\Post(
@@ -65,28 +65,16 @@ class ApiAuthController extends ModularController
 
         RateLimiter::clear($key);
 
-        if ($request->hasSession()) {
-            Auth::guard('web')->login($user, (bool) ($credentials['remember'] ?? false));
-            $request->session()->regenerate();
-        }
-
         $user->forceFill(['last_login_at' => now()])->save();
 
-        $token = null;
-        if ((bool) ($credentials['issue_token'] ?? false)) {
-            $issued = $this->tokens->create(
-                user: $user,
-                name: $credentials['device_name'] ?? 'PharmaNP Frontend',
-                expiresAt: $this->tokens->expiryForFrontendLogin(),
-                createdBy: $user,
-            );
-
-            $token = $issued['plain_text_token'];
-        }
+        $expiresAt = $this->frontendTokenExpiry();
+        $token = $this->jwt->issue($user, $expiresAt);
 
         return response()->json([
             'message' => 'Authenticated.',
+            'token_type' => 'Bearer',
             'token' => $token,
+            'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }
 
@@ -108,16 +96,14 @@ class ApiAuthController extends ModularController
      */
     public function token(Request $request): JsonResponse
     {
-        $issued = $this->tokens->create(
-            user: $request->user(),
-            name: $request->string('device_name')->trim()->value() ?: 'PharmaNP Browser Session',
-            expiresAt: $this->tokens->expiryForFrontendLogin(),
-            createdBy: $request->user(),
-        );
+        $expiresAt = $this->frontendTokenExpiry();
+        $token = $this->jwt->issue($request->user(), $expiresAt);
 
         return response()->json([
-            'message' => 'Bearer token issued.',
-            'token' => $issued['plain_text_token'],
+            'message' => 'JWT token issued.',
+            'token_type' => 'Bearer',
+            'token' => $token,
+            'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }
 
@@ -138,20 +124,13 @@ class ApiAuthController extends ModularController
      */
     public function logout(Request $request): JsonResponse
     {
-        if ($request->bearerToken()) {
-            $this->tokens->revokePlainTextToken($request->bearerToken(), $request->user());
-        }
-
-        if ($request->user()?->currentAccessToken()) {
-            $request->user()->currentAccessToken()->delete();
-        }
-
-        if ($request->hasSession()) {
-            Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-        }
+        $this->jwt->revoke($request->bearerToken());
 
         return response()->json(['message' => 'Logged out.']);
+    }
+
+    private function frontendTokenExpiry(): CarbonInterface
+    {
+        return now()->addMinutes(max((int) config('pharmanp.jwt.ttl_minutes', 1440), 5));
     }
 }

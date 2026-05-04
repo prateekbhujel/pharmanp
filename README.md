@@ -8,7 +8,7 @@ PharmaNP is a Laravel + React pharmacy ERP/POS application for Nepal-focused pha
 - React 19, Vite, Tailwind CSS
 - Ant Design
 - MySQL/MariaDB for local, shared-hosting, demo, and production installs
-- Session/cookie/CSRF auth for same-domain SPA deployment, plus hashed bearer tokens and signed JWTs for Swagger/mobile/frontend integration testing
+- JWT bearer auth for the Laravel-served SPA, frontend-only shell, Swagger, and future mobile clients
 
 ## Local Setup
 
@@ -52,7 +52,7 @@ cp frontend/.env.example frontend/.env
 npm run frontend:dev
 ```
 
-Set `VITE_PHARMANP_API_BASE_URL` in `frontend/.env` to the backend API host, for example `https://pharmanp.pratikbhujel.com.np` for the deployed demo. The Laravel-served app keeps `VITE_PHARMANP_API_BASE_URL` empty so API calls stay same-origin with session/cookie auth. `VITE_PHARMANP_AUTH_MODE=token` is for the frontend-only shell. Production still uses `npm run build`; no Node server is required on shared hosting.
+Set `VITE_PHARMANP_API_BASE_URL` in `frontend/.env` to the backend API host, for example `https://pharmanp.pratikbhujel.com.np` for the deployed demo. The Laravel-served app keeps `VITE_PHARMANP_API_BASE_URL` empty so API calls stay same-origin, but API authentication is still JWT bearer auth. Production still uses `npm run build`; no Node server is required on shared hosting.
 
 For frontend-only production-build testing, run:
 
@@ -81,11 +81,10 @@ For local XAMPP MySQL development, create a database such as `pharmanp_local`, s
 Swagger/API testing:
 
 ```bash
-php artisan pharmanp:api-token pratik@admin.com --name=Swagger --days=7
 php artisan pharmanp:jwt-token pratik@admin.com --days=1
 ```
 
-Open `/api-docs` and use either generated value in the Authorize dialog as a bearer token.
+Open `/api-docs` and use the generated JWT in the Authorize dialog as a bearer token.
 
 ## Module Development
 

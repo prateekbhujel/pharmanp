@@ -3,6 +3,7 @@ import { Alert, App, Button, Card, Select, Space, Steps, Table, Upload } from 'a
 import { CloseCircleOutlined, FileTextOutlined, InboxOutlined } from '@ant-design/icons';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
+import { downloadAuthenticatedDocument } from '../../core/utils/documents';
 
 export function ImportWizardPage() {
     const { notification } = App.useApp();
@@ -97,7 +98,7 @@ export function ImportWizardPage() {
                         )}
                     </div>
                     <Space>
-                        <Button onClick={() => window.open(endpoints.importSample(target), '_blank')}>Sample Template</Button>
+                        <Button onClick={() => downloadAuthenticatedDocument(endpoints.importSample(target), `${target}-sample.xlsx`)}>Sample Template</Button>
                         <Button type="primary" loading={loading} onClick={runPreview}>Preview File</Button>
                     </Space>
                 </div>

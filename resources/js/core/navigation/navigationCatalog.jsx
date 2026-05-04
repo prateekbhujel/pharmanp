@@ -1,18 +1,15 @@
 import React from 'react';
-import {
-    BarChartOutlined,
-    CloudUploadOutlined,
-    ContainerOutlined,
-    DashboardOutlined,
-    DollarOutlined,
-    MedicineBoxOutlined,
-    SettingOutlined,
-    ShopOutlined,
-    ShoppingCartOutlined,
-    TeamOutlined,
-    UserSwitchOutlined,
-    WalletOutlined,
-} from '@ant-design/icons';
+import BarChartOutlined from '@ant-design/icons/es/icons/BarChartOutlined';
+import CloudUploadOutlined from '@ant-design/icons/es/icons/CloudUploadOutlined';
+import ContainerOutlined from '@ant-design/icons/es/icons/ContainerOutlined';
+import DashboardOutlined from '@ant-design/icons/es/icons/DashboardOutlined';
+import DollarOutlined from '@ant-design/icons/es/icons/DollarOutlined';
+import MedicineBoxOutlined from '@ant-design/icons/es/icons/MedicineBoxOutlined';
+import SettingOutlined from '@ant-design/icons/es/icons/SettingOutlined';
+import ShopOutlined from '@ant-design/icons/es/icons/ShopOutlined';
+import TeamOutlined from '@ant-design/icons/es/icons/TeamOutlined';
+import UserSwitchOutlined from '@ant-design/icons/es/icons/UserSwitchOutlined';
+import WalletOutlined from '@ant-design/icons/es/icons/WalletOutlined';
 import { can } from '../utils/permissions';
 import { appUrl } from '../utils/url';
 

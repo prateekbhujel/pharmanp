@@ -1,21 +1,16 @@
 import axios from 'axios';
 
 export const apiTokenStorageKey = 'pharmanp.api_token';
-const explicitAuthMode = import.meta.env.VITE_PHARMANP_AUTH_MODE || import.meta.env.VITE_AUTH_MODE;
-const rootElement = document.getElementById('pharmanp-root');
-const frontendIsStandalone = import.meta.env.VITE_PHARMANP_STANDALONE === 'true'
-    || import.meta.env.VITE_FRONTEND_STANDALONE === 'true'
-    || rootElement?.dataset.standalone === 'true';
 
-export const authMode = explicitAuthMode || (frontendIsStandalone ? 'token' : 'session');
-export const usesTokenAuth = authMode !== 'session';
+export const authMode = 'token';
+export const usesTokenAuth = true;
 
 export const http = axios.create({
     headers: {
         Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
     },
-    withCredentials: true,
+    withCredentials: false,
 });
 
 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;

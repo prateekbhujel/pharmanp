@@ -67,13 +67,12 @@ return new class extends Migration
             'settings',
             'tenant_domains',
             'tenants',
-            'api_tokens',
-            'personal_access_tokens',
             'role_has_permissions',
             'model_has_roles',
             'model_has_permissions',
             'roles',
             'permissions',
+            'jwt_revocations',
             'failed_jobs',
             'job_batches',
             'jobs',
@@ -167,6 +166,14 @@ return new class extends Migration
             $table->longText('exception');
             $table->timestamp('failed_at')->useCurrent();
         });
+
+        Schema::create('jwt_revocations', function (Blueprint $table) {
+            $table->id();
+            $table->string('jti', 80)->unique();
+            $table->unsignedBigInteger('user_id')->nullable()->index();
+            $table->timestamp('expires_at')->index();
+            $table->timestamps();
+        });
     }
 
     private function createAuthAndAccessTables(): void
@@ -210,31 +217,6 @@ return new class extends Migration
             $table->index('role_id', 'role_has_permissions_role_idx');
         });
 
-        Schema::create('personal_access_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->morphs('tokenable');
-            $table->text('name');
-            $table->string('token', 64)->unique();
-            $table->text('abilities')->nullable();
-            $table->timestamp('last_used_at')->nullable();
-            $table->timestamp('expires_at')->nullable()->index();
-            $table->timestamps();
-        });
-
-        Schema::create('api_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id')->index();
-            $table->string('name', 120);
-            $table->string('token_hash', 64)->unique();
-            $table->json('abilities')->nullable();
-            $table->timestamp('last_used_at')->nullable()->index();
-            $table->timestamp('expires_at')->nullable()->index();
-            $table->timestamp('revoked_at')->nullable()->index();
-            $this->auditColumns($table);
-            $table->timestamps();
-            $table->softDeletes();
-            $table->index(['user_id', 'revoked_at', 'expires_at'], 'api_tokens_user_status_idx');
-        });
     }
 
     private function createTenantAndSetupTables(): void

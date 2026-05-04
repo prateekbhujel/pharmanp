@@ -2,6 +2,7 @@
 
 namespace App\Core\Services;
 
+use App\Models\JwtRevocation;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -11,12 +12,12 @@ use RuntimeException;
 
 class JwtTokenService
 {
-    public function issue(User $user, ?CarbonInterface $expiresAt = null, array $abilities = ['*']): string
+    public function issue(User $user, ?CarbonInterface $expiresAt = null, array $abilities = ['*'], array $claims = []): string
     {
         $now = CarbonImmutable::now();
         $expiresAt ??= $now->addMinutes(max((int) config('pharmanp.jwt.ttl_minutes', 1440), 5));
 
-        return $this->encode([
+        return $this->encode(array_merge($claims, [
             'iss' => (string) config('pharmanp.jwt.issuer', config('app.url')),
             'aud' => (string) config('pharmanp.jwt.audience', 'pharmanp-api'),
             'sub' => (string) $user->getKey(),
@@ -26,7 +27,7 @@ class JwtTokenService
             'nbf' => $now->timestamp,
             'exp' => $expiresAt->getTimestamp(),
             'jti' => (string) Str::uuid(),
-        ]);
+        ], $claims));
     }
 
     public function userForToken(?string $token): ?User
@@ -42,7 +43,32 @@ class JwtTokenService
         return $user?->is_active ? $user : null;
     }
 
-    public function payload(?string $token): ?array
+    public function revoke(?string $token): bool
+    {
+        $payload = $this->payload($token, ignoreRevocation: true);
+
+        if (! $payload || empty($payload['jti']) || empty($payload['exp'])) {
+            return false;
+        }
+
+        $expiresAt = CarbonImmutable::createFromTimestamp((int) $payload['exp']);
+
+        if ($expiresAt->isPast()) {
+            return false;
+        }
+
+        JwtRevocation::query()->updateOrCreate(
+            ['jti' => (string) $payload['jti']],
+            [
+                'user_id' => isset($payload['sub']) ? (int) $payload['sub'] : null,
+                'expires_at' => $expiresAt,
+            ],
+        );
+
+        return true;
+    }
+
+    public function payload(?string $token, bool $ignoreRevocation = false): ?array
     {
         if (! $this->looksLikeJwt($token)) {
             return null;
@@ -76,6 +102,10 @@ class JwtTokenService
             return null;
         }
 
+        if (! $ignoreRevocation && $this->isRevoked($payload['jti'] ?? null)) {
+            return null;
+        }
+
         return $payload;
     }
 
@@ -96,6 +126,18 @@ class JwtTokenService
     private function sign(string $value): string
     {
         return $this->base64UrlEncode(hash_hmac('sha256', $value, $this->secret(), true));
+    }
+
+    private function isRevoked(mixed $jti): bool
+    {
+        if (! is_string($jti) || $jti === '') {
+            return true;
+        }
+
+        return JwtRevocation::query()
+            ->where('jti', $jti)
+            ->where('expires_at', '>', now())
+            ->exists();
     }
 
     private function secret(): string

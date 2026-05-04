@@ -3,30 +3,24 @@
   "info": {
     "title": "PharmaNP API",
     "version": "1.0.4",
-    "description": "PharmaNP ERP API. Same-domain React uses session cookies and CSRF. Standalone React, Swagger, and mobile clients can use PharmaNP API tokens or signed JWT tokens during development."
+    "description": "PharmaNP ERP API. React, Swagger, and mobile clients use signed JWT bearer tokens."
   },
   "servers": [
     {
       "url": "/api/v1",
-      "description": "Same-domain Laravel API"
+      "description": "PharmaNP API"
     }
   ],
   "security": [
     {
       "bearerAuth": []
-    },
-    {
-      "sessionCookie": []
-    },
-    {
-      "csrfHeader": []
     }
   ],
   "paths": {
     "/auth/login": {
       "post": {
         "tags": ["Auth"],
-        "summary": "Authenticate and optionally issue a PharmaNP bearer token",
+        "summary": "Authenticate and issue a JWT bearer token",
         "security": [],
         "requestBody": {
           "required": true,
@@ -38,8 +32,6 @@
                 "properties": {
                   "email": { "type": "string", "format": "email" },
                   "password": { "type": "string", "format": "password" },
-                  "remember": { "type": "boolean" },
-                  "issue_token": { "type": "boolean", "description": "Return a PharmaNP bearer token for standalone clients." },
                   "device_name": { "type": "string" }
                 }
               }
@@ -47,7 +39,28 @@
           }
         },
         "responses": {
-          "200": { "description": "Authenticated" },
+          "200": {
+            "description": "Authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JwtLoginResponse" },
+                "examples": {
+                  "success": {
+                    "summary": "JWT bearer token response",
+                    "value": {
+                      "status": "success",
+                      "code": 200,
+                      "message": "Authenticated.",
+                      "data": null,
+                      "token_type": "Bearer",
+                      "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+                      "expires_at": "2026-05-05T17:30:00+05:45"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "422": { "$ref": "#/components/responses/ValidationError" }
         }
       }
@@ -55,9 +68,26 @@
     "/auth/logout": {
       "post": {
         "tags": ["Auth"],
-        "summary": "Logout current session or revoke current bearer token",
+        "summary": "Revoke the current JWT bearer token",
         "responses": {
-          "200": { "description": "Logged out" },
+          "200": {
+            "description": "Logged out",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseEnvelope" },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "status": "success",
+                      "code": 200,
+                      "message": "Logged out.",
+                      "data": null
+                    }
+                  }
+                }
+              }
+            }
+          },
           "401": { "$ref": "#/components/responses/Unauthenticated" }
         }
       }
@@ -162,20 +192,10 @@
   },
   "components": {
     "securitySchemes": {
-      "sessionCookie": {
-        "type": "apiKey",
-        "in": "cookie",
-        "name": "pharmanp_session"
-      },
-      "csrfHeader": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-CSRF-TOKEN"
-      },
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "JWT or PharmaNP API token"
+        "bearerFormat": "JWT"
       }
     },
     "responses": {
@@ -291,6 +311,23 @@
           "to": { "type": "integer", "nullable": true },
           "total": { "type": "integer" }
         }
+      },
+      "JwtLoginResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ApiResponseEnvelope" },
+          {
+            "type": "object",
+            "required": ["token_type", "token", "expires_at"],
+            "properties": {
+              "token_type": { "type": "string", "example": "Bearer" },
+              "token": {
+                "type": "string",
+                "description": "Signed JWT bearer token used by React, Swagger, and mobile clients."
+              },
+              "expires_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        ]
       },
       "ProductWrite": {
         "type": "object",
