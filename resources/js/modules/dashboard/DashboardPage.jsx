@@ -436,7 +436,7 @@ export function DashboardPage() {
                                         letterSpacing: '0.05em',
                                     }}
                                 >
-                                    Performance
+                                        {isMr ? 'Your Performance' : 'Business Performance'}
                                 </span>
                                 {!isMr && (
                                     <Segmented
