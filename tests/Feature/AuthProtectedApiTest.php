@@ -216,4 +216,20 @@ class AuthProtectedApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.email', $user->email);
     }
+
+    public function test_developer_guide_requires_configured_access_code(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create(['is_owner' => true, 'is_active' => true]);
+
+        $this->actingAs($user)
+            ->postJson('/api/v1/developer-guide/access', ['code' => '1234567890'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['code']);
+
+        $this->actingAs($user)
+            ->postJson('/api/v1/developer-guide/access', ['code' => '9862500130'])
+            ->assertOk()
+            ->assertJsonPath('data.unlocked', true);
+    }
 }

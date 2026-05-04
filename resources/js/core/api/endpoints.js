@@ -7,6 +7,7 @@ export const endpoints = {
     me: apiUrl('/api/v1/me'),
     dashboard: apiUrl('/api/v1/dashboard/summary'),
     search: apiUrl('/api/v1/search'),
+    developerGuideAccess: apiUrl('/api/v1/developer-guide/access'),
     profile: apiUrl('/api/v1/profile'),
     productMeta: apiUrl('/api/v1/inventory/products/meta'),
     products: apiUrl('/api/v1/inventory/products'),

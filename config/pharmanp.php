@@ -11,6 +11,10 @@ return [
 
     'version' => env('PHARMANP_VERSION'),
 
+    'developer_guide' => [
+        'access_code' => '9862500130',
+    ],
+
     'jwt' => [
         'issuer' => env('PHARMANP_JWT_ISSUER', env('APP_URL', 'pharmanp')),
         'audience' => env('PHARMANP_JWT_AUDIENCE', 'pharmanp-api'),
