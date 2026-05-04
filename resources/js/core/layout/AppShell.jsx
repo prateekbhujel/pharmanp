@@ -78,7 +78,7 @@ export function AppShell() {
     const [searchVisible, setSearchVisible] = useState(false);
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'k' || e.code === 'KeyK')) {
                 e.preventDefault();
                 setSearchVisible(true);
             }

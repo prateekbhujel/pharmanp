@@ -87,30 +87,30 @@ export function SalesPage() {
         loadPaymentLookups();
 
         function handleKeyDown(event) {
-            if (event.altKey && event.key === 's') {
+            if (event.altKey && (event.key.toLowerCase() === 's' || event.code === 'KeyS')) {
                 event.preventDefault();
                 if (section === 'pos') submitInvoice();
             }
-            if (event.altKey && event.key === 'n') {
+            if (event.altKey && (event.key.toLowerCase() === 'n' || event.code === 'KeyN')) {
                 event.preventDefault();
                 goToApp('/app/sales/pos');
             }
-            if (event.altKey && event.key === 'a') {
+            if (event.altKey && (event.key.toLowerCase() === 'a' || event.code === 'KeyA')) {
                 event.preventDefault();
                 if (section === 'pos') {
                     searchProduct('').then(setProductOptions);
                     document.querySelector('.pos-product-search input')?.focus();
                 }
             }
-            if (event.altKey && event.key === 'b') {
+            if (event.altKey && (event.key.toLowerCase() === 'b' || event.code === 'KeyB')) {
                 event.preventDefault();
                 if (section === 'pos') document.getElementById('pos-barcode-input')?.focus();
             }
-            if (event.altKey && event.key === 'p') {
+            if (event.altKey && (event.key.toLowerCase() === 'p' || event.code === 'KeyP')) {
                 event.preventDefault();
                 if (section === 'pos') document.getElementById('pos-paid-amount')?.focus();
             }
-            if (event.altKey && event.key === 'q') {
+            if (event.altKey && (event.key.toLowerCase() === 'q' || event.code === 'KeyQ')) {
                 event.preventDefault();
                 if (section === 'pos') setQuickProductOpen(true);
             }
