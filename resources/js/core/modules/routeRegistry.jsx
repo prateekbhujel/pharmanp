@@ -1,5 +1,6 @@
 import { accountingFrontendModule, accountingRoutes } from '../../modules/accounting/routes';
 import { dashboardFrontendModule, dashboardRoutes } from '../../modules/dashboard/routes';
+import { developerFrontendModule, developerRoutes } from '../../modules/developer/routes';
 import { importsFrontendModule, importRoutes, ocrFrontendModule } from '../../modules/imports/routes';
 import { inventoryFrontendModule, inventoryRoutes } from '../../modules/inventory/routes';
 import { fieldForceFrontendModule, fieldForceRoutes } from '../../modules/mr/routes';
@@ -30,6 +31,7 @@ export const frontendModules = [
     rolesFrontendModule,
     dataLookupFrontendModule,
     settingsFrontendModule,
+    developerFrontendModule,
 ];
 
 export const routes = {
@@ -43,4 +45,5 @@ export const routes = {
     ...partyRoutes,
     ...reportRoutes,
     ...settingsRoutes,
+    ...developerRoutes,
 };

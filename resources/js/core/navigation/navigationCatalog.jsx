@@ -48,13 +48,16 @@ function createRouteRegistry() {
 function visibleItems(items) {
     return items
         .filter((item) => item.show !== false)
-        .map(({ show, children, ...item }) => {
+        .map(({ show, children, description, searchType, ...item }) => {
+            const meta = { description, searchType };
+
             if (!children) {
-                return item;
+                return { ...item, meta };
             }
 
             return {
                 ...item,
+                meta,
                 children: visibleItems(children),
             };
         })
@@ -107,8 +110,8 @@ function buildSearchItems(items, routesByKey) {
             key: item.key,
             label: item.label,
             route: routesByKey[item.key],
-            type: item.searchType || item.parent?.label || 'Page',
-            description: item.description || `${item.label} workspace`,
+            type: item.meta?.searchType || item.parent?.label || 'Page',
+            description: item.meta?.description || `${item.label} workspace`,
         }));
 }
 
@@ -253,6 +256,7 @@ export function buildNavigationModel(user, pathname) {
                 child('admin-party-types', 'Party Types', appUrl('/app/administration/party-types'), { description: 'Customer and party classification' }),
                 child('admin-supplier-types', 'Supplier Types', appUrl('/app/administration/supplier-types'), { description: 'Supplier classification' }),
                 child('admin-data', 'Master Data', appUrl('/app/administration/data-lookup'), { description: 'Reusable dropdown and lookup values' }),
+                child('admin-developer-guide', 'Developer Guide', appUrl('/app/developer-guide'), { description: 'Frontend, backend and full-stack onboarding guide' }),
             ],
         },
         {

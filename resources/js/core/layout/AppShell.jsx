@@ -137,6 +137,43 @@ export function AppShell() {
         setPathname(currentAppPath());
     }
 
+    useEffect(() => {
+        function handleDocumentClick(event) {
+            if (
+                event.defaultPrevented
+                || event.button !== 0
+                || event.metaKey
+                || event.ctrlKey
+                || event.shiftKey
+                || event.altKey
+            ) {
+                return;
+            }
+
+            const anchor = event.target?.closest?.('a[href]');
+            if (!anchor || anchor.target || anchor.hasAttribute('download')) {
+                return;
+            }
+
+            const url = new URL(anchor.href, window.location.href);
+            const appRoot = appUrl('/app');
+
+            if (url.origin !== window.location.origin || !url.pathname.startsWith(appRoot)) {
+                return;
+            }
+
+            event.preventDefault();
+            goTo(`${url.pathname}${url.search || ''}${url.hash || ''}`);
+            if (isCompactViewport) {
+                setMobileMenuOpen(false);
+            }
+        }
+
+        document.addEventListener('click', handleDocumentClick);
+
+        return () => document.removeEventListener('click', handleDocumentClick);
+    }, [isCompactViewport, pathname]);
+
     const { alerts, notificationItems, handleNotificationClick } = useStockAlerts({
         calendarType: brandingData?.calendar_type || 'ad',
         navigate: goTo,
