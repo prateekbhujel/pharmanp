@@ -4,7 +4,6 @@ namespace App\Core\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 
 trait BelongsToTenant
 {
@@ -18,7 +17,7 @@ trait BelongsToTenant
 
         static::addGlobalScope('tenant', function (Builder $builder) {
             if (auth()->check() && ! auth()->user()->canAccessAllTenants()) {
-                $builder->where($builder->getQuery()->from . '.tenant_id', auth()->user()->tenant_id);
+                $builder->where($builder->getQuery()->from.'.tenant_id', auth()->user()->tenant_id);
             }
         });
     }

@@ -2,9 +2,6 @@
 
 namespace App\Modules\Analytics\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\Support\ApiResponse;
 use App\Modules\Analytics\DTOs\InventorySignalFilterData;
 use App\Modules\Analytics\Repositories\Interfaces\InventorySignalRepositoryInterface;

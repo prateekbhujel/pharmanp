@@ -2,9 +2,6 @@
 
 namespace App\Modules\Accounting\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\DTOs\TableQueryData;
 use App\Core\Services\DocumentNumberService;
 use App\Core\Support\ApiResponse;
@@ -18,8 +15,8 @@ use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 

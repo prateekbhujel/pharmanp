@@ -5,6 +5,7 @@ namespace App\Core\Services;
 use App\Models\Setting;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -124,7 +125,7 @@ class DocumentNumberService
 
         return DB::transaction(function () use ($type, $table, $config, $date, $tenantId, $companyId, $scopeKey): string {
             $datePart = $this->dateToken((string) ($config['date_format'] ?? 'Ymd'), $date) ?? '';
-            
+
             $row = DB::table('document_sequences')
                 ->where('scope_key', $scopeKey)
                 ->where('type', $type)
@@ -138,7 +139,7 @@ class DocumentNumberService
                     ->where('tenant_id', $tenantId)
                     ->where('company_id', $companyId)
                     ->max('id');
-                
+
                 try {
                     DB::table('document_sequences')->insert([
                         'scope_key' => $scopeKey,
@@ -150,12 +151,12 @@ class DocumentNumberService
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                } catch (\Illuminate\Database\QueryException $e) {
-                    if (!str_contains($e->getMessage(), 'Duplicate entry') && !str_contains($e->getMessage(), 'unique constraint')) {
+                } catch (QueryException $e) {
+                    if (! str_contains($e->getMessage(), 'Duplicate entry') && ! str_contains($e->getMessage(), 'unique constraint')) {
                         throw $e;
                     }
                 }
-                
+
                 $next = $lastVal + 1;
             } else {
                 $next = ((int) $row->last_sequence) + 1;
@@ -176,9 +177,10 @@ class DocumentNumberService
 
     private function generateScopeKey(?int $tenantId, ?int $companyId): string
     {
-        if (!$tenantId && !$companyId) {
+        if (! $tenantId && ! $companyId) {
             return 'global';
         }
+
         return sprintf('T%sC%s', $tenantId ?? 0, $companyId ?? 0);
     }
 

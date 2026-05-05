@@ -28,6 +28,7 @@ class Math
         if (static::format($b) == 0) {
             return '0';
         }
+
         return bcdiv(static::format($a), static::format($b), $scale);
     }
 
@@ -42,16 +43,18 @@ class Math
                 $lastDigit = (int) substr($decimal, -1);
                 $rounded = substr($decimal, 0, $precision);
                 if ($lastDigit >= 5) {
-                    $rounded = bcadd('0.' . $rounded, '0.' . str_repeat('0', $precision - 1) . '1', $precision);
+                    $rounded = bcadd('0.'.$rounded, '0.'.str_repeat('0', $precision - 1).'1', $precision);
+
                     return bcadd($parts[0], $rounded, $precision);
                 }
             }
         }
-        return number_format((float)$value, $precision, '.', '');
+
+        return number_format((float) $value, $precision, '.', '');
     }
 
     private static function format($value): string
     {
-        return (string)($value ?? 0);
+        return (string) ($value ?? 0);
     }
 }

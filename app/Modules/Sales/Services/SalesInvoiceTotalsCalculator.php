@@ -2,8 +2,6 @@
 
 namespace App\Modules\Sales\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
 use App\Core\Utils\Math;
 
 class SalesInvoiceTotalsCalculator
@@ -34,7 +32,7 @@ class SalesInvoiceTotalsCalculator
         return [
             Math::round($subtotal, 2),
             Math::round($discountTotal, 2),
-            Math::round($grandTotal, 2)
+            Math::round($grandTotal, 2),
         ];
     }
 }

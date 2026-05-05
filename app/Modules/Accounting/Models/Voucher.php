@@ -4,16 +4,13 @@ namespace App\Modules\Accounting\Models;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
-
-
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+
 class Voucher extends Model
 {
     use BelongsToTenant, HasFiscalYear, SoftDeletes;
-
 
     protected $fillable = [
         'tenant_id',
@@ -30,8 +27,7 @@ class Voucher extends Model
 
     protected function casts(): array
     {
-
-return [
+        return [
             'voucher_date' => 'date',
             'total_amount' => 'decimal:2',
         ];
@@ -39,7 +35,6 @@ return [
 
     public function entries(): HasMany
     {
-
-return $this->hasMany(VoucherEntry::class);
+        return $this->hasMany(VoucherEntry::class);
     }
 }

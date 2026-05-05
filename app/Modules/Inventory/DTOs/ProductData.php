@@ -2,9 +2,6 @@
 
 namespace App\Modules\Inventory\DTOs;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 final readonly class ProductData
 {
     public function __construct(

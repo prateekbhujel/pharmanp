@@ -2,9 +2,6 @@
 
 namespace App\Modules\Setup\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Setup\DTOs\SetupTypeData;
 use App\Modules\Setup\Repositories\Interfaces\SetupTypeRepositoryInterface;
 use Illuminate\Database\Eloquent\Model;

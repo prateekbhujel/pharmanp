@@ -2,9 +2,6 @@
 
 namespace App\Modules\Setup\Http\Requests;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;

@@ -2,8 +2,6 @@
 
 namespace App\Modules\Sales\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
 use App\Models\Setting;
 use App\Modules\Sales\Models\SalesInvoice;
 

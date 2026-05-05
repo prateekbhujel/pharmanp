@@ -2,9 +2,6 @@
 
 namespace App\Modules\MR\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Modules\MR\Http\Requests\BranchRequest;

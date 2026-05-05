@@ -2,14 +2,13 @@
 
 namespace App\Modules\Sales\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
+use App\Core\Utils\Math;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Services\StockMovementService;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Repositories\Interfaces\SalesInvoiceRepositoryInterface;
-use App\Core\Utils\Math;
+use Illuminate\Validation\ValidationException;
 
 class SalesInvoicePostingService
 {
@@ -30,14 +29,14 @@ class SalesInvoicePostingService
         }
 
         if (! empty($invoice->customer_id)) {
-            $dueAmount = Math::sub((string)$invoice->grand_total, $paidAmount);
+            $dueAmount = Math::sub((string) $invoice->grand_total, $paidAmount);
             if (Math::sub($dueAmount, '0') > 0) {
-                 $this->invoices->incrementCustomerBalance((int) $invoice->customer_id, (float)$dueAmount, $user, $invoice);
+                $this->invoices->incrementCustomerBalance((int) $invoice->customer_id, (float) $dueAmount, $user, $invoice);
             }
         }
 
         $cashAccount = $this->cashAccountForPaymentMode($invoice->payment_mode_id);
-        
+
         $this->accounts->replaceForSource(
             $user,
             'sales_invoice',
@@ -53,12 +52,12 @@ class SalesInvoicePostingService
         $quantity = (string) $item['quantity'];
         $freeQuantity = (string) ($item['free_quantity'] ?? 0);
         $issueQuantity = Math::add($quantity, $freeQuantity);
-        
-        $batch = $this->invoices->availableBatch($product->id, (float)$issueQuantity, $item['batch_id'] ?? null, $user, $invoice);
+
+        $batch = $this->invoices->availableBatch($product->id, (float) $issueQuantity, $item['batch_id'] ?? null, $user, $invoice);
 
         if (! $batch) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'items' => ["No batch has enough available stock for product [{$product->name}]."]
+            throw ValidationException::withMessages([
+                'items' => ["No batch has enough available stock for product [{$product->name}]."],
             ]);
         }
 
@@ -95,12 +94,12 @@ class SalesInvoicePostingService
             'batch_id' => $batch->id,
             'movement_type' => 'sales_issue',
             'quantity_in' => 0,
-            'quantity_out' => (float)$issueQuantity,
+            'quantity_out' => (float) $issueQuantity,
             'source_type' => 'sales_invoice',
             'source_id' => $invoice->id,
             'reference_type' => 'batch',
             'reference_id' => $batch->id,
-            'notes' => 'Invoice ' . $invoice->invoice_no,
+            'notes' => 'Invoice '.$invoice->invoice_no,
             'created_by' => $user->id,
         ]);
     }
@@ -111,6 +110,7 @@ class SalesInvoicePostingService
             return 'cash';
         }
         $mode = $this->invoices->paymentMode($paymentModeId);
+
         return strtolower((string) ($mode?->data ?: $mode?->name)) === 'cash' ? 'cash' : 'bank';
     }
 }

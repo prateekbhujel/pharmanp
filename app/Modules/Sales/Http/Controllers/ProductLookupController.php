@@ -2,9 +2,6 @@
 
 namespace App\Modules\Sales\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Http\Controllers\ModularController;
 use App\Modules\Inventory\Http\Resources\ProductResource;
 use App\Modules\Inventory\Models\Product;

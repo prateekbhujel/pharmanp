@@ -2,9 +2,6 @@
 
 namespace App\Modules\Inventory\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\StockAdjustment;

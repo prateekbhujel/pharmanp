@@ -4,9 +4,6 @@ namespace App\Modules\Sales\Models;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use Illuminate\Database\Eloquent\Model;
@@ -16,9 +13,7 @@ class SalesInvoiceItem extends Model
 {
     use BelongsToTenant, HasFiscalYear;
 
-
-
-protected $fillable = [
+    protected $fillable = [
         'sales_invoice_id',
         'product_id',
         'batch_id',
@@ -36,7 +31,7 @@ protected $fillable = [
     protected function casts(): array
     {
 
-return [
+        return [
             'quantity' => 'decimal:3',
             'free_quantity' => 'decimal:3',
             'mrp' => 'decimal:2',
@@ -52,12 +47,12 @@ return [
     public function product(): BelongsTo
     {
 
-return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class);
     }
 
     public function batch(): BelongsTo
     {
 
-return $this->belongsTo(Batch::class);
+        return $this->belongsTo(Batch::class);
     }
 }

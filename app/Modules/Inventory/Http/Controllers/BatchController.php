@@ -2,9 +2,6 @@
 
 namespace App\Modules\Inventory\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Http\Controllers\ModularController;
 use App\Modules\Inventory\Http\Requests\BatchRequest;
 use App\Modules\Inventory\Http\Resources\BatchResource;
@@ -36,6 +33,7 @@ class BatchController extends ModularController
      */
     public function index(Request $request, BatchService $service): JsonResponse
     {
+        $this->authorize('viewAny', Batch::class);
         $result = $service->table($request, $request->user());
 
         return BatchResource::collection($result['batches'])
@@ -58,6 +56,7 @@ class BatchController extends ModularController
      */
     public function options(Request $request, BatchService $service): JsonResponse
     {
+        $this->authorize('viewAny', Batch::class);
         $batches = $service->options($request, $request->user());
 
         return response()->json([
@@ -91,6 +90,7 @@ class BatchController extends ModularController
      */
     public function store(BatchRequest $request, BatchService $service): JsonResponse
     {
+        $this->authorize('create', Batch::class);
         $batch = $service->save($request->validated(), $request->user());
 
         return (new BatchResource($batch))
@@ -116,6 +116,9 @@ class BatchController extends ModularController
      */
     public function update(BatchRequest $request, Batch $batch, BatchService $service): BatchResource
     {
+        $service->assertAccessible($batch, $request->user());
+        $this->authorize('update', $batch);
+
         return new BatchResource($service->save($request->validated(), $request->user(), $batch));
     }
 
@@ -132,9 +135,12 @@ class BatchController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function destroy(Batch $batch, BatchService $service): JsonResponse
+    public function destroy(Request $request, Batch $batch, BatchService $service): JsonResponse
     {
-        $service->delete($batch, request()->user());
+        $service->assertAccessible($batch, $request->user());
+        $this->authorize('delete', $batch);
+
+        $service->delete($batch, $request->user());
 
         return response()->json(['message' => 'Batch removed.']);
     }

@@ -2,9 +2,6 @@
 
 namespace App\Modules\Core\DTOs;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use Illuminate\Http\Request;
 
 final readonly class GlobalSearchData

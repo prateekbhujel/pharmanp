@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Mail;
 use App\Mail\AdminNotificationDigest;
 use App\Models\Setting;
 use App\Modules\Core\Services\NotificationDigestService;
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Mail;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -18,6 +18,7 @@ Artisan::command('pharmanp:send-digest {--to=}', function (NotificationDigestSer
 
     if (! $recipient) {
         $this->error('No recipient configured. Set notification_email or pass --to=email@example.com.');
+
         return 1;
     }
 

@@ -4,7 +4,6 @@ namespace App\Core\Traits;
 
 use App\Modules\Setup\Models\FiscalYear;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 
 trait HasFiscalYear
 {
@@ -28,7 +27,7 @@ trait HasFiscalYear
             if (auth()->check() && auth()->user()->company_id) {
                 // We cache the current fiscal year id in a static variable to avoid repeated queries
                 static $currentFiscalYearId = null;
-                
+
                 if ($currentFiscalYearId === null) {
                     $currentFiscalYearId = FiscalYear::query()
                         ->where('company_id', auth()->user()->company_id)
@@ -37,7 +36,7 @@ trait HasFiscalYear
                 }
 
                 if ($currentFiscalYearId) {
-                    $builder->where($builder->getQuery()->from . '.fiscal_year_id', $currentFiscalYearId);
+                    $builder->where($builder->getQuery()->from.'.fiscal_year_id', $currentFiscalYearId);
                 }
             }
         });

@@ -2,11 +2,10 @@
 
 namespace App\Modules\Inventory\Providers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Base\Providers\BaseModuleServiceProvider;
+use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
+use App\Modules\Inventory\Policies\BatchPolicy;
 use App\Modules\Inventory\Policies\ProductPolicy;
 use App\Modules\Inventory\Repositories\Interfaces\InventoryMasterRepositoryInterface;
 use App\Modules\Inventory\Repositories\Interfaces\ProductRepositoryInterface;
@@ -25,6 +24,7 @@ class InventoryServiceProvider extends BaseModuleServiceProvider
     public function boot()
     {
         $this->loadModuleRoutes(__DIR__.'/..');
+        Gate::policy(Batch::class, BatchPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
     }
 }

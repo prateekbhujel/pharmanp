@@ -2,9 +2,6 @@
 
 namespace App\Modules\Analytics\DTOs;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\DTOs\TableQueryData;
 use Illuminate\Http\Request;
 

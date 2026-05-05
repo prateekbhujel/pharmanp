@@ -2,9 +2,6 @@
 
 namespace App\Modules\Reports\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Http\Controllers\ModularController;
 use App\Modules\Reports\Http\Requests\ReportRunRequest;
 use App\Modules\Reports\Services\ReportExportService;

@@ -2,9 +2,6 @@
 
 namespace App\Modules\Core\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Models\User;
 use App\Modules\Core\DTOs\GlobalSearchData;
 use App\Modules\Core\Repositories\Interfaces\GlobalSearchRepositoryInterface;

@@ -2,9 +2,6 @@
 
 namespace App\Modules\Accounting\Support;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 class AccountCatalog
 {
     public static function all(): array

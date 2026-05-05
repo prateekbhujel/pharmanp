@@ -2,9 +2,6 @@
 
 namespace App\Modules\ImportExport\Repositories\Interfaces;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 

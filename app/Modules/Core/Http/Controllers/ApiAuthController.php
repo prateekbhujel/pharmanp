@@ -2,9 +2,6 @@
 
 namespace App\Modules\Core\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\Services\JwtTokenService;
 use App\Http\Controllers\ModularController;
 use App\Models\User;
@@ -89,6 +86,7 @@ class ApiAuthController extends ModularController
      *
      *     @OA\RequestBody(required=false, @OA\JsonContent(
      *         type="object",
+     *
      *         @OA\Property(property="device_name", type="string", example="Swagger UI")
      *     )),
      *
@@ -130,6 +128,4 @@ class ApiAuthController extends ModularController
 
         return response()->json(['message' => 'Logged out.']);
     }
-
 }
-

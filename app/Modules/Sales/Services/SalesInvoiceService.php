@@ -2,16 +2,14 @@
 
 namespace App\Modules\Sales\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
 use App\Core\DTOs\TableQueryData;
 use App\Core\Security\TenantRecordScope;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Repositories\Interfaces\SalesInvoiceRepositoryInterface;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SalesInvoiceService
 {
@@ -51,10 +49,10 @@ class SalesInvoiceService
                 'payment_status' => $this->paymentStatus($grandTotal, $paidAmount),
                 'payment_mode_id' => $data['payment_mode_id'] ?? null,
                 'payment_type' => $data['payment_type'] ?? null,
-                'subtotal' => (float)$subtotal,
-                'discount_total' => (float)$discountTotal,
-                'grand_total' => (float)$grandTotal,
-                'paid_amount' => (float)$paidAmount,
+                'subtotal' => (float) $subtotal,
+                'discount_total' => (float) $discountTotal,
+                'grand_total' => (float) $grandTotal,
+                'paid_amount' => (float) $paidAmount,
                 'notes' => $data['notes'] ?? null,
                 'created_by' => $user->id,
                 'updated_by' => $user->id,
@@ -96,7 +94,7 @@ class SalesInvoiceService
     {
         $paid = (float) $paid;
         $total = (float) $total;
-        
+
         if ($paid <= 0) {
             return 'unpaid';
         }

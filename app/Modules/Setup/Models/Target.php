@@ -3,23 +3,20 @@
 namespace App\Modules\Setup\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Modules\Inventory\Models\Product;
 use App\Modules\MR\Models\Branch;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Target extends Model
 {
     use BelongsToTenant, SoftDeletes;
 
-
     public const TYPES = ['primary', 'secondary'];
+
     public const PERIODS = ['monthly', 'quarterly', 'annual'];
+
     public const LEVELS = ['company', 'division', 'area', 'employee', 'product'];
 
     protected $fillable = [
@@ -45,7 +42,7 @@ class Target extends Model
 
     protected function casts(): array
     {
-return [
+        return [
             'target_amount' => 'decimal:2',
             'target_quantity' => 'decimal:3',
             'start_date' => 'date',
@@ -55,26 +52,26 @@ return [
 
     public function branch(): BelongsTo
     {
-return $this->belongsTo(Branch::class);
+        return $this->belongsTo(Branch::class);
     }
 
     public function area(): BelongsTo
     {
-return $this->belongsTo(Area::class);
+        return $this->belongsTo(Area::class);
     }
 
     public function division(): BelongsTo
     {
-return $this->belongsTo(Division::class);
+        return $this->belongsTo(Division::class);
     }
 
     public function employee(): BelongsTo
     {
-return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Employee::class);
     }
 
     public function product(): BelongsTo
     {
-return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class);
     }
 }

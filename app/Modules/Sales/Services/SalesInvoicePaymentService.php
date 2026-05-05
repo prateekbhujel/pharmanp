@@ -2,13 +2,11 @@
 
 namespace App\Modules\Sales\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
+use App\Core\Utils\Math;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Repositories\Interfaces\SalesInvoiceRepositoryInterface;
-use App\Core\Utils\Math;
 use Illuminate\Validation\ValidationException;
 
 class SalesInvoicePaymentService
@@ -24,18 +22,18 @@ class SalesInvoicePaymentService
      */
     public function update(SalesInvoice $invoice, array $data, User $user): SalesInvoice
     {
-        $paidAmount = Math::round((string)($data['paid_amount'] ?? 0), 2);
+        $paidAmount = Math::round((string) ($data['paid_amount'] ?? 0), 2);
         $grandTotal = (string) $invoice->grand_total;
 
         if (Math::sub($paidAmount, $grandTotal) > 0) {
             throw ValidationException::withMessages(['paid_amount' => 'Paid amount cannot be greater than invoice total.']);
         }
 
-        $oldDue = Math::sub($grandTotal, (string)$invoice->paid_amount);
+        $oldDue = Math::sub($grandTotal, (string) $invoice->paid_amount);
         $newDue = Math::sub($grandTotal, $paidAmount);
 
         $this->invoices->saveInvoice($invoice, [
-            'paid_amount' => (float)$paidAmount,
+            'paid_amount' => (float) $paidAmount,
             'payment_mode_id' => $data['payment_mode_id'] ?? $invoice->payment_mode_id,
             'payment_status' => $this->calculateStatus($grandTotal, $paidAmount),
             'updated_by' => $user->id,
@@ -43,11 +41,11 @@ class SalesInvoicePaymentService
 
         if ($invoice->customer_id) {
             $balanceAdjustment = Math::sub($newDue, $oldDue);
-            $this->invoices->incrementCustomerBalance((int) $invoice->customer_id, (float)$balanceAdjustment, $user, $invoice);
+            $this->invoices->incrementCustomerBalance((int) $invoice->customer_id, (float) $balanceAdjustment, $user, $invoice);
         }
 
         $cashAccount = ($data['cash_account'] ?? 'cash') === 'bank' ? 'bank' : 'cash';
-        
+
         $this->accounts->replaceForSource(
             $user,
             'sales_invoice',

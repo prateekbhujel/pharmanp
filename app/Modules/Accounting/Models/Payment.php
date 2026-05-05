@@ -4,9 +4,6 @@ namespace App\Modules\Accounting\Models;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Models\User;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
@@ -15,10 +12,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+
 class Payment extends Model
 {
     use BelongsToTenant, HasFiscalYear, SoftDeletes;
-
 
     protected $fillable = [
         'tenant_id',
@@ -41,8 +38,7 @@ class Payment extends Model
 
     protected function casts(): array
     {
-
-return [
+        return [
             'payment_date' => 'date',
             'amount' => 'decimal:2',
         ];
@@ -50,46 +46,38 @@ return [
 
     public function customer(): BelongsTo
     {
-
-return $this->belongsTo(Customer::class, 'party_id');
+        return $this->belongsTo(Customer::class, 'party_id');
     }
 
     public function supplier(): BelongsTo
     {
-
-return $this->belongsTo(Supplier::class, 'party_id');
+        return $this->belongsTo(Supplier::class, 'party_id');
     }
 
     public function creator(): BelongsTo
     {
-
-return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function paymentModeOption(): BelongsTo
     {
-
-return $this->belongsTo(DropdownOption::class, 'payment_mode_id');
+        return $this->belongsTo(DropdownOption::class, 'payment_mode_id');
     }
 
     public function allocations(): HasMany
     {
-
-return $this->hasMany(PaymentBillAllocation::class);
+        return $this->hasMany(PaymentBillAllocation::class);
     }
 
     // Return the display name of the linked party.
     public function getPartyNameAttribute(): string
     {
-
-if ($this->party_type === 'customer') {
-
-return $this->customer?->name ?? '-';
+        if ($this->party_type === 'customer') {
+            return $this->customer?->name ?? '-';
         }
 
         if ($this->party_type === 'supplier') {
-
-return $this->supplier?->name ?? '-';
+            return $this->supplier?->name ?? '-';
         }
 
         return '-';
@@ -97,7 +85,6 @@ return $this->supplier?->name ?? '-';
 
     public function getPaymentModeLabelAttribute(): string
     {
-
-return $this->paymentModeOption?->name ?? ucfirst(str_replace('_', ' ', (string) $this->payment_mode));
+        return $this->paymentModeOption?->name ?? ucfirst(str_replace('_', ' ', (string) $this->payment_mode));
     }
 }

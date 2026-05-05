@@ -2,20 +2,23 @@
 
 namespace App\Modules\Inventory\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
+use App\Core\Security\TenantRecordScope;
 use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
+use App\Modules\Inventory\Models\Product;
+use App\Modules\Party\Models\Supplier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BatchService
 {
-    public function __construct(private readonly StockMovementService $stock) {}
+    public function __construct(
+        private readonly StockMovementService $stock,
+        private readonly TenantRecordScope $records,
+    ) {}
 
     public function table(Request $request, User $user): array
     {
@@ -33,7 +36,6 @@ class BatchService
 
         $query = Batch::query()
             ->with(['product.company', 'supplier'])
-            ->when($user->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($search !== '', function (Builder $builder) use ($search) {
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('batch_no', 'like', '%'.$search.'%')
@@ -55,6 +57,7 @@ class BatchService
             ->orderBy($sortField, $sortOrder)
             ->orderBy('id');
 
+        $this->records->apply($query, $user);
         $summaryQuery = clone $query;
 
         return [
@@ -70,32 +73,46 @@ class BatchService
 
     public function options(Request $request, User $user): Collection
     {
-        return Batch::query()
+        $query = Batch::query()
             ->with('product:id,name')
-            ->when($user->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->where('is_active', true)
             ->where('quantity_available', '>', 0)
             ->when($request->filled('product_id'), fn (Builder $builder) => $builder->where('product_id', $request->integer('product_id')))
             ->when($request->filled('supplier_id'), fn (Builder $builder) => $builder->where('supplier_id', $request->integer('supplier_id')))
             ->orderBy('expires_at')
             ->orderBy('batch_no')
-            ->limit(100)
-            ->get();
+            ->limit(100);
+
+        $this->records->apply($query, $user);
+
+        return $query->get();
     }
 
     public function save(array $data, User $user, ?Batch $batch = null): Batch
     {
         return DB::transaction(function () use ($data, $user, $batch) {
+            if ($batch) {
+                $this->assertAccessible($batch, $user);
+            }
+
+            $product = $this->productFor((int) $data['product_id'], $user);
+            $supplier = isset($data['supplier_id']) && $data['supplier_id']
+                ? $this->supplierFor((int) $data['supplier_id'], $user)
+                : null;
+
+            $this->assertRelatedContext($product, $supplier, $batch);
+
             $quantityAvailable = (float) ($data['quantity_available'] ?? $data['quantity_received']);
             $oldQuantity = $batch ? (float) $batch->quantity_available : 0;
             $batch ??= new Batch;
 
+            $batch->tenant_id ??= $product->tenant_id ?? $user->tenant_id;
+            $batch->company_id ??= $product->company_id ?? $user->company_id;
+            $batch->store_id ??= $product->store_id ?? $user->store_id;
+
             $batch->fill([
-                'tenant_id' => $batch->tenant_id ?: $user->tenant_id,
-                'company_id' => $batch->company_id ?: $user->company_id,
-                'store_id' => $batch->store_id ?: $user->store_id,
-                'product_id' => $data['product_id'],
-                'supplier_id' => $data['supplier_id'] ?? null,
+                'product_id' => $product->id,
+                'supplier_id' => $supplier?->id,
                 'batch_no' => $data['batch_no'],
                 'barcode' => $data['barcode'] ?? null,
                 'storage_location' => $data['storage_location'] ?? null,
@@ -142,7 +159,24 @@ class BatchService
 
     public function delete(Batch $batch, User $user): void
     {
+        $this->assertAccessible($batch, $user);
+
         DB::transaction(function () use ($batch, $user) {
+            $hasHistory = $batch->stockMovements()->withoutGlobalScopes()->exists() ||
+                         $batch->purchaseItems()->withoutGlobalScopes()->exists() ||
+                         $batch->purchaseReturnItems()->withoutGlobalScopes()->exists() ||
+                         $batch->salesItems()->withoutGlobalScopes()->exists() ||
+                         $batch->salesReturnItems()->withoutGlobalScopes()->exists();
+
+            if ($hasHistory) {
+                $batch->forceFill([
+                    'is_active' => false,
+                    'updated_by' => $user->id,
+                ])->save();
+
+                return;
+            }
+
             $batch->forceFill([
                 'is_active' => false,
                 'updated_by' => $user->id,
@@ -150,6 +184,51 @@ class BatchService
 
             $batch->delete();
         });
+    }
+
+    public function assertAccessible(Batch $batch, User $user): void
+    {
+        if (! $this->records->canAccess($user, $batch)) {
+            abort(404);
+        }
+    }
+
+    private function productFor(int $productId, User $user): Product
+    {
+        $query = Product::query()->whereKey($productId);
+        $this->records->apply($query, $user);
+
+        return $query->firstOrFail();
+    }
+
+    private function supplierFor(int $supplierId, User $user): Supplier
+    {
+        $query = Supplier::query()->whereKey($supplierId);
+        $this->records->apply($query, $user, ['store' => null]);
+
+        return $query->firstOrFail();
+    }
+
+    private function assertRelatedContext(Product $product, ?Supplier $supplier, ?Batch $batch): void
+    {
+        if ($supplier && (
+            (int) $supplier->tenant_id !== (int) $product->tenant_id ||
+            (int) $supplier->company_id !== (int) $product->company_id
+        )) {
+            throw ValidationException::withMessages([
+                'supplier_id' => 'The selected supplier does not belong to the selected product context.',
+            ]);
+        }
+
+        if ($batch && (
+            (int) $batch->tenant_id !== (int) $product->tenant_id ||
+            (int) $batch->company_id !== (int) $product->company_id ||
+            (int) ($batch->store_id ?? 0) !== (int) ($product->store_id ?? 0)
+        )) {
+            throw ValidationException::withMessages([
+                'product_id' => 'The selected product does not belong to this batch context.',
+            ]);
+        }
     }
 
     private function expiryFilter(Builder $builder, string $status): void

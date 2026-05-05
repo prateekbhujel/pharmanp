@@ -2,9 +2,6 @@
 
 namespace App\Modules\Accounting\Repositories;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Accounting\Repositories\Interfaces\PartyBalanceRepositoryInterface;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;

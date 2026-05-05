@@ -25,29 +25,29 @@ final class TenantRecordScope
 
         if ($user->tenant_id && $columns['tenant']) {
             if ($this->hasColumn($query->getModel(), $columns['tenant'])) {
-                $query->where($query->getModel()->getTable() . '.' . $columns['tenant'], $user->tenant_id);
+                $query->where($query->getModel()->getTable().'.'.$columns['tenant'], $user->tenant_id);
             }
         }
 
         if ($user->company_id && $columns['company']) {
             if ($this->hasColumn($query->getModel(), $columns['company'])) {
-                $query->where($query->getModel()->getTable() . '.' . $columns['company'], $user->company_id);
+                $query->where($query->getModel()->getTable().'.'.$columns['company'], $user->company_id);
             }
         }
 
         if ($user->store_id && $columns['store']) {
             if ($this->hasColumn($query->getModel(), $columns['store'])) {
-                $query->where($query->getModel()->getTable() . '.' . $columns['store'], $user->store_id);
+                $query->where($query->getModel()->getTable().'.'.$columns['store'], $user->store_id);
             }
         }
 
         return $query;
     }
 
-    private function hasColumn(\Illuminate\Database\Eloquent\Model $model, string $column): bool
+    private function hasColumn(Model $model, string $column): bool
     {
         $table = $model->getTable();
-        $key = $model->getConnectionName() . '.' . $table . '.' . $column;
+        $key = $model->getConnectionName().'.'.$table.'.'.$column;
 
         if (! isset(self::$columnCache[$key])) {
             self::$columnCache[$key] = $model->getConnection()->getSchemaBuilder()->hasColumn($table, $column);

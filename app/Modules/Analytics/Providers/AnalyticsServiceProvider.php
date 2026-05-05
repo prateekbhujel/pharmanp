@@ -2,9 +2,6 @@
 
 namespace App\Modules\Analytics\Providers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Analytics\Repositories\Interfaces\InventorySignalRepositoryInterface;
 use App\Modules\Analytics\Repositories\InventorySignalRepository;
 use App\Modules\Base\Providers\BaseModuleServiceProvider;

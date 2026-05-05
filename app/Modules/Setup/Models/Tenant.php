@@ -3,14 +3,12 @@
 namespace App\Modules\Setup\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Tenant extends Model
 {
     use BelongsToTenant, SoftDeletes;
-
 
     protected $fillable = [
         'name',

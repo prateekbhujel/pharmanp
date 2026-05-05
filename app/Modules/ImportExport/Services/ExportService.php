@@ -2,9 +2,6 @@
 
 namespace App\Modules\ImportExport\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\ImportExport\Repositories\Interfaces\ExportRepositoryInterface;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;

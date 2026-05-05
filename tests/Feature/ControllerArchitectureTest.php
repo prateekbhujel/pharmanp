@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -27,7 +28,7 @@ class ControllerArchitectureTest extends TestCase
         // documentation completeness. The scan below only catches private methods.
     ];
 
-    /** @test */
+    #[Test]
     public function controllers_have_no_private_methods(): void
     {
         $directories = [

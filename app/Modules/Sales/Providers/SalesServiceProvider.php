@@ -2,9 +2,6 @@
 
 namespace App\Modules\Sales\Providers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Base\Providers\BaseModuleServiceProvider;
 use App\Modules\Sales\Repositories\Interfaces\SalesInvoiceRepositoryInterface;
 use App\Modules\Sales\Repositories\Interfaces\SalesReturnRepositoryInterface;

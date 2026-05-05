@@ -3,10 +3,6 @@
 namespace App\Modules\Setup\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Modules\Inventory\Models\Product;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,7 +11,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Division extends Model
 {
     use BelongsToTenant, SoftDeletes;
-
 
     protected $fillable = [
         'tenant_id',
@@ -30,18 +25,18 @@ class Division extends Model
 
     protected function casts(): array
     {
-return [
+        return [
             'is_active' => 'boolean',
         ];
     }
 
     public function products(): HasMany
     {
-return $this->hasMany(Product::class);
+        return $this->hasMany(Product::class);
     }
 
     public function employees(): HasMany
     {
-return $this->hasMany(Employee::class);
+        return $this->hasMany(Employee::class);
     }
 }

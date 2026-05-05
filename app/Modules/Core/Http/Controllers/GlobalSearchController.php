@@ -2,9 +2,6 @@
 
 namespace App\Modules\Core\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Http\Controllers\ModularController;
 use App\Modules\Core\DTOs\GlobalSearchData;
 use App\Modules\Core\Http\Requests\GlobalSearchRequest;

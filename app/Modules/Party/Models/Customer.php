@@ -3,18 +3,13 @@
 namespace App\Modules\Party\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
-
-
-use Illuminate\Database\Eloquent\Model;
 use App\Modules\Setup\Models\PartyType;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Customer extends Model
 {
     use BelongsToTenant, SoftDeletes;
-
 
     protected $fillable = [
         'tenant_id',
@@ -37,7 +32,7 @@ class Customer extends Model
 
     protected function casts(): array
     {
-return [
+        return [
             'credit_limit' => 'decimal:2',
             'opening_balance' => 'decimal:2',
             'current_balance' => 'decimal:2',
@@ -47,6 +42,6 @@ return [
 
     public function partyType()
     {
-return $this->belongsTo(PartyType::class, 'party_type_id');
+        return $this->belongsTo(PartyType::class, 'party_type_id');
     }
 }

@@ -2,9 +2,6 @@
 
 namespace App\Modules\Party\Repositories;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
 use App\Models\User;

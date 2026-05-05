@@ -3,10 +3,6 @@
 namespace App\Modules\Inventory\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,8 +11,7 @@ class StockMovement extends Model
 {
     use BelongsToTenant;
 
-
-protected $fillable = [
+    protected $fillable = [
         'tenant_id',
         'company_id',
         'store_id',
@@ -36,7 +31,7 @@ protected $fillable = [
 
     protected function casts(): array
     {
-return [
+        return [
             'movement_date' => 'date',
             'quantity_in' => 'decimal:3',
             'quantity_out' => 'decimal:3',
@@ -45,16 +40,16 @@ return [
 
     public function product(): BelongsTo
     {
-return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class);
     }
 
     public function batch(): BelongsTo
     {
-return $this->belongsTo(Batch::class);
+        return $this->belongsTo(Batch::class);
     }
 
     public function creator(): BelongsTo
     {
-return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

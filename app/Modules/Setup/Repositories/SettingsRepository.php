@@ -2,9 +2,6 @@
 
 namespace App\Modules\Setup\Repositories;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Models\Setting;
 use App\Modules\Setup\Repositories\Interfaces\SettingsRepositoryInterface;
 

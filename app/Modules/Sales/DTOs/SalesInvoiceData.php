@@ -2,9 +2,6 @@
 
 namespace App\Modules\Sales\DTOs;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Base\DTOs\BaseDTO;
 
 final readonly class SalesInvoiceData extends BaseDTO

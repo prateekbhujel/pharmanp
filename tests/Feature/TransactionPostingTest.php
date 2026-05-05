@@ -7,12 +7,14 @@ use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
+use App\Modules\Inventory\Models\Store;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
 use App\Modules\Purchase\Models\PurchaseOrder;
 use App\Modules\Setup\Models\DropdownOption;
+use App\Modules\Setup\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -571,9 +573,9 @@ class TransactionPostingTest extends TestCase
     private function fixture(): array
     {
         Setting::putValue('app.installed', ['installed' => true]);
-        $tenant = \App\Modules\Setup\Models\Tenant::query()->create(['name' => 'Test Tenant', 'slug' => 'test', 'domain' => 'test.com']);
+        $tenant = Tenant::query()->create(['name' => 'Test Tenant', 'slug' => 'test', 'domain' => 'test.com']);
         $company = Company::query()->create(['name' => 'Fixture Pharma', 'tenant_id' => $tenant->id]);
-        $store = \App\Modules\Inventory\Models\Store::query()->create(['company_id' => $company->id, 'tenant_id' => $tenant->id, 'name' => 'Main Store', 'is_default' => true]);
+        $store = Store::query()->create(['company_id' => $company->id, 'tenant_id' => $tenant->id, 'name' => 'Main Store', 'is_default' => true]);
         $unit = Unit::query()->create(['company_id' => $company->id, 'tenant_id' => $tenant->id, 'name' => 'Piece']);
         $user = User::factory()->create(['company_id' => $company->id, 'tenant_id' => $tenant->id, 'store_id' => $store->id, 'is_owner' => true]);
         $product = Product::query()->create([

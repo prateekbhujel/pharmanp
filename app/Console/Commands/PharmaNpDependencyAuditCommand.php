@@ -170,6 +170,7 @@ class PharmaNpDependencyAuditCommand extends Command
         foreach ($paths as $path) {
             if (File::isFile($path)) {
                 $chunks[] = File::get($path);
+
                 continue;
             }
 

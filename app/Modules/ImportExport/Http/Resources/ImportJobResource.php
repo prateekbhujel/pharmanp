@@ -2,9 +2,6 @@
 
 namespace App\Modules\ImportExport\Http\Resources;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\ImportExport\Services\ImportPreviewService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;

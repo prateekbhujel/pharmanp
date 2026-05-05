@@ -2,9 +2,6 @@
 
 namespace App\Modules\Inventory\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Modules\Inventory\Http\Requests\InventoryMasterRequest;
@@ -206,5 +203,4 @@ class InventoryMasterController extends ModularController
 
         return response()->json(['message' => 'Unit added.', 'data' => $unit->only(['id', 'name'])], 201);
     }
-
 }

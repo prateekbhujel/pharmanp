@@ -2,9 +2,6 @@
 
 namespace App\Modules\Setup\Repositories\Interfaces;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 interface SettingsRepositoryInterface
 {
     public function get(string $key, mixed $default = null): mixed;

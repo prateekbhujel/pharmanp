@@ -2,9 +2,6 @@
 
 namespace App\Modules\Analytics\Repositories;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Analytics\DTOs\InventorySignalFilterData;
 use App\Modules\Analytics\Repositories\Interfaces\InventorySignalRepositoryInterface;
 use Carbon\CarbonImmutable;

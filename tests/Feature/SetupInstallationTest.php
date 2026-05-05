@@ -6,9 +6,9 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Inventory\Models\Store;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class SetupInstallationTest extends TestCase

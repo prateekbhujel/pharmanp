@@ -4,19 +4,16 @@ namespace App\Modules\Purchase\Models;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Models\User;
 use App\Modules\Party\Models\Supplier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+
 class PurchaseReturn extends Model
 {
     use BelongsToTenant, HasFiscalYear, SoftDeletes;
-
 
     protected $fillable = [
         'tenant_id',
@@ -41,7 +38,7 @@ class PurchaseReturn extends Model
     protected function casts(): array
     {
 
-return [
+        return [
             'return_date' => 'date',
             'subtotal' => 'decimal:2',
             'discount_total' => 'decimal:2',
@@ -52,24 +49,24 @@ return [
     public function purchase(): BelongsTo
     {
 
-return $this->belongsTo(Purchase::class);
+        return $this->belongsTo(Purchase::class);
     }
 
     public function supplier(): BelongsTo
     {
 
-return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class);
     }
 
     public function returnedBy(): BelongsTo
     {
 
-return $this->belongsTo(User::class, 'returned_by');
+        return $this->belongsTo(User::class, 'returned_by');
     }
 
     public function items(): HasMany
     {
 
-return $this->hasMany(PurchaseReturnItem::class);
+        return $this->hasMany(PurchaseReturnItem::class);
     }
 }

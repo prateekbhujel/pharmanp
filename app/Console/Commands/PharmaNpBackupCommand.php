@@ -16,7 +16,7 @@ class PharmaNpBackupCommand extends Command
         $path = $this->option('path') ?: storage_path('app/backups/'.now()->format('Ymd_His'));
         File::ensureDirectoryExists($path);
 
-        File::put($path.'/README.txt', "PharmaNP backup directory created at ".now()->toDateTimeString().PHP_EOL);
+        File::put($path.'/README.txt', 'PharmaNP backup directory created at '.now()->toDateTimeString().PHP_EOL);
 
         $this->info('Backup directory prepared: '.$path);
         $this->warn('Configure database dump and public/storage copy for the deployment environment before production updates.');

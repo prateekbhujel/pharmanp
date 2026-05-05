@@ -2,9 +2,6 @@
 
 namespace App\Modules\Accounting\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Accounting\Repositories\Interfaces\PartyBalanceRepositoryInterface;
 
 class PayableService

@@ -2,9 +2,6 @@
 
 namespace App\Modules\Inventory\Policies;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\Security\TenantRecordScope;
 use App\Models\User;
 use App\Modules\Inventory\Models\Product;
@@ -16,6 +13,12 @@ class ProductPolicy
     public function viewAny(User $user): bool
     {
         return $user->is_owner || $user->can('inventory.products.view');
+    }
+
+    public function view(User $user, Product $product): bool
+    {
+        return ($user->is_owner || $user->can('inventory.products.view'))
+            && $this->records->canAccess($user, $product);
     }
 
     public function create(User $user): bool

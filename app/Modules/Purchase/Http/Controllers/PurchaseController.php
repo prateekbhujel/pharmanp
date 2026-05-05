@@ -2,8 +2,6 @@
 
 namespace App\Modules\Purchase\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Modules\Purchase\Http\Requests\PurchaseStoreRequest;
@@ -84,7 +82,7 @@ class PurchaseController extends ModularController
     public function pdf(Request $request, Purchase $purchase, PurchaseEntryService $service)
     {
         $service->assertAccessible($purchase, $request->user());
-        
+
         @ini_set('memory_limit', '512M');
         @ini_set('pcre.backtrack_limit', '5000000');
 

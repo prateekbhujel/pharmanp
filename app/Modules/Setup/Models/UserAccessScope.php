@@ -3,10 +3,6 @@
 namespace App\Modules\Setup\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,8 +11,7 @@ class UserAccessScope extends Model
 {
     use BelongsToTenant;
 
-
-public const TYPES = [
+    public const TYPES = [
         'own',
         'subordinate',
         'branch',
@@ -39,13 +34,13 @@ public const TYPES = [
 
     protected function casts(): array
     {
-return [
+        return [
             'is_active' => 'boolean',
         ];
     }
 
     public function user(): BelongsTo
     {
-return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class);
     }
 }

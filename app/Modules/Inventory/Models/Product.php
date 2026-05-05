@@ -3,10 +3,7 @@
 namespace App\Modules\Inventory\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
-
-
+use App\Modules\Setup\Models\Division;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,8 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use BelongsToTenant, SoftDeletes, HasFactory;
-
+    use BelongsToTenant, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'tenant_id',
@@ -59,7 +55,7 @@ class Product extends Model
 
     protected function casts(): array
     {
-return [
+        return [
             'mrp' => 'decimal:2',
             'previous_price' => 'decimal:2',
             'purchase_price' => 'decimal:2',
@@ -74,21 +70,21 @@ return [
 
     public function company(): BelongsTo
     {
-return $this->belongsTo(Company::class);
+        return $this->belongsTo(Company::class);
     }
 
     public function unit(): BelongsTo
     {
-return $this->belongsTo(Unit::class);
+        return $this->belongsTo(Unit::class);
     }
 
     public function division(): BelongsTo
     {
-return $this->belongsTo(\App\Modules\Setup\Models\Division::class, 'division_id');
+        return $this->belongsTo(Division::class, 'division_id');
     }
 
     public function batches(): HasMany
     {
-return $this->hasMany(Batch::class);
+        return $this->hasMany(Batch::class);
     }
 }

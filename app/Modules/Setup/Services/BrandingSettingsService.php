@@ -2,9 +2,6 @@
 
 namespace App\Modules\Setup\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\Support\AssetUrl;
 use App\Core\Support\ProductMeta;
 use App\Models\Setting;

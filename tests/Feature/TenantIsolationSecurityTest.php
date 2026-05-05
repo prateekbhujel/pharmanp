@@ -14,6 +14,7 @@ use App\Modules\Purchase\Models\PurchaseReturn;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesReturn;
 use App\Modules\Setup\Models\DropdownOption;
+use App\Modules\Setup\Models\FiscalYear;
 use App\Modules\Setup\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -294,6 +295,59 @@ class TenantIsolationSecurityTest extends TestCase
         $this->assertSame('10.000', (string) $batchB->fresh()->quantity_available);
     }
 
+    public function test_user_can_view_own_product_but_not_others(): void
+    {
+        [$tenantA, $companyA] = $this->tenantCompany('tenant-a');
+        [$tenantB, $companyB] = $this->tenantCompany('tenant-b');
+        $userA = User::factory()->create(['tenant_id' => $tenantA->id, 'company_id' => $companyA->id, 'is_owner' => true]);
+        $productA = $this->productFor($tenantA->id, $companyA->id);
+        $productB = $this->productFor($tenantB->id, $companyB->id);
+
+        $this->actingAs($userA)
+            ->getJson('/api/v1/inventory/products/'.$productA->id)
+            ->assertOk()
+            ->assertJsonPath('data.id', $productA->id);
+
+        $this->actingAs($userA)
+            ->getJson('/api/v1/inventory/products/'.$productB->id)
+            ->assertNotFound();
+    }
+
+    public function test_user_cannot_update_or_delete_another_tenants_batch(): void
+    {
+        [$tenantA, $companyA] = $this->tenantCompany('tenant-a');
+        [$tenantB, $companyB] = $this->tenantCompany('tenant-b');
+        $userA = User::factory()->create(['tenant_id' => $tenantA->id, 'company_id' => $companyA->id, 'is_owner' => true]);
+        $productB = $this->productFor($tenantB->id, $companyB->id);
+        $batchB = Batch::query()->create([
+            'tenant_id' => $tenantB->id,
+            'company_id' => $companyB->id,
+            'product_id' => $productB->id,
+            'batch_no' => 'B-B-B',
+            'expires_at' => '2027-01-01',
+            'quantity_received' => 10,
+            'quantity_available' => 10,
+            'purchase_price' => 100,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($userA)
+            ->putJson('/api/v1/inventory/batches/'.$batchB->id, [
+                'product_id' => $productB->id,
+                'batch_no' => 'HACKED',
+                'expires_at' => '2028-01-01',
+                'quantity_received' => 1000,
+                'purchase_price' => 1,
+            ])
+            ->assertNotFound();
+
+        $this->actingAs($userA)
+            ->deleteJson('/api/v1/inventory/batches/'.$batchB->id)
+            ->assertNotFound();
+
+        $this->assertNotSame('HACKED', $batchB->fresh()->batch_no);
+    }
+
     private function tenantCompany(string $slug): array
     {
         Setting::putValue('app.installed', ['installed' => true]);
@@ -305,6 +359,16 @@ class TenantIsolationSecurityTest extends TestCase
         $company = Company::query()->create([
             'tenant_id' => $tenant->id,
             'name' => str($slug)->replace('-', ' ')->title()->append(' Pharmacy')->toString(),
+        ]);
+
+        FiscalYear::query()->create([
+            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
+            'name' => 'FY 2026/27',
+            'starts_on' => '2026-01-01',
+            'ends_on' => '2026-12-31',
+            'is_current' => true,
+            'status' => 'active',
         ]);
 
         return [$tenant, $company];

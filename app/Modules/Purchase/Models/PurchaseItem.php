@@ -4,9 +4,6 @@ namespace App\Modules\Purchase\Models;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use Illuminate\Database\Eloquent\Model;
@@ -17,9 +14,7 @@ class PurchaseItem extends Model
 {
     use BelongsToTenant, HasFiscalYear;
 
-
-
-protected $fillable = [
+    protected $fillable = [
         'purchase_id',
         'product_id',
         'batch_id',
@@ -40,7 +35,7 @@ protected $fillable = [
     protected function casts(): array
     {
 
-return [
+        return [
             'manufactured_at' => 'date',
             'expires_at' => 'date',
             'quantity' => 'decimal:3',
@@ -58,18 +53,18 @@ return [
     public function product(): BelongsTo
     {
 
-return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class);
     }
 
     public function batch(): BelongsTo
     {
 
-return $this->belongsTo(Batch::class);
+        return $this->belongsTo(Batch::class);
     }
 
     public function returns(): HasMany
     {
 
-return $this->hasMany(PurchaseReturnItem::class);
+        return $this->hasMany(PurchaseReturnItem::class);
     }
 }

@@ -4,18 +4,13 @@ namespace App\Modules\Accounting\Models;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
-
-
 use Illuminate\Database\Eloquent\Model;
 
 class VoucherEntry extends Model
 {
     use BelongsToTenant, HasFiscalYear;
 
-
-
-protected $fillable = [
+    protected $fillable = [
         'voucher_id',
         'line_no',
         'account_type',
@@ -28,8 +23,7 @@ protected $fillable = [
 
     protected function casts(): array
     {
-
-return [
+        return [
             'amount' => 'decimal:2',
         ];
     }

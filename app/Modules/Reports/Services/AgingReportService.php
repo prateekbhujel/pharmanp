@@ -2,9 +2,6 @@
 
 namespace App\Modules\Reports\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\Database\SqlDialect;
 use App\Core\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -33,11 +30,17 @@ class AgingReportService
 
         $query->when($request->filled('bucket'), function ($builder) use ($request, $days) {
             $bucket = $request->query('bucket');
-            if ($bucket === '30') $builder->whereRaw("{$days} <= 30");
-            elseif ($bucket === '45') $builder->whereRaw("{$days} > 30 AND {$days} <= 45");
-            elseif ($bucket === '60') $builder->whereRaw("{$days} > 45 AND {$days} <= 60");
-            elseif ($bucket === '90') $builder->whereRaw("{$days} > 60 AND {$days} <= 90");
-            elseif ($bucket === '90_plus') $builder->whereRaw("{$days} > 90");
+            if ($bucket === '30') {
+                $builder->whereRaw("{$days} <= 30");
+            } elseif ($bucket === '45') {
+                $builder->whereRaw("{$days} > 30 AND {$days} <= 45");
+            } elseif ($bucket === '60') {
+                $builder->whereRaw("{$days} > 45 AND {$days} <= 60");
+            } elseif ($bucket === '90') {
+                $builder->whereRaw("{$days} > 60 AND {$days} <= 90");
+            } elseif ($bucket === '90_plus') {
+                $builder->whereRaw("{$days} > 90");
+            }
         });
 
         $page = (clone $query)
@@ -79,11 +82,17 @@ class AgingReportService
 
         $query->when($request->filled('bucket'), function ($builder) use ($request, $days) {
             $bucket = $request->query('bucket');
-            if ($bucket === '30') $builder->whereRaw("{$days} <= 30");
-            elseif ($bucket === '45') $builder->whereRaw("{$days} > 30 AND {$days} <= 45");
-            elseif ($bucket === '60') $builder->whereRaw("{$days} > 45 AND {$days} <= 60");
-            elseif ($bucket === '90') $builder->whereRaw("{$days} > 60 AND {$days} <= 90");
-            elseif ($bucket === '90_plus') $builder->whereRaw("{$days} > 90");
+            if ($bucket === '30') {
+                $builder->whereRaw("{$days} <= 30");
+            } elseif ($bucket === '45') {
+                $builder->whereRaw("{$days} > 30 AND {$days} <= 45");
+            } elseif ($bucket === '60') {
+                $builder->whereRaw("{$days} > 45 AND {$days} <= 60");
+            } elseif ($bucket === '90') {
+                $builder->whereRaw("{$days} > 60 AND {$days} <= 90");
+            } elseif ($bucket === '90_plus') {
+                $builder->whereRaw("{$days} > 90");
+            }
         });
 
         $page = (clone $query)

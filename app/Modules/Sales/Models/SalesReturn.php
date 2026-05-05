@@ -4,18 +4,15 @@ namespace App\Modules\Sales\Models;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Modules\Party\Models\Customer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+
 class SalesReturn extends Model
 {
     use BelongsToTenant, HasFiscalYear, SoftDeletes;
-
 
     protected $fillable = [
         'tenant_id',
@@ -38,7 +35,7 @@ class SalesReturn extends Model
     protected function casts(): array
     {
 
-return [
+        return [
             'return_date' => 'date',
             'total_amount' => 'decimal:2',
         ];
@@ -47,18 +44,18 @@ return [
     public function invoice(): BelongsTo
     {
 
-return $this->belongsTo(SalesInvoice::class, 'sales_invoice_id');
+        return $this->belongsTo(SalesInvoice::class, 'sales_invoice_id');
     }
 
     public function customer(): BelongsTo
     {
 
-return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Customer::class);
     }
 
     public function items(): HasMany
     {
 
-return $this->hasMany(SalesReturnItem::class);
+        return $this->hasMany(SalesReturnItem::class);
     }
 }

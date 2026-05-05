@@ -16,8 +16,6 @@ class SalesInvoice extends Model
 {
     use BelongsToTenant, HasFiscalYear, SoftDeletes;
 
-    use BelongsToTenant, HasFiscalYear, SoftDeletes;
-
     protected $fillable = [
         'tenant_id',
         'company_id',

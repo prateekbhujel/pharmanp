@@ -3,17 +3,12 @@
 namespace App\Modules\Inventory\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
-
-
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Unit extends Model
 {
     use BelongsToTenant, SoftDeletes;
-
 
     protected $fillable = [
         'tenant_id',
@@ -30,7 +25,7 @@ class Unit extends Model
 
     protected function casts(): array
     {
-return [
+        return [
             'factor' => 'decimal:4',
             'is_active' => 'boolean',
         ];

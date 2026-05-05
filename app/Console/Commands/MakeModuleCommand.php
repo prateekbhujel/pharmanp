@@ -39,6 +39,7 @@ class MakeModuleCommand extends Command
 
             if (File::exists($target) && ! $this->option('force')) {
                 $this->components->warn('Skipped existing '.$this->relative($target));
+
                 continue;
             }
 
@@ -66,7 +67,7 @@ class MakeModuleCommand extends Command
             "Providers/{$module}ServiceProvider.php" => 'provider',
             "Repositories/Interfaces/{$module}RepositoryInterface.php" => 'repository-interface',
             "Repositories/{$module}Repository.php" => 'repository',
-            "Routes/api.php" => 'routes',
+            'Routes/api.php' => 'routes',
             "Services/{$module}Service.php" => 'service',
         ];
     }

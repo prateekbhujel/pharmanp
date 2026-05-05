@@ -3,11 +3,8 @@
 namespace App\Modules\MR\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Modules\Party\Models\Customer;
+use App\Modules\Setup\Models\Employee;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -15,7 +12,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class RepresentativeVisit extends Model
 {
     use BelongsToTenant, SoftDeletes;
-
 
     protected $fillable = [
         'tenant_id',
@@ -39,26 +35,26 @@ class RepresentativeVisit extends Model
 
     protected function casts(): array
     {
-return [
-            'visit_date'  => 'date',
+        return [
+            'visit_date' => 'date',
             'order_value' => 'decimal:2',
-            'latitude'    => 'decimal:7',
-            'longitude'   => 'decimal:7',
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
         ];
     }
 
     public function medicalRepresentative(): BelongsTo
     {
-return $this->belongsTo(MedicalRepresentative::class);
+        return $this->belongsTo(MedicalRepresentative::class);
     }
 
     public function customer(): BelongsTo
     {
-return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Customer::class);
     }
 
     public function employee(): BelongsTo
     {
-return $this->belongsTo(\App\Modules\Setup\Models\Employee::class);
+        return $this->belongsTo(Employee::class);
     }
 }

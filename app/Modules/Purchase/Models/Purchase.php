@@ -4,19 +4,16 @@ namespace App\Modules\Purchase\Models;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Modules\Party\Models\Supplier;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+
 class Purchase extends Model
 {
     use BelongsToTenant, HasFiscalYear, SoftDeletes;
-
 
     protected $fillable = [
         'tenant_id',
@@ -44,7 +41,7 @@ class Purchase extends Model
     protected function casts(): array
     {
 
-return [
+        return [
             'purchase_date' => 'date',
             'due_date' => 'date',
             'subtotal' => 'decimal:2',
@@ -57,18 +54,18 @@ return [
     public function supplier(): BelongsTo
     {
 
-return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class);
     }
 
     public function paymentMode(): BelongsTo
     {
 
-return $this->belongsTo(DropdownOption::class, 'payment_mode_id');
+        return $this->belongsTo(DropdownOption::class, 'payment_mode_id');
     }
 
     public function items(): HasMany
     {
 
-return $this->hasMany(PurchaseItem::class);
+        return $this->hasMany(PurchaseItem::class);
     }
 }

@@ -2,9 +2,6 @@
 
 namespace App\Modules\Accounting\Http\Requests;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Accounting\Support\AccountCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;

@@ -2,9 +2,6 @@
 
 namespace App\Modules\ImportExport\Repositories\Interfaces;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\ImportExport\DTOs\ImportJobData;
 use App\Modules\ImportExport\Models\ImportJob;
 use App\Modules\ImportExport\Models\ImportStagedRow;

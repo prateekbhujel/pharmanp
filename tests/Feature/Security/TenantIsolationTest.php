@@ -2,14 +2,14 @@
 
 namespace Tests\Feature\Security;
 
-use App\Models\User;
-use App\Models\Setting;
 use App\Core\Services\InstallationService;
-use App\Modules\Inventory\Models\Product;
+use App\Models\Setting;
+use App\Models\User;
 use App\Modules\Inventory\Models\Company;
+use App\Modules\Inventory\Models\Product;
 use App\Modules\Sales\Models\SalesInvoice;
-use App\Modules\Setup\Models\Tenant;
 use App\Modules\Setup\Models\FiscalYear;
+use App\Modules\Setup\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -20,7 +20,7 @@ class TenantIsolationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Bypass installation check
         Setting::create([
             'key' => InstallationService::INSTALLED_KEY,
@@ -74,7 +74,7 @@ class TenantIsolationTest extends TestCase
         $tenantB = Tenant::create(['name' => 'Tenant B', 'slug' => 'tenant-b']);
 
         $userA = User::factory()->create(['tenant_id' => $tenantA->id]);
-        
+
         $invoiceB = SalesInvoice::withoutGlobalScopes()->create([
             'tenant_id' => $tenantB->id,
             'invoice_no' => 'INV-B-001',
@@ -137,11 +137,11 @@ class TenantIsolationTest extends TestCase
 
         $this->actingAs($user);
 
-        $response = $this->getJson("/api/v1/sales/invoices");
-        
+        $response = $this->getJson('/api/v1/sales/invoices');
+
         $response->assertStatus(200);
         $data = $response->json('data');
-        
+
         $this->assertCount(1, $data);
         $this->assertEquals('NEW-001', $data[0]['invoice_no']);
     }

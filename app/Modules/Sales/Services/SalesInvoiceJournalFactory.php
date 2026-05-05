@@ -2,10 +2,8 @@
 
 namespace App\Modules\Sales\Services;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-use App\Modules\Sales\Models\SalesInvoice;
 use App\Core\Utils\Math;
+use App\Modules\Sales\Models\SalesInvoice;
 
 class SalesInvoiceJournalFactory
 {
@@ -22,7 +20,7 @@ class SalesInvoiceJournalFactory
                 'account_type' => $cashAccount,
                 'debit' => $paidAmount,
                 'credit' => '0.00',
-                'notes' => 'Collected on ' . $invoice->invoice_no,
+                'notes' => 'Collected on '.$invoice->invoice_no,
             ];
         }
 
@@ -35,7 +33,7 @@ class SalesInvoiceJournalFactory
                 'party_id' => $invoice->customer_id,
                 'debit' => $outstanding,
                 'credit' => '0.00',
-                'notes' => 'Outstanding on ' . $invoice->invoice_no,
+                'notes' => 'Outstanding on '.$invoice->invoice_no,
             ];
         }
 
@@ -43,7 +41,7 @@ class SalesInvoiceJournalFactory
             'account_type' => 'sales',
             'debit' => '0.00',
             'credit' => $grandTotal,
-            'notes' => 'Sales ' . $invoice->invoice_no,
+            'notes' => 'Sales '.$invoice->invoice_no,
         ];
 
         return $entries;

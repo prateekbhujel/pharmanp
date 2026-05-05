@@ -2,9 +2,6 @@
 
 namespace App\Modules\MR\Repositories\Interfaces;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\DTOs\TableQueryData;
 use App\Models\User;
 use App\Modules\MR\Models\MedicalRepresentative;

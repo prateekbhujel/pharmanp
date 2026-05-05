@@ -2,9 +2,6 @@
 
 namespace App\Modules\Party\Repositories;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\Security\TenantRecordScope;
 use App\Models\User;
 use App\Modules\Accounting\Models\Payment;

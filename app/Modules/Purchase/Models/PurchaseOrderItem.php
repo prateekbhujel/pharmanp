@@ -4,9 +4,6 @@ namespace App\Modules\Purchase\Models;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
-
-
 use App\Modules\Inventory\Models\Product;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,9 +12,7 @@ class PurchaseOrderItem extends Model
 {
     use BelongsToTenant, HasFiscalYear;
 
-
-
-protected $fillable = [
+    protected $fillable = [
         'purchase_order_id',
         'product_id',
         'quantity',
@@ -31,7 +26,7 @@ protected $fillable = [
     protected function casts(): array
     {
 
-return [
+        return [
             'quantity' => 'decimal:3',
             'unit_price' => 'decimal:2',
             'discount_percent' => 'decimal:2',
@@ -43,6 +38,6 @@ return [
     public function product(): BelongsTo
     {
 
-return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class);
     }
 }

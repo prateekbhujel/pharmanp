@@ -2,9 +2,6 @@
 
 namespace App\Modules\ImportExport\Providers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Modules\Base\Providers\BaseModuleServiceProvider;
 use App\Modules\ImportExport\Repositories\ExportRepository;
 use App\Modules\ImportExport\Repositories\ImportJobRepository;

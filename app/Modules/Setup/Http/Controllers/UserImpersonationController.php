@@ -2,9 +2,6 @@
 
 namespace App\Modules\Setup\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Core\Services\JwtTokenService;
 use App\Http\Controllers\ModularController;
 use App\Models\User;
@@ -111,6 +108,4 @@ class UserImpersonationController extends ModularController
             'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }
-
 }
-

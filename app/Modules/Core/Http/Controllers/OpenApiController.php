@@ -2,9 +2,6 @@
 
 namespace App\Modules\Core\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Http\Controllers\Controller;
 use App\Modules\Core\OpenApi\OpenApiSpecBuilder;
 use Illuminate\Http\JsonResponse;

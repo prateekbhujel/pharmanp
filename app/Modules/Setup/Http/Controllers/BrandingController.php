@@ -2,9 +2,6 @@
 
 namespace App\Modules\Setup\Http\Controllers;
 
-use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
 use App\Http\Controllers\ModularController;
 use App\Modules\Setup\Http\Requests\BrandingSettingsRequest;
 use App\Modules\Setup\Services\BrandingSettingsService;

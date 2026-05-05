@@ -3,10 +3,6 @@
 namespace App\Modules\ImportExport\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
-
-
-
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -14,8 +10,7 @@ class ImportJob extends Model
 {
     use BelongsToTenant;
 
-
-protected $fillable = [
+    protected $fillable = [
         'tenant_id',
         'company_id',
         'store_id',
@@ -33,7 +28,7 @@ protected $fillable = [
 
     protected function casts(): array
     {
-return [
+        return [
             'detected_columns' => 'array',
             'mapping' => 'array',
         ];
@@ -41,6 +36,6 @@ return [
 
     public function rows(): HasMany
     {
-return $this->hasMany(ImportStagedRow::class);
+        return $this->hasMany(ImportStagedRow::class);
     }
 }

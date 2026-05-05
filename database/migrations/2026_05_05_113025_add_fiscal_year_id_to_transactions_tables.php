@@ -15,11 +15,11 @@ return new class extends Migration
             'purchase_returns',
             'payments',
             'vouchers',
-            'account_transactions'
+            'account_transactions',
         ];
 
         foreach ($tables as $table) {
-            if (!Schema::hasColumn($table, 'fiscal_year_id')) {
+            if (! Schema::hasColumn($table, 'fiscal_year_id')) {
                 Schema::table($table, function (Blueprint $t) {
                     $t->foreignId('fiscal_year_id')->nullable()->constrained('fiscal_years')->nullOnDelete();
                 });
@@ -36,7 +36,7 @@ return new class extends Migration
             'purchase_returns',
             'payments',
             'vouchers',
-            'account_transactions'
+            'account_transactions',
         ];
 
         foreach ($tables as $table) {
