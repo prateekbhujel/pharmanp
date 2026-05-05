@@ -2,6 +2,9 @@
 
 namespace App\Modules\MR\Http\Resources;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 

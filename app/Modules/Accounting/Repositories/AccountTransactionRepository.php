@@ -2,6 +2,9 @@
 
 namespace App\Modules\Accounting\Repositories;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Modules\Accounting\Models\AccountTransaction;
 use App\Modules\Accounting\Repositories\Interfaces\AccountTransactionRepositoryInterface;
 use App\Modules\Party\Models\Customer;

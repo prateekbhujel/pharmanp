@@ -8,32 +8,52 @@ use Illuminate\Database\Eloquent\Model;
 
 final class TenantRecordScope
 {
+    private static array $columnCache = [];
+
     /**
      * Apply the authenticated user's tenant/company/store context to a query.
      *
      * @param  array{tenant?: string|null, company?: string|null, store?: string|null}  $columns
      */
-    public function apply(Builder $query, ?User $user, array $columns = []): Builder
+    public function apply(Builder $query, User $user, array $columns = []): Builder
     {
-        if (! $user || $user->canAccessAllTenants()) {
+        if ($user->canAccessAllTenants()) {
             return $query;
         }
 
         $columns = $this->columns($columns);
 
         if ($user->tenant_id && $columns['tenant']) {
-            $query->where($columns['tenant'], $user->tenant_id);
+            if ($this->hasColumn($query->getModel(), $columns['tenant'])) {
+                $query->where($query->getModel()->getTable() . '.' . $columns['tenant'], $user->tenant_id);
+            }
         }
 
         if ($user->company_id && $columns['company']) {
-            $query->where($columns['company'], $user->company_id);
+            if ($this->hasColumn($query->getModel(), $columns['company'])) {
+                $query->where($query->getModel()->getTable() . '.' . $columns['company'], $user->company_id);
+            }
         }
 
         if ($user->store_id && $columns['store']) {
-            $query->where($columns['store'], $user->store_id);
+            if ($this->hasColumn($query->getModel(), $columns['store'])) {
+                $query->where($query->getModel()->getTable() . '.' . $columns['store'], $user->store_id);
+            }
         }
 
         return $query;
+    }
+
+    private function hasColumn(\Illuminate\Database\Eloquent\Model $model, string $column): bool
+    {
+        $table = $model->getTable();
+        $key = $model->getConnectionName() . '.' . $table . '.' . $column;
+
+        if (! isset(self::$columnCache[$key])) {
+            self::$columnCache[$key] = $model->getConnection()->getSchemaBuilder()->hasColumn($table, $column);
+        }
+
+        return self::$columnCache[$key];
     }
 
     /**
@@ -62,7 +82,7 @@ final class TenantRecordScope
 
     private function matches(mixed $userValue, Model $record, ?string $column): bool
     {
-        if (! $column || $userValue === null) {
+        if (! $column || $userValue === null || ! $this->hasColumn($record, $column)) {
             return true;
         }
 
@@ -78,9 +98,9 @@ final class TenantRecordScope
     private function columns(array $columns): array
     {
         return [
-            'tenant' => $columns['tenant'] ?? 'tenant_id',
-            'company' => $columns['company'] ?? 'company_id',
-            'store' => $columns['store'] ?? 'store_id',
+            'tenant' => array_key_exists('tenant', $columns) ? $columns['tenant'] : 'tenant_id',
+            'company' => array_key_exists('company', $columns) ? $columns['company'] : 'company_id',
+            'store' => array_key_exists('store', $columns) ? $columns['store'] : 'store_id',
         ];
     }
 }

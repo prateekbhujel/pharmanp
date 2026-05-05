@@ -2,6 +2,9 @@
 
 namespace App\Modules\Core\Repositories;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Models\User;
 use App\Modules\Core\Repositories\Interfaces\GlobalSearchRepositoryInterface;
 use App\Modules\Inventory\Models\Product;

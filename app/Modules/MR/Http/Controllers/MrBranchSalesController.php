@@ -2,6 +2,9 @@
 
 namespace App\Modules\MR\Http\Controllers;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Http\Controllers\ModularController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

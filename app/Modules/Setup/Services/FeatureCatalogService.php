@@ -2,6 +2,9 @@
 
 namespace App\Modules\Setup\Services;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Modules\Setup\Models\FeatureCatalogItem;
 
 class FeatureCatalogService

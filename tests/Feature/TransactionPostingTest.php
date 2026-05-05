@@ -148,7 +148,7 @@ class TransactionPostingTest extends TestCase
 
         $this->assertNotSame($first->json('data.invoice_no'), $second->json('data.invoice_no'));
         $this->assertDatabaseHas('document_sequences', [
-            'scope_key' => 'global',
+            'scope_key' => 'T1C1',
             'type' => 'sales_invoice',
             'date_part' => '20260425',
             'last_sequence' => 2,
@@ -563,14 +563,22 @@ class TransactionPostingTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+    }
+
     private function fixture(): array
     {
         Setting::putValue('app.installed', ['installed' => true]);
-        $company = Company::query()->create(['name' => 'Fixture Pharma']);
-        $unit = Unit::query()->create(['company_id' => $company->id, 'name' => 'Piece']);
-        $user = User::factory()->create(['company_id' => $company->id, 'is_owner' => true]);
+        $tenant = \App\Modules\Setup\Models\Tenant::query()->create(['name' => 'Test Tenant', 'slug' => 'test', 'domain' => 'test.com']);
+        $company = Company::query()->create(['name' => 'Fixture Pharma', 'tenant_id' => $tenant->id]);
+        $store = \App\Modules\Inventory\Models\Store::query()->create(['company_id' => $company->id, 'tenant_id' => $tenant->id, 'name' => 'Main Store', 'is_default' => true]);
+        $unit = Unit::query()->create(['company_id' => $company->id, 'tenant_id' => $tenant->id, 'name' => 'Piece']);
+        $user = User::factory()->create(['company_id' => $company->id, 'tenant_id' => $tenant->id, 'store_id' => $store->id, 'is_owner' => true]);
         $product = Product::query()->create([
             'company_id' => $company->id,
+            'tenant_id' => $tenant->id,
             'unit_id' => $unit->id,
             'name' => 'Paracetamol 500',
             'sku' => 'PCM-500',
@@ -578,8 +586,8 @@ class TransactionPostingTest extends TestCase
             'purchase_price' => 5,
             'selling_price' => 8,
         ]);
-        $supplier = Supplier::query()->create(['company_id' => $company->id, 'name' => 'Himal Supplier']);
-        $customer = Customer::query()->create(['company_id' => $company->id, 'name' => 'Retail Customer']);
+        $supplier = Supplier::query()->create(['company_id' => $company->id, 'tenant_id' => $tenant->id, 'name' => 'Himal Supplier']);
+        $customer = Customer::query()->create(['company_id' => $company->id, 'tenant_id' => $tenant->id, 'name' => 'Retail Customer']);
 
         return [$user, $product, $supplier, $customer];
     }

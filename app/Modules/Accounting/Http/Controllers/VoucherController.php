@@ -2,6 +2,9 @@
 
 namespace App\Modules\Accounting\Http\Controllers;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Modules\Accounting\Http\Requests\VoucherStoreRequest;

@@ -6,7 +6,7 @@ import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { appUrl } from '../../core/utils/url';
-import { openAuthenticatedDocument } from '../../core/utils/documents';
+import { openDocumentDirectly } from '../../core/utils/documents';
 import { PurchaseReturnsPanel } from './PurchaseReturnsPanel';
 import { PurchaseOrdersPanel } from './PurchaseOrdersPanel';
 import { PurchaseEntryPanel } from './PurchaseEntryPanel';
@@ -115,7 +115,7 @@ export function PurchasesPage() {
                     <Space>
                         {section !== 'entry' && <Button type="primary" icon={<PlusOutlined />} onClick={() => goToApp('/app/purchases/entry')}>New Purchase</Button>}
                         {section !== 'bills' && <Button onClick={() => goToApp('/app/purchases/bills')}>Purchase Bills</Button>}
-                        <Button disabled={!lastPurchasePrintUrl} icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(lastPurchasePrintUrl)}>Print Last Purchase</Button>
+                        <Button disabled={!lastPurchasePrintUrl} icon={<PrinterOutlined />} onClick={() => openDocumentDirectly(lastPurchasePrintUrl)}>Print Last Purchase</Button>
                     </Space>
                 )}
             />

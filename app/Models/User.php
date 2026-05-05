@@ -7,6 +7,7 @@ use App\Modules\MR\Models\Branch;
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\Setup\Models\Employee;
 use Database\Factories\UserFactory;
+use App\Core\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -16,7 +17,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable;
+    use HasFactory, HasRoles, Notifiable, BelongsToTenant;
 
     /**
      * The attributes that are mass assignable.

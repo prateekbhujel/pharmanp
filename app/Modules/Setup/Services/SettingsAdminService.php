@@ -2,6 +2,9 @@
 
 namespace App\Modules\Setup\Services;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Core\Services\DocumentNumberService;
 use App\Modules\Setup\Repositories\Interfaces\SettingsRepositoryInterface;
 use Illuminate\Support\Facades\Mail;

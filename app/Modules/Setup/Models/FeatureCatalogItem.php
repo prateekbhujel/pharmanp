@@ -2,11 +2,19 @@
 
 namespace App\Modules\Setup\Models;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
+
+
 use Illuminate\Database\Eloquent\Model;
 
 class FeatureCatalogItem extends Model
 {
-    protected $fillable = [
+    use BelongsToTenant;
+
+
+protected $fillable = [
         'module',
         'code',
         'name',
@@ -18,7 +26,7 @@ class FeatureCatalogItem extends Model
 
     protected function casts(): array
     {
-        return [
+return [
             'is_billable' => 'boolean',
         ];
     }

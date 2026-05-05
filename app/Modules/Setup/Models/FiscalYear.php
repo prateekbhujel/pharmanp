@@ -2,12 +2,18 @@
 
 namespace App\Modules\Setup\Models;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
+
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class FiscalYear extends Model
 {
-    use SoftDeletes;
+    use BelongsToTenant, SoftDeletes;
+
 
     protected $fillable = [
         'tenant_id',
@@ -24,7 +30,7 @@ class FiscalYear extends Model
 
     protected function casts(): array
     {
-        return [
+return [
             'starts_on' => 'date',
             'ends_on' => 'date',
             'is_current' => 'boolean',

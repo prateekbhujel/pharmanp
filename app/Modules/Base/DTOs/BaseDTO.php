@@ -2,6 +2,9 @@
 
 namespace App\Modules\Base\DTOs;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use ReflectionClass;
 
 abstract readonly class BaseDTO

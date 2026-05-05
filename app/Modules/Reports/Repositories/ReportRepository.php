@@ -2,6 +2,9 @@
 
 namespace App\Modules\Reports\Repositories;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Core\Support\ApiResponse;
 use App\Models\User;
 use App\Modules\Reports\Repositories\Interfaces\ReportRepositoryInterface;

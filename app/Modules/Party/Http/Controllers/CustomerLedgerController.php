@@ -2,6 +2,9 @@
 
 namespace App\Modules\Party\Http\Controllers;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Http\Controllers\ModularController;
 use App\Models\Setting;
 use App\Modules\Party\Http\Requests\CustomerLedgerRequest;

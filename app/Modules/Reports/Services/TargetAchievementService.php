@@ -2,6 +2,9 @@
 
 namespace App\Modules\Reports\Services;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Core\Support\ApiResponse;
 use App\Modules\Setup\Models\Target;
 use Illuminate\Http\Request;

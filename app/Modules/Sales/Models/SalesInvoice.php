@@ -2,6 +2,10 @@
 
 namespace App\Modules\Sales\Models;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
+
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Setup\Models\DropdownOption;
@@ -9,11 +13,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Core\Traits\HasFiscalYear;
 
 class SalesInvoice extends Model
 {
-    use SoftDeletes, HasFiscalYear;
+    use BelongsToTenant, HasFiscalYear, SoftDeletes;
+
+    use BelongsToTenant, HasFiscalYear, SoftDeletes;
 
     protected $fillable = [
         'tenant_id',

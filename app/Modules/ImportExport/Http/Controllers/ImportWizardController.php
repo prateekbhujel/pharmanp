@@ -2,6 +2,9 @@
 
 namespace App\Modules\ImportExport\Http\Controllers;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Http\Controllers\ModularController;
 use App\Modules\ImportExport\Http\Requests\ConfirmImportRequest;
 use App\Modules\ImportExport\Http\Requests\PreviewImportRequest;

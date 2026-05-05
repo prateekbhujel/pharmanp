@@ -2,6 +2,9 @@
 
 namespace App\Modules\Reports\Repositories\Interfaces;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;

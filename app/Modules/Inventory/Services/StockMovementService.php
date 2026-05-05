@@ -2,9 +2,13 @@
 
 namespace App\Modules\Inventory\Services;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Models\StockMovement;
+use App\Core\Utils\Math;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -33,14 +37,14 @@ class StockMovementService
 
                 $this->assertContextMatches('batch_id', $batch, $data);
 
-                $net = (float) ($data['quantity_in'] ?? 0) - (float) ($data['quantity_out'] ?? 0);
-                $nextQuantity = (float) $batch->quantity_available + $net;
+                $net = Math::sub((string)($data['quantity_in'] ?? 0), (string)($data['quantity_out'] ?? 0));
+                $nextQuantity = Math::add((string)$batch->quantity_available, $net);
 
-                if ($nextQuantity < 0) {
+                if (Math::sub($nextQuantity, '0') < 0) {
                     throw ValidationException::withMessages(['quantity_out' => 'Stock cannot go below zero.']);
                 }
 
-                $batch->forceFill(['quantity_available' => $nextQuantity])->save();
+                $batch->forceFill(['quantity_available' => (float)$nextQuantity])->save();
             }
 
             return StockMovement::query()->create([

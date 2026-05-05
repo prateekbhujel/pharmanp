@@ -13,7 +13,7 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { dateRangeParams } from '../../core/utils/dateFilters';
-import { openAuthenticatedDocument } from '../../core/utils/documents';
+import { openDocumentDirectly } from '../../core/utils/documents';
 import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 
 export function PaymentsPanel() {
@@ -189,7 +189,7 @@ export function PaymentsPanel() {
                 ) : (
                     <Space className="table-action-buttons">
                         <Button aria-label="View" icon={<EyeOutlined />} onClick={() => viewPayment(record)} />
-                        <Button aria-label="Print" icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(record.print_url)} />
+                        <Button aria-label="Print" icon={<PrinterOutlined />} onClick={() => openDocumentDirectly(record.print_url)} />
                         <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openDrawer(record)} />
                         <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => deletePayment(record)} />
                     </Space>
@@ -324,7 +324,7 @@ export function PaymentsPanel() {
                 open={!!viewingPayment}
                 onCancel={() => setViewingPayment(null)}
                 footer={[
-                    <Button key="print" icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(viewingPayment?.print_url)}>Print</Button>,
+                    <Button key="print" icon={<PrinterOutlined />} onClick={() => openDocumentDirectly(viewingPayment?.print_url)}>Print</Button>,
                     <Button key="close" onClick={() => setViewingPayment(null)}>Close</Button>,
                 ]}
                 width={780}

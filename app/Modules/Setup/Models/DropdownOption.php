@@ -2,12 +2,17 @@
 
 namespace App\Modules\Setup\Models;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
+
+
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class DropdownOption extends Model
 {
-    protected $guarded = [];
+protected $guarded = [];
 
     public const MANAGED_ALIASES = [
         'product_status' => [
@@ -38,7 +43,7 @@ class DropdownOption extends Model
 
     protected function casts(): array
     {
-        return [
+return [
             'meta' => 'array',
             'status' => 'boolean',
         ];
@@ -47,30 +52,30 @@ class DropdownOption extends Model
     // Most dropdowns only need active values, so this keeps controller code short.
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('status', 1);
+return $query->where('status', 1);
     }
 
     // Alias is used everywhere, so this tiny scope avoids repeating raw where calls.
     public function scopeForAlias(Builder $query, string $alias): Builder
     {
-        return $query->where('alias', $alias);
+return $query->where('alias', $alias);
     }
 
     // Settings page and quick-add modals both use the same alias metadata.
     public static function managedAliases(): array
     {
-        return static::MANAGED_ALIASES;
+return static::MANAGED_ALIASES;
     }
 
     // Settings and quick-add both show a readable alias label without duplicating arrays.
     public function getAliasLabelAttribute(): string
     {
-        return static::MANAGED_ALIASES[$this->alias]['label'] ?? ucwords(str_replace('_', ' ', $this->alias));
+return static::MANAGED_ALIASES[$this->alias]['label'] ?? ucwords(str_replace('_', ' ', $this->alias));
     }
 
     // Keep the API shape consistent with other status-aware resources.
     public function getIsActiveAttribute(): bool
     {
-        return (bool) $this->status;
+return (bool) $this->status;
     }
 }

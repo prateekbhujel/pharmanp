@@ -2,6 +2,9 @@
 
 namespace App\Modules\Setup\DTOs;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use Illuminate\Http\Request;
 
 final readonly class SetupTypeData

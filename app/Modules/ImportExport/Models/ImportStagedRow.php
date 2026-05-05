@@ -2,12 +2,20 @@
 
 namespace App\Modules\ImportExport\Models;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
+
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ImportStagedRow extends Model
 {
-    protected $fillable = [
+    use BelongsToTenant;
+
+
+protected $fillable = [
         'import_job_id',
         'row_number',
         'raw_data',
@@ -18,7 +26,7 @@ class ImportStagedRow extends Model
 
     protected function casts(): array
     {
-        return [
+return [
             'raw_data' => 'array',
             'mapped_data' => 'array',
             'errors' => 'array',
@@ -27,6 +35,6 @@ class ImportStagedRow extends Model
 
     public function job(): BelongsTo
     {
-        return $this->belongsTo(ImportJob::class, 'import_job_id');
+return $this->belongsTo(ImportJob::class, 'import_job_id');
     }
 }

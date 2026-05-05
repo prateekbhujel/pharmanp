@@ -2,6 +2,9 @@
 
 namespace App\Modules\Sales\Http\Requests;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Modules\Sales\Models\SalesInvoice;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;

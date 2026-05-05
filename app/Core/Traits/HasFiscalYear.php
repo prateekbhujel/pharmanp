@@ -17,9 +17,27 @@ trait HasFiscalYear
                     ->where('company_id', auth()->user()->company_id)
                     ->where('is_current', true)
                     ->first();
-                
+
                 if ($fiscalYear) {
                     $model->fiscal_year_id = $fiscalYear->id;
+                }
+            }
+        });
+
+        static::addGlobalScope('fiscal_year', function ($builder) {
+            if (auth()->check() && auth()->user()->company_id) {
+                // We cache the current fiscal year id in a static variable to avoid repeated queries
+                static $currentFiscalYearId = null;
+                
+                if ($currentFiscalYearId === null) {
+                    $currentFiscalYearId = FiscalYear::query()
+                        ->where('company_id', auth()->user()->company_id)
+                        ->where('is_current', true)
+                        ->value('id') ?: false;
+                }
+
+                if ($currentFiscalYearId) {
+                    $builder->where($builder->getQuery()->from . '.fiscal_year_id', $currentFiscalYearId);
                 }
             }
         });

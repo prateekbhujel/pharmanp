@@ -2,6 +2,9 @@
 
 namespace App\Modules\Purchase\Repositories;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
 use App\Core\Security\TenantRecordScope;
@@ -69,7 +72,7 @@ class PurchaseReturnRepository implements PurchaseReturnRepositoryInterface
 
     public function purchase(int $id, ?User $user = null): Purchase
     {
-        return $this->scope->apply(Purchase::query(), $user)->findOrFail($id);
+        return $this->scope->apply(Purchase::query(), $user, ['store' => null])->findOrFail($id);
     }
 
     public function batchForUpdate(int $id, ?User $user = null, ?PurchaseReturn $purchaseReturn = null): Batch
@@ -121,10 +124,9 @@ class PurchaseReturnRepository implements PurchaseReturnRepositoryInterface
 
     public function adjustSupplierBalance(int $supplierId, float $amount, ?User $user = null, ?PurchaseReturn $purchaseReturn = null): void
     {
-        $supplier = $this->scope->apply(Supplier::query(), $user)
+        $supplier = $this->scope->apply(Supplier::query(), $user, ['store' => null])
             ->when($purchaseReturn?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
             ->when($purchaseReturn?->company_id, fn (Builder $builder, int $companyId) => $builder->where('company_id', $companyId))
-            ->when($purchaseReturn?->store_id, fn (Builder $builder, int $storeId) => $builder->where('store_id', $storeId))
             ->findOrFail($supplierId);
 
         $supplier->increment('current_balance', $amount);

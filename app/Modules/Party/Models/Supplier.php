@@ -2,13 +2,19 @@
 
 namespace App\Modules\Party\Models;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
+
+
 use Illuminate\Database\Eloquent\Model;
 use App\Modules\Setup\Models\SupplierType;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Supplier extends Model
 {
-    use SoftDeletes;
+    use BelongsToTenant, SoftDeletes;
+
 
     protected $fillable = [
         'tenant_id',
@@ -30,7 +36,7 @@ class Supplier extends Model
 
     protected function casts(): array
     {
-        return [
+return [
             'opening_balance' => 'decimal:2',
             'current_balance' => 'decimal:2',
             'is_active' => 'boolean',
@@ -39,6 +45,6 @@ class Supplier extends Model
 
     public function supplierType()
     {
-        return $this->belongsTo(SupplierType::class, 'supplier_type_id');
+return $this->belongsTo(SupplierType::class, 'supplier_type_id');
     }
 }

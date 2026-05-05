@@ -2,6 +2,11 @@
 
 namespace App\Modules\Inventory\Models;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
+
+
 use App\Modules\Party\Models\Supplier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +14,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Batch extends Model
 {
-    use SoftDeletes;
+    use BelongsToTenant, SoftDeletes;
+
 
     protected $fillable = [
         'tenant_id',
@@ -34,7 +40,7 @@ class Batch extends Model
 
     protected function casts(): array
     {
-        return [
+return [
             'manufactured_at' => 'date',
             'expires_at' => 'date',
             'quantity_received' => 'decimal:3',
@@ -47,11 +53,11 @@ class Batch extends Model
 
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+return $this->belongsTo(Product::class);
     }
 
     public function supplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class);
+return $this->belongsTo(Supplier::class);
     }
 }

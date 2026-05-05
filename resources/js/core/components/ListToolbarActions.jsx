@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Space } from 'antd';
 import { FileExcelOutlined, FilePdfOutlined, UploadOutlined } from '@ant-design/icons';
 import { appUrl, basePath } from '../utils/url';
-import { downloadAuthenticatedDocument, openAuthenticatedDocument } from '../utils/documents';
+import { downloadAuthenticatedDocument, openDocumentDirectly } from '../utils/documents';
 
 function urlWithParams(path, params = {}) {
     const alreadyScoped = basePath && path.startsWith(`${basePath}/`);
@@ -22,7 +22,7 @@ export function ExportButtons({ basePath, params = {} }) {
     return (
         <Space wrap>
             <Button icon={<FileExcelOutlined />} onClick={() => downloadAuthenticatedDocument(urlWithParams(`${basePath}/xlsx`, params), 'pharmanp-export.xlsx')}>Excel</Button>
-            <Button icon={<FilePdfOutlined />} onClick={() => openAuthenticatedDocument(urlWithParams(`${basePath}/pdf`, params), { accept: 'application/pdf' })}>PDF</Button>
+            <Button icon={<FilePdfOutlined />} onClick={() => openDocumentDirectly(urlWithParams(`${basePath}/pdf`, params), { accept: 'application/pdf' })}>PDF</Button>
         </Space>
     );
 }

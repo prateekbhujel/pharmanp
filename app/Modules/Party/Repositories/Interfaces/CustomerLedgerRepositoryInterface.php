@@ -2,6 +2,9 @@
 
 namespace App\Modules\Party\Repositories\Interfaces;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Models\User;
 use App\Modules\Party\Models\Customer;
 use Illuminate\Support\Collection;

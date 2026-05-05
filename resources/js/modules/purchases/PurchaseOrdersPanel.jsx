@@ -15,7 +15,7 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
-import { openAuthenticatedDocument } from '../../core/utils/documents';
+import { openDocumentDirectly } from '../../core/utils/documents';
 
 const emptyOrderItem = {
     product_id: null,
@@ -253,7 +253,7 @@ export function PurchaseOrdersPanel() {
             setViewingOrder(data.data);
             table.reload();
             if (data.print_url) {
-                openAuthenticatedDocument(data.print_url);
+                openDocumentDirectly(data.print_url);
             }
         } catch (error) {
             const errors = validationErrors(error);

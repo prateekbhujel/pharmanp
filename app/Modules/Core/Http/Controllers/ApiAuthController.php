@@ -2,6 +2,9 @@
 
 namespace App\Modules\Core\Http\Controllers;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Core\Services\JwtTokenService;
 use App\Http\Controllers\ModularController;
 use App\Models\User;

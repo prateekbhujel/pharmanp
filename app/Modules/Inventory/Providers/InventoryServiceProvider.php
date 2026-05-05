@@ -2,6 +2,9 @@
 
 namespace App\Modules\Inventory\Providers;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Modules\Base\Providers\BaseModuleServiceProvider;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Policies\ProductPolicy;

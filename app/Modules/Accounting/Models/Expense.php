@@ -2,6 +2,11 @@
 
 namespace App\Modules\Accounting\Models;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
+
+
 use App\Models\User;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +14,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Expense extends Model
 {
-    protected $fillable = [
+    use BelongsToTenant, HasFiscalYear;
+
+
+protected $fillable = [
         'tenant_id',
         'company_id',
         'expense_date',
@@ -25,7 +33,7 @@ class Expense extends Model
 
     protected function casts(): array
     {
-        return [
+return [
             'expense_date' => 'date',
             'amount' => 'decimal:2',
         ];
@@ -33,28 +41,28 @@ class Expense extends Model
 
     public function expenseCategory(): BelongsTo
     {
-        return $this->belongsTo(DropdownOption::class, 'expense_category_id');
+return $this->belongsTo(DropdownOption::class, 'expense_category_id');
     }
 
     public function paymentModeOption(): BelongsTo
     {
-        return $this->belongsTo(DropdownOption::class, 'payment_mode_id');
+return $this->belongsTo(DropdownOption::class, 'payment_mode_id');
     }
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+return $this->belongsTo(User::class, 'created_by');
     }
 
     // Return the readable expense category label for display.
     public function getExpenseCategoryLabelAttribute(): string
     {
-        return $this->expenseCategory?->name ?? $this->category ?? '-';
+return $this->expenseCategory?->name ?? $this->category ?? '-';
     }
 
     // Return the readable payment mode label for display.
     public function getPaymentModeLabelAttribute(): string
     {
-        return $this->paymentModeOption?->name ?? ucfirst($this->payment_mode ?? '-');
+return $this->paymentModeOption?->name ?? ucfirst($this->payment_mode ?? '-');
     }
 }

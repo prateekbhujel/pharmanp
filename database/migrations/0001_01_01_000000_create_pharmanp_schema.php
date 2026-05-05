@@ -680,6 +680,7 @@ return new class extends Migration
 
         Schema::create('purchase_order_items', function (Blueprint $table) {
             $table->id();
+            $this->tenantColumns($table);
             $table->unsignedBigInteger('purchase_order_id')->index();
             $table->unsignedBigInteger('product_id')->index();
             $table->decimal('quantity', 14, 3)->default(0);
@@ -718,6 +719,7 @@ return new class extends Migration
 
         Schema::create('purchase_items', function (Blueprint $table) {
             $table->id();
+            $this->tenantColumns($table);
             $table->unsignedBigInteger('purchase_id')->index();
             $table->unsignedBigInteger('product_id')->index();
             $table->unsignedBigInteger('batch_id')->nullable()->index();
@@ -759,6 +761,7 @@ return new class extends Migration
 
         Schema::create('purchase_return_items', function (Blueprint $table) {
             $table->id();
+            $this->tenantColumns($table);
             $table->unsignedBigInteger('purchase_return_id')->index();
             $table->unsignedBigInteger('purchase_item_id')->nullable()->index();
             $table->unsignedBigInteger('batch_id')->index();
@@ -806,6 +809,7 @@ return new class extends Migration
 
         Schema::create('sales_invoice_items', function (Blueprint $table) {
             $table->id();
+            $this->tenantColumns($table);
             $table->unsignedBigInteger('sales_invoice_id')->index();
             $table->unsignedBigInteger('product_id')->index();
             $table->unsignedBigInteger('batch_id')->nullable()->index();
@@ -842,6 +846,7 @@ return new class extends Migration
 
         Schema::create('sales_return_items', function (Blueprint $table) {
             $table->id();
+            $this->tenantColumns($table);
             $table->unsignedBigInteger('sales_return_id')->index();
             $table->unsignedBigInteger('sales_invoice_item_id')->nullable()->index();
             $table->unsignedBigInteger('product_id')->index();
@@ -870,6 +875,7 @@ return new class extends Migration
 
         Schema::create('voucher_entries', function (Blueprint $table) {
             $table->id();
+            $this->tenantColumns($table);
             $table->unsignedBigInteger('voucher_id')->index();
             $table->unsignedInteger('line_no')->default(1);
             $table->string('account_type', 60)->index();
@@ -905,6 +911,7 @@ return new class extends Migration
 
         Schema::create('payment_bill_allocations', function (Blueprint $table) {
             $table->id();
+            $this->tenantColumns($table);
             $table->unsignedBigInteger('payment_id')->index();
             $table->unsignedBigInteger('bill_id');
             $table->string('bill_type', 40);
@@ -1018,6 +1025,7 @@ return new class extends Migration
 
         Schema::create('import_staged_rows', function (Blueprint $table) {
             $table->id();
+            $this->tenantColumns($table);
             $table->unsignedBigInteger('import_job_id')->index();
             $table->unsignedInteger('row_number')->index();
             $table->json('raw_data');

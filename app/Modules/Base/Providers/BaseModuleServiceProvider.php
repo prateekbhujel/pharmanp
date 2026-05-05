@@ -2,6 +2,9 @@
 
 namespace App\Modules\Base\Providers;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 

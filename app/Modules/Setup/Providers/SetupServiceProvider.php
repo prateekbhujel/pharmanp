@@ -2,6 +2,9 @@
 
 namespace App\Modules\Setup\Providers;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Modules\Base\Providers\BaseModuleServiceProvider;
 use App\Modules\Setup\Repositories\DropdownOptionRepository;
 use App\Modules\Setup\Repositories\FiscalYearRepository;

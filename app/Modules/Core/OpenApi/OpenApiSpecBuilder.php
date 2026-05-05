@@ -2,6 +2,9 @@
 
 namespace App\Modules\Core\OpenApi;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Core\Modules\ModuleDefinition;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Support\ProductMeta;

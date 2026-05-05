@@ -2,6 +2,9 @@
 
 namespace App\Modules\Purchase\Http\Requests;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use Illuminate\Foundation\Http\FormRequest;
 
 /**

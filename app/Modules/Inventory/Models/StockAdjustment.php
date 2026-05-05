@@ -2,6 +2,11 @@
 
 namespace App\Modules\Inventory\Models;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
+
+
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +14,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StockAdjustment extends Model
 {
-    use SoftDeletes;
+    use BelongsToTenant, SoftDeletes;
+
 
     protected $fillable = [
         'tenant_id',
@@ -28,7 +34,7 @@ class StockAdjustment extends Model
 
     protected function casts(): array
     {
-        return [
+return [
             'adjustment_date' => 'date',
             'quantity' => 'decimal:3',
         ];
@@ -36,16 +42,16 @@ class StockAdjustment extends Model
 
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+return $this->belongsTo(Product::class);
     }
 
     public function batch(): BelongsTo
     {
-        return $this->belongsTo(Batch::class);
+return $this->belongsTo(Batch::class);
     }
 
     public function adjustedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'adjusted_by');
+return $this->belongsTo(User::class, 'adjusted_by');
     }
 }

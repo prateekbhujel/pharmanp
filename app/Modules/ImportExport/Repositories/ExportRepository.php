@@ -2,6 +2,9 @@
 
 namespace App\Modules\ImportExport\Repositories;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Models\User;
 use App\Modules\Accounting\Models\Expense;
 use App\Modules\Accounting\Models\Payment;

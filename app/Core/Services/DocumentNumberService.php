@@ -5,10 +5,7 @@ namespace App\Core\Services;
 use App\Models\Setting;
 use App\Models\User;
 use Carbon\CarbonInterface;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class DocumentNumberService
@@ -120,70 +117,69 @@ class DocumentNumberService
             throw new \InvalidArgumentException("Unknown document number type [{$type}].");
         }
 
-        if (! Schema::hasTable('document_sequences')) {
-            return $this->legacyNext($config, $table, $date);
-        }
+        $tenantId = $user?->tenant_id;
+        $companyId = $user?->company_id;
+        $scopeKey = $this->generateScopeKey($tenantId, $companyId);
+        $date ??= now();
 
-        $nextId = DB::transaction(function () use ($type, $table, $config, $date, $user): int {
-            $datePart = $this->dateToken((string) ($config['date_format'] ?? 'Ymd'), $date ?? now()) ?? '';
-            $scopeKey = $this->scopeKey($user);
-            $query = $this->sequenceQuery($scopeKey, $type, $datePart);
-            $row = $query->lockForUpdate()->first();
+        return DB::transaction(function () use ($type, $table, $config, $date, $tenantId, $companyId, $scopeKey): string {
+            $datePart = $this->dateToken((string) ($config['date_format'] ?? 'Ymd'), $date) ?? '';
+            
+            $row = DB::table('document_sequences')
+                ->where('scope_key', $scopeKey)
+                ->where('type', $type)
+                ->where('date_part', $datePart)
+                ->lockForUpdate()
+                ->first();
 
             if (! $row) {
-                $this->createSequenceRow($scopeKey, $type, $datePart, $table, $user);
-                $row = $this->sequenceQuery($scopeKey, $type, $datePart)->lockForUpdate()->first();
+                // Initialize safely scoped to tenant/company
+                $lastVal = (int) DB::table($table)
+                    ->where('tenant_id', $tenantId)
+                    ->where('company_id', $companyId)
+                    ->max('id');
+                
+                try {
+                    DB::table('document_sequences')->insert([
+                        'scope_key' => $scopeKey,
+                        'tenant_id' => $tenantId,
+                        'company_id' => $companyId,
+                        'type' => $type,
+                        'date_part' => $datePart,
+                        'last_sequence' => $lastVal,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    if (!str_contains($e->getMessage(), 'Duplicate entry') && !str_contains($e->getMessage(), 'unique constraint')) {
+                        throw $e;
+                    }
+                }
+                
+                $next = $lastVal + 1;
+            } else {
+                $next = ((int) $row->last_sequence) + 1;
             }
 
-            $next = ((int) $row->last_sequence) + 1;
+            DB::table('document_sequences')
+                ->where('scope_key', $scopeKey)
+                ->where('type', $type)
+                ->where('date_part', $datePart)
+                ->update([
+                    'last_sequence' => $next,
+                    'updated_at' => now(),
+                ]);
 
-            $this->sequenceQuery($scopeKey, $type, $datePart)->update([
-                'last_sequence' => $next,
-                'updated_at' => now(),
-            ]);
-
-            return $next;
+            return $this->format($config, $next, $date);
         });
-
-        return $this->format($config, $nextId, $date);
     }
 
-    private function legacyNext(array $config, string $table, ?CarbonInterface $date): string
+    private function generateScopeKey(?int $tenantId, ?int $companyId): string
     {
-        $nextId = ((int) DB::table($table)->lockForUpdate()->max('id')) + 1;
-
-        return $this->format($config, $nextId, $date);
-    }
-
-    private function createSequenceRow(string $scopeKey, string $type, string $datePart, string $table, ?User $user): void
-    {
-        try {
-            DB::table('document_sequences')->insert([
-                'scope_key' => $scopeKey,
-                'type' => $type,
-                'date_part' => $datePart,
-                'tenant_id' => null,
-                'company_id' => null,
-                'last_sequence' => (int) DB::table($table)->max('id'),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        } catch (QueryException) {
-            // Another request initialized the sequence first; the caller locks and increments it next.
+        if (!$tenantId && !$companyId) {
+            return 'global';
         }
-    }
-
-    private function sequenceQuery(string $scopeKey, string $type, string $datePart): Builder
-    {
-        return DB::table('document_sequences')
-            ->where('scope_key', $scopeKey)
-            ->where('type', $type)
-            ->where('date_part', $datePart);
-    }
-
-    private function scopeKey(?User $user): string
-    {
-        return 'global';
+        return sprintf('T%sC%s', $tenantId ?? 0, $companyId ?? 0);
     }
 
     public function preview(string $type, int $sequence = 1, ?CarbonInterface $date = null): string

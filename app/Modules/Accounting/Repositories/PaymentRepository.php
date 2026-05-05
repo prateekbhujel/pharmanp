@@ -2,6 +2,9 @@
 
 namespace App\Modules\Accounting\Repositories;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
 use App\Core\Security\TenantRecordScope;
@@ -136,7 +139,7 @@ class PaymentRepository implements PaymentRepositoryInterface
             $query = SalesInvoice::query()->lockForUpdate()->where('customer_id', $partyId);
 
             if ($user) {
-                $this->records->apply($query, $user);
+                $this->records->apply($query, $user, ['store' => null]);
             }
 
             return $query->findOrFail($billId);
@@ -146,7 +149,7 @@ class PaymentRepository implements PaymentRepositoryInterface
             $query = Purchase::query()->lockForUpdate()->where('supplier_id', $partyId);
 
             if ($user) {
-                $this->records->apply($query, $user);
+                $this->records->apply($query, $user, ['store' => null]);
             }
 
             return $query->findOrFail($billId);
@@ -161,10 +164,8 @@ class PaymentRepository implements PaymentRepositoryInterface
     {
         $query = $partyType === 'customer' ? Customer::query() : Supplier::query();
 
-        return $query
-            ->when($user->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
-            ->when($user->company_id, fn ($builder, $companyId) => $builder->where('company_id', $companyId))
-            ->whereKey($partyId)
-            ->exists();
+        $this->records->apply($query, $user, ['store' => null]);
+
+        return $query->whereKey($partyId)->exists();
     }
 }

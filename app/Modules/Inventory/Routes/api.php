@@ -26,5 +26,5 @@ Route::delete('/inventory/masters/{master}/{id}', [InventoryMasterController::cl
 Route::post('/inventory/masters/{master}/{id}/restore', [InventoryMasterController::class, 'restore'])->whereIn('master', ['companies', 'units'])->name('inventory.masters.restore');
 
 Route::post('/inventory/products/{id}/restore', [ProductController::class, 'restore'])->name('inventory.products.restore');
-Route::apiResource('inventory/products', ProductController::class)->only(['index', 'store', 'update', 'destroy']);
+Route::apiResource('inventory/products', ProductController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
 Route::patch('/inventory/products/{product}/status', [ProductController::class, 'toggleStatus'])->name('inventory.products.status');

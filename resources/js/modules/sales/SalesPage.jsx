@@ -5,7 +5,7 @@ import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
 import { appUrl } from '../../core/utils/url';
-import { openAuthenticatedDocument } from '../../core/utils/documents';
+import { openDocumentDirectly } from '../../core/utils/documents';
 import { SalesReturnsPanel } from './SalesReturnsPanel';
 import { SalesPosPanel } from './SalesPosPanel';
 import { SalesInvoicesPanel } from './SalesInvoicesPanel';
@@ -129,7 +129,7 @@ export function SalesPage() {
                     <Space>
                         {section !== 'pos' && <Button type="primary" onClick={() => goToApp('/app/sales/pos')}>New Sales</Button>}
                         {section !== 'invoices' && <Button onClick={() => goToApp('/app/sales')}>Sales</Button>}
-                        <Button disabled={!lastPrintUrl} icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(lastPrintUrl)}>Print Last Invoice</Button>
+                        <Button disabled={!lastPrintUrl} icon={<PrinterOutlined />} onClick={() => openDocumentDirectly(lastPrintUrl)}>Print Last Invoice</Button>
                     </Space>
                 )}
             />

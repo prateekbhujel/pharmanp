@@ -2,6 +2,9 @@
 
 namespace App\Modules\Inventory\Http\Controllers;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Modules\Inventory\DTOs\ProductData;
@@ -81,6 +84,24 @@ class ProductController extends ModularController
             ->additional(['message' => 'Product created.'])
             ->response()
             ->setStatusCode(201);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/inventory/products/{product}",
+     *     summary="Get single product details",
+     *     tags={"INVENTORY - Products"},
+     *     security={{"bearerAuth": {}}},
+     *
+     *     @OA\Response(response=200, description="Successful response"),
+     *     @OA\Response(response=404, description="Product not found")
+     * )
+     */
+    public function show(Product $product): ProductResource
+    {
+        $this->authorize('view', $product);
+
+        return new ProductResource($product->load(['company', 'unit', 'division']));
     }
 
     /**

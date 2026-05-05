@@ -2,6 +2,9 @@
 
 namespace App\Modules\Sales\Repositories;
 
+use App\Core\Traits\BelongsToTenant;
+use App\Core\Traits\HasFiscalYear;
+
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
 use App\Core\Security\TenantRecordScope;
@@ -65,17 +68,17 @@ class SalesReturnRepository implements SalesReturnRepositoryInterface
 
     public function invoice(?int $id, ?User $user = null): ?SalesInvoice
     {
-        return $id ? $this->scope->apply(SalesInvoice::query(), $user)->findOrFail($id) : null;
+        return $id ? $this->scope->apply(SalesInvoice::query(), $user, ['store' => null])->findOrFail($id) : null;
     }
 
     public function customer(int $id, ?User $user = null): Customer
     {
-        return $this->scope->apply(Customer::query(), $user)->findOrFail($id);
+        return $this->scope->apply(Customer::query(), $user, ['store' => null])->findOrFail($id);
     }
 
     public function product(int $id, ?User $user = null): Product
     {
-        return $this->scope->apply(Product::query(), $user)->findOrFail($id);
+        return $this->scope->apply(Product::query(), $user, ['store' => null])->findOrFail($id);
     }
 
     public function batch(?int $id, int $productId, ?User $user = null, ?SalesReturn $salesReturn = null): ?Batch
