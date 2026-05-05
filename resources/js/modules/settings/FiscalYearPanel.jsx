@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Card, Form, Input, Select, Space, Switch } from 'antd';
+import { Button, Card, Form, Input, Select, Space, Switch, notification } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DateText } from '../../core/components/DateText';
@@ -9,7 +9,7 @@ import { ServerTable } from '../../core/components/ServerTable';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
-import { http, validationErrors } from '../../core/api/http';
+import { formErrors, http } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 
 export function FiscalYearPanel() {
@@ -42,11 +42,13 @@ export function FiscalYearPanel() {
             } else {
                 await http.post(endpoints.fiscalYears, payload);
             }
-            
+
+            notification.success({ message: editing ? 'Fiscal year updated' : 'Fiscal year created' });
             setDrawerOpen(false);
             table.reload();
         } catch (error) {
-            form.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name, errors })));
+            form.setFields(formErrors(error));
+            notification.error({ message: 'Fiscal year save failed', description: error?.response?.data?.message || error.message });
         }
     }
 

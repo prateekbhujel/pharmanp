@@ -228,6 +228,79 @@ class SetupAccessManagementTest extends TestCase
             ->assertJsonPath('data.is_active', true);
     }
 
+    public function test_owner_without_company_context_can_create_fiscal_year_for_single_active_company(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $company = Company::query()->create(['name' => 'Recovered Context Pharma']);
+        $owner = User::factory()->create([
+            'tenant_id' => null,
+            'company_id' => null,
+            'is_owner' => true,
+        ]);
+
+        $this->actingAs($owner)->postJson('/api/v1/settings/fiscal-years', [
+            'name' => 'FY 2082/83',
+            'starts_on' => '2025-07-17',
+            'ends_on' => '2026-07-16',
+            'is_current' => true,
+            'status' => 'open',
+        ])->assertCreated()
+            ->assertJsonPath('data.name', 'FY 2082/83');
+
+        $this->assertDatabaseHas('fiscal_years', [
+            'company_id' => $company->id,
+            'name' => 'FY 2082/83',
+            'is_current' => true,
+        ]);
+    }
+
+    public function test_owner_without_company_context_uses_branding_company_for_fiscal_year(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        Company::query()->create(['name' => 'Other Pharma']);
+        $company = Company::query()->create(['name' => 'Branding Pharma']);
+        Setting::putValue('app.branding', ['company_id' => $company->id]);
+        $owner = User::factory()->create([
+            'tenant_id' => null,
+            'company_id' => null,
+            'is_owner' => true,
+        ]);
+
+        $this->actingAs($owner)->postJson('/api/v1/settings/fiscal-years', [
+            'name' => 'FY 2083/84',
+            'starts_on' => '2026-07-17',
+            'ends_on' => '2027-07-16',
+            'is_current' => true,
+            'status' => 'open',
+        ])->assertCreated()
+            ->assertJsonPath('data.name', 'FY 2083/84');
+
+        $this->assertDatabaseHas('fiscal_years', [
+            'company_id' => $company->id,
+            'name' => 'FY 2083/84',
+            'is_current' => true,
+        ]);
+    }
+
+    public function test_fiscal_year_create_returns_validation_error_when_company_context_is_missing(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $owner = User::factory()->create([
+            'tenant_id' => null,
+            'company_id' => null,
+            'is_owner' => true,
+        ]);
+
+        $this->actingAs($owner)->postJson('/api/v1/settings/fiscal-years', [
+            'name' => 'FY 2082/83',
+            'starts_on' => '2025-07-17',
+            'ends_on' => '2026-07-16',
+            'is_current' => true,
+            'status' => 'open',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('company_id');
+    }
+
     public function test_owner_can_configure_document_numbering_without_exposing_smtp_password(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);

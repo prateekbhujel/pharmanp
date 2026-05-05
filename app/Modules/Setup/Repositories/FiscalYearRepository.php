@@ -23,10 +23,10 @@ class FiscalYearRepository implements FiscalYearRepositoryInterface
 
     public function __construct(private readonly TableQueryApplier $tables) {}
 
-    public function paginate(TableQueryData $table, User $user): LengthAwarePaginator
+    public function paginate(TableQueryData $table, int $companyId): LengthAwarePaginator
     {
         $query = FiscalYear::query()
-            ->where('company_id', $user->company_id)
+            ->where('company_id', $companyId)
             ->when($table->search, function (Builder $builder, string $search): void {
                 $builder->where(function (Builder $inner) use ($search): void {
                     $inner->where('name', 'like', '%'.$search.'%')
@@ -39,14 +39,14 @@ class FiscalYearRepository implements FiscalYearRepositoryInterface
         return $this->tables->paginate($query, $table);
     }
 
-    public function save(FiscalYear $fiscalYear, array $data, User $user): FiscalYear
+    public function save(FiscalYear $fiscalYear, array $data, User $user, int $companyId): FiscalYear
     {
         $status = $data['status'];
         $closedAt = $status === 'closed' ? ($fiscalYear->closed_at ?? now()) : null;
 
         $fiscalYear->fill([
             'tenant_id' => $user->tenant_id,
-            'company_id' => $user->company_id,
+            'company_id' => $companyId,
             'name' => $data['name'],
             'starts_on' => $data['starts_on'],
             'ends_on' => $data['ends_on'],
@@ -79,10 +79,10 @@ class FiscalYearRepository implements FiscalYearRepositoryInterface
             ->first();
     }
 
-    public function clearCurrent(User $user, ?FiscalYear $except = null): void
+    public function clearCurrent(int $companyId, ?FiscalYear $except = null): void
     {
         FiscalYear::query()
-            ->where('company_id', $user->company_id)
+            ->where('company_id', $companyId)
             ->when($except?->exists, fn (Builder $builder) => $builder->whereKeyNot($except->id))
             ->update(['is_current' => false]);
     }

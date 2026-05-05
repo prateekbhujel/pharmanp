@@ -54,7 +54,67 @@ export function responseToken(body) {
 }
 
 export function validationErrors(error) {
-    return error?.response?.data?.errors || {};
+    const rawErrors = error?.response?.data?.errors || {};
+    const normalized = {};
+
+    const append = (field, messages) => {
+        const cleanField = normalizeErrorField(field);
+        const cleanMessages = normalizeErrorMessages(messages);
+
+        if (!normalized[cleanField]) {
+            normalized[cleanField] = [];
+        }
+
+        normalized[cleanField].push(...cleanMessages);
+    };
+
+    if (Array.isArray(rawErrors)) {
+        rawErrors.forEach((entry, index) => {
+            if (entry && typeof entry === 'object') {
+                append(entry.field || entry.name || entry.key || `form_${index + 1}`, entry.messages || entry.errors || entry.message || entry);
+                return;
+            }
+
+            append('form', entry);
+        });
+
+        return normalized;
+    }
+
+    if (!rawErrors || typeof rawErrors !== 'object') {
+        return {};
+    }
+
+    Object.entries(rawErrors).forEach(([field, messages]) => append(field, messages));
+
+    return normalized;
+}
+
+export function formErrors(error) {
+    return Object.entries(validationErrors(error)).map(([name, errors]) => ({
+        name: name.includes('.') ? name.split('.') : name,
+        errors,
+    }));
+}
+
+function normalizeErrorField(field) {
+    const value = String(field || 'form')
+        .replace(/^errors\.?\d+\.?/i, '')
+        .replace(/^\.+/, '');
+
+    return value || 'form';
+}
+
+function normalizeErrorMessages(messages) {
+    if (Array.isArray(messages)) {
+        return messages.flatMap((message) => normalizeErrorMessages(message));
+    }
+
+    if (messages && typeof messages === 'object') {
+        return Object.values(messages).flatMap((message) => normalizeErrorMessages(message));
+    }
+
+    return [String(messages || 'The submitted value is invalid.')];
 }
 
 export function apiData(body, fallback = null) {
