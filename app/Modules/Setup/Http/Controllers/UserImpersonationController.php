@@ -5,7 +5,6 @@ namespace App\Modules\Setup\Http\Controllers;
 use App\Core\Services\JwtTokenService;
 use App\Http\Controllers\ModularController;
 use App\Models\User;
-use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -38,7 +37,7 @@ class UserImpersonationController extends ModularController
     public function start(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
-        abort_unless($this->canImpersonate($actor), 403);
+        abort_unless((bool) $actor?->is_owner || (bool) $actor?->can('users.manage'), 403);
 
         if ((int) $actor->id === (int) $user->id) {
             throw ValidationException::withMessages([
@@ -60,7 +59,7 @@ class UserImpersonationController extends ModularController
             abort(404);
         }
 
-        $expiresAt = $this->tokenExpiry();
+        $expiresAt = $this->jwt->defaultExpiry();
 
         return response()->json([
             'message' => "Now viewing as {$user->name}.",
@@ -98,7 +97,7 @@ class UserImpersonationController extends ModularController
         }
 
         $impersonator = User::query()->findOrFail($impersonatorId);
-        $expiresAt = $this->tokenExpiry();
+        $expiresAt = $this->jwt->defaultExpiry();
 
         $this->jwt->revoke($request->bearerToken());
 
@@ -110,13 +109,5 @@ class UserImpersonationController extends ModularController
         ]);
     }
 
-    private function canImpersonate(?User $actor): bool
-    {
-        return (bool) $actor?->is_owner || (bool) $actor?->can('users.manage');
-    }
-
-    private function tokenExpiry(): CarbonInterface
-    {
-        return now()->addMinutes(max((int) config('pharmanp.jwt.ttl_minutes', 1440), 5));
-    }
 }
+

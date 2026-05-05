@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\Accounting\DTOs\VoucherData;
 use App\Modules\Accounting\Models\Voucher;
 use App\Modules\Accounting\Repositories\Interfaces\VoucherRepositoryInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -69,7 +70,7 @@ class VoucherService
                 $voucher = $this->vouchers->create([
                     'tenant_id' => $user->tenant_id,
                     'company_id' => $user->company_id,
-                    'voucher_no' => $this->nextNumber(),
+                    'voucher_no' => $this->nextNumber($data['voucher_date'], $user),
                     'voucher_date' => $data['voucher_date'],
                     'voucher_type' => $data['voucher_type'],
                     'total_amount' => round($debit, 2),
@@ -112,9 +113,9 @@ class VoucherService
         });
     }
 
-    private function nextNumber(): string
+    private function nextNumber(string $voucherDate, User $user): string
     {
-        return $this->numbers->next('voucher', 'vouchers');
+        return $this->numbers->next('voucher', 'vouchers', Carbon::parse($voucherDate), $user);
     }
 
     private function assertParty(?string $partyType, ?int $partyId): void

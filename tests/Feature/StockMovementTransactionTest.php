@@ -58,4 +58,33 @@ class StockMovementTransactionTest extends TestCase
 
         $this->assertSame('3.000', $batch->fresh()->quantity_available);
     }
+
+    public function test_stock_movement_rejects_mismatched_operating_context(): void
+    {
+        $product = Product::query()->create(['tenant_id' => 200, 'company_id' => 20, 'name' => 'Cetirizine', 'sku' => 'CET-CTX']);
+        $batch = Batch::query()->create([
+            'tenant_id' => 200,
+            'company_id' => 20,
+            'product_id' => $product->id,
+            'batch_no' => 'B-CTX',
+            'quantity_received' => 5,
+            'quantity_available' => 5,
+        ]);
+
+        $this->expectException(ValidationException::class);
+
+        try {
+            app(StockMovementService::class)->record([
+                'tenant_id' => 201,
+                'company_id' => 20,
+                'product_id' => $product->id,
+                'batch_id' => $batch->id,
+                'movement_type' => 'sales_out',
+                'quantity_out' => 1,
+            ]);
+        } finally {
+            $this->assertSame('5.000', $batch->fresh()->quantity_available);
+            $this->assertDatabaseMissing('stock_movements', ['batch_id' => $batch->id]);
+        }
+    }
 }

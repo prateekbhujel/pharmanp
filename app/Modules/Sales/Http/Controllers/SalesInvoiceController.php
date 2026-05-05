@@ -4,7 +4,6 @@ namespace App\Modules\Sales\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
-use App\Models\Setting;
 use App\Modules\Sales\Http\Requests\SalesInvoicePaymentRequest;
 use App\Modules\Sales\Http\Requests\SalesInvoiceStoreRequest;
 use App\Modules\Sales\Http\Resources\SalesInvoiceResource;
@@ -87,8 +86,10 @@ class SalesInvoiceController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function show(SalesInvoice $invoice): SalesInvoiceResource
+    public function show(Request $request, SalesInvoice $invoice, SalesInvoiceService $service): SalesInvoiceResource
     {
+        $service->assertAccessible($invoice, $request->user());
+
         return new SalesInvoiceResource($invoice->load(['customer', 'medicalRepresentative', 'paymentMode', 'items.product', 'items.batch', 'returns.items.product', 'returns.items.batch']));
     }
 
@@ -105,8 +106,9 @@ class SalesInvoiceController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function items(SalesInvoice $invoice): JsonResponse
+    public function items(Request $request, SalesInvoice $invoice, SalesInvoiceService $service): JsonResponse
     {
+        $service->assertAccessible($invoice, $request->user());
         $invoice->load(['items.product', 'items.batch']);
 
         return response()->json([
@@ -127,8 +129,9 @@ class SalesInvoiceController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function returns(SalesInvoice $invoice): JsonResponse
+    public function returns(Request $request, SalesInvoice $invoice, SalesInvoiceService $service): JsonResponse
     {
+        $service->assertAccessible($invoice, $request->user());
         $invoice->load(['returns.items.product', 'returns.items.batch']);
 
         return response()->json([
@@ -153,6 +156,7 @@ class SalesInvoiceController extends ModularController
      */
     public function updatePayment(SalesInvoicePaymentRequest $request, SalesInvoice $invoice, SalesInvoiceService $service): SalesInvoiceResource
     {
+        $service->assertAccessible($invoice, $request->user());
         $validated = $request->validated();
 
         $invoice = $service->updatePayment($invoice, [
@@ -164,23 +168,19 @@ class SalesInvoiceController extends ModularController
         return (new SalesInvoiceResource($invoice))->additional(['message' => 'Invoice payment updated.']);
     }
 
-    public function print(SalesInvoice $invoice): View
+    public function print(Request $request, SalesInvoice $invoice, SalesInvoiceService $service): View
     {
-        return view('prints.sales-invoice', $this->printData($invoice));
+        $service->assertAccessible($invoice, $request->user());
+
+        return view('prints.sales-invoice', $service->printPayload($invoice));
     }
 
-    public function pdf(SalesInvoice $invoice)
+    public function pdf(Request $request, SalesInvoice $invoice, SalesInvoiceService $service)
     {
-        return Pdf::loadView('prints.sales-invoice', $this->printData($invoice))
+        $service->assertAccessible($invoice, $request->user());
+
+        return Pdf::loadView('prints.sales-invoice', $service->printPayload($invoice))
             ->setPaper('a4', 'landscape')
             ->stream($invoice->invoice_no.'.pdf');
-    }
-
-    private function printData(SalesInvoice $invoice): array
-    {
-        return [
-            'invoice' => $invoice->load(['customer', 'medicalRepresentative', 'paymentMode', 'items.product', 'items.batch']),
-            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
-        ];
     }
 }

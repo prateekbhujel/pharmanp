@@ -4,7 +4,6 @@ namespace App\Modules\Accounting\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
-use App\Models\Setting;
 use App\Modules\Accounting\Http\Requests\OutstandingBillsRequest;
 use App\Modules\Accounting\Http\Requests\PaymentRequest;
 use App\Modules\Accounting\Models\Payment;
@@ -111,19 +110,19 @@ class PaymentController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function show(Payment $payment): JsonResponse
+    public function show(Request $request, Payment $payment): JsonResponse
     {
-        return response()->json(['data' => $this->payments->payload($payment, true)]);
+        return response()->json(['data' => $this->payments->payloadForUser($payment, $request->user(), true)]);
     }
 
-    public function print(Payment $payment): View
+    public function print(Request $request, Payment $payment): View
     {
-        return view('prints.payment', $this->printData($payment));
+        return view('prints.payment', $this->payments->printPayload($payment, $request->user()));
     }
 
-    public function pdf(Payment $payment)
+    public function pdf(Request $request, Payment $payment)
     {
-        return Pdf::loadView('prints.payment', $this->printData($payment))
+        return Pdf::loadView('prints.payment', $this->payments->printPayload($payment, $request->user()))
             ->setPaper('a4')
             ->stream($payment->payment_no.'.pdf');
     }
@@ -148,11 +147,4 @@ class PaymentController extends ModularController
         return response()->json(['message' => 'Payment deleted successfully.']);
     }
 
-    private function printData(Payment $payment): array
-    {
-        return [
-            'payment' => $this->payments->payload($payment, true),
-            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
-        ];
-    }
 }

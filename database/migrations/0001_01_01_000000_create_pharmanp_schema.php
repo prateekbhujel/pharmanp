@@ -64,6 +64,7 @@ return new class extends Migration
             'dropdown_options',
             'supplier_types',
             'party_types',
+            'document_sequences',
             'settings',
             'tenant_domains',
             'tenants',
@@ -251,6 +252,19 @@ return new class extends Migration
             $table->unsignedBigInteger('company_id')->nullable()->index();
             $table->unsignedBigInteger('store_id')->nullable()->index();
             $table->timestamps();
+        });
+
+        Schema::create('document_sequences', function (Blueprint $table) {
+            $table->id();
+            $table->string('scope_key', 120);
+            $table->string('type', 80);
+            $table->string('date_part', 20)->default('');
+            $table->unsignedBigInteger('tenant_id')->nullable()->index();
+            $table->unsignedBigInteger('company_id')->nullable()->index();
+            $table->unsignedBigInteger('last_sequence')->default(0);
+            $table->timestamps();
+            $table->unique(['scope_key', 'type', 'date_part'], 'document_sequences_scope_type_date_unique');
+            $table->index(['tenant_id', 'company_id', 'type'], 'document_sequences_tenant_company_type_idx');
         });
 
         Schema::create('dropdown_options', function (Blueprint $table) {

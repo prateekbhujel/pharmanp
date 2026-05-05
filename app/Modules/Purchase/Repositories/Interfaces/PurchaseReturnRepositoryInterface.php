@@ -15,11 +15,11 @@ interface PurchaseReturnRepositoryInterface
 {
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator;
 
-    public function purchase(int $id): Purchase;
+    public function purchase(int $id, ?User $user = null): Purchase;
 
-    public function batchForUpdate(int $id): Batch;
+    public function batchForUpdate(int $id, ?User $user = null, ?PurchaseReturn $purchaseReturn = null): Batch;
 
-    public function purchaseItem(int $purchaseId, int $purchaseItemId): PurchaseItem;
+    public function purchaseItem(int $purchaseId, int $purchaseItemId, ?User $user = null): PurchaseItem;
 
     public function returnedQuantityForItem(int $purchaseItemId, int $excludingReturnId): float;
 
@@ -31,9 +31,7 @@ interface PurchaseReturnRepositoryInterface
 
     public function save(PurchaseReturn $purchaseReturn, array $data): PurchaseReturn;
 
-    public function adjustSupplierBalance(int $supplierId, float $amount): void;
-
-    public function nextReturnSequence(): int;
+    public function adjustSupplierBalance(int $supplierId, float $amount, ?User $user = null, ?PurchaseReturn $purchaseReturn = null): void;
 
     public function fresh(PurchaseReturn $purchaseReturn): PurchaseReturn;
 }

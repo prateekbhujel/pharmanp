@@ -3,13 +3,16 @@
 namespace App\Modules\Purchase\Services;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Security\TenantRecordScope;
 use App\Core\Services\DocumentNumberService;
+use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Services\StockMovementService;
 use App\Modules\Purchase\DTOs\PurchaseData;
 use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Purchase\Repositories\Interfaces\PurchaseRepositoryInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +23,7 @@ class PurchaseEntryService
         private readonly AccountTransactionPostingService $accounts,
         private readonly DocumentNumberService $numbers,
         private readonly PurchaseRepositoryInterface $purchases,
+        private readonly TenantRecordScope $records,
     ) {}
 
     public function table(TableQueryData $table, ?User $user = null)
@@ -45,7 +49,7 @@ class PurchaseEntryService
                 'company_id' => $user->company_id,
                 'store_id' => $user->store_id,
                 'supplier_id' => $data['supplier_id'],
-                'purchase_no' => $this->nextNumber(),
+                'purchase_no' => $this->nextNumber($data['purchase_date'], $user),
                 'supplier_invoice_no' => $data['supplier_invoice_no'] ?? null,
                 'purchase_date' => $data['purchase_date'],
                 'due_date' => $data['due_date'] ?? null,
@@ -66,7 +70,7 @@ class PurchaseEntryService
                 $this->postItem($purchase, $item, $user);
             }
 
-            $this->purchases->incrementSupplierBalance((int) $data['supplier_id'], round($grandTotal - $paidAmount, 2));
+            $this->purchases->incrementSupplierBalance((int) $data['supplier_id'], round($grandTotal - $paidAmount, 2), $user, $purchase);
 
             $this->accounts->replaceForSource(
                 $user,
@@ -80,9 +84,22 @@ class PurchaseEntryService
         });
     }
 
+    public function assertAccessible(Purchase $purchase, User $user): void
+    {
+        abort_unless($this->records->canAccess($user, $purchase), 404);
+    }
+
+    public function printPayload(Purchase $purchase): array
+    {
+        return [
+            'purchase' => $purchase->load(['supplier', 'items.product', 'items.batch']),
+            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
+        ];
+    }
+
     private function postItem(Purchase $purchase, array $item, User $user): void
     {
-        $product = $this->purchases->productForUpdate((int) $item['product_id']);
+        $product = $this->purchases->productForUpdate((int) $item['product_id'], $user);
         $quantity = (float) $item['quantity'];
         $freeQuantity = (float) ($item['free_quantity'] ?? 0);
         $receivedQuantity = $quantity + $freeQuantity;
@@ -95,7 +112,7 @@ class PurchaseEntryService
         $freeGoodsValue = round($freeQuantity * ($mrp * $ccRate / 100), 2);
         $lineTotal = round($gross - $discount, 2);
 
-        $batch = $this->purchases->batchForPurchase((int) $purchase->company_id, (int) $product->id, (string) $item['batch_no']);
+        $batch = $this->purchases->batchForPurchase((int) $purchase->company_id, (int) $product->id, (string) $item['batch_no'], $user, $purchase);
 
         if (! $batch) {
             $batch = $this->purchases->createBatch([
@@ -198,9 +215,9 @@ class PurchaseEntryService
         return $paid >= $total ? 'paid' : 'partial';
     }
 
-    private function nextNumber(): string
+    private function nextNumber(string $purchaseDate, User $user): string
     {
-        return $this->numbers->next('purchase', 'purchases');
+        return $this->numbers->next('purchase', 'purchases', Carbon::parse($purchaseDate), $user);
     }
 
     private function journalEntries(Purchase $purchase, float $paidAmount): array

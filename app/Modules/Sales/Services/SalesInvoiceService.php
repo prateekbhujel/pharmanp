@@ -3,7 +3,9 @@
 namespace App\Modules\Sales\Services;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Security\TenantRecordScope;
 use App\Core\Services\DocumentNumberService;
+use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Inventory\Models\Batch;
@@ -12,6 +14,7 @@ use App\Modules\Sales\DTOs\SalesInvoiceData;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Repositories\Interfaces\SalesInvoiceRepositoryInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 class SalesInvoiceService
@@ -21,6 +24,7 @@ class SalesInvoiceService
         private readonly AccountTransactionPostingService $accounts,
         private readonly DocumentNumberService $numbers,
         private readonly SalesInvoiceRepositoryInterface $invoices,
+        private readonly TenantRecordScope $records,
     ) {}
 
     public function table(TableQueryData $table, ?User $user = null)
@@ -59,7 +63,7 @@ class SalesInvoiceService
                 'branch_id' => $user->branch_id,
                 'customer_id' => $data['customer_id'] ?? null,
                 'medical_representative_id' => $data['medical_representative_id'] ?? null,
-                'invoice_no' => $this->nextNumber(),
+                'invoice_no' => $this->nextNumber($data['invoice_date'], $user),
                 'invoice_date' => $data['invoice_date'],
                 'due_date' => $data['due_date'] ?? null,
                 'sale_type' => $data['sale_type'],
@@ -81,7 +85,7 @@ class SalesInvoiceService
             }
 
             if (! empty($data['customer_id'])) {
-                $this->invoices->incrementCustomerBalance((int) $data['customer_id'], round($grandTotal - $paidAmount, 2));
+                $this->invoices->incrementCustomerBalance((int) $data['customer_id'], round($grandTotal - $paidAmount, 2), $user, $invoice);
             }
 
             $this->accounts->replaceForSource(
@@ -99,7 +103,7 @@ class SalesInvoiceService
     public function updatePayment(SalesInvoice $invoice, array $data, User $user): SalesInvoice
     {
         return DB::transaction(function () use ($invoice, $data, $user) {
-            $invoice = $this->invoices->invoiceForUpdate((int) $invoice->id);
+            $invoice = $this->invoices->invoiceForUpdate((int) $invoice->id, $user);
             $paidAmount = round((float) $data['paid_amount'], 2);
 
             if ($paidAmount > (float) $invoice->grand_total) {
@@ -117,7 +121,7 @@ class SalesInvoiceService
             ]);
 
             if ($invoice->customer_id) {
-                $this->invoices->incrementCustomerBalance((int) $invoice->customer_id, round($newDue - $oldDue, 2));
+                $this->invoices->incrementCustomerBalance((int) $invoice->customer_id, round($newDue - $oldDue, 2), $user, $invoice);
             }
 
             $cashAccount = ($data['cash_account'] ?? 'cash') === 'bank' ? 'bank' : 'cash';
@@ -133,13 +137,26 @@ class SalesInvoiceService
         });
     }
 
+    public function assertAccessible(SalesInvoice $invoice, User $user): void
+    {
+        abort_unless($this->records->canAccess($user, $invoice), 404);
+    }
+
+    public function printPayload(SalesInvoice $invoice): array
+    {
+        return [
+            'invoice' => $invoice->load(['customer', 'medicalRepresentative', 'paymentMode', 'items.product', 'items.batch']),
+            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
+        ];
+    }
+
     private function postItem(SalesInvoice $invoice, array $item, User $user): void
     {
-        $product = $this->invoices->product((int) $item['product_id']);
+        $product = $this->invoices->product((int) $item['product_id'], $user);
         $quantity = (float) $item['quantity'];
         $freeQuantity = (float) ($item['free_quantity'] ?? 0);
         $issueQuantity = $quantity + $freeQuantity;
-        $batch = $this->resolveBatch($product->id, $issueQuantity, $item['batch_id'] ?? null);
+        $batch = $this->resolveBatch($invoice, $product->id, $issueQuantity, $item['batch_id'] ?? null, $user);
         $unitPrice = (float) $item['unit_price'];
         $mrp = (float) ($item['mrp'] ?? $batch->mrp ?: $product->mrp);
         $ccRate = (float) ($item['cc_rate'] ?? $product->cc_rate ?? 0);
@@ -182,9 +199,9 @@ class SalesInvoiceService
         ]);
     }
 
-    private function resolveBatch(int $productId, float $quantity, ?int $batchId): Batch
+    private function resolveBatch(SalesInvoice $invoice, int $productId, float $quantity, ?int $batchId, User $user): Batch
     {
-        $batch = $this->invoices->availableBatch($productId, $quantity, $batchId);
+        $batch = $this->invoices->availableBatch($productId, $quantity, $batchId, $user, $invoice);
 
         if (! $batch) {
             throw ValidationException::withMessages(['items' => 'No batch has enough available stock for one of the selected products.']);
@@ -217,9 +234,9 @@ class SalesInvoiceService
         return $paid >= $total ? 'paid' : 'partial';
     }
 
-    private function nextNumber(): string
+    private function nextNumber(string $invoiceDate, User $user): string
     {
-        return $this->numbers->next('sales_invoice', 'sales_invoices');
+        return $this->numbers->next('sales_invoice', 'sales_invoices', Carbon::parse($invoiceDate), $user);
     }
 
     private function journalEntries(SalesInvoice $invoice, float $paidAmount, string $cashAccount = 'cash'): array

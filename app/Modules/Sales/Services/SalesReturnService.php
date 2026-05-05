@@ -3,7 +3,10 @@
 namespace App\Modules\Sales\Services;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Security\TenantRecordScope;
+use App\Core\Services\DocumentNumberService;
 use App\Core\Support\ApiResponse;
+use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Accounting\Services\ReceivableService;
@@ -13,6 +16,7 @@ use App\Modules\Sales\Models\SalesInvoiceItem;
 use App\Modules\Sales\Models\SalesReturn;
 use App\Modules\Sales\Models\SalesReturnItem;
 use App\Modules\Sales\Repositories\Interfaces\SalesReturnRepositoryInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -23,6 +27,8 @@ class SalesReturnService
         private readonly StockMovementService $stock,
         private readonly AccountTransactionPostingService $accounts,
         private readonly ReceivableService $receivables,
+        private readonly TenantRecordScope $scope,
+        private readonly DocumentNumberService $numbers,
     ) {}
 
     public function table(TableQueryData $table, ?User $user = null): array
@@ -38,20 +44,22 @@ class SalesReturnService
     public function create(array $data, User $user): SalesReturn
     {
         return DB::transaction(function () use ($data, $user) {
-            $invoice = $this->returns->invoice($data['sales_invoice_id'] ?? null);
+            $invoice = $this->returns->invoice($data['sales_invoice_id'] ?? null, $user);
             $customerId = $invoice?->customer_id ?? ($data['customer_id'] ?? null);
 
             if (! $customerId) {
                 throw ValidationException::withMessages(['customer_id' => 'Customer is required for manual sales return.']);
             }
 
+            $customer = $this->returns->customer((int) $customerId, $user);
+
             $salesReturn = $this->returns->save(new SalesReturn, [
                 'tenant_id' => $user->tenant_id,
                 'company_id' => $user->company_id,
                 'store_id' => $user->store_id,
                 'sales_invoice_id' => $invoice?->id,
-                'customer_id' => $customerId,
-                'return_no' => $this->returns->nextReturnNo(),
+                'customer_id' => $customer->id,
+                'return_no' => $this->nextNumber($data['return_date'], $user),
                 'return_type' => $data['return_type'] ?? 'regular',
                 'return_date' => $data['return_date'],
                 'total_amount' => 0,
@@ -62,8 +70,8 @@ class SalesReturnService
 
             $totalAmount = $this->postReturnItems($salesReturn, $data['items'], $user);
             $this->returns->save($salesReturn, ['total_amount' => round($totalAmount, 2)]);
-            $this->reduceReceivable((int) $customerId, $totalAmount);
-            $this->postAccounting($salesReturn, (int) $customerId, $totalAmount, $user);
+            $this->reduceReceivable((int) $customer->id, $totalAmount);
+            $this->postAccounting($salesReturn, (int) $customer->id, $totalAmount, $user);
 
             return $this->returns->fresh($salesReturn);
         });
@@ -71,6 +79,8 @@ class SalesReturnService
 
     public function update(SalesReturn $salesReturn, array $data, User $user): SalesReturn
     {
+        $this->assertAccessible($salesReturn, $user);
+
         return DB::transaction(function () use ($salesReturn, $data, $user) {
             $salesReturn->load('items');
             $oldCustomerId = (int) $salesReturn->customer_id;
@@ -80,16 +90,18 @@ class SalesReturnService
             $this->returns->deleteItems($salesReturn);
             $this->accounts->replaceForSource($user, 'sales_return', $salesReturn->id, now()->toDateString(), []);
 
-            $invoice = $this->returns->invoice($data['sales_invoice_id'] ?? null);
+            $invoice = $this->returns->invoice($data['sales_invoice_id'] ?? null, $user);
             $customerId = $invoice?->customer_id ?? ($data['customer_id'] ?? null);
 
             if (! $customerId) {
                 throw ValidationException::withMessages(['customer_id' => 'Customer is required for manual sales return.']);
             }
 
+            $customer = $this->returns->customer((int) $customerId, $user);
+
             $this->returns->save($salesReturn, [
                 'sales_invoice_id' => $invoice?->id,
-                'customer_id' => $customerId,
+                'customer_id' => $customer->id,
                 'return_type' => $data['return_type'] ?? 'regular',
                 'return_date' => $data['return_date'],
                 'reason' => $data['reason'] ?? null,
@@ -99,8 +111,8 @@ class SalesReturnService
 
             $totalAmount = $this->postReturnItems($salesReturn, $data['items'], $user);
             $this->returns->save($salesReturn, ['total_amount' => round($totalAmount, 2)]);
-            $this->reduceReceivable((int) $customerId, $totalAmount);
-            $this->postAccounting($salesReturn, (int) $customerId, $totalAmount, $user);
+            $this->reduceReceivable((int) $customer->id, $totalAmount);
+            $this->postAccounting($salesReturn, (int) $customer->id, $totalAmount, $user);
 
             return $this->returns->fresh($salesReturn);
         });
@@ -108,6 +120,8 @@ class SalesReturnService
 
     public function delete(SalesReturn $salesReturn, User $user): void
     {
+        $this->assertAccessible($salesReturn, $user);
+
         DB::transaction(function () use ($salesReturn, $user): void {
             $salesReturn->load('items');
             $this->reverseReturnEffects($salesReturn, $user);
@@ -131,8 +145,10 @@ class SalesReturnService
         ];
     }
 
-    public function invoiceItems(SalesInvoice $invoice): array
+    public function invoiceItems(SalesInvoice $invoice, User $user): array
     {
+        abort_unless($this->scope->canAccess($user, $invoice), 404);
+
         $invoice->loadMissing('items.product');
 
         return [
@@ -197,6 +213,24 @@ class SalesReturnService
         ];
     }
 
+    public function assertAccessible(SalesReturn $salesReturn, User $user): void
+    {
+        abort_unless($this->scope->canAccess($user, $salesReturn), 404);
+    }
+
+    public function printPayload(SalesReturn $salesReturn): array
+    {
+        return [
+            'salesReturn' => $salesReturn->load(['customer', 'invoice', 'items.product', 'items.batch']),
+            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
+        ];
+    }
+
+    private function nextNumber(string $returnDate, User $user): string
+    {
+        return $this->numbers->next('sales_return', 'sales_returns', Carbon::parse($returnDate), $user);
+    }
+
     private function summaryPayload(SalesReturn $return): array
     {
         return [
@@ -225,18 +259,29 @@ class SalesReturnService
             $quantity = (float) $item['quantity'];
             $unitPrice = (float) $item['unit_price'];
             $lineTotal = round($quantity * $unitPrice, 2);
+            $product = $this->returns->product((int) $item['product_id'], $user);
+            $batch = $this->returns->batch($item['batch_id'] ?? null, (int) $product->id, $user, $salesReturn);
 
             $this->returns->createItem($salesReturn, [
                 'sales_invoice_item_id' => $item['sales_invoice_item_id'] ?? null,
-                'product_id' => $item['product_id'],
-                'batch_id' => $item['batch_id'] ?? null,
+                'product_id' => $product->id,
+                'batch_id' => $batch?->id,
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'line_total' => $lineTotal,
             ]);
 
             $totalAmount += $lineTotal;
-            $this->recordStock($salesReturn, $item, $quantity, 'sales_return_in', 0, $quantity, 'Sales return '.$salesReturn->return_no, $user);
+            $this->recordStock(
+                $salesReturn,
+                ['product_id' => $product->id, 'batch_id' => $batch?->id],
+                $quantity,
+                'sales_return_in',
+                0,
+                $quantity,
+                'Sales return '.$salesReturn->return_no,
+                $user,
+            );
         }
 
         return round($totalAmount, 2);

@@ -5,6 +5,7 @@ namespace App\Modules\Accounting\Services;
 use App\Core\DTOs\TableQueryData;
 use App\Core\Services\DocumentNumberService;
 use App\Core\Support\ApiResponse;
+use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Accounting\DTOs\PaymentData;
 use App\Modules\Accounting\Models\Payment;
@@ -15,6 +16,7 @@ use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -47,22 +49,22 @@ class PaymentSettlementService
 
         return DB::transaction(function () use ($dto, $user) {
             $data = $dto->toArray();
-            $payment = $this->payments->getForSettlement($dto->id);
+            $payment = $this->payments->getForSettlement($dto->id, $user);
 
             if ($payment->exists) {
-                $this->reverse($payment);
+                $this->reverse($payment, $user);
                 $this->payments->deleteAllocations((int) $payment->id);
                 $this->accounts->replaceForSource($user, 'payment', $payment->id, now()->toDateString(), []);
             }
 
             $this->assertParty((string) $data['party_type'], (int) $data['party_id'], $user);
-            $paymentMode = $this->payments->paymentMode((int) $data['payment_mode_id']);
+            $paymentMode = $this->payments->paymentMode((int) $data['payment_mode_id'], $user);
 
             $payment->fill([
                 'tenant_id' => $payment->tenant_id ?: $user->tenant_id,
                 'company_id' => $payment->company_id ?: $user->company_id,
                 'store_id' => $payment->store_id ?: $user->store_id,
-                'payment_no' => $payment->payment_no ?: $this->numbers->next('payment', 'payments'),
+                'payment_no' => $payment->payment_no ?: $this->numbers->next('payment', 'payments', Carbon::parse($data['payment_date']), $user),
                 'payment_date' => $data['payment_date'],
                 'direction' => $data['direction'],
                 'party_type' => $data['party_type'],
@@ -80,7 +82,7 @@ class PaymentSettlementService
             }
 
             $payment->save();
-            $allocatedCents = $this->allocateBills($payment, collect($data['allocations'] ?? []));
+            $allocatedCents = $this->allocateBills($payment, collect($data['allocations'] ?? []), $user);
             $paymentCents = $this->cents($payment->amount);
 
             if ($allocatedCents > $paymentCents) {
@@ -105,7 +107,8 @@ class PaymentSettlementService
     {
         DB::transaction(function () use ($payment, $user) {
             $payment->load('allocations');
-            $this->reverse($payment);
+            $payment = $this->payments->getForSettlement((int) $payment->id, $user);
+            $this->reverse($payment, $user);
             $this->payments->deleteAllocations((int) $payment->id);
             $this->accounts->replaceForSource($user, 'payment', $payment->id, now()->toDateString(), []);
             $payment->delete();
@@ -139,6 +142,13 @@ class PaymentSettlementService
                 'total_paid' => (float) $purchase->paid_amount,
                 'outstanding' => $this->billOutstanding($purchase),
             ])->values();
+    }
+
+    public function payloadForUser(Payment $payment, User $user, bool $includeAllocations = false): array
+    {
+        $payment = $this->payments->getForSettlement((int) $payment->id, $user);
+
+        return $this->payload($payment, $includeAllocations);
     }
 
     public function payload(Payment $payment, bool $includeAllocations = false): array
@@ -188,12 +198,20 @@ class PaymentSettlementService
         return $payload;
     }
 
-    private function allocateBills(Payment $payment, Collection $allocations): int
+    public function printPayload(Payment $payment, User $user): array
+    {
+        return [
+            'payment' => $this->payloadForUser($payment, $user, true),
+            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
+        ];
+    }
+
+    private function allocateBills(Payment $payment, Collection $allocations, User $user): int
     {
         $allocatedCents = 0;
 
         foreach ($allocations->filter(fn (array $row) => (float) ($row['allocated_amount'] ?? 0) > 0) as $allocation) {
-            $bill = $this->resolveBill($allocation['bill_type'], (int) $allocation['bill_id'], (int) $payment->party_id, (string) $payment->party_type);
+            $bill = $this->resolveBill($allocation['bill_type'], (int) $allocation['bill_id'], (int) $payment->party_id, (string) $payment->party_type, $user);
             $allocationCents = $this->cents($allocation['allocated_amount']);
             $outstandingCents = $this->cents($this->billOutstanding($bill));
 
@@ -223,10 +241,10 @@ class PaymentSettlementService
         return $allocatedCents;
     }
 
-    private function reverse(Payment $payment): void
+    private function reverse(Payment $payment, User $user): void
     {
         foreach ($payment->allocations as $allocation) {
-            $bill = $this->resolveBill($allocation->bill_type, $allocation->bill_id, (int) $payment->party_id, (string) $payment->party_type);
+            $bill = $this->resolveBill($allocation->bill_type, $allocation->bill_id, (int) $payment->party_id, (string) $payment->party_type, $user);
             $amountCents = $this->cents($allocation->allocated_amount);
 
             $bill->forceFill([
@@ -251,9 +269,9 @@ class PaymentSettlementService
         }
     }
 
-    private function resolveBill(string $billType, int $billId, int $partyId, string $partyType): Model
+    private function resolveBill(string $billType, int $billId, int $partyId, string $partyType, ?User $user = null): Model
     {
-        return $this->payments->resolveBill($billType, $billId, $partyId, $partyType);
+        return $this->payments->resolveBill($billType, $billId, $partyId, $partyType, $user);
     }
 
     private function assertParty(string $partyType, int $partyId, User $user): void

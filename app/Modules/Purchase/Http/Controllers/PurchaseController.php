@@ -4,7 +4,6 @@ namespace App\Modules\Purchase\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
-use App\Models\Setting;
 use App\Modules\Purchase\Http\Requests\PurchaseStoreRequest;
 use App\Modules\Purchase\Http\Resources\PurchaseResource;
 use App\Modules\Purchase\Models\Purchase;
@@ -73,23 +72,19 @@ class PurchaseController extends ModularController
             ->setStatusCode(201);
     }
 
-    public function print(Purchase $purchase): View
+    public function print(Request $request, Purchase $purchase, PurchaseEntryService $service): View
     {
-        return view('prints.purchase-invoice', $this->printData($purchase));
+        $service->assertAccessible($purchase, $request->user());
+
+        return view('prints.purchase-invoice', $service->printPayload($purchase));
     }
 
-    public function pdf(Purchase $purchase)
+    public function pdf(Request $request, Purchase $purchase, PurchaseEntryService $service)
     {
-        return Pdf::loadView('prints.purchase-invoice', $this->printData($purchase))
+        $service->assertAccessible($purchase, $request->user());
+
+        return Pdf::loadView('prints.purchase-invoice', $service->printPayload($purchase))
             ->setPaper('a4', 'landscape')
             ->stream($purchase->purchase_no.'.pdf');
-    }
-
-    private function printData(Purchase $purchase): array
-    {
-        return [
-            'purchase' => $purchase->load(['supplier', 'items.product', 'items.batch']),
-            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
-        ];
     }
 }

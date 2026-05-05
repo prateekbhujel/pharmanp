@@ -63,6 +63,98 @@ class TransactionPostingTest extends TestCase
         $this->assertSame('8.00', (string) $customer->fresh()->current_balance);
     }
 
+    public function test_sales_invoice_blocks_overselling_and_keeps_stock_unchanged(): void
+    {
+        [$user, $product, $supplier, $customer] = $this->fixture();
+
+        $this->actingAs($user)->postJson('/api/v1/purchases', [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => '2026-04-25',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_no' => 'LOW-STOCK-001',
+                'expires_at' => '2027-04-25',
+                'quantity' => 1,
+                'purchase_price' => 5,
+                'mrp' => 8,
+            ]],
+        ])->assertCreated();
+
+        $batch = Batch::query()->where('batch_no', 'LOW-STOCK-001')->firstOrFail();
+
+        $this->actingAs($user)->postJson('/api/v1/sales/invoices', [
+            'customer_id' => $customer->id,
+            'invoice_date' => '2026-04-25',
+            'sale_type' => 'pos',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_id' => $batch->id,
+                'quantity' => 2,
+                'unit_price' => 8,
+            ]],
+        ])->assertUnprocessable();
+
+        $this->assertSame('1.000', (string) $batch->fresh()->quantity_available);
+        $this->assertDatabaseMissing('sales_invoice_items', ['batch_id' => $batch->id]);
+    }
+
+    public function test_document_numbers_are_unique_across_repeated_transaction_creation(): void
+    {
+        [$user, $product, $supplier, $customer] = $this->fixture();
+
+        $this->actingAs($user)->postJson('/api/v1/purchases', [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => '2026-04-25',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_no' => 'DOC-NO-001',
+                'expires_at' => '2027-04-25',
+                'quantity' => 5,
+                'purchase_price' => 5,
+                'mrp' => 8,
+            ]],
+        ])->assertCreated();
+
+        $batch = Batch::query()->where('batch_no', 'DOC-NO-001')->firstOrFail();
+
+        $first = $this->actingAs($user)->postJson('/api/v1/sales/invoices', [
+            'customer_id' => $customer->id,
+            'invoice_date' => '2026-04-25',
+            'sale_type' => 'pos',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_id' => $batch->id,
+                'quantity' => 1,
+                'unit_price' => 8,
+            ]],
+        ])->assertCreated();
+
+        $second = $this->actingAs($user)->postJson('/api/v1/sales/invoices', [
+            'customer_id' => $customer->id,
+            'invoice_date' => '2026-04-25',
+            'sale_type' => 'pos',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_id' => $batch->id,
+                'quantity' => 1,
+                'unit_price' => 8,
+            ]],
+        ])->assertCreated();
+
+        $this->assertNotSame($first->json('data.invoice_no'), $second->json('data.invoice_no'));
+        $this->assertDatabaseHas('document_sequences', [
+            'scope_key' => 'global',
+            'type' => 'sales_invoice',
+            'date_part' => '20260425',
+            'last_sequence' => 2,
+        ]);
+    }
+
     public function test_purchase_order_receive_creates_purchase_batch_and_stock_movement(): void
     {
         [$user, $product, $supplier] = $this->fixture();
@@ -372,6 +464,63 @@ class TransactionPostingTest extends TestCase
             ->getJson('/api/v1/accounting/payments?deleted=1')
             ->assertOk()
             ->assertJsonPath('data.0.id', $paymentId);
+    }
+
+    public function test_payment_allocation_cannot_exceed_payment_or_bill_outstanding(): void
+    {
+        [$user, $product, $supplier] = $this->fixture();
+        $paymentMode = DropdownOption::query()->firstOrCreate(
+            ['alias' => 'payment_mode', 'name' => 'Cash'],
+            ['data' => 'cash', 'status' => true],
+        );
+
+        $purchaseResponse = $this->actingAs($user)->postJson('/api/v1/purchases', [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => '2026-04-25',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_no' => 'PAY-OVER-001',
+                'expires_at' => '2027-04-25',
+                'quantity' => 10,
+                'purchase_price' => 5,
+                'mrp' => 8,
+            ]],
+        ])->assertCreated();
+
+        $purchaseId = $purchaseResponse->json('data.id');
+
+        $this->actingAs($user)->postJson('/api/v1/accounting/payments', [
+            'direction' => 'out',
+            'party_type' => 'supplier',
+            'party_id' => $supplier->id,
+            'payment_date' => '2026-04-26',
+            'amount' => 20,
+            'payment_mode_id' => $paymentMode->id,
+            'allocations' => [[
+                'bill_id' => $purchaseId,
+                'bill_type' => 'purchase',
+                'allocated_amount' => 25,
+            ]],
+        ])->assertUnprocessable();
+
+        $this->actingAs($user)->postJson('/api/v1/accounting/payments', [
+            'direction' => 'out',
+            'party_type' => 'supplier',
+            'party_id' => $supplier->id,
+            'payment_date' => '2026-04-26',
+            'amount' => 60,
+            'payment_mode_id' => $paymentMode->id,
+            'allocations' => [[
+                'bill_id' => $purchaseId,
+                'bill_type' => 'purchase',
+                'allocated_amount' => 60,
+            ]],
+        ])->assertUnprocessable();
+
+        $this->assertDatabaseHas('purchases', ['id' => $purchaseId, 'paid_amount' => 0, 'payment_status' => 'unpaid']);
+        $this->assertDatabaseMissing('payment_bill_allocations', ['bill_id' => $purchaseId]);
+        $this->assertSame('50.00', (string) $supplier->fresh()->current_balance);
     }
 
     public function test_mr_visit_response_hides_raw_coordinates_and_supports_date_filters(): void

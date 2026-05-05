@@ -8,15 +8,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Core\Traits\HasFiscalYear;
 
 class PurchaseReturn extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HasFiscalYear;
 
     protected $fillable = [
         'tenant_id',
         'company_id',
         'store_id',
+        'fiscal_year_id',
         'purchase_id',
         'supplier_id',
         'return_no',

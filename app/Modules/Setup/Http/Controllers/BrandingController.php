@@ -2,15 +2,10 @@
 
 namespace App\Modules\Setup\Http\Controllers;
 
-use App\Core\Support\AssetUrl;
-use App\Core\Support\ProductMeta;
 use App\Http\Controllers\ModularController;
-use App\Models\Setting;
 use App\Modules\Setup\Http\Requests\BrandingSettingsRequest;
+use App\Modules\Setup\Services\BrandingSettingsService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Str;
 
 /**
  * @OA\Tag(
@@ -33,11 +28,11 @@ class BrandingController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function show(): JsonResponse
+    public function show(BrandingSettingsService $service): JsonResponse
     {
         abort_unless(request()->user()?->is_owner || request()->user()?->can('setup.manage'), 403);
 
-        return response()->json(['data' => $this->branding()]);
+        return response()->json(['data' => $service->brandingPayload()]);
     }
 
     /**
@@ -55,95 +50,21 @@ class BrandingController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function update(BrandingSettingsRequest $request): JsonResponse
+    public function update(BrandingSettingsRequest $request, BrandingSettingsService $service): JsonResponse
     {
-        $current = $this->storedBranding();
-        $data = $request->validated();
-        $payload = [
-            ...$current,
-            ...Arr::except($data, ['logo_file', 'sidebar_logo_file', 'app_icon_file', 'favicon_file']),
-            'layout' => 'vertical',
-            'sidebar_default_collapsed' => array_key_exists('sidebar_default_collapsed', $data)
-                ? (bool) $data['sidebar_default_collapsed']
-                : (bool) ($current['sidebar_default_collapsed'] ?? true),
-            'show_breadcrumbs' => array_key_exists('show_breadcrumbs', $data)
-                ? (bool) $data['show_breadcrumbs']
-                : (bool) ($current['show_breadcrumbs'] ?? true),
-        ];
-
-        foreach ([
-            'logo_file' => 'logo_url',
-            'sidebar_logo_file' => 'sidebar_logo_url',
-            'app_icon_file' => 'app_icon_url',
-            'favicon_file' => 'favicon_url',
-        ] as $fileKey => $settingKey) {
-            if ($request->hasFile($fileKey)) {
-                $payload[$settingKey] = $this->storeBrandAsset($request->file($fileKey));
-            }
-        }
-
-        Setting::putValue('app.branding', $payload);
+        $branding = $service->updateBranding(
+            $request->validated(),
+            [
+                'logo_file' => $request->file('logo_file'),
+                'sidebar_logo_file' => $request->file('sidebar_logo_file'),
+                'app_icon_file' => $request->file('app_icon_file'),
+                'favicon_file' => $request->file('favicon_file'),
+            ],
+        );
 
         return response()->json([
             'message' => 'Branding settings updated.',
-            'data' => $this->branding(),
+            'data' => $branding,
         ]);
-    }
-
-    private function branding(): array
-    {
-        $branding = $this->storedBranding();
-
-        foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {
-            $branding[$key] = AssetUrl::resolve($branding[$key] ?? null);
-        }
-
-        $branding['product'] = ProductMeta::payload();
-
-        return $branding;
-    }
-
-    private function storedBranding(): array
-    {
-        $branding = Setting::getValue('app.branding', [
-            'app_name' => config('app.name', 'PharmaNP'),
-            'logo_url' => null,
-            'sidebar_logo_url' => null,
-            'app_icon_url' => null,
-            'favicon_url' => null,
-            'accent_color' => '#0f766e',
-            'layout' => 'vertical',
-            'sidebar_default_collapsed' => true,
-            'show_breadcrumbs' => true,
-            'country_code' => 'NP',
-            'currency_symbol' => 'Rs.',
-            'calendar_type' => 'bs',
-        ]);
-
-        foreach (['logo_url', 'sidebar_logo_url', 'app_icon_url', 'favicon_url'] as $key) {
-            $branding[$key] = $this->normalizeStoredAssetPath($branding[$key] ?? null);
-        }
-
-        return $branding;
-    }
-
-    private function normalizeStoredAssetPath(?string $value): ?string
-    {
-        if (! filled($value)) {
-            return null;
-        }
-
-        $path = parse_url($value, PHP_URL_PATH) ?: null;
-
-        if ($path && Str::startsWith($path, '/storage/')) {
-            return ltrim($path, '/');
-        }
-
-        return $value;
-    }
-
-    private function storeBrandAsset(UploadedFile $file): string
-    {
-        return AssetUrl::publicStorage($file->store('settings/branding', 'public'));
     }
 }

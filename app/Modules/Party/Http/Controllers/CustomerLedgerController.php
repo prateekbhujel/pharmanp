@@ -37,7 +37,12 @@ class CustomerLedgerController extends ModularController
      */
     public function show(CustomerLedgerRequest $request, Customer $customer): JsonResponse
     {
-        $payload = (new CustomerLedgerResource($this->payload($request, $customer)))->resolve($request);
+        $payload = (new CustomerLedgerResource($this->ledger->payload(
+            $customer,
+            $request->user(),
+            $request->validated('from'),
+            $request->validated('to'),
+        )))->resolve($request);
 
         return $this->success($payload, 'Customer ledger retrieved successfully.')
             ->setData([
@@ -53,7 +58,7 @@ class CustomerLedgerController extends ModularController
     public function print(CustomerLedgerRequest $request, Customer $customer): View
     {
         return view('prints.customer-ledger', [
-            'ledger' => $this->payload($request, $customer),
+            'ledger' => $this->ledger->payload($customer, $request->user(), $request->validated('from'), $request->validated('to')),
             'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
         ]);
     }
@@ -61,17 +66,8 @@ class CustomerLedgerController extends ModularController
     public function pdf(CustomerLedgerRequest $request, Customer $customer)
     {
         return Pdf::loadView('prints.customer-ledger', [
-            'ledger' => $this->payload($request, $customer),
+            'ledger' => $this->ledger->payload($customer, $request->user(), $request->validated('from'), $request->validated('to')),
             'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
         ])->setPaper('a4', 'landscape')->stream('customer-ledger-'.$customer->id.'.pdf');
-    }
-
-    private function payload(CustomerLedgerRequest $request, Customer $customer): array
-    {
-        return $this->ledger->payload(
-            $customer,
-            $request->validated('from'),
-            $request->validated('to'),
-        );
     }
 }

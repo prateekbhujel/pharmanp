@@ -93,4 +93,25 @@ class TargetService
             $target->delete();
         });
     }
+
+    public function restoreTarget(int $id, User $user): Target
+    {
+        $target = Target::query()
+            ->onlyTrashed()
+            ->when($user->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($user->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
+            ->findOrFail($id);
+
+        return DB::transaction(function () use ($target, $user) {
+            $target->restore();
+            $target->forceFill(['status' => 'active', 'updated_by' => $user->id])->save();
+
+            return $target->fresh();
+        });
+    }
+
+    public function assertMayManageTargets(User $user): void
+    {
+        abort_unless($user->is_owner || $user->can('mr.manage') || $user->can('reports.view'), 403);
+    }
 }

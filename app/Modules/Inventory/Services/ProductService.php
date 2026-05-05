@@ -76,7 +76,7 @@ class ProductService
     public function restore(int $id, ?User $user = null): Product
     {
         return DB::transaction(function () use ($id, $user) {
-            $product = $this->products->findTrashed($id);
+            $product = $this->products->findTrashed($id, $user);
             $product->restore();
             $product->forceFill([
                 'deleted_by' => null,

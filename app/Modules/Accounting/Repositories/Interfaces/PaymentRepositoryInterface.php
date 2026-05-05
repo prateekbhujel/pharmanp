@@ -17,19 +17,19 @@ interface PaymentRepositoryInterface
 
     public function lookups(): array;
 
-    public function getForSettlement(?int $id = null): Payment;
+    public function getForSettlement(?int $id = null, ?User $user = null): Payment;
 
     public function deleteAllocations(int $paymentId): void;
 
     public function createAllocation(array $data): PaymentBillAllocation;
 
-    public function paymentMode(int $id): DropdownOption;
+    public function paymentMode(int $id, ?User $user = null): DropdownOption;
 
     public function outstandingCustomerBills(int $customerId, ?User $user = null): Collection;
 
     public function outstandingSupplierBills(int $supplierId, ?User $user = null): Collection;
 
-    public function resolveBill(string $billType, int $billId, int $partyId, string $partyType): Model;
+    public function resolveBill(string $billType, int $billId, int $partyId, string $partyType, ?User $user = null): Model;
 
     public function partyExists(string $partyType, int $partyId, User $user): bool;
 }

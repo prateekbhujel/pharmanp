@@ -10,7 +10,6 @@ use App\Modules\Setup\Models\Employee;
 use App\Modules\Setup\Services\OrganizationStructureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * @OA\Tag(
@@ -35,7 +34,7 @@ class EmployeeController extends ModularController
      */
     public function index(Request $request, OrganizationStructureService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageEmployees($request->user());
 
         $page = $service->employees(TableQueryData::fromRequest($request, [
             'branch_id',
@@ -108,7 +107,7 @@ class EmployeeController extends ModularController
      */
     public function destroy(Request $request, Employee $employee, OrganizationStructureService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageEmployees($request->user());
         $service->deleteEmployee($employee, $request->user());
 
         return response()->json(['message' => 'Employee deleted.']);
@@ -129,22 +128,13 @@ class EmployeeController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function restore(Request $request, int $id): JsonResponse
+    public function restore(Request $request, int $id, OrganizationStructureService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageEmployees($request->user());
 
-        $employee = Employee::query()
-            ->onlyTrashed()
-            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
-            ->findOrFail($id);
+        $employee = $service->restoreEmployee($id, $request->user());
 
-        DB::transaction(function () use ($employee, $request) {
-            $employee->restore();
-            $employee->forceFill(['is_active' => true, 'updated_by' => $request->user()->id])->save();
-        });
-
-        return (new EmployeeResource($employee->fresh(['user:id,name,email', 'branch:id,name,code,type', 'area:id,name,code', 'division:id,name,code', 'manager:id,name,employee_code'])))
+        return (new EmployeeResource($employee))
             ->additional(['message' => 'Employee restored.'])
             ->response();
     }
@@ -165,10 +155,5 @@ class EmployeeController extends ModularController
     public function options(Request $request, OrganizationStructureService $service): JsonResponse
     {
         return response()->json(['data' => $service->options('employees', $request->user(), $request->query('search'))]);
-    }
-
-    private function authorizeManage(Request $request): void
-    {
-        abort_unless($request->user()?->is_owner || $request->user()?->can('users.manage') || $request->user()?->can('mr.manage'), 403);
     }
 }

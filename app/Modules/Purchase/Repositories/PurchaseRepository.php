@@ -4,6 +4,7 @@ namespace App\Modules\Purchase\Repositories;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
+use App\Core\Security\TenantRecordScope;
 use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
@@ -13,6 +14,7 @@ use App\Modules\Purchase\Models\PurchaseItem;
 use App\Modules\Purchase\Repositories\Interfaces\PurchaseRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseRepository implements PurchaseRepositoryInterface
 {
@@ -24,7 +26,10 @@ class PurchaseRepository implements PurchaseRepositoryInterface
         'updated_at' => 'updated_at',
     ];
 
-    public function __construct(private readonly TableQueryApplier $tables) {}
+    public function __construct(
+        private readonly TableQueryApplier $tables,
+        private readonly TenantRecordScope $records,
+    ) {}
 
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
@@ -58,19 +63,39 @@ class PurchaseRepository implements PurchaseRepositoryInterface
         return Purchase::query()->create($data);
     }
 
-    public function productForUpdate(int $id): Product
+    public function productForUpdate(int $id, ?User $user = null): Product
     {
-        return Product::query()->lockForUpdate()->findOrFail($id);
+        $query = Product::query()->lockForUpdate();
+
+        if ($user) {
+            $this->records->apply($query, $user);
+        }
+
+        return $query->findOrFail($id);
     }
 
-    public function batchForPurchase(int $companyId, int $productId, string $batchNo): ?Batch
+    public function batchForPurchase(int $companyId, int $productId, string $batchNo, ?User $user = null, ?Purchase $purchase = null): ?Batch
     {
-        return Batch::query()
+        $query = Batch::query()
             ->where('company_id', $companyId)
             ->where('product_id', $productId)
-            ->where('batch_no', $batchNo)
-            ->lockForUpdate()
-            ->first();
+            ->where('batch_no', $batchNo);
+
+        if ($user) {
+            $this->records->apply($query, $user);
+        }
+
+        if ($purchase) {
+            $query
+                ->where('tenant_id', $purchase->tenant_id)
+                ->where('company_id', $purchase->company_id);
+
+            if ($purchase->store_id) {
+                $query->where('store_id', $purchase->store_id);
+            }
+        }
+
+        return $query->lockForUpdate()->first();
     }
 
     public function createBatch(array $data): Batch
@@ -97,9 +122,25 @@ class PurchaseRepository implements PurchaseRepositoryInterface
         return $product;
     }
 
-    public function incrementSupplierBalance(int $supplierId, float $amount): void
+    public function incrementSupplierBalance(int $supplierId, float $amount, ?User $user = null, ?Purchase $purchase = null): void
     {
-        Supplier::query()->whereKey($supplierId)->increment('current_balance', $amount);
+        $query = Supplier::query()->whereKey($supplierId);
+
+        if ($user) {
+            $this->records->apply($query, $user, ['store' => null]);
+        }
+
+        if ($purchase) {
+            $query
+                ->where('tenant_id', $purchase->tenant_id)
+                ->where('company_id', $purchase->company_id);
+        }
+
+        $updated = $query->increment('current_balance', $amount);
+
+        if ($updated < 1) {
+            throw ValidationException::withMessages(['supplier_id' => 'Selected supplier does not exist in this company.']);
+        }
     }
 
     public function fresh(Purchase $purchase): Purchase

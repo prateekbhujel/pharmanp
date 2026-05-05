@@ -67,7 +67,7 @@ class ImportWizardController extends ModularController
             $request->user()?->id,
         );
 
-        return $this->jobResponse($job);
+        return $this->resource(new ImportJobResource($job), 'Import job processed successfully.');
     }
 
     /**
@@ -115,7 +115,7 @@ class ImportWizardController extends ModularController
             $request->user(),
         );
 
-        return $this->jobResponse($job);
+        return $this->resource(new ImportJobResource($job), 'Import job processed successfully.');
     }
 
     /**
@@ -138,8 +138,5 @@ class ImportWizardController extends ModularController
         }, 'import-'.$job->id.'-rejected.csv', ['Content-Type' => 'text/csv']);
     }
 
-    private function jobResponse(ImportJob $job): JsonResponse
-    {
-        return $this->resource(new ImportJobResource($job), 'Import job processed successfully.');
-    }
 }
+

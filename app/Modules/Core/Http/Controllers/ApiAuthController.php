@@ -6,7 +6,6 @@ use App\Core\Services\JwtTokenService;
 use App\Http\Controllers\ModularController;
 use App\Models\User;
 use App\Modules\Core\Http\Requests\ApiLoginRequest;
-use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -67,7 +66,7 @@ class ApiAuthController extends ModularController
 
         $user->forceFill(['last_login_at' => now()])->save();
 
-        $expiresAt = $this->frontendTokenExpiry();
+        $expiresAt = $this->jwt->defaultExpiry();
         $token = $this->jwt->issue($user, $expiresAt);
 
         return response()->json([
@@ -96,7 +95,7 @@ class ApiAuthController extends ModularController
      */
     public function token(Request $request): JsonResponse
     {
-        $expiresAt = $this->frontendTokenExpiry();
+        $expiresAt = $this->jwt->defaultExpiry();
         $token = $this->jwt->issue($request->user(), $expiresAt);
 
         return response()->json([
@@ -129,8 +128,5 @@ class ApiAuthController extends ModularController
         return response()->json(['message' => 'Logged out.']);
     }
 
-    private function frontendTokenExpiry(): CarbonInterface
-    {
-        return now()->addMinutes(max((int) config('pharmanp.jwt.ttl_minutes', 1440), 5));
-    }
 }
+

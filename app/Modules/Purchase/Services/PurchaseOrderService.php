@@ -9,6 +9,7 @@ use App\Modules\Purchase\DTOs\PurchaseOrderData;
 use App\Modules\Purchase\Models\Purchase;
 use App\Modules\Purchase\Models\PurchaseOrder;
 use App\Modules\Purchase\Repositories\Interfaces\PurchaseOrderRepositoryInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -47,7 +48,7 @@ class PurchaseOrderService
                 'company_id' => $user->company_id,
                 'store_id' => $user->store_id,
                 'supplier_id' => $data['supplier_id'],
-                'order_no' => $this->nextNumber(),
+                'order_no' => $this->nextNumber($data['order_date'], $user),
                 'order_date' => $data['order_date'],
                 'expected_date' => $data['expected_date'] ?? null,
                 'status' => 'ordered',
@@ -163,8 +164,8 @@ class PurchaseOrderService
         return [round($subtotal, 2), round($discountTotal, 2), round($subtotal - $discountTotal, 2)];
     }
 
-    private function nextNumber(): string
+    private function nextNumber(string $orderDate, User $user): string
     {
-        return $this->numbers->next('purchase_order', 'purchase_orders');
+        return $this->numbers->next('purchase_order', 'purchase_orders', Carbon::parse($orderDate), $user);
     }
 }

@@ -10,7 +10,6 @@ use App\Modules\Setup\Models\Target;
 use App\Modules\Setup\Services\TargetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * @OA\Tag(
@@ -35,7 +34,7 @@ class TargetController extends ModularController
      */
     public function index(Request $request, TargetService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageTargets($request->user());
 
         $page = $service->targets(TableQueryData::fromRequest($request, [
             'target_type',
@@ -108,7 +107,7 @@ class TargetController extends ModularController
      */
     public function destroy(Request $request, Target $target, TargetService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageTargets($request->user());
         $service->delete($target, $request->user());
 
         return response()->json(['message' => 'Target deleted.']);
@@ -129,28 +128,14 @@ class TargetController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function restore(Request $request, int $id): JsonResponse
+    public function restore(Request $request, int $id, TargetService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageTargets($request->user());
 
-        $target = Target::query()
-            ->onlyTrashed()
-            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
-            ->findOrFail($id);
+        $target = $service->restoreTarget($id, $request->user());
 
-        DB::transaction(function () use ($target, $request) {
-            $target->restore();
-            $target->forceFill(['status' => 'active', 'updated_by' => $request->user()->id])->save();
-        });
-
-        return (new TargetResource($target->fresh()))
+        return (new TargetResource($target))
             ->additional(['message' => 'Target restored.'])
             ->response();
-    }
-
-    private function authorizeManage(Request $request): void
-    {
-        abort_unless($request->user()?->is_owner || $request->user()?->can('mr.manage') || $request->user()?->can('reports.view'), 403);
     }
 }

@@ -109,6 +109,11 @@ class JwtTokenService
         return $payload;
     }
 
+    public function defaultExpiry(): CarbonInterface
+    {
+        return now()->addMinutes(max((int) config('pharmanp.jwt.ttl_minutes', 1440), 5));
+    }
+
     public function looksLikeJwt(?string $token): bool
     {
         return is_string($token) && substr_count($token, '.') === 2;

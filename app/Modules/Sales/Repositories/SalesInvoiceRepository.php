@@ -4,6 +4,7 @@ namespace App\Modules\Sales\Repositories;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
+use App\Core\Security\TenantRecordScope;
 use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
@@ -14,6 +15,7 @@ use App\Modules\Sales\Repositories\Interfaces\SalesInvoiceRepositoryInterface;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 class SalesInvoiceRepository implements SalesInvoiceRepositoryInterface
 {
@@ -25,7 +27,10 @@ class SalesInvoiceRepository implements SalesInvoiceRepositoryInterface
         'updated_at' => 'updated_at',
     ];
 
-    public function __construct(private readonly TableQueryApplier $tables) {}
+    public function __construct(
+        private readonly TableQueryApplier $tables,
+        private readonly TenantRecordScope $records,
+    ) {}
 
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
@@ -65,17 +70,29 @@ class SalesInvoiceRepository implements SalesInvoiceRepositoryInterface
         return SalesInvoice::query()->create($data);
     }
 
-    public function invoiceForUpdate(int $id): SalesInvoice
+    public function invoiceForUpdate(int $id, ?User $user = null): SalesInvoice
     {
-        return SalesInvoice::query()->lockForUpdate()->findOrFail($id);
+        $query = SalesInvoice::query()->lockForUpdate();
+
+        if ($user) {
+            $this->records->apply($query, $user);
+        }
+
+        return $query->findOrFail($id);
     }
 
-    public function product(int $id): Product
+    public function product(int $id, ?User $user = null): Product
     {
-        return Product::query()->findOrFail($id);
+        $query = Product::query();
+
+        if ($user) {
+            $this->records->apply($query, $user);
+        }
+
+        return $query->findOrFail($id);
     }
 
-    public function availableBatch(int $productId, float $quantity, ?int $batchId = null): ?Batch
+    public function availableBatch(int $productId, float $quantity, ?int $batchId = null, ?User $user = null, ?SalesInvoice $invoice = null): ?Batch
     {
         $query = Batch::query()
             ->where('product_id', $productId)
@@ -85,6 +102,20 @@ class SalesInvoiceRepository implements SalesInvoiceRepositoryInterface
             ->orderByRaw('expires_at IS NULL')
             ->orderBy('expires_at')
             ->orderBy('id');
+
+        if ($user) {
+            $this->records->apply($query, $user);
+        }
+
+        if ($invoice) {
+            $query
+                ->where('tenant_id', $invoice->tenant_id)
+                ->where('company_id', $invoice->company_id);
+
+            if ($invoice->store_id) {
+                $query->where('store_id', $invoice->store_id);
+            }
+        }
 
         if ($batchId) {
             $query->whereKey($batchId);
@@ -105,9 +136,25 @@ class SalesInvoiceRepository implements SalesInvoiceRepositoryInterface
         return $invoice;
     }
 
-    public function incrementCustomerBalance(int $customerId, float $amount): void
+    public function incrementCustomerBalance(int $customerId, float $amount, ?User $user = null, ?SalesInvoice $invoice = null): void
     {
-        Customer::query()->whereKey($customerId)->increment('current_balance', $amount);
+        $query = Customer::query()->whereKey($customerId);
+
+        if ($user) {
+            $this->records->apply($query, $user, ['store' => null]);
+        }
+
+        if ($invoice) {
+            $query
+                ->where('tenant_id', $invoice->tenant_id)
+                ->where('company_id', $invoice->company_id);
+        }
+
+        $updated = $query->increment('current_balance', $amount);
+
+        if ($updated < 1) {
+            throw ValidationException::withMessages(['customer_id' => 'Selected customer does not exist in this company.']);
+        }
     }
 
     public function fresh(SalesInvoice $invoice, bool $includeReturns = false): SalesInvoice

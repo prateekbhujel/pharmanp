@@ -10,7 +10,6 @@ use App\Modules\Setup\Models\Division;
 use App\Modules\Setup\Services\OrganizationStructureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * @OA\Tag(
@@ -35,7 +34,7 @@ class DivisionController extends ModularController
      */
     public function index(Request $request, OrganizationStructureService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageOrgStructure($request->user());
 
         $page = $service->divisions(TableQueryData::fromRequest($request, ['is_active', 'deleted']), $request->user());
 
@@ -102,7 +101,7 @@ class DivisionController extends ModularController
      */
     public function destroy(Request $request, Division $division, OrganizationStructureService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageOrgStructure($request->user());
         $service->deleteDivision($division, $request->user());
 
         return response()->json(['message' => 'Division deleted.']);
@@ -123,22 +122,13 @@ class DivisionController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function restore(Request $request, int $id): JsonResponse
+    public function restore(Request $request, int $id, OrganizationStructureService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageOrgStructure($request->user());
 
-        $division = Division::query()
-            ->onlyTrashed()
-            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
-            ->findOrFail($id);
+        $division = $service->restoreDivision($id, $request->user());
 
-        DB::transaction(function () use ($division, $request) {
-            $division->restore();
-            $division->forceFill(['is_active' => true, 'updated_by' => $request->user()->id])->save();
-        });
-
-        return (new DivisionResource($division->fresh()))
+        return (new DivisionResource($division))
             ->additional(['message' => 'Division restored.'])
             ->response();
     }
@@ -159,10 +149,5 @@ class DivisionController extends ModularController
     public function options(Request $request, OrganizationStructureService $service): JsonResponse
     {
         return response()->json(['data' => $service->options('divisions', $request->user(), $request->query('search'))]);
-    }
-
-    private function authorizeManage(Request $request): void
-    {
-        abort_unless($request->user()?->is_owner || $request->user()?->can('settings.manage') || $request->user()?->can('mr.manage'), 403);
     }
 }

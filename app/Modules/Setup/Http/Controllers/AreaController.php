@@ -10,7 +10,6 @@ use App\Modules\Setup\Models\Area;
 use App\Modules\Setup\Services\OrganizationStructureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * @OA\Tag(
@@ -35,7 +34,7 @@ class AreaController extends ModularController
      */
     public function index(Request $request, OrganizationStructureService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageOrgStructure($request->user());
 
         $page = $service->areas(TableQueryData::fromRequest($request, ['branch_id', 'is_active', 'deleted']), $request->user());
 
@@ -102,7 +101,7 @@ class AreaController extends ModularController
      */
     public function destroy(Request $request, Area $area, OrganizationStructureService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageOrgStructure($request->user());
         $service->deleteArea($area, $request->user());
 
         return response()->json(['message' => 'Area deleted.']);
@@ -123,22 +122,13 @@ class AreaController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function restore(Request $request, int $id): JsonResponse
+    public function restore(Request $request, int $id, OrganizationStructureService $service): JsonResponse
     {
-        $this->authorizeManage($request);
+        $service->assertMayManageOrgStructure($request->user());
 
-        $area = Area::query()
-            ->onlyTrashed()
-            ->when($request->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->when($request->user()?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
-            ->findOrFail($id);
+        $area = $service->restoreArea($id, $request->user());
 
-        DB::transaction(function () use ($area, $request) {
-            $area->restore();
-            $area->forceFill(['is_active' => true, 'updated_by' => $request->user()->id])->save();
-        });
-
-        return (new AreaResource($area->fresh('branch:id,name,code,type')))
+        return (new AreaResource($area))
             ->additional(['message' => 'Area restored.'])
             ->response();
     }
@@ -159,10 +149,5 @@ class AreaController extends ModularController
     public function options(Request $request, OrganizationStructureService $service): JsonResponse
     {
         return response()->json(['data' => $service->options('areas', $request->user(), $request->query('search'))]);
-    }
-
-    private function authorizeManage(Request $request): void
-    {
-        abort_unless($request->user()?->is_owner || $request->user()?->can('settings.manage') || $request->user()?->can('mr.manage'), 403);
     }
 }

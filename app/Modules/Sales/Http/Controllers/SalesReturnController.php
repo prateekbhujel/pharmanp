@@ -4,7 +4,6 @@ namespace App\Modules\Sales\Http\Controllers;
 
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
-use App\Models\Setting;
 use App\Modules\Sales\Http\Requests\SalesReturnRequest;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesReturn;
@@ -58,8 +57,10 @@ class SalesReturnController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function show(SalesReturn $salesReturn): JsonResponse
+    public function show(Request $request, SalesReturn $salesReturn): JsonResponse
     {
+        $this->returns->assertAccessible($salesReturn, $request->user());
+
         return response()->json(['data' => $this->returns->payload($salesReturn)]);
     }
 
@@ -106,6 +107,8 @@ class SalesReturnController extends ModularController
      */
     public function update(SalesReturnRequest $request, SalesReturn $salesReturn): JsonResponse
     {
+        $this->returns->assertAccessible($salesReturn, $request->user());
+
         return response()->json([
             'message' => 'Sales return updated.',
             'data' => $this->returns->payload($this->returns->update($salesReturn, $request->validated(), $request->user())),
@@ -128,6 +131,8 @@ class SalesReturnController extends ModularController
      */
     public function destroy(Request $request, SalesReturn $salesReturn): JsonResponse
     {
+        $this->returns->assertAccessible($salesReturn, $request->user());
+
         $this->returns->delete($salesReturn, $request->user());
 
         return response()->json(['message' => 'Sales return deleted.']);
@@ -167,28 +172,24 @@ class SalesReturnController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function invoiceItems(SalesInvoice $invoice): JsonResponse
+    public function invoiceItems(Request $request, SalesInvoice $invoice): JsonResponse
     {
-        return response()->json($this->returns->invoiceItems($invoice));
+        return response()->json($this->returns->invoiceItems($invoice, $request->user()));
     }
 
-    public function print(SalesReturn $salesReturn): View
+    public function print(Request $request, SalesReturn $salesReturn): View
     {
-        return view('prints.sales-return', $this->printData($salesReturn));
+        $this->returns->assertAccessible($salesReturn, $request->user());
+
+        return view('prints.sales-return', $this->returns->printPayload($salesReturn));
     }
 
-    public function pdf(SalesReturn $salesReturn)
+    public function pdf(Request $request, SalesReturn $salesReturn)
     {
-        return Pdf::loadView('prints.sales-return', $this->printData($salesReturn))
+        $this->returns->assertAccessible($salesReturn, $request->user());
+
+        return Pdf::loadView('prints.sales-return', $this->returns->printPayload($salesReturn))
             ->setPaper('a4', 'portrait')
             ->stream($salesReturn->return_no.'.pdf');
-    }
-
-    private function printData(SalesReturn $salesReturn): array
-    {
-        return [
-            'salesReturn' => $salesReturn->load(['customer', 'invoice', 'items.product', 'items.batch']),
-            'branding' => Setting::getValue('app.branding', ['app_name' => 'PharmaNP']),
-        ];
     }
 }

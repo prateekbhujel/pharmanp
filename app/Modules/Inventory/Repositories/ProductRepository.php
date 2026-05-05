@@ -4,6 +4,7 @@ namespace App\Modules\Inventory\Repositories;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
+use App\Core\Security\TenantRecordScope;
 use App\Models\User;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Repositories\Interfaces\ProductRepositoryInterface;
@@ -12,7 +13,10 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ProductRepository implements ProductRepositoryInterface
 {
-    public function __construct(private readonly TableQueryApplier $tables) {}
+    public function __construct(
+        private readonly TableQueryApplier $tables,
+        private readonly TenantRecordScope $records,
+    ) {}
 
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
@@ -78,9 +82,15 @@ class ProductRepository implements ProductRepositoryInterface
         return $product;
     }
 
-    public function findTrashed(int $id): Product
+    public function findTrashed(int $id, ?User $user = null): Product
     {
-        return Product::query()->onlyTrashed()->findOrFail($id);
+        $query = Product::query()->onlyTrashed();
+
+        if ($user) {
+            $this->records->apply($query, $user);
+        }
+
+        return $query->findOrFail($id);
     }
 
     public function skuExists(?int $companyId, string $sku): bool

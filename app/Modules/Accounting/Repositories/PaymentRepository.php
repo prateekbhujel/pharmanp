@@ -4,6 +4,7 @@ namespace App\Modules\Accounting\Repositories;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
+use App\Core\Security\TenantRecordScope;
 use App\Models\User;
 use App\Modules\Accounting\Models\Payment;
 use App\Modules\Accounting\Models\PaymentBillAllocation;
@@ -31,7 +32,10 @@ class PaymentRepository implements PaymentRepositoryInterface
         'updated_at' => 'updated_at',
     ];
 
-    public function __construct(private readonly TableQueryApplier $tables) {}
+    public function __construct(
+        private readonly TableQueryApplier $tables,
+        private readonly TenantRecordScope $records,
+    ) {}
 
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
@@ -71,11 +75,19 @@ class PaymentRepository implements PaymentRepositoryInterface
         ];
     }
 
-    public function getForSettlement(?int $id = null): Payment
+    public function getForSettlement(?int $id = null, ?User $user = null): Payment
     {
-        return $id
-            ? Payment::query()->with('allocations')->lockForUpdate()->findOrFail($id)
-            : new Payment;
+        if (! $id) {
+            return new Payment;
+        }
+
+        $query = Payment::query()->with('allocations')->lockForUpdate();
+
+        if ($user) {
+            $this->records->apply($query, $user);
+        }
+
+        return $query->findOrFail($id);
     }
 
     public function deleteAllocations(int $paymentId): void
@@ -88,7 +100,7 @@ class PaymentRepository implements PaymentRepositoryInterface
         return PaymentBillAllocation::query()->create($data);
     }
 
-    public function paymentMode(int $id): DropdownOption
+    public function paymentMode(int $id, ?User $user = null): DropdownOption
     {
         return DropdownOption::query()
             ->forAlias('payment_mode')
@@ -101,6 +113,7 @@ class PaymentRepository implements PaymentRepositoryInterface
         return SalesInvoice::query()
             ->where('customer_id', $customerId)
             ->when($user?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($user?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->whereIn('payment_status', ['unpaid', 'partial'])
             ->latest('invoice_date')
             ->get();
@@ -111,19 +124,32 @@ class PaymentRepository implements PaymentRepositoryInterface
         return Purchase::query()
             ->where('supplier_id', $supplierId)
             ->when($user?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($user?->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->whereIn('payment_status', ['unpaid', 'partial'])
             ->latest('purchase_date')
             ->get();
     }
 
-    public function resolveBill(string $billType, int $billId, int $partyId, string $partyType): Model
+    public function resolveBill(string $billType, int $billId, int $partyId, string $partyType, ?User $user = null): Model
     {
         if ($billType === 'sales_invoice' && $partyType === 'customer') {
-            return SalesInvoice::query()->lockForUpdate()->where('customer_id', $partyId)->findOrFail($billId);
+            $query = SalesInvoice::query()->lockForUpdate()->where('customer_id', $partyId);
+
+            if ($user) {
+                $this->records->apply($query, $user);
+            }
+
+            return $query->findOrFail($billId);
         }
 
         if ($billType === 'purchase' && $partyType === 'supplier') {
-            return Purchase::query()->lockForUpdate()->where('supplier_id', $partyId)->findOrFail($billId);
+            $query = Purchase::query()->lockForUpdate()->where('supplier_id', $partyId);
+
+            if ($user) {
+                $this->records->apply($query, $user);
+            }
+
+            return $query->findOrFail($billId);
         }
 
         throw ValidationException::withMessages([
@@ -137,6 +163,7 @@ class PaymentRepository implements PaymentRepositoryInterface
 
         return $query
             ->when($user->tenant_id, fn ($builder, $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when($user->company_id, fn ($builder, $companyId) => $builder->where('company_id', $companyId))
             ->whereKey($partyId)
             ->exists();
     }

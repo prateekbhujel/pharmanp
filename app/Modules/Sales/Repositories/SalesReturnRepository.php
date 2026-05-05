@@ -4,7 +4,11 @@ namespace App\Modules\Sales\Repositories;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
+use App\Core\Security\TenantRecordScope;
 use App\Models\User;
+use App\Modules\Inventory\Models\Batch;
+use App\Modules\Inventory\Models\Product;
+use App\Modules\Party\Models\Customer;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesReturn;
 use App\Modules\Sales\Models\SalesReturnItem;
@@ -24,7 +28,10 @@ class SalesReturnRepository implements SalesReturnRepositoryInterface
         'updated_at' => 'updated_at',
     ];
 
-    public function __construct(private readonly TableQueryApplier $tables) {}
+    public function __construct(
+        private readonly TableQueryApplier $tables,
+        private readonly TenantRecordScope $scope,
+    ) {}
 
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
@@ -56,9 +63,33 @@ class SalesReturnRepository implements SalesReturnRepositoryInterface
         );
     }
 
-    public function invoice(?int $id): ?SalesInvoice
+    public function invoice(?int $id, ?User $user = null): ?SalesInvoice
     {
-        return $id ? SalesInvoice::query()->findOrFail($id) : null;
+        return $id ? $this->scope->apply(SalesInvoice::query(), $user)->findOrFail($id) : null;
+    }
+
+    public function customer(int $id, ?User $user = null): Customer
+    {
+        return $this->scope->apply(Customer::query(), $user)->findOrFail($id);
+    }
+
+    public function product(int $id, ?User $user = null): Product
+    {
+        return $this->scope->apply(Product::query(), $user)->findOrFail($id);
+    }
+
+    public function batch(?int $id, int $productId, ?User $user = null, ?SalesReturn $salesReturn = null): ?Batch
+    {
+        if (! $id) {
+            return null;
+        }
+
+        return $this->scope->apply(Batch::query(), $user)
+            ->when($salesReturn?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when($salesReturn?->company_id, fn (Builder $builder, int $companyId) => $builder->where('company_id', $companyId))
+            ->when($salesReturn?->store_id, fn (Builder $builder, int $storeId) => $builder->where('store_id', $storeId))
+            ->where('product_id', $productId)
+            ->findOrFail($id);
     }
 
     public function save(SalesReturn $salesReturn, array $payload): SalesReturn
@@ -83,11 +114,6 @@ class SalesReturnRepository implements SalesReturnRepositoryInterface
         $salesReturn->delete();
     }
 
-    public function nextReturnNo(): string
-    {
-        return 'SR-'.str_pad((string) (SalesReturn::withTrashed()->count() + 1), 5, '0', STR_PAD_LEFT);
-    }
-
     public function fresh(SalesReturn $salesReturn): SalesReturn
     {
         return $salesReturn->fresh(['invoice', 'customer', 'items.product', 'items.batch']);
@@ -98,7 +124,9 @@ class SalesReturnRepository implements SalesReturnRepositoryInterface
         return SalesInvoice::query()
             ->with('customer')
             ->where('status', 'confirmed')
-            ->when($user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when(! $user?->canAccessAllTenants() && $user?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when(! $user?->canAccessAllTenants() && $user?->company_id, fn (Builder $builder, int $companyId) => $builder->where('company_id', $companyId))
+            ->when(! $user?->canAccessAllTenants() && $user?->store_id, fn (Builder $builder, int $storeId) => $builder->where('store_id', $storeId))
             ->when($filters['customer_id'] ?? null, fn (Builder $builder, mixed $customerId) => $builder->where('customer_id', $customerId))
             ->when($filters['q'] ?? null, fn (Builder $builder, mixed $keyword) => $builder->where('invoice_no', 'like', '%'.$keyword.'%'))
             ->latest('invoice_date')

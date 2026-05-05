@@ -5,14 +5,16 @@ namespace App\Modules\Accounting\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Core\Traits\HasFiscalYear;
 
 class Voucher extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HasFiscalYear;
 
     protected $fillable = [
         'tenant_id',
         'company_id',
+        'fiscal_year_id',
         'voucher_no',
         'voucher_date',
         'voucher_type',

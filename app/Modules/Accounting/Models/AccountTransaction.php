@@ -3,12 +3,16 @@
 namespace App\Modules\Accounting\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Core\Traits\HasFiscalYear;
 
 class AccountTransaction extends Model
 {
+    use HasFiscalYear;
+
     protected $fillable = [
         'tenant_id',
         'company_id',
+        'fiscal_year_id',
         'transaction_date',
         'account_type',
         'party_type',

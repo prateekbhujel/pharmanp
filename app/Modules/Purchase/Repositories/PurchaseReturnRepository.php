@@ -4,6 +4,7 @@ namespace App\Modules\Purchase\Repositories;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
+use App\Core\Security\TenantRecordScope;
 use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Party\Models\Supplier;
@@ -14,7 +15,6 @@ use App\Modules\Purchase\Models\PurchaseReturnItem;
 use App\Modules\Purchase\Repositories\Interfaces\PurchaseReturnRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 
 class PurchaseReturnRepository implements PurchaseReturnRepositoryInterface
 {
@@ -27,7 +27,10 @@ class PurchaseReturnRepository implements PurchaseReturnRepositoryInterface
         'updated_at' => 'updated_at',
     ];
 
-    public function __construct(private readonly TableQueryApplier $tables) {}
+    public function __construct(
+        private readonly TableQueryApplier $tables,
+        private readonly TenantRecordScope $scope,
+    ) {}
 
     public function paginate(TableQueryData $table, ?User $user = null): LengthAwarePaginator
     {
@@ -64,17 +67,22 @@ class PurchaseReturnRepository implements PurchaseReturnRepositoryInterface
         );
     }
 
-    public function purchase(int $id): Purchase
+    public function purchase(int $id, ?User $user = null): Purchase
     {
-        return Purchase::query()->findOrFail($id);
+        return $this->scope->apply(Purchase::query(), $user)->findOrFail($id);
     }
 
-    public function batchForUpdate(int $id): Batch
+    public function batchForUpdate(int $id, ?User $user = null, ?PurchaseReturn $purchaseReturn = null): Batch
     {
-        return Batch::query()->lockForUpdate()->findOrFail($id);
+        return $this->scope->apply(Batch::query(), $user)
+            ->when($purchaseReturn?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when($purchaseReturn?->company_id, fn (Builder $builder, int $companyId) => $builder->where('company_id', $companyId))
+            ->when($purchaseReturn?->store_id, fn (Builder $builder, int $storeId) => $builder->where('store_id', $storeId))
+            ->lockForUpdate()
+            ->findOrFail($id);
     }
 
-    public function purchaseItem(int $purchaseId, int $purchaseItemId): PurchaseItem
+    public function purchaseItem(int $purchaseId, int $purchaseItemId, ?User $user = null): PurchaseItem
     {
         return PurchaseItem::query()
             ->where('purchase_id', $purchaseId)
@@ -111,14 +119,15 @@ class PurchaseReturnRepository implements PurchaseReturnRepositoryInterface
         return $purchaseReturn;
     }
 
-    public function adjustSupplierBalance(int $supplierId, float $amount): void
+    public function adjustSupplierBalance(int $supplierId, float $amount, ?User $user = null, ?PurchaseReturn $purchaseReturn = null): void
     {
-        Supplier::query()->whereKey($supplierId)->increment('current_balance', $amount);
-    }
+        $supplier = $this->scope->apply(Supplier::query(), $user)
+            ->when($purchaseReturn?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->when($purchaseReturn?->company_id, fn (Builder $builder, int $companyId) => $builder->where('company_id', $companyId))
+            ->when($purchaseReturn?->store_id, fn (Builder $builder, int $storeId) => $builder->where('store_id', $storeId))
+            ->findOrFail($supplierId);
 
-    public function nextReturnSequence(): int
-    {
-        return ((int) DB::table('purchase_returns')->lockForUpdate()->max('id')) + 1;
+        $supplier->increment('current_balance', $amount);
     }
 
     public function fresh(PurchaseReturn $purchaseReturn): PurchaseReturn

@@ -15,7 +15,7 @@ interface ProductRepositoryInterface
 
     public function update(Product $product, array $payload): Product;
 
-    public function findTrashed(int $id): Product;
+    public function findTrashed(int $id, ?User $user = null): Product;
 
     public function skuExists(?int $companyId, string $sku): bool;
 }

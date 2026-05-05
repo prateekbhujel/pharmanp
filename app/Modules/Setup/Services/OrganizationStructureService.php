@@ -299,4 +299,62 @@ class OrganizationStructureService
 
         abort_unless(! $user->company_id || (int) $model->company_id === (int) $user->company_id, 404);
     }
+
+    public function restoreArea(int $id, User $user): Area
+    {
+        $area = Area::query()
+            ->onlyTrashed()
+            ->when($user->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($user->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
+            ->findOrFail($id);
+
+        return DB::transaction(function () use ($area, $user) {
+            $area->restore();
+            $area->forceFill(['is_active' => true, 'updated_by' => $user->id])->save();
+
+            return $area->fresh('branch:id,name,code,type');
+        });
+    }
+
+    public function restoreDivision(int $id, User $user): Division
+    {
+        $division = Division::query()
+            ->onlyTrashed()
+            ->when($user->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($user->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
+            ->findOrFail($id);
+
+        return DB::transaction(function () use ($division, $user) {
+            $division->restore();
+            $division->forceFill(['is_active' => true, 'updated_by' => $user->id])->save();
+
+            return $division->fresh();
+        });
+    }
+
+    public function restoreEmployee(int $id, User $user): Employee
+    {
+        $employee = Employee::query()
+            ->onlyTrashed()
+            ->when($user->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
+            ->when($user->company_id, fn ($query, $companyId) => $query->where('company_id', $companyId))
+            ->findOrFail($id);
+
+        return DB::transaction(function () use ($employee, $user) {
+            $employee->restore();
+            $employee->forceFill(['is_active' => true, 'updated_by' => $user->id])->save();
+
+            return $employee->fresh(['user:id,name,email', 'branch:id,name,code,type', 'area:id,name,code', 'division:id,name,code', 'manager:id,name,employee_code']);
+        });
+    }
+
+    public function assertMayManageOrgStructure(User $user): void
+    {
+        abort_unless($user->is_owner || $user->can('settings.manage') || $user->can('mr.manage'), 403);
+    }
+
+    public function assertMayManageEmployees(User $user): void
+    {
+        abort_unless($user->is_owner || $user->can('users.manage') || $user->can('mr.manage'), 403);
+    }
 }

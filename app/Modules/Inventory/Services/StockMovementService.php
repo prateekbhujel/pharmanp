@@ -5,6 +5,7 @@ namespace App\Modules\Inventory\Services;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Models\StockMovement;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -13,11 +14,13 @@ class StockMovementService
     public function record(array $data): StockMovement
     {
         return DB::transaction(function () use ($data) {
-            $product = Product::query()->find($data['product_id'] ?? null);
+            $product = Product::query()->lockForUpdate()->find($data['product_id'] ?? null);
 
             if (! $product) {
                 throw ValidationException::withMessages(['product_id' => 'Product does not exist.']);
             }
+
+            $this->assertContextMatches('product_id', $product, $data);
 
             $batch = null;
 
@@ -27,6 +30,8 @@ class StockMovementService
                 if (! $batch || (int) $batch->product_id !== (int) $product->id) {
                     throw ValidationException::withMessages(['batch_id' => 'Batch does not belong to the selected product.']);
                 }
+
+                $this->assertContextMatches('batch_id', $batch, $data);
 
                 $net = (float) ($data['quantity_in'] ?? 0) - (float) ($data['quantity_out'] ?? 0);
                 $nextQuantity = (float) $batch->quantity_available + $net;
@@ -56,5 +61,20 @@ class StockMovementService
                 'created_by' => $data['created_by'] ?? null,
             ]);
         });
+    }
+
+    private function assertContextMatches(string $field, Model $record, array $data): void
+    {
+        foreach (['tenant_id', 'company_id', 'store_id'] as $column) {
+            if (! array_key_exists($column, $data) || $data[$column] === null || $record->getAttribute($column) === null) {
+                continue;
+            }
+
+            if ((int) $data[$column] !== (int) $record->getAttribute($column)) {
+                throw ValidationException::withMessages([
+                    $field => 'Selected stock record does not belong to this operating context.',
+                ]);
+            }
+        }
     }
 }
