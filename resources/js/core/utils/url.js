@@ -44,5 +44,10 @@ export function backendUrl(path = '') {
         }
     }
 
+    // Ensure basePath is included if we are using the current origin
+    if (origin === window.location.origin && basePath && !normalized.startsWith(basePath)) {
+        return `${origin}${basePath}${normalized}`;
+    }
+
     return `${origin}${normalized}`;
 }

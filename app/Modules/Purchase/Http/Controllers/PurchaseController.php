@@ -69,7 +69,7 @@ class PurchaseController extends ModularController
         return (new PurchaseResource($purchase))
             ->additional([
                 'message' => 'Purchase posted and stock received.',
-                'print_url' => route('purchases.print', $purchase),
+                'print_url' => route('purchases.print', $purchase, false),
             ])
             ->response()
             ->setStatusCode(201);

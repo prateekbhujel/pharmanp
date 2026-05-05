@@ -89,7 +89,7 @@ class SalesReturnController extends ModularController
         return response()->json([
             'message' => 'Sales return created.',
             'data' => ['id' => $return->id, 'return_no' => $return->return_no],
-            'print_url' => route('sales.returns.print', $return),
+            'print_url' => route('sales.returns.print', $return, false),
         ]);
     }
 
@@ -115,7 +115,7 @@ class SalesReturnController extends ModularController
         return response()->json([
             'message' => 'Sales return updated.',
             'data' => $this->returns->payload($this->returns->update($salesReturn, $request->validated(), $request->user())),
-            'print_url' => route('sales.returns.print', $salesReturn),
+            'print_url' => route('sales.returns.print', $salesReturn, false),
         ]);
     }
 

@@ -90,7 +90,7 @@ class PurchaseReturnController extends ModularController
         return (new PurchaseReturnResource($purchaseReturn))
             ->additional([
                 'message' => 'Purchase return posted.',
-                'print_url' => route('purchase-returns.print', $purchaseReturn),
+                'print_url' => route('purchase-returns.print', $purchaseReturn, false),
             ])
             ->response()
             ->setStatusCode(201);

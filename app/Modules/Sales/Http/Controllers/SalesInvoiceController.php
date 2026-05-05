@@ -4,7 +4,6 @@ namespace App\Modules\Sales\Http\Controllers;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
 use App\Core\DTOs\TableQueryData;
 use App\Http\Controllers\ModularController;
 use App\Modules\Sales\Http\Requests\SalesInvoicePaymentRequest;
@@ -70,7 +69,7 @@ class SalesInvoiceController extends ModularController
         return (new SalesInvoiceResource($invoice))
             ->additional([
                 'message' => 'Invoice posted and stock deducted.',
-                'print_url' => route('sales.invoices.print', $invoice),
+                'print_url' => route('sales.invoices.print', $invoice, false),
             ])
             ->response()
             ->setStatusCode(201);

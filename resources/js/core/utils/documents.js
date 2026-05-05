@@ -1,10 +1,16 @@
 import { http, getApiToken } from '../api/http';
+import { backendUrl } from './url';
 
 export function openDocumentDirectly(url) {
     if (!url) return;
+    
+    // Convert relative URL to absolute backend URL if needed
+    const absoluteUrl = url.startsWith('http') ? url : backendUrl(url);
+    
     const token = getApiToken();
-    const separator = url.includes('?') ? '&' : '?';
-    const finalUrl = token ? `${url}${separator}token=${token}` : url;
+    const separator = absoluteUrl.includes('?') ? '&' : '?';
+    const finalUrl = token ? `${absoluteUrl}${separator}token=${token}` : absoluteUrl;
+    
     window.open(finalUrl, '_blank', 'noopener,noreferrer');
 }
 
