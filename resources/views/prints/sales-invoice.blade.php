@@ -122,5 +122,7 @@
         <span>Printed on {{ now()->format('M j, Y h:i A') }}</span>
         <span>Thank you for your business.</span>
     </div>
+
+    <script>window.onload = function() { window.print(); }</script>
 </body>
 </html>

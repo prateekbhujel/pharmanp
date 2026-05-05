@@ -68,5 +68,7 @@
         <tr><td>Discount</td><td class="right">{{ number_format((float) $purchaseReturn->discount_total, 2) }}</td></tr>
         <tr><td><strong>Net Return</strong></td><td class="right"><strong>{{ number_format((float) $purchaseReturn->grand_total, 2) }}</strong></td></tr>
     </table>
+
+    <script>window.onload = function() { window.print(); }</script>
 </body>
 </html>

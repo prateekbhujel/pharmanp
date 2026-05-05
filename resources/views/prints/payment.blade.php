@@ -59,5 +59,7 @@
     </table>
 
     <div class="total">Amount: {{ number_format((float) $payment['amount'], 2) }}</div>
+
+    <script>window.onload = function() { window.print(); }</script>
 </body>
 </html>

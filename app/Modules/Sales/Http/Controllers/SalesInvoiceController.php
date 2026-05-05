@@ -179,6 +179,9 @@ class SalesInvoiceController extends ModularController
     {
         $service->assertAccessible($invoice, $request->user());
 
+        @ini_set('memory_limit', '512M');
+        @ini_set('pcre.backtrack_limit', '5000000');
+
         return Pdf::loadView('prints.sales-invoice', $service->printPayload($invoice))
             ->setPaper('a4', 'landscape')
             ->stream($invoice->invoice_no.'.pdf');

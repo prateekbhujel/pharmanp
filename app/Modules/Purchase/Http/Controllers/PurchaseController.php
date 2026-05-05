@@ -82,6 +82,9 @@ class PurchaseController extends ModularController
     public function pdf(Request $request, Purchase $purchase, PurchaseEntryService $service)
     {
         $service->assertAccessible($purchase, $request->user());
+        
+        @ini_set('memory_limit', '512M');
+        @ini_set('pcre.backtrack_limit', '5000000');
 
         return Pdf::loadView('prints.purchase-invoice', $service->printPayload($purchase))
             ->setPaper('a4', 'landscape')
