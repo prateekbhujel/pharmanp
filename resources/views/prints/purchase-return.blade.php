@@ -4,16 +4,31 @@
     <meta charset="utf-8">
     <title>{{ $purchaseReturn->return_no }}</title>
     <style>
-        body { color: #111827; font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; margin: 24px; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 18px; }
-        .title { font-size: 22px; font-weight: 700; text-align: right; text-transform: uppercase; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #d1d5db; padding: 7px; text-align: left; }
-        th { background: #f3f4f6; }
+        body { color: #1f2937; font-family: DejaVu Sans, sans-serif; font-size: 11px; margin: 18px; }
+        h1, h2, h5, p { margin: 0; }
+        .invoice-sheet-top { border-bottom: 1px solid #d1d5db; padding-bottom: 12px; width: 100%; clear: both; overflow: hidden; }
+        .invoice-sheet-brand { float: left; width: 60%; }
+        .invoice-sheet-brand h1 { font-size: 20px; font-weight: 700; text-transform: uppercase; }
+        .invoice-sheet-brand p, .muted { color: #64748b; font-size: 11px; }
+        .invoice-sheet-ref { float: right; text-align: right; width: 35%; }
+        .invoice-sheet-ref span { color: #64748b; display: block; font-size: 10px; text-transform: uppercase; }
+        .invoice-sheet-ref strong { display: block; font-size: 18px; margin: 2px 0; }
+        .invoice-sheet-grid { margin-top: 12px; width: 100%; clear: both; overflow: hidden; }
+        .invoice-sheet-box { border: 1px solid #dbe3ee; float: left; padding: 9px; width: 45%; }
+        .invoice-sheet-box-gap { float: left; width: 4%; height: 10px; }
+        .invoice-sheet-box h5 { font-size: 12px; margin-bottom: 6px; text-transform: uppercase; }
+        .invoice-sheet-box p { line-height: 1.55; }
+        table { border-collapse: collapse; margin-top: 14px; width: 100%; clear: both; }
+        th { background: #1f3a5f; color: #ffffff; font-size: 10px; padding: 6px; text-align: left; }
+        td { border-bottom: 1px solid #e5e7eb; padding: 6px; vertical-align: top; }
+        tbody tr:nth-child(even) { background: #f8fafc; }
         .right { text-align: right; }
-        .muted { color: #64748b; }
-        .totals { margin-left: auto; margin-top: 14px; width: 280px; }
-        .totals td { border: 0; border-bottom: 1px solid #e5e7eb; }
+        .totals { border-collapse: collapse; float: right; margin-top: 12px; width: 250px; }
+        .totals td { border-bottom: 0; padding: 5px 7px; }
+        .totals .grand td { border-top: 1px solid #111827; font-weight: 700; }
+        .footer { border-top: 1px solid #d1d5db; color: #64748b; margin-top: 30px; padding-top: 9px; width: 100%; clear: both; overflow: hidden; }
+        .footer span { float: left; }
+        .footer span:last-child { float: right; text-align: right; }
     </style>
 </head>
 <body>
