@@ -167,4 +167,33 @@ class InventoryHardeningTest extends TestCase
         $this->assertStringContainsString('SI', $num1);
         $this->assertStringContainsString(now()->format('Ymd'), $num1);
     }
+
+    public function test_document_number_sequence_is_scoped_by_tenant_company_and_type(): void
+    {
+        $tenantA = Tenant::query()->create(['name' => 'T1', 'slug' => 't1']);
+        $tenantB = Tenant::query()->create(['name' => 'T2', 'slug' => 't2']);
+        $companyA = Company::query()->create(['tenant_id' => $tenantA->id, 'name' => 'C1']);
+        $companyB = Company::query()->create(['tenant_id' => $tenantB->id, 'name' => 'C2']);
+        $userA = User::factory()->create(['tenant_id' => $tenantA->id, 'company_id' => $companyA->id, 'is_owner' => true]);
+        $userB = User::factory()->create(['tenant_id' => $tenantB->id, 'company_id' => $companyB->id, 'is_owner' => true]);
+        $service = app(DocumentNumberService::class);
+
+        $salesA = $service->next('sales_invoice', 'sales_invoices', now(), $userA);
+        $paymentA = $service->next('payment', 'payments', now(), $userA);
+        $salesB = $service->next('sales_invoice', 'sales_invoices', now(), $userB);
+
+        $this->assertStringEndsWith('00001', $salesA);
+        $this->assertStringEndsWith('00001', $paymentA);
+        $this->assertStringEndsWith('00001', $salesB);
+        $this->assertDatabaseHas('document_sequences', [
+            'scope_key' => 'T'.$tenantA->id.'C'.$companyA->id,
+            'type' => 'sales_invoice',
+            'last_sequence' => 1,
+        ]);
+        $this->assertDatabaseHas('document_sequences', [
+            'scope_key' => 'T'.$tenantB->id.'C'.$companyB->id,
+            'type' => 'sales_invoice',
+            'last_sequence' => 1,
+        ]);
+    }
 }

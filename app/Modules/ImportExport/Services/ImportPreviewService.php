@@ -259,7 +259,7 @@ class ImportPreviewService
             [
                 'tenant_id' => $user?->tenant_id,
                 'store_id' => $user?->store_id,
-                'product_code' => $data['product_code'] ?? app(ProductCodeGenerator::class)->next(),
+                'product_code' => $data['product_code'] ?? app(ProductCodeGenerator::class)->next($user),
                 'barcode' => $data['barcode'] ?? null,
                 'hs_code' => $data['hs_code'] ?? null,
                 'unit_id' => $unitId,

@@ -3,14 +3,13 @@
 namespace App\Modules\Purchase\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
 use App\Modules\Inventory\Models\Product;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PurchaseOrderItem extends Model
 {
-    use BelongsToTenant, HasFiscalYear;
+    use BelongsToTenant;
 
     protected $fillable = [
         'purchase_order_id',

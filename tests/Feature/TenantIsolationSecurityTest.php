@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\Setting;
 use App\Models\User;
+use App\Modules\Accounting\Models\Expense;
+use App\Modules\Accounting\Models\Voucher;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Product;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Party\Models\Supplier;
+use App\Modules\Purchase\Models\PurchaseOrder;
 use App\Modules\Purchase\Models\PurchaseReturn;
 use App\Modules\Sales\Models\SalesInvoice;
 use App\Modules\Sales\Models\SalesReturn;
@@ -54,6 +57,21 @@ class TenantIsolationSecurityTest extends TestCase
             'tenant_id' => $tenantB->id,
             'deleted_at' => null,
         ]);
+    }
+
+    public function test_user_from_one_tenant_cannot_restore_another_tenants_product(): void
+    {
+        [$tenantA, $companyA] = $this->tenantCompany('tenant-a');
+        [$tenantB, $companyB] = $this->tenantCompany('tenant-b');
+        $userA = User::factory()->create(['tenant_id' => $tenantA->id, 'company_id' => $companyA->id, 'is_owner' => true]);
+        $productB = $this->productFor($tenantB->id, $companyB->id);
+        $productB->delete();
+
+        $this->actingAs($userA)
+            ->postJson('/api/v1/inventory/products/'.$productB->id.'/restore')
+            ->assertNotFound();
+
+        $this->assertSoftDeleted('products', ['id' => $productB->id]);
     }
 
     public function test_user_from_one_tenant_cannot_sell_another_tenants_product_or_batch(): void
@@ -143,6 +161,65 @@ class TenantIsolationSecurityTest extends TestCase
         $this->actingAs($userA)
             ->get('/sales/invoices/'.$invoiceB->id.'/print')
             ->assertNotFound();
+    }
+
+    public function test_user_from_one_tenant_cannot_view_another_tenants_purchase_order(): void
+    {
+        [$tenantA, $companyA] = $this->tenantCompany('tenant-a');
+        [$tenantB, $companyB] = $this->tenantCompany('tenant-b');
+        $userA = User::factory()->create(['tenant_id' => $tenantA->id, 'company_id' => $companyA->id, 'is_owner' => true]);
+        $supplierB = Supplier::query()->create(['tenant_id' => $tenantB->id, 'company_id' => $companyB->id, 'name' => 'Tenant B Supplier']);
+        $orderB = PurchaseOrder::query()->create([
+            'tenant_id' => $tenantB->id,
+            'company_id' => $companyB->id,
+            'supplier_id' => $supplierB->id,
+            'order_no' => 'TB-PO-001',
+            'order_date' => '2026-05-05',
+            'status' => 'ordered',
+            'grand_total' => 100,
+        ]);
+
+        $this->actingAs($userA)
+            ->getJson('/api/v1/purchase/orders/'.$orderB->id)
+            ->assertNotFound();
+    }
+
+    public function test_user_from_one_tenant_cannot_access_another_tenants_accounting_records(): void
+    {
+        [$tenantA, $companyA] = $this->tenantCompany('tenant-a');
+        [$tenantB, $companyB] = $this->tenantCompany('tenant-b');
+        $userA = User::factory()->create(['tenant_id' => $tenantA->id, 'company_id' => $companyA->id, 'is_owner' => true]);
+        $voucherB = Voucher::query()->create([
+            'tenant_id' => $tenantB->id,
+            'company_id' => $companyB->id,
+            'voucher_no' => 'TB-VCH-001',
+            'voucher_date' => '2026-05-05',
+            'voucher_type' => 'journal',
+            'total_amount' => 100,
+        ]);
+        $expenseB = Expense::query()->create([
+            'tenant_id' => $tenantB->id,
+            'company_id' => $companyB->id,
+            'expense_date' => '2026-05-05',
+            'category' => 'Rent',
+            'payment_mode' => 'cash',
+            'amount' => 100,
+        ]);
+
+        $this->actingAs($userA)
+            ->getJson('/api/v1/accounting/vouchers/'.$voucherB->id)
+            ->assertNotFound();
+
+        $this->actingAs($userA)
+            ->deleteJson('/api/v1/accounting/vouchers/'.$voucherB->id)
+            ->assertNotFound();
+
+        $this->actingAs($userA)
+            ->deleteJson('/api/v1/accounting/expenses/'.$expenseB->id)
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('vouchers', ['id' => $voucherB->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('expenses', ['id' => $expenseB->id]);
     }
 
     public function test_user_from_one_tenant_cannot_allocate_payment_to_another_tenants_bill(): void
@@ -346,6 +423,35 @@ class TenantIsolationSecurityTest extends TestCase
             ->assertNotFound();
 
         $this->assertNotSame('HACKED', $batchB->fresh()->batch_no);
+    }
+
+    public function test_user_from_one_tenant_cannot_list_another_tenants_batch(): void
+    {
+        [$tenantA, $companyA] = $this->tenantCompany('tenant-a');
+        [$tenantB, $companyB] = $this->tenantCompany('tenant-b');
+        $userA = User::factory()->create(['tenant_id' => $tenantA->id, 'company_id' => $companyA->id, 'is_owner' => true]);
+        $productB = $this->productFor($tenantB->id, $companyB->id);
+        $batchB = Batch::query()->create([
+            'tenant_id' => $tenantB->id,
+            'company_id' => $companyB->id,
+            'product_id' => $productB->id,
+            'batch_no' => 'TB-HIDDEN-BATCH',
+            'expires_at' => '2027-01-01',
+            'quantity_received' => 10,
+            'quantity_available' => 10,
+            'purchase_price' => 100,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($userA)
+            ->getJson('/api/v1/inventory/batches?search='.$batchB->batch_no)
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        $this->actingAs($userA)
+            ->getJson('/api/v1/inventory/batches/options?product_id='.$productB->id)
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
     }
 
     private function tenantCompany(string $slug): array

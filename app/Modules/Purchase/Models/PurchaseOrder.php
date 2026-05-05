@@ -3,7 +3,6 @@
 namespace App\Modules\Purchase\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
 use App\Modules\Party\Models\Supplier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PurchaseOrder extends Model
 {
-    use BelongsToTenant, HasFiscalYear, SoftDeletes;
+    use BelongsToTenant, SoftDeletes;
 
     protected $fillable = [
         'tenant_id',

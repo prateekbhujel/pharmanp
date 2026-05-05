@@ -3,12 +3,11 @@
 namespace App\Modules\Accounting\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
 use Illuminate\Database\Eloquent\Model;
 
 class VoucherEntry extends Model
 {
-    use BelongsToTenant, HasFiscalYear;
+    use BelongsToTenant;
 
     protected $fillable = [
         'voucher_id',

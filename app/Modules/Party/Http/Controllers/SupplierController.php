@@ -96,10 +96,9 @@ class SupplierController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function destroy(Request $request, Supplier $supplier): JsonResponse
+    public function destroy(Request $request, Supplier $supplier, PartyService $service): JsonResponse
     {
-        $supplier->forceFill(['is_active' => false, 'updated_by' => $request->user()?->id])->save();
-        $supplier->delete();
+        $service->deleteSupplier($supplier, $request->user());
 
         return response()->json(['message' => 'Supplier deleted.']);
     }
@@ -119,14 +118,11 @@ class SupplierController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function toggleStatus(Request $request, Supplier $supplier): JsonResponse
+    public function toggleStatus(Request $request, Supplier $supplier, PartyService $service): JsonResponse
     {
-        $supplier->forceFill([
-            'is_active' => $request->boolean('is_active'),
-            'updated_by' => $request->user()?->id,
-        ])->save();
+        $supplier = $service->setSupplierStatus($supplier, $request->boolean('is_active'), $request->user());
 
-        return response()->json(['message' => 'Supplier status updated.', 'data' => new PartyResource($supplier->refresh())]);
+        return response()->json(['message' => 'Supplier status updated.', 'data' => new PartyResource($supplier)]);
     }
 
     /**
@@ -144,13 +140,11 @@ class SupplierController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function restore(Request $request, int $id): JsonResponse
+    public function restore(Request $request, int $id, PartyService $service): JsonResponse
     {
-        $supplier = Supplier::query()->onlyTrashed()->findOrFail($id);
-        $supplier->restore();
-        $supplier->forceFill(['is_active' => true, 'updated_by' => $request->user()?->id])->save();
+        $supplier = $service->restoreSupplier($id, $request->user());
 
-        return response()->json(['message' => 'Supplier restored.', 'data' => new PartyResource($supplier->refresh())]);
+        return response()->json(['message' => 'Supplier restored.', 'data' => new PartyResource($supplier)]);
     }
 
     /**
@@ -166,15 +160,10 @@ class SupplierController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function options(): JsonResponse
+    public function options(Request $request, PartyService $service): JsonResponse
     {
         return response()->json([
-            'data' => Supplier::query()
-                ->where('is_active', true)
-                ->when(request()->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-                ->orderBy('name')
-                ->limit(50)
-                ->get(['id', 'name', 'phone', 'current_balance']),
+            'data' => $service->supplierOptions($request->user()),
         ]);
     }
 }

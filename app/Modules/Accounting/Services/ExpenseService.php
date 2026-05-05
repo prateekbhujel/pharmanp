@@ -3,6 +3,7 @@
 namespace App\Modules\Accounting\Services;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Security\TenantRecordScope;
 use App\Core\Support\ApiResponse;
 use App\Models\User;
 use App\Modules\Accounting\Models\Expense;
@@ -11,7 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class ExpenseService
 {
-    public function __construct(private readonly ExpenseRepositoryInterface $expenses) {}
+    public function __construct(
+        private readonly ExpenseRepositoryInterface $expenses,
+        private readonly TenantRecordScope $records,
+    ) {}
 
     public function table(TableQueryData $table, ?User $user = null): array
     {
@@ -33,6 +37,7 @@ class ExpenseService
             $expense = $this->expenses->findForUpdate($data['id'] ?? null);
 
             if ($expense->exists) {
+                $this->assertAccessible($expense, $user);
                 $this->expenses->deleteTransactions($expense);
             }
 
@@ -57,12 +62,21 @@ class ExpenseService
         });
     }
 
-    public function delete(Expense $expense): void
+    public function delete(Expense $expense, User $user): void
     {
+        $this->assertAccessible($expense, $user);
+
         DB::transaction(function () use ($expense): void {
             $this->expenses->deleteTransactions($expense);
             $this->expenses->delete($expense);
         });
+    }
+
+    public function assertAccessible(Expense $expense, User $user): void
+    {
+        if (! $this->records->canAccess($user, $expense, ['store' => null])) {
+            abort(404);
+        }
     }
 
     public function payload(Expense $expense): array

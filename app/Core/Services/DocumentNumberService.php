@@ -134,7 +134,6 @@ class DocumentNumberService
                 ->first();
 
             if (! $row) {
-                // Initialize safely scoped to tenant/company
                 $lastVal = (int) DB::table($table)
                     ->where('tenant_id', $tenantId)
                     ->where('company_id', $companyId)
@@ -157,10 +156,19 @@ class DocumentNumberService
                     }
                 }
 
-                $next = $lastVal + 1;
-            } else {
-                $next = ((int) $row->last_sequence) + 1;
+                $row = DB::table('document_sequences')
+                    ->where('scope_key', $scopeKey)
+                    ->where('type', $type)
+                    ->where('date_part', $datePart)
+                    ->lockForUpdate()
+                    ->first();
             }
+
+            if (! $row) {
+                throw new \RuntimeException("Unable to initialize document sequence [{$type}].");
+            }
+
+            $next = ((int) $row->last_sequence) + 1;
 
             DB::table('document_sequences')
                 ->where('scope_key', $scopeKey)

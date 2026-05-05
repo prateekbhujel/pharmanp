@@ -96,10 +96,9 @@ class CustomerController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function destroy(Request $request, Customer $customer): JsonResponse
+    public function destroy(Request $request, Customer $customer, PartyService $service): JsonResponse
     {
-        $customer->forceFill(['is_active' => false, 'updated_by' => $request->user()?->id])->save();
-        $customer->delete();
+        $service->deleteCustomer($customer, $request->user());
 
         return response()->json(['message' => 'Customer deleted.']);
     }
@@ -119,14 +118,11 @@ class CustomerController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function toggleStatus(Request $request, Customer $customer): JsonResponse
+    public function toggleStatus(Request $request, Customer $customer, PartyService $service): JsonResponse
     {
-        $customer->forceFill([
-            'is_active' => $request->boolean('is_active'),
-            'updated_by' => $request->user()?->id,
-        ])->save();
+        $customer = $service->setCustomerStatus($customer, $request->boolean('is_active'), $request->user());
 
-        return response()->json(['message' => 'Customer status updated.', 'data' => new PartyResource($customer->refresh())]);
+        return response()->json(['message' => 'Customer status updated.', 'data' => new PartyResource($customer)]);
     }
 
     /**
@@ -144,13 +140,11 @@ class CustomerController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function restore(Request $request, int $id): JsonResponse
+    public function restore(Request $request, int $id, PartyService $service): JsonResponse
     {
-        $customer = Customer::query()->onlyTrashed()->findOrFail($id);
-        $customer->restore();
-        $customer->forceFill(['is_active' => true, 'updated_by' => $request->user()?->id])->save();
+        $customer = $service->restoreCustomer($id, $request->user());
 
-        return response()->json(['message' => 'Customer restored.', 'data' => new PartyResource($customer->refresh())]);
+        return response()->json(['message' => 'Customer restored.', 'data' => new PartyResource($customer)]);
     }
 
     /**
@@ -166,15 +160,10 @@ class CustomerController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function options(): JsonResponse
+    public function options(Request $request, PartyService $service): JsonResponse
     {
         return response()->json([
-            'data' => Customer::query()
-                ->where('is_active', true)
-                ->when(request()->user()?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-                ->orderBy('name')
-                ->limit(50)
-                ->get(['id', 'name', 'phone', 'current_balance', 'credit_limit']),
+            'data' => $service->customerOptions($request->user()),
         ]);
     }
 }

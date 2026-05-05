@@ -82,11 +82,9 @@ class PurchaseOrderController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function show(PurchaseOrder $order): JsonResponse
+    public function show(Request $request, PurchaseOrder $order, PurchaseOrderService $service): JsonResponse
     {
-        $order->load(['supplier:id,name', 'items.product:id,name,sku,mrp,purchase_price,selling_price,cc_rate', 'items', 'receivedPurchase']);
-
-        return response()->json(['data' => $order]);
+        return response()->json(['data' => $service->show($order, $request->user())]);
     }
 
     /**

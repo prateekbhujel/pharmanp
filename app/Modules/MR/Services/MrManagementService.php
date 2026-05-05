@@ -33,7 +33,7 @@ class MrManagementService
     public function createRepresentative(array $data, User $user): MedicalRepresentative
     {
         if (! filled($data['employee_code'] ?? null)) {
-            $data['employee_code'] = $this->employeeCodes->next();
+            $data['employee_code'] = $this->employeeCodes->next($user);
         }
         $dto = MedicalRepresentativeData::fromArray($data);
 

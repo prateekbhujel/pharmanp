@@ -3,6 +3,7 @@
 namespace App\Modules\Accounting\Services;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Security\TenantRecordScope;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Accounting\DTOs\VoucherData;
@@ -17,6 +18,7 @@ class VoucherService
     public function __construct(
         private readonly DocumentNumberService $numbers,
         private readonly VoucherRepositoryInterface $vouchers,
+        private readonly TenantRecordScope $records,
     ) {}
 
     public function table(TableQueryData $table, ?User $user = null)
@@ -31,16 +33,34 @@ class VoucherService
 
     public function update(Voucher $voucher, array $data, User $user): Voucher
     {
+        $this->assertAccessible($voucher, $user);
+
         return $this->persist($data, $user, $voucher);
     }
 
-    public function delete(Voucher $voucher): void
+    public function show(Voucher $voucher, User $user): Voucher
     {
+        $this->assertAccessible($voucher, $user);
+
+        return $voucher->load('entries');
+    }
+
+    public function delete(Voucher $voucher, User $user): void
+    {
+        $this->assertAccessible($voucher, $user);
+
         DB::transaction(function () use ($voucher) {
             $this->vouchers->deleteTransactions($voucher);
             $this->vouchers->deleteEntries($voucher);
             $this->vouchers->delete($voucher);
         });
+    }
+
+    public function assertAccessible(Voucher $voucher, User $user): void
+    {
+        if (! $this->records->canAccess($user, $voucher, ['store' => null])) {
+            abort(404);
+        }
     }
 
     private function persist(array $data, User $user, ?Voucher $voucher = null): Voucher
@@ -81,7 +101,7 @@ class VoucherService
             }
 
             foreach (array_values($data['entries']) as $index => $entry) {
-                $this->assertParty($entry['party_type'] ?? null, $entry['party_id'] ?? null);
+                $this->assertParty($entry['party_type'] ?? null, $entry['party_id'] ?? null, $user);
 
                 $voucherEntry = $this->vouchers->createEntry($voucher, [
                     'line_no' => $index + 1,
@@ -118,9 +138,9 @@ class VoucherService
         return $this->numbers->next('voucher', 'vouchers', Carbon::parse($voucherDate), $user);
     }
 
-    private function assertParty(?string $partyType, ?int $partyId): void
+    private function assertParty(?string $partyType, ?int $partyId, User $user): void
     {
-        if (! $this->vouchers->partyExists($partyType, $partyId)) {
+        if (! $this->vouchers->partyExists($partyType, $partyId, $user)) {
             throw ValidationException::withMessages([
                 'party_id' => 'Selected party does not exist.',
             ]);

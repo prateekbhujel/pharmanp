@@ -110,7 +110,12 @@ class SalesInvoiceRepository implements SalesInvoiceRepositoryInterface
         if ($invoice) {
             $query
                 ->where('tenant_id', $invoice->tenant_id)
-                ->where('company_id', $invoice->company_id);
+                ->where('company_id', $invoice->company_id)
+                ->where(function (Builder $expiry) use ($invoice): void {
+                    $expiry
+                        ->whereNull('expires_at')
+                        ->orWhereDate('expires_at', '>=', $invoice->invoice_date);
+                });
 
             if ($invoice->store_id) {
                 $query->where('store_id', $invoice->store_id);

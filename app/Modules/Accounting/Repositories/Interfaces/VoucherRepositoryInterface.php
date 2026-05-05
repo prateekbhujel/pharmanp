@@ -29,5 +29,5 @@ interface VoucherRepositoryInterface
 
     public function fresh(Voucher $voucher): Voucher;
 
-    public function partyExists(?string $partyType, ?int $partyId): bool;
+    public function partyExists(?string $partyType, ?int $partyId, ?User $user = null): bool;
 }

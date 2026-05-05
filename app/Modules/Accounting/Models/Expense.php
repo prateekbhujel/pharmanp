@@ -3,7 +3,6 @@
 namespace App\Modules\Accounting\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
 use App\Models\User;
 use App\Modules\Setup\Models\DropdownOption;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Expense extends Model
 {
-    use BelongsToTenant, HasFiscalYear;
+    use BelongsToTenant;
 
     protected $fillable = [
         'tenant_id',

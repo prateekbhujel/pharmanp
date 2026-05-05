@@ -4,12 +4,17 @@ namespace App\Core\Traits;
 
 use App\Modules\Setup\Models\FiscalYear;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 trait HasFiscalYear
 {
     public static function bootHasFiscalYear(): void
     {
         static::creating(function (Model $model) {
+            if (! static::hasFiscalYearColumn($model)) {
+                return;
+            }
+
             if (! $model->fiscal_year_id && auth()->check() && auth()->user()->company_id) {
                 // Find the current active fiscal year for the company
                 $fiscalYear = FiscalYear::query()
@@ -24,6 +29,12 @@ trait HasFiscalYear
         });
 
         static::addGlobalScope('fiscal_year', function ($builder) {
+            $model = $builder->getModel();
+
+            if (! static::hasFiscalYearColumn($model)) {
+                return;
+            }
+
             if (auth()->check() && auth()->user()->company_id) {
                 // We cache the current fiscal year id in a static variable to avoid repeated queries
                 static $currentFiscalYearId = null;
@@ -40,6 +51,15 @@ trait HasFiscalYear
                 }
             }
         });
+    }
+
+    protected static function hasFiscalYearColumn(Model $model): bool
+    {
+        static $cache = [];
+
+        $table = $model->getTable();
+
+        return $cache[$table] ??= Schema::hasColumn($table, 'fiscal_year_id');
     }
 
     public function fiscalYear()

@@ -3,7 +3,6 @@
 namespace App\Modules\Sales\Models;
 
 use App\Core\Traits\BelongsToTenant;
-use App\Core\Traits\HasFiscalYear;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\Product;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalesInvoiceItem extends Model
 {
-    use BelongsToTenant, HasFiscalYear;
+    use BelongsToTenant;
 
     protected $fillable = [
         'sales_invoice_id',

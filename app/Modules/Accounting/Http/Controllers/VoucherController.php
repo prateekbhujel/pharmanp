@@ -55,9 +55,9 @@ class VoucherController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function show(Voucher $voucher): VoucherResource
+    public function show(Request $request, Voucher $voucher, VoucherService $service): VoucherResource
     {
-        return new VoucherResource($voucher->load('entries'));
+        return new VoucherResource($service->show($voucher, $request->user()));
     }
 
     /**
@@ -119,9 +119,9 @@ class VoucherController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function destroy(Voucher $voucher, VoucherService $service): JsonResponse
+    public function destroy(Request $request, Voucher $voucher, VoucherService $service): JsonResponse
     {
-        $service->delete($voucher);
+        $service->delete($voucher, $request->user());
 
         return response()->json(['message' => 'Voucher deleted successfully.']);
     }

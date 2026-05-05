@@ -3,6 +3,7 @@
 namespace App\Modules\Purchase\Services;
 
 use App\Core\DTOs\TableQueryData;
+use App\Core\Security\TenantRecordScope;
 use App\Core\Services\DocumentNumberService;
 use App\Models\User;
 use App\Modules\Purchase\DTOs\PurchaseOrderData;
@@ -18,6 +19,7 @@ class PurchaseOrderService
     public function __construct(
         private readonly DocumentNumberService $numbers,
         private readonly PurchaseOrderRepositoryInterface $orders,
+        private readonly TenantRecordScope $records,
     ) {}
 
     public function table(TableQueryData $table, ?User $user = null)
@@ -27,12 +29,23 @@ class PurchaseOrderService
 
     public function approve(PurchaseOrder $order, User $user): PurchaseOrder
     {
+        $this->assertAccessible($order, $user);
+
         return $this->orders->save($order, ['status' => 'approved', 'updated_by' => $user->id])->fresh();
     }
 
     public function markPaid(PurchaseOrder $order, User $user): PurchaseOrder
     {
+        $this->assertAccessible($order, $user);
+
         return $this->orders->save($order, ['status' => 'paid', 'updated_by' => $user->id])->fresh();
+    }
+
+    public function show(PurchaseOrder $order, User $user): PurchaseOrder
+    {
+        $this->assertAccessible($order, $user);
+
+        return $order->load(['supplier:id,name', 'items.product:id,name,sku,mrp,purchase_price,selling_price,cc_rate', 'items', 'receivedPurchase']);
     }
 
     public function create(array $data, User $user): PurchaseOrder
@@ -84,6 +97,8 @@ class PurchaseOrderService
 
     public function receive(PurchaseOrder $order, array $data, User $user, PurchaseEntryService $purchases): Purchase
     {
+        $this->assertAccessible($order, $user);
+
         return DB::transaction(function () use ($order, $data, $user, $purchases) {
             $dto = PurchaseOrderData::fromArray($data);
             $data = $dto->toArray();
@@ -147,6 +162,13 @@ class PurchaseOrderService
 
             return $purchase->fresh(['supplier', 'items.product', 'items.batch']);
         });
+    }
+
+    public function assertAccessible(PurchaseOrder $order, User $user): void
+    {
+        if (! $this->records->canAccess($user, $order)) {
+            abort(404);
+        }
     }
 
     private function totals(array $items): array

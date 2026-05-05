@@ -216,7 +216,7 @@ class OrganizationStructureService
                 'area_id' => $data['area_id'] ?? null,
                 'division_id' => $data['division_id'] ?? null,
                 'reports_to_employee_id' => $data['reports_to_employee_id'] ?? null,
-                'employee_code' => $employee->employee_code ?: ($data['employee_code'] ?? $this->employeeCodes->next()),
+                'employee_code' => $employee->employee_code ?: ($data['employee_code'] ?? $this->employeeCodes->next($user)),
                 'name' => $data['name'],
                 'designation' => $data['designation'] ?? null,
                 'phone' => $data['phone'] ?? null,

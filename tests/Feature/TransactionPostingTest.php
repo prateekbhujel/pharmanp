@@ -102,6 +102,57 @@ class TransactionPostingTest extends TestCase
         $this->assertDatabaseMissing('sales_invoice_items', ['batch_id' => $batch->id]);
     }
 
+    public function test_sales_invoice_rejects_inactive_and_expired_batches(): void
+    {
+        [$user, $product, $supplier, $customer] = $this->fixture();
+
+        $inactive = Batch::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'company_id' => $user->company_id,
+            'store_id' => $user->store_id,
+            'product_id' => $product->id,
+            'batch_no' => 'INACTIVE-SALE-001',
+            'expires_at' => '2027-04-25',
+            'quantity_received' => 5,
+            'quantity_available' => 5,
+            'purchase_price' => 5,
+            'mrp' => 8,
+            'is_active' => false,
+        ]);
+
+        $expired = Batch::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'company_id' => $user->company_id,
+            'store_id' => $user->store_id,
+            'product_id' => $product->id,
+            'batch_no' => 'EXPIRED-SALE-001',
+            'expires_at' => '2026-04-24',
+            'quantity_received' => 5,
+            'quantity_available' => 5,
+            'purchase_price' => 5,
+            'mrp' => 8,
+            'is_active' => true,
+        ]);
+
+        foreach ([$inactive, $expired] as $batch) {
+            $this->actingAs($user)->postJson('/api/v1/sales/invoices', [
+                'customer_id' => $customer->id,
+                'invoice_date' => '2026-04-25',
+                'sale_type' => 'pos',
+                'paid_amount' => 0,
+                'items' => [[
+                    'product_id' => $product->id,
+                    'batch_id' => $batch->id,
+                    'quantity' => 1,
+                    'unit_price' => 8,
+                ]],
+            ])->assertUnprocessable();
+
+            $this->assertSame('5.000', (string) $batch->fresh()->quantity_available);
+            $this->assertDatabaseMissing('sales_invoice_items', ['batch_id' => $batch->id]);
+        }
+    }
+
     public function test_document_numbers_are_unique_across_repeated_transaction_creation(): void
     {
         [$user, $product, $supplier, $customer] = $this->fixture();

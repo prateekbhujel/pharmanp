@@ -97,15 +97,21 @@ class VoucherRepository implements VoucherRepositoryInterface
         return $voucher->fresh('entries');
     }
 
-    public function partyExists(?string $partyType, ?int $partyId): bool
+    public function partyExists(?string $partyType, ?int $partyId, ?User $user = null): bool
     {
         if (! $partyType || ! $partyId || $partyType === 'other') {
             return true;
         }
 
+        $scope = function (Builder $query) use ($user): void {
+            $query
+                ->when($user?->tenant_id && ! $user->canAccessAllTenants(), fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
+                ->when($user?->company_id && ! $user->canAccessAllTenants(), fn (Builder $builder, int $companyId) => $builder->where('company_id', $companyId));
+        };
+
         return match ($partyType) {
-            'supplier' => Supplier::query()->whereKey($partyId)->exists(),
-            'customer' => Customer::query()->whereKey($partyId)->exists(),
+            'supplier' => Supplier::query()->whereKey($partyId)->where($scope)->exists(),
+            'customer' => Customer::query()->whereKey($partyId)->where($scope)->exists(),
             default => true,
         };
     }

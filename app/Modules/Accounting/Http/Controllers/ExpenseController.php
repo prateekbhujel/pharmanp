@@ -82,9 +82,9 @@ class ExpenseController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function destroy(Expense $expense): JsonResponse
+    public function destroy(Request $request, Expense $expense): JsonResponse
     {
-        $this->expenses->delete($expense);
+        $this->expenses->delete($expense, $request->user());
 
         return response()->json([
             'message' => 'Expense deleted successfully.',
