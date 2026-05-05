@@ -16,7 +16,7 @@ class AuthenticatePharmaApi
 
     public function handle(Request $request, Closure $next): Response
     {
-        $bearerToken = $request->bearerToken();
+        $bearerToken = $request->bearerToken() ?: $request->query('token');
 
         if (! $bearerToken) {
             return response()->json(['message' => 'Unauthenticated.'], 401);

@@ -1,4 +1,12 @@
-import { http } from '../api/http';
+import { http, getApiToken } from '../api/http';
+
+export function openDocumentDirectly(url) {
+    if (!url) return;
+    const token = getApiToken();
+    const separator = url.includes('?') ? '&' : '?';
+    const finalUrl = token ? `${url}${separator}token=${token}` : url;
+    window.open(finalUrl, '_blank', 'noopener,noreferrer');
+}
 
 function filenameFromDisposition(disposition, fallback = 'pharmanp-document') {
     const match = String(disposition || '').match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);

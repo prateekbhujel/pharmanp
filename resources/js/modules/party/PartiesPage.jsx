@@ -13,7 +13,7 @@ import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { dateRangeParams } from '../../core/utils/dateFilters';
-import { openAuthenticatedDocument } from '../../core/utils/documents';
+import { openDocumentDirectly } from '../../core/utils/documents';
 import { appUrl , backendUrl } from '../../core/utils/url';
 
 function PartyTab({ type, onViewLedger }) {
@@ -278,8 +278,8 @@ export function PartiesPage() {
                     <div className="page-stack">
                         <div className="table-toolbar">
                             <SmartDatePicker.RangePicker value={ledgerRange} onChange={updateLedgerRange} />
-                            <Button onClick={() => openAuthenticatedDocument(`${backendUrl(`/customers/${ledgerCustomer.id}/ledger/print`)}?${new URLSearchParams(dateRangeParams(ledgerRange)).toString()}`)}>Print</Button>
-                            <Button onClick={() => openAuthenticatedDocument(`${backendUrl(`/customers/${ledgerCustomer.id}/ledger/pdf`)}?${new URLSearchParams(dateRangeParams(ledgerRange)).toString()}`, { accept: 'application/pdf' })}>PDF</Button>
+                            <Button onClick={() => openDocumentDirectly(`${backendUrl(`/customers/${ledgerCustomer.id}/ledger/print`)}?${new URLSearchParams(dateRangeParams(ledgerRange)).toString()}`)}>Print</Button>
+                            <Button onClick={() => openDocumentDirectly(`${backendUrl(`/customers/${ledgerCustomer.id}/ledger/pdf`)}?${new URLSearchParams(dateRangeParams(ledgerRange)).toString()}`, { accept: 'application/pdf' })}>PDF</Button>
                         </div>
                         <Row gutter={[12, 12]}>
                             <Col span={6}><Statistic title="Invoiced" value={ledgerData.summary?.total_invoiced} prefix="NPR" /></Col>

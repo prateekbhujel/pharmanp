@@ -12,7 +12,7 @@ import { useServerTable } from '../../core/hooks/useServerTable';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { appUrl , backendUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
-import { openAuthenticatedDocument } from '../../core/utils/documents';
+import { openDocumentDirectly } from '../../core/utils/documents';
 
 export function PurchaseBillsPanel({ suppliers }) {
     const [billRange, setBillRange] = useState([]);
@@ -40,8 +40,8 @@ export function PurchaseBillsPanel({ suppliers }) {
             width: 150,
             render: (_, row) => (
                 <Space>
-                    <Button icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(backendUrl(`/purchases/${row.id}/print`))}>Print</Button>
-                    <Button onClick={() => openAuthenticatedDocument(backendUrl(`/purchases/${row.id}/pdf`), { accept: 'application/pdf' })}>PDF</Button>
+                    <Button icon={<PrinterOutlined />} onClick={() => openDocumentDirectly(backendUrl(`/purchases/${row.id}/print`))}>Print</Button>
+                    <Button onClick={() => openDocumentDirectly(backendUrl(`/purchases/${row.id}/pdf`), { accept: 'application/pdf' })}>PDF</Button>
                 </Space>
             ),
         },
