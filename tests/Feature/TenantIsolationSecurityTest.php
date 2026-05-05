@@ -42,11 +42,11 @@ class TenantIsolationSecurityTest extends TestCase
 
         $this->actingAs($userA)
             ->putJson('/api/v1/inventory/products/'.$productB->id, $payload)
-            ->assertForbidden();
+            ->assertNotFound();
 
         $this->actingAs($userA)
             ->deleteJson('/api/v1/inventory/products/'.$productB->id)
-            ->assertForbidden();
+            ->assertNotFound();
 
         $this->assertDatabaseHas('products', [
             'id' => $productB->id,

@@ -4,7 +4,6 @@ namespace App\Modules\Inventory\Repositories;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
 use App\Core\DTOs\TableQueryData;
 use App\Core\Query\TableQueryApplier;
 use App\Core\Security\TenantRecordScope;

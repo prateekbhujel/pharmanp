@@ -4,7 +4,6 @@ namespace App\Modules\Sales\Services;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
 use App\Models\User;
 use App\Modules\Accounting\Services\AccountTransactionPostingService;
 use App\Modules\Sales\Models\SalesInvoice;

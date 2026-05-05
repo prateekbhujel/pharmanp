@@ -4,8 +4,6 @@ namespace App\Modules\Sales\Models;
 
 use App\Core\Traits\BelongsToTenant;
 use App\Core\Traits\HasFiscalYear;
-
-
 use App\Modules\MR\Models\MedicalRepresentative;
 use App\Modules\Party\Models\Customer;
 use App\Modules\Setup\Models\DropdownOption;

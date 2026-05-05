@@ -3,7 +3,7 @@
 namespace App\Core\Utils;
 
 /**
- * Enterprise-grade high-precision math utility for accounting.
+ * High-precision math utility for accounting.
  * Bypasses PHP float precision issues by using BCMath.
  */
 class Math

@@ -14,7 +14,7 @@ import { focusFirstKeyboardField, useKeyboardFlow } from '../../core/hooks/useKe
 import { itemFreeGoodsValue, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
 import { DateText } from '../../core/components/DateText';
 
-export function SalesPosPanel({
+export const SalesPosPanel = React.forwardRef(({
     customers,
     medicalRepresentatives,
     paymentModes,
@@ -23,7 +23,7 @@ export function SalesPosPanel({
     onMrAdded,
     onInvoiceSuccess,
     searchProduct,
-}) {
+}, ref) => {
     const { notification } = App.useApp();
     const [barcode, setBarcode] = useState('');
     const [items, setItems] = useState([]);
@@ -182,7 +182,7 @@ export function SalesPosPanel({
     ];
 
     // Expose imperative handle for parent hotkeys
-    React.useImperativeHandle(posEntryRef, () => ({
+    React.useImperativeHandle(ref, () => ({
         submitInvoice,
         focusProductSearch: () => {
             searchProduct('').then(setProductOptions);
@@ -373,4 +373,4 @@ export function SalesPosPanel({
             </Modal>
         </>
     );
-}
+});

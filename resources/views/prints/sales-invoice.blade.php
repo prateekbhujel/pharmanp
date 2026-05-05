@@ -6,19 +6,16 @@
     <style>
         body { color: #1f2937; font-family: DejaVu Sans, sans-serif; font-size: 11px; margin: 18px; }
         h1, h2, h5, p { margin: 0; }
-        .invoice-sheet-top { border-bottom: 1px solid #d1d5db; padding-bottom: 12px; width: 100%; clear: both; overflow: hidden; }
-        .invoice-sheet-brand { float: left; width: 60%; }
-        .invoice-sheet-brand h1 { font-size: 20px; font-weight: 700; text-transform: uppercase; }
-        .invoice-sheet-brand p, .muted { color: #64748b; font-size: 11px; }
-        .invoice-sheet-ref { float: right; text-align: right; width: 35%; }
-        .invoice-sheet-ref span { color: #64748b; display: block; font-size: 10px; text-transform: uppercase; }
-        .invoice-sheet-ref strong { display: block; font-size: 18px; margin: 2px 0; }
-        .invoice-sheet-grid { margin-top: 12px; width: 100%; clear: both; overflow: hidden; }
-        .invoice-sheet-box { border: 1px solid #dbe3ee; float: left; padding: 9px; width: 45%; }
-        .invoice-sheet-box-gap { float: left; width: 4%; height: 10px; }
-        .invoice-sheet-box h5 { font-size: 12px; margin-bottom: 6px; text-transform: uppercase; }
-        .invoice-sheet-box p { line-height: 1.55; }
-        table { border-collapse: collapse; margin-top: 14px; width: 100%; clear: both; }
+        .invoice-header { border-bottom: 1px solid #d1d5db; padding-bottom: 12px; width: 100%; }
+        .invoice-brand h1 { font-size: 20px; font-weight: 700; text-transform: uppercase; }
+        .invoice-brand p, .muted { color: #64748b; font-size: 11px; }
+        .invoice-ref span { color: #64748b; display: block; font-size: 10px; text-transform: uppercase; }
+        .invoice-ref strong { display: block; font-size: 18px; margin: 2px 0; }
+        .invoice-grid { margin-top: 12px; width: 100%; }
+        .invoice-box { border: 1px solid #dbe3ee; padding: 9px; vertical-align: top; }
+        .invoice-box h5 { font-size: 12px; margin-bottom: 6px; text-transform: uppercase; }
+        .invoice-box p { line-height: 1.55; }
+        table { border-collapse: collapse; margin-top: 14px; width: 100%; }
         th { background: #1f3a5f; color: #ffffff; font-size: 10px; padding: 6px; text-align: left; }
         td { border-bottom: 1px solid #e5e7eb; padding: 6px; vertical-align: top; }
         tbody tr:nth-child(even) { background: #f8fafc; }
@@ -26,9 +23,9 @@
         .totals { border-collapse: collapse; float: right; margin-top: 12px; width: 250px; }
         .totals td { border-bottom: 0; padding: 5px 7px; }
         .totals .grand td { border-top: 1px solid #111827; font-weight: 700; }
-        .footer { border-top: 1px solid #d1d5db; color: #64748b; margin-top: 30px; padding-top: 9px; width: 100%; clear: both; overflow: hidden; }
-        .footer span { float: left; }
-        .footer span:last-child { float: right; text-align: right; }
+        .footer { border-top: 1px solid #d1d5db; color: #64748b; margin-top: 30px; padding-top: 9px; width: 100%; }
+        .footer-left { float: left; }
+        .footer-right { float: right; text-align: right; }
     </style>
 </head>
 <body>
@@ -37,39 +34,43 @@
         $dueAmount = max(0, (float) $invoice->grand_total - (float) $invoice->paid_amount);
     @endphp
 
-    <div class="invoice-sheet-top">
-        <div class="invoice-sheet-brand">
-            <h1>{{ $appName }}</h1>
-            <p>Sales invoice copy</p>
-            @if (!empty($branding['company_address']))
-                <p>{{ $branding['company_address'] }}</p>
-            @endif
-            @if (!empty($branding['company_phone']) || !empty($branding['company_email']))
-                <p>{{ $branding['company_phone'] ?? '' }} {{ !empty($branding['company_email']) ? '| '.$branding['company_email'] : '' }}</p>
-            @endif
-        </div>
-        <div class="invoice-sheet-ref">
-            <span>Invoice No</span>
-            <strong>{{ $invoice->invoice_no }}</strong>
-            <small>Date: {{ $invoice->invoice_date?->format('Y-m-d') }}</small>
-        </div>
-    </div>
+    <table class="invoice-header">
+        <tr>
+            <td class="invoice-brand" style="border: 0; width: 60%;">
+                <h1>{{ $appName }}</h1>
+                <p>Sales invoice copy</p>
+                @if (!empty($branding['company_address']))
+                    <p>{{ $branding['company_address'] }}</p>
+                @endif
+                @if (!empty($branding['company_phone']) || !empty($branding['company_email']))
+                    <p>{{ $branding['company_phone'] ?? '' }} {{ !empty($branding['company_email']) ? '| '.$branding['company_email'] : '' }}</p>
+                @endif
+            </td>
+            <td class="invoice-ref" style="border: 0; text-align: right; width: 40%;">
+                <span>Invoice No</span>
+                <strong>{{ $invoice->invoice_no }}</strong>
+                <small>Date: {{ $invoice->invoice_date?->format('Y-m-d') }}</small>
+            </td>
+        </tr>
+    </table>
 
-    <div class="invoice-sheet-grid">
-        <div class="invoice-sheet-box">
-            <h5>Party Details</h5>
-            <p><strong>Name:</strong> {{ $invoice->customer?->name ?? 'Walk-in Customer' }}</p>
-            <p><strong>Contact:</strong> {{ $invoice->customer?->phone ?? ($invoice->customer?->email ?? '-') }}</p>
-            <p><strong>Address:</strong> {{ $invoice->customer?->address ?? '-' }}</p>
-        </div>
-        <div class="invoice-sheet-box-gap"></div>
-        <div class="invoice-sheet-box">
-            <h5>Invoice Summary</h5>
-            <p><strong>Sale Type:</strong> {{ ucfirst((string) ($invoice->sale_type ?? 'pos')) }}</p>
-            <p><strong>Payment:</strong> {{ ucfirst((string) $invoice->payment_status) }}</p>
-            <p><strong>MR:</strong> {{ $invoice->medicalRepresentative?->name ?? '-' }}</p>
-        </div>
-    </div>
+    <table class="invoice-grid">
+        <tr>
+            <td class="invoice-box" style="width: 48%;">
+                <h5>Party Details</h5>
+                <p><strong>Name:</strong> {{ $invoice->customer?->name ?? 'Walk-in Customer' }}</p>
+                <p><strong>Contact:</strong> {{ $invoice->customer?->phone ?? ($invoice->customer?->email ?? '-') }}</p>
+                <p><strong>Address:</strong> {{ $invoice->customer?->address ?? '-' }}</p>
+            </td>
+            <td style="border: 0; width: 4%;"></td>
+            <td class="invoice-box" style="width: 48%;">
+                <h5>Invoice Summary</h5>
+                <p><strong>Sale Type:</strong> {{ ucfirst((string) ($invoice->sale_type ?? 'pos')) }}</p>
+                <p><strong>Payment:</strong> {{ ucfirst((string) $invoice->payment_status) }}</p>
+                <p><strong>MR:</strong> {{ $invoice->medicalRepresentative?->name ?? '-' }}</p>
+            </td>
+        </tr>
+    </table>
 
     <table>
         <thead>
@@ -119,8 +120,8 @@
     </table>
 
     <div class="footer">
-        <span>Printed on {{ now()->format('M j, Y h:i A') }}</span>
-        <span>Thank you for your business.</span>
+        <span class="footer-left">Printed on {{ now()->format('M j, Y h:i A') }}</span>
+        <span class="footer-right">Thank you for your business.</span>
     </div>
 
     <script>window.onload = function() { window.print(); }</script>
