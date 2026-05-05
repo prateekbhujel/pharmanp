@@ -15,7 +15,7 @@ import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { openAuthenticatedDocument } from '../../core/utils/documents';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
-import { appUrl } from '../../core/utils/url';
+import { appUrl , backendUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
 const emptyReturnItem = {
@@ -378,7 +378,7 @@ export function PurchaseReturnsPanel() {
                 ) : (
                     <Space>
                         <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => editReturn(row)} />
-                        <Button icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(appUrl(`/purchase-returns/${row.id}/print`))}>Print</Button>
+                        <Button icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(backendUrl(`/purchase-returns/${row.id}/print`))}>Print</Button>
                         <Button danger icon={<DeleteOutlined />} onClick={() => deleteReturn(row)} />
                     </Space>
                 )

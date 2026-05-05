@@ -31,3 +31,18 @@ export function apiUrl(path = '') {
 
     return appUrl(normalized);
 }
+
+export function backendUrl(path = '') {
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+
+    if (apiBaseUrl) {
+        try {
+            const url = new URL(apiBaseUrl);
+            return `${url.origin}${normalized}`;
+        } catch (e) {
+            return `${apiBaseUrl.replace('/api/v1', '')}${normalized}`;
+        }
+    }
+
+    return appUrl(normalized);
+}

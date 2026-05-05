@@ -12,7 +12,7 @@ import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
-import { appUrl } from '../../core/utils/url';
+import { appUrl , backendUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 import { openAuthenticatedDocument } from '../../core/utils/documents';
 
@@ -101,8 +101,8 @@ export function SalesInvoicesPanel({ customers, medicalRepresentatives, paymentM
                 <Space>
                     <Button icon={<EyeOutlined />} onClick={() => viewInvoice(row)}>View</Button>
                     <Button icon={<DollarOutlined />} onClick={() => openInvoicePayment(row)}>Payment</Button>
-                    <Button icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(appUrl(`/sales/invoices/${row.id}/print`))}>Print</Button>
-                    <Button onClick={() => openAuthenticatedDocument(appUrl(`/sales/invoices/${row.id}/pdf`), { accept: 'application/pdf' })}>PDF</Button>
+                    <Button icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(backendUrl(`/sales/invoices/${row.id}/print`))}>Print</Button>
+                    <Button onClick={() => openAuthenticatedDocument(backendUrl(`/sales/invoices/${row.id}/pdf`), { accept: 'application/pdf' })}>PDF</Button>
                 </Space>
             ),
         },
@@ -153,7 +153,7 @@ export function SalesInvoicesPanel({ customers, medicalRepresentatives, paymentM
                 onCancel={() => setViewingInvoice(null)}
                 footer={[
                     <Button key="payment" icon={<DollarOutlined />} onClick={() => openPaymentUpdate()}>Update Payment</Button>,
-                    <Button key="print" icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(appUrl(`/sales/invoices/${viewingInvoice?.id}/print`))}>Print</Button>,
+                    <Button key="print" icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(backendUrl(`/sales/invoices/${viewingInvoice?.id}/print`))}>Print</Button>,
                     <Button key="close" onClick={() => setViewingInvoice(null)}>Close</Button>,
                 ]}
                 width={980}

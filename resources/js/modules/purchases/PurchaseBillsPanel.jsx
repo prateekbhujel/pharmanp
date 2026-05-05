@@ -10,7 +10,7 @@ import { endpoints } from '../../core/api/endpoints';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { paymentStatusOptions } from '../../core/utils/accountCatalog';
-import { appUrl } from '../../core/utils/url';
+import { appUrl , backendUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 import { openAuthenticatedDocument } from '../../core/utils/documents';
 
@@ -40,8 +40,8 @@ export function PurchaseBillsPanel({ suppliers }) {
             width: 150,
             render: (_, row) => (
                 <Space>
-                    <Button icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(appUrl(`/purchases/${row.id}/print`))}>Print</Button>
-                    <Button onClick={() => openAuthenticatedDocument(appUrl(`/purchases/${row.id}/pdf`), { accept: 'application/pdf' })}>PDF</Button>
+                    <Button icon={<PrinterOutlined />} onClick={() => openAuthenticatedDocument(backendUrl(`/purchases/${row.id}/print`))}>Print</Button>
+                    <Button onClick={() => openAuthenticatedDocument(backendUrl(`/purchases/${row.id}/pdf`), { accept: 'application/pdf' })}>PDF</Button>
                 </Space>
             ),
         },
