@@ -4,6 +4,7 @@ namespace App\Modules\Reports\Services;
 
 use App\Core\Database\SqlDialect;
 use App\Core\Support\ApiResponse;
+use App\Core\Support\MoneyAmount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -125,6 +126,9 @@ class AgingReportService
 
         return [
             ...get_object_vars($row),
+            'total_amount' => MoneyAmount::decimal($row->total_amount ?? 0),
+            'paid_amount' => MoneyAmount::decimal($row->paid_amount ?? 0),
+            'due_amount' => MoneyAmount::decimal($row->due_amount ?? 0),
             'days_overdue' => $days,
             'bucket' => match (true) {
                 $days <= 30 => '30',
@@ -152,12 +156,12 @@ class AgingReportService
 
         return [
             'bills' => (int) ($row->bills ?? 0),
-            'total_due' => (float) ($row->total_due ?? 0),
-            'bucket_30' => (float) ($row->bucket_30 ?? 0),
-            'bucket_45' => (float) ($row->bucket_45 ?? 0),
-            'bucket_60' => (float) ($row->bucket_60 ?? 0),
-            'bucket_90' => (float) ($row->bucket_90 ?? 0),
-            'bucket_90_plus' => (float) ($row->bucket_90_plus ?? 0),
+            'total_due' => MoneyAmount::decimal($row->total_due ?? 0),
+            'bucket_30' => MoneyAmount::decimal($row->bucket_30 ?? 0),
+            'bucket_45' => MoneyAmount::decimal($row->bucket_45 ?? 0),
+            'bucket_60' => MoneyAmount::decimal($row->bucket_60 ?? 0),
+            'bucket_90' => MoneyAmount::decimal($row->bucket_90 ?? 0),
+            'bucket_90_plus' => MoneyAmount::decimal($row->bucket_90_plus ?? 0),
         ];
     }
 

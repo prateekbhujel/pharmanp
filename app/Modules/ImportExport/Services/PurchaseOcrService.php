@@ -2,6 +2,7 @@
 
 namespace App\Modules\ImportExport\Services;
 
+use App\Core\Support\MoneyAmount;
 use App\Modules\Party\Models\Supplier;
 use App\Modules\Purchase\Models\Purchase;
 use Carbon\Carbon;
@@ -235,7 +236,7 @@ class PurchaseOcrService
         return null;
     }
 
-    private function extractTotalAmount(array $lines): ?float
+    private function extractTotalAmount(array $lines): ?string
     {
         $candidates = collect($lines)
             ->reverse()
@@ -243,7 +244,7 @@ class PurchaseOcrService
 
         foreach ($candidates as $line) {
             if (preg_match('/(\d[\d,]*\.?\d{0,2})\s*$/', (string) $line, $matches)) {
-                return (float) str_replace(',', '', $matches[1]);
+                return MoneyAmount::decimal($matches[1]);
             }
         }
 
@@ -293,8 +294,8 @@ class PurchaseOcrService
                 'invoice_no' => $purchase->supplier_invoice_no ?: '-',
                 'supplier_name' => $purchase->supplier?->name ?? '-',
                 'purchase_date' => $purchase->purchase_date?->toDateString() ?: '-',
-                'grand_total' => round((float) $purchase->grand_total, 2),
-                'paid_amount' => round((float) $purchase->paid_amount, 2),
+                'grand_total' => MoneyAmount::decimal($purchase->grand_total),
+                'paid_amount' => MoneyAmount::decimal($purchase->paid_amount),
                 'payment_status' => $purchase->payment_status,
             ])
             ->values()

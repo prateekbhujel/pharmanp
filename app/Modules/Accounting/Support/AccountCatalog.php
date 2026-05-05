@@ -2,6 +2,8 @@
 
 namespace App\Modules\Accounting\Support;
 
+use App\Core\Support\MoneyAmount;
+
 class AccountCatalog
 {
     public static function all(): array
@@ -58,22 +60,22 @@ class AccountCatalog
         return null;
     }
 
-    public static function closingBalance(float $debit, float $credit, string $nature): array
+    public static function closingBalance(mixed $debit, mixed $credit, string $nature): array
     {
         if ($nature === 'debit') {
-            $net = round($debit - $credit, 2);
+            $netCents = MoneyAmount::cents($debit) - MoneyAmount::cents($credit);
 
             return [
-                'amount' => abs($net),
-                'side' => $net >= 0 ? 'Dr' : 'Cr',
+                'amount' => MoneyAmount::fromCents(abs($netCents)),
+                'side' => $netCents >= 0 ? 'Dr' : 'Cr',
             ];
         }
 
-        $net = round($credit - $debit, 2);
+        $netCents = MoneyAmount::cents($credit) - MoneyAmount::cents($debit);
 
         return [
-            'amount' => abs($net),
-            'side' => $net >= 0 ? 'Cr' : 'Dr',
+            'amount' => MoneyAmount::fromCents(abs($netCents)),
+            'side' => $netCents >= 0 ? 'Cr' : 'Dr',
         ];
     }
 }

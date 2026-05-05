@@ -17,6 +17,34 @@ final class TableQueryApplier
         );
     }
 
+    /**
+     * @param  array{tenant?: string|null, company?: string|null, store?: string|null}  $columns
+     */
+    public function operatingContext(Builder $query, ?User $user, array $columns = []): Builder
+    {
+        if (! $user || $user->canAccessAllTenants()) {
+            return $query;
+        }
+
+        $columns = [
+            'tenant' => array_key_exists('tenant', $columns) ? $columns['tenant'] : 'tenant_id',
+            'company' => array_key_exists('company', $columns) ? $columns['company'] : 'company_id',
+            'store' => array_key_exists('store', $columns) ? $columns['store'] : 'store_id',
+        ];
+
+        $query
+            ->when($user->tenant_id && $columns['tenant'], fn (Builder $builder): Builder => $builder->where($columns['tenant'], $user->tenant_id))
+            ->when($user->company_id && $columns['company'], fn (Builder $builder): Builder => $builder->where($columns['company'], $user->company_id))
+            ->when($user->store_id && $columns['store'], function (Builder $builder) use ($columns, $user): Builder {
+                return $builder->where(function (Builder $store) use ($columns, $user): void {
+                    $store->where($columns['store'], $user->store_id)
+                        ->orWhereNull($columns['store']);
+                });
+            });
+
+        return $query;
+    }
+
     public function softDeletes(Builder $query, TableQueryData $table): Builder
     {
         return $query->when(

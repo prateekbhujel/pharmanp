@@ -32,7 +32,7 @@ class VoucherRepository implements VoucherRepositoryInterface
         $query = Voucher::query()
             ->withCount('entries');
 
-        $this->tables->tenant($query, $user, 'tenant_id');
+        $this->tables->operatingContext($query, $user, ['store' => null]);
 
         $query
             ->when($table->search, function (Builder $builder, string $search): void {

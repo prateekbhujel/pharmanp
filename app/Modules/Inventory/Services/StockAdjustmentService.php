@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventory\Services;
 
+use App\Core\Security\TenantRecordScope;
 use App\Models\User;
 use App\Modules\Inventory\Models\Batch;
 use App\Modules\Inventory\Models\StockAdjustment;
@@ -11,19 +12,28 @@ use Illuminate\Validation\ValidationException;
 
 class StockAdjustmentService
 {
-    public function __construct(private readonly StockMovementService $stock) {}
+    public function __construct(
+        private readonly StockMovementService $stock,
+        private readonly TenantRecordScope $records,
+    ) {}
 
     public function save(array $data, User $user, ?StockAdjustment $adjustment = null): StockAdjustment
     {
         return DB::transaction(function () use ($data, $user, $adjustment) {
             if ($adjustment) {
-                $this->reverse($adjustment, $user, 'Adjustment edit rollback.');
+                $this->assertAccessible($adjustment, $user, 'update');
             }
 
-            $batch = Batch::query()->lockForUpdate()->findOrFail($data['batch_id']);
+            $batch = Batch::query()->lockForUpdate();
+            $this->records->apply($batch, $user);
+            $batch = $batch->findOrFail($data['batch_id']);
 
             if ((int) $batch->product_id !== (int) $data['product_id']) {
                 throw ValidationException::withMessages(['batch_id' => 'Selected batch does not belong to the selected product.']);
+            }
+
+            if ($adjustment) {
+                $this->reverse($adjustment, $user, 'Adjustment edit rollback.');
             }
 
             $adjustment ??= new StockAdjustment;
@@ -54,10 +64,23 @@ class StockAdjustmentService
 
     public function delete(StockAdjustment $adjustment, User $user): void
     {
+        $this->assertAccessible($adjustment, $user, 'delete');
+
         DB::transaction(function () use ($adjustment, $user) {
             $this->reverse($adjustment, $user, 'Adjustment delete rollback.');
             $adjustment->delete();
         });
+    }
+
+    public function assertAccessible(StockAdjustment $adjustment, User $user, string $action = 'update'): void
+    {
+        $permission = $action === 'delete' ? 'inventory.batches.delete' : 'inventory.batches.update';
+
+        abort_unless($user->is_owner || $user->can($permission), 403);
+
+        if (! $this->records->canAccess($user, $adjustment)) {
+            abort(404);
+        }
     }
 
     private function apply(StockAdjustment $adjustment, User $user): void

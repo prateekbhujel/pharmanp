@@ -1121,6 +1121,7 @@ class PharmaNpDemoLoadCommand extends Command
         return [
             'tenant_id' => $context['tenantId'],
             'company_id' => $context['companyId'],
+            'store_id' => $context['storeId'],
             'transaction_date' => $date,
             'account_type' => $accountType,
             'party_type' => $partyType,

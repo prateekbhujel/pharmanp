@@ -124,6 +124,12 @@ class ReportRepository implements ReportRepositoryInterface
             })
             ->when($user->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('account_transactions.tenant_id', $tenantId))
             ->when($user->company_id, fn (Builder $builder, int $companyId) => $builder->where('account_transactions.company_id', $companyId))
+            ->when($user->store_id, function (Builder $builder, int $storeId): void {
+                $builder->where(function (Builder $store) use ($storeId): void {
+                    $store->where('account_transactions.store_id', $storeId)
+                        ->orWhereNull('account_transactions.store_id');
+                });
+            })
             ->when($accountType, fn (Builder $builder, string $type) => $builder->where('account_type', $type))
             ->when($filters['party_type'] ?? null, fn (Builder $builder, mixed $type) => $builder->where('party_type', $type))
             ->when($filters['party_id'] ?? null, fn (Builder $builder, mixed $id) => $builder->where('party_id', $id))
@@ -175,27 +181,32 @@ class ReportRepository implements ReportRepositoryInterface
         return $this->dateRange($query, 'stock_movements.movement_date', $from, $to);
     }
 
-    public function accountTransactionTotals(?int $tenantId, ?int $companyId, ?string $from = null, ?string $to = null, ?string $accountType = null): object
+    public function accountTransactionTotals(?int $tenantId, ?int $companyId, ?string $from = null, ?string $to = null, ?string $accountType = null, ?int $storeId = null): object
     {
-        return $this->scopedAccountTransactions($tenantId, $companyId, $from, $to, $accountType)
+        return $this->scopedAccountTransactions($tenantId, $companyId, $from, $to, $accountType, $storeId)
             ->selectRaw('COALESCE(SUM(debit), 0) as debit_total, COALESCE(SUM(credit), 0) as credit_total')
             ->first() ?: (object) ['debit_total' => 0, 'credit_total' => 0];
     }
 
-    public function accountTypeTotals(?int $tenantId, ?int $companyId, ?string $from = null, ?string $to = null): Collection
+    public function accountTypeTotals(?int $tenantId, ?int $companyId, ?string $from = null, ?string $to = null, ?int $storeId = null): Collection
     {
-        return $this->scopedAccountTransactions($tenantId, $companyId, $from, $to)
+        return $this->scopedAccountTransactions($tenantId, $companyId, $from, $to, storeId: $storeId)
             ->selectRaw('account_type, SUM(debit) as debit_total, SUM(credit) as credit_total')
             ->groupBy('account_type')
             ->get()
             ->keyBy('account_type');
     }
 
-    private function scopedAccountTransactions(?int $tenantId, ?int $companyId, ?string $from = null, ?string $to = null, ?string $accountType = null)
+    private function scopedAccountTransactions(?int $tenantId, ?int $companyId, ?string $from = null, ?string $to = null, ?string $accountType = null, ?int $storeId = null)
     {
         $query = DB::table('account_transactions')
             ->when($tenantId, fn ($builder, int $id) => $builder->where('tenant_id', $id))
             ->when($companyId, fn ($builder, int $id) => $builder->where('company_id', $id))
+            ->when($storeId, function ($builder, int $id): void {
+                $builder->where(function ($store) use ($id): void {
+                    $store->where('store_id', $id)->orWhereNull('store_id');
+                });
+            })
             ->when($accountType, fn ($builder, string $type) => $builder->where('account_type', $type));
 
         if ($from) {

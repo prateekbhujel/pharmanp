@@ -5,6 +5,7 @@ namespace App\Modules\Accounting\Services;
 use App\Core\DTOs\TableQueryData;
 use App\Core\Services\DocumentNumberService;
 use App\Core\Support\ApiResponse;
+use App\Core\Support\MoneyAmount;
 use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Accounting\DTOs\PaymentData;
@@ -125,8 +126,8 @@ class PaymentSettlementService
                     'bill_number' => $invoice->invoice_no,
                     'bill_date' => $invoice->invoice_date?->format('M j, Y'),
                     'due_date' => $invoice->due_date?->toDateString(),
-                    'net_amount' => (float) $invoice->grand_total,
-                    'total_paid' => (float) $invoice->paid_amount,
+                    'net_amount' => MoneyAmount::decimal($invoice->grand_total),
+                    'total_paid' => MoneyAmount::decimal($invoice->paid_amount),
                     'outstanding' => $this->billOutstanding($invoice),
                 ])->values();
         }
@@ -138,8 +139,8 @@ class PaymentSettlementService
                 'bill_number' => $purchase->purchase_no,
                 'bill_date' => $purchase->purchase_date?->format('M j, Y'),
                 'due_date' => $purchase->due_date?->toDateString(),
-                'net_amount' => (float) $purchase->grand_total,
-                'total_paid' => (float) $purchase->paid_amount,
+                'net_amount' => MoneyAmount::decimal($purchase->grand_total),
+                'total_paid' => MoneyAmount::decimal($purchase->paid_amount),
                 'outstanding' => $this->billOutstanding($purchase),
             ])->values();
     }
@@ -168,7 +169,7 @@ class PaymentSettlementService
             'payment_mode_id' => $payment->payment_mode_id,
             'payment_mode' => $payment->payment_mode_label,
             'payment_mode_data' => $payment->paymentModeOption?->data,
-            'amount' => (float) $payment->amount,
+            'amount' => MoneyAmount::decimal($payment->amount),
             'reference_no' => $payment->reference_no,
             'notes' => $payment->notes,
             'linked_bills' => $payment->allocations->count(),
@@ -187,10 +188,10 @@ class PaymentSettlementService
                     'bill_number' => $bill->invoice_no ?? $bill->purchase_no ?? '#'.$allocation->bill_id,
                     'bill_date' => ($bill->invoice_date ?? $bill->purchase_date)?->format('M j, Y'),
                     'due_date' => ($bill->due_date ?? null)?->toDateString(),
-                    'net_amount' => (float) $bill->grand_total,
-                    'total_paid' => (float) $bill->paid_amount,
+                    'net_amount' => MoneyAmount::decimal($bill->grand_total),
+                    'total_paid' => MoneyAmount::decimal($bill->paid_amount),
                     'outstanding' => $this->money($this->cents($this->billOutstanding($bill)) + $this->cents($allocation->allocated_amount)),
-                    'allocated_amount' => (float) $allocation->allocated_amount,
+                    'allocated_amount' => MoneyAmount::decimal($allocation->allocated_amount),
                 ];
             })->values();
         }
@@ -210,7 +211,7 @@ class PaymentSettlementService
     {
         $allocatedCents = 0;
 
-        foreach ($allocations->filter(fn (array $row) => (float) ($row['allocated_amount'] ?? 0) > 0) as $allocation) {
+        foreach ($allocations->filter(fn (array $row) => $this->cents($row['allocated_amount'] ?? 0) > 0) as $allocation) {
             $bill = $this->resolveBill($allocation['bill_type'], (int) $allocation['bill_id'], (int) $payment->party_id, (string) $payment->party_type, $user);
             $allocationCents = $this->cents($allocation['allocated_amount']);
             $outstandingCents = $this->cents($this->billOutstanding($bill));
@@ -233,7 +234,7 @@ class PaymentSettlementService
             ]);
             $bill->payment_status = $this->billPaymentStatus($bill);
             $bill->save();
-            $this->adjustPartyBalanceForAllocation($payment, $bill, $allocationCents);
+            $this->adjustPartyBalanceForAllocation($payment, $bill, $allocationCents, user: $user);
 
             $allocatedCents += $allocationCents;
         }
@@ -252,20 +253,20 @@ class PaymentSettlementService
             ]);
             $bill->payment_status = $this->billPaymentStatus($bill);
             $bill->save();
-            $this->adjustPartyBalanceForAllocation($payment, $bill, $amountCents, reverse: true);
+            $this->adjustPartyBalanceForAllocation($payment, $bill, $amountCents, reverse: true, user: $user);
         }
     }
 
-    private function adjustPartyBalanceForAllocation(Payment $payment, Model $bill, int $amountCents, bool $reverse = false): void
+    private function adjustPartyBalanceForAllocation(Payment $payment, Model $bill, int $amountCents, bool $reverse = false, ?User $user = null): void
     {
         $delta = $this->money($reverse ? $amountCents : -$amountCents);
 
         if ($payment->party_type === 'customer' && $bill instanceof SalesInvoice && $bill->customer_id) {
-            $this->receivables->adjustCustomerBalance((int) $bill->customer_id, $delta);
+            $this->receivables->adjustCustomerBalance((int) $bill->customer_id, $delta, $user);
         }
 
         if ($payment->party_type === 'supplier' && $bill instanceof Purchase && $bill->supplier_id) {
-            $this->payables->adjustSupplierBalance((int) $bill->supplier_id, $delta);
+            $this->payables->adjustSupplierBalance((int) $bill->supplier_id, $delta, $user);
         }
     }
 
@@ -281,7 +282,7 @@ class PaymentSettlementService
         }
     }
 
-    private function billOutstanding(Model $bill): float
+    private function billOutstanding(Model $bill): string
     {
         return $this->money(max(0, $this->cents($bill->grand_total) - $this->cents($bill->paid_amount)));
     }
@@ -304,24 +305,24 @@ class PaymentSettlementService
 
         if ($payment->direction === 'in') {
             return [
-                ['account_type' => $cashAccount, 'debit' => (float) $payment->amount, 'credit' => 0, 'notes' => 'Payment received '.$payment->payment_no],
-                ['account_type' => 'receivable', 'party_type' => 'customer', 'party_id' => $payment->party_id, 'debit' => 0, 'credit' => (float) $payment->amount, 'notes' => 'Receivable settled '.$payment->payment_no],
+                ['account_type' => $cashAccount, 'debit' => MoneyAmount::decimal($payment->amount), 'credit' => '0.00', 'notes' => 'Payment received '.$payment->payment_no],
+                ['account_type' => 'receivable', 'party_type' => 'customer', 'party_id' => $payment->party_id, 'debit' => '0.00', 'credit' => MoneyAmount::decimal($payment->amount), 'notes' => 'Receivable settled '.$payment->payment_no],
             ];
         }
 
         return [
-            ['account_type' => 'payable', 'party_type' => 'supplier', 'party_id' => $payment->party_id, 'debit' => (float) $payment->amount, 'credit' => 0, 'notes' => 'Payable settled '.$payment->payment_no],
-            ['account_type' => $cashAccount, 'debit' => 0, 'credit' => (float) $payment->amount, 'notes' => 'Payment made '.$payment->payment_no],
+            ['account_type' => 'payable', 'party_type' => 'supplier', 'party_id' => $payment->party_id, 'debit' => MoneyAmount::decimal($payment->amount), 'credit' => '0.00', 'notes' => 'Payable settled '.$payment->payment_no],
+            ['account_type' => $cashAccount, 'debit' => '0.00', 'credit' => MoneyAmount::decimal($payment->amount), 'notes' => 'Payment made '.$payment->payment_no],
         ];
     }
 
     private function cents(mixed $value): int
     {
-        return (int) round((float) $value * 100);
+        return MoneyAmount::cents($value);
     }
 
-    private function money(int $cents): float
+    private function money(int $cents): string
     {
-        return $cents / 100;
+        return MoneyAmount::fromCents($cents);
     }
 }

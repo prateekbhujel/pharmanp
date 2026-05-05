@@ -42,7 +42,7 @@ class PaymentRepository implements PaymentRepositoryInterface
         $query = Payment::query()
             ->with(['customer', 'supplier', 'allocations', 'paymentModeOption:id,name,data']);
 
-        $this->tables->tenant($query, $user, 'tenant_id');
+        $this->tables->operatingContext($query, $user);
         $this->tables->softDeletes($query, $table);
 
         $query

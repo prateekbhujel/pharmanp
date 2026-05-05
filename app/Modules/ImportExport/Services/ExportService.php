@@ -2,6 +2,7 @@
 
 namespace App\Modules\ImportExport\Services;
 
+use App\Models\User;
 use App\Modules\ImportExport\Repositories\Interfaces\ExportRepositoryInterface;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -10,7 +11,27 @@ use Rap2hpoutre\FastExcel\FastExcel;
 
 class ExportService
 {
+    private const EXCEL_ROW_LIMIT = 10000;
+
+    private const PDF_ROW_LIMIT = 1000;
+
     public function __construct(private readonly ExportRepositoryInterface $exports) {}
+
+    public function authorizeDataset(User $user, string $dataset): void
+    {
+        $allowed = match ($dataset) {
+            'users' => $user->is_owner || $user->canAccessAllTenants(),
+            'suppliers' => $user->is_owner || $user->can('party.suppliers.view'),
+            'customers' => $user->is_owner || $user->can('party.customers.view'),
+            'sales-invoices' => $user->is_owner || $user->can('sales.invoices.view'),
+            'purchases' => $user->is_owner || $user->can('purchase.entries.view'),
+            'purchase-orders' => $user->is_owner || $user->can('purchase.orders.manage'),
+            'payments', 'expenses', 'account-tree' => $user->is_owner || $user->can('accounting.books.view') || $user->can('accounting.trial_balance.view'),
+            default => false,
+        };
+
+        abort_unless($allowed, 403);
+    }
 
     public function inventoryMaster(Request $request, string $master, string $format)
     {
@@ -35,6 +56,8 @@ class ExportService
 
     public function dataset(Request $request, string $dataset, string $format)
     {
+        $this->authorizeDataset($request->user(), $dataset);
+
         $title = match ($dataset) {
             'suppliers' => 'Supplier List',
             'customers' => 'Customer List',
@@ -54,6 +77,7 @@ class ExportService
     private function download(string $format, string $excelName, string $pdfName, string $title, Collection $rows)
     {
         abort_unless(in_array($format, ['xlsx', 'pdf'], true), 404);
+        $this->assertRowBudget($format, $rows);
 
         if ($format === 'pdf') {
             return Pdf::loadView('exports.table', [
@@ -75,5 +99,16 @@ class ExportService
         return response()->download($path, $excelName, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
+    }
+
+    private function assertRowBudget(string $format, Collection $rows): void
+    {
+        $limit = $format === 'pdf' ? self::PDF_ROW_LIMIT : self::EXCEL_ROW_LIMIT;
+
+        abort_if(
+            $rows->count() > $limit,
+            422,
+            'Export is too large. Apply filters and export a smaller dataset.',
+        );
     }
 }

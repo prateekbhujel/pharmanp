@@ -938,7 +938,7 @@ return new class extends Migration
 
         Schema::create('account_transactions', function (Blueprint $table) {
             $table->id();
-            $this->tenantColumns($table);
+            $this->tenantColumns($table, true);
             $table->date('transaction_date')->index();
             $table->string('account_type', 60)->index();
             $table->string('party_type', 40)->nullable()->index();
@@ -953,6 +953,7 @@ return new class extends Migration
             $table->index(['source_type', 'source_id'], 'account_transactions_source_idx');
             $table->index(['party_type', 'party_id'], 'account_transactions_party_idx');
             $table->index(['tenant_id', 'company_id', 'transaction_date'], 'acct_tenant_company_date_idx');
+            $table->index(['tenant_id', 'company_id', 'store_id', 'transaction_date'], 'acct_tenant_company_store_date_idx');
             $table->index(['tenant_id', 'account_type', 'transaction_date'], 'acct_tenant_account_date_idx');
             $table->index(['tenant_id', 'party_type', 'party_id', 'transaction_date'], 'acct_tenant_party_date_idx');
         });

@@ -86,6 +86,8 @@ class ExportController extends ModularController
      */
     public function dataset(Request $request, string $dataset, string $format, ExportService $service)
     {
+        $service->authorizeDataset($request->user(), $dataset);
+
         return $service->dataset($request, $dataset, $format);
     }
 }

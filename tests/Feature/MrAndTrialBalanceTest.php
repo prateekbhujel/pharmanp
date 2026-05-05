@@ -58,7 +58,7 @@ class MrAndTrialBalanceTest extends TestCase
 
         $trialBalance = $this->actingAs($user)->getJson('/api/v1/reports/trial-balance?from=2026-04-01&to=2026-04-30')
             ->assertOk()
-            ->assertJsonPath('summary.difference', 0)
+            ->assertJsonPath('summary.difference', '0.00')
             ->json('data');
 
         $this->assertTrue(collect($trialBalance)->contains(fn ($row) => $row['account'] === 'Inventory Stock' && (float) $row['debit'] === 50.0));
@@ -66,8 +66,8 @@ class MrAndTrialBalanceTest extends TestCase
 
         $accountTree = $this->actingAs($user)->getJson('/api/v1/reports/account-tree?from=2026-04-01&to=2026-04-30')
             ->assertOk()
-            ->assertJsonPath('summary.debit', 66)
-            ->assertJsonPath('summary.credit', 66)
+            ->assertJsonPath('summary.debit', '66.00')
+            ->assertJsonPath('summary.credit', '66.00')
             ->json('data');
 
         $this->assertTrue(collect($accountTree)->contains(fn ($row) => $row['account_key'] === 'inventory' && (float) $row['debit'] === 50.0));

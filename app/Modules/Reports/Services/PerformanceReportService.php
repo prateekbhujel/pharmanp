@@ -3,6 +3,7 @@
 namespace App\Modules\Reports\Services;
 
 use App\Core\Support\ApiResponse;
+use App\Core\Support\MoneyAmount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -101,14 +102,28 @@ class PerformanceReportService
     private function paged($query, int $perPage): array
     {
         $page = $query->paginate($perPage);
+        $rows = collect($page->items())->map(fn ($row) => $this->formatRow($row))->values();
 
         return [
-            'data' => $page->items(),
+            'data' => $rows,
             'meta' => ApiResponse::paginationMeta($page),
             'summary' => [
                 'rows' => $page->total(),
-                'sales_value' => (float) collect($page->items())->sum('sales_value'),
+                'sales_value' => MoneyAmount::fromCents(collect($page->items())->sum(fn ($row) => MoneyAmount::cents($row->sales_value ?? 0))),
             ],
         ];
+    }
+
+    private function formatRow(object $row): array
+    {
+        $payload = get_object_vars($row);
+
+        foreach (['sales_value', 'collected_value'] as $field) {
+            if (array_key_exists($field, $payload)) {
+                $payload[$field] = MoneyAmount::decimal($payload[$field]);
+            }
+        }
+
+        return $payload;
     }
 }

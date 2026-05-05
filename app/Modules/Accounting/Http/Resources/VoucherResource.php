@@ -2,6 +2,7 @@
 
 namespace App\Modules\Accounting\Http\Resources;
 
+use App\Core\Support\MoneyAmount;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,7 +27,7 @@ class VoucherResource extends JsonResource
             'voucher_date' => $this->voucher_date?->toDateString(),
             'voucher_type' => $this->voucher_type,
             'voucher_type_label' => str($this->voucher_type)->replace('_', ' ')->title()->toString(),
-            'total_amount' => (float) $this->total_amount,
+            'total_amount' => MoneyAmount::decimal($this->total_amount),
             'notes' => $this->notes,
             'entries_count' => (int) ($this->entries_count ?? $this->entries?->count() ?? 0),
             'entries' => $this->whenLoaded('entries', fn () => $this->entries->map(fn ($entry) => [
@@ -35,7 +36,7 @@ class VoucherResource extends JsonResource
                 'party_type' => $entry->party_type,
                 'party_id' => $entry->party_id,
                 'entry_type' => $entry->entry_type,
-                'amount' => (float) $entry->amount,
+                'amount' => MoneyAmount::decimal($entry->amount),
                 'notes' => $entry->notes,
             ])->values()),
         ];

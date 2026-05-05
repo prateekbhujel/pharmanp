@@ -70,7 +70,7 @@ class SalesReturnService
 
             $totalAmount = $this->postReturnItems($salesReturn, $data['items'], $user);
             $this->returns->save($salesReturn, ['total_amount' => round($totalAmount, 2)]);
-            $this->reduceReceivable((int) $customer->id, $totalAmount);
+            $this->reduceReceivable((int) $customer->id, $totalAmount, $user);
             $this->postAccounting($salesReturn, (int) $customer->id, $totalAmount, $user);
 
             return $this->returns->fresh($salesReturn);
@@ -86,7 +86,7 @@ class SalesReturnService
             $oldCustomerId = (int) $salesReturn->customer_id;
             $oldAmount = (float) $salesReturn->total_amount;
             $this->reverseReturnEffects($salesReturn, $user);
-            $this->restoreReceivable($oldCustomerId, $oldAmount);
+            $this->restoreReceivable($oldCustomerId, $oldAmount, $user);
             $this->returns->deleteItems($salesReturn);
             $this->accounts->replaceForSource($user, 'sales_return', $salesReturn->id, now()->toDateString(), []);
 
@@ -111,7 +111,7 @@ class SalesReturnService
 
             $totalAmount = $this->postReturnItems($salesReturn, $data['items'], $user);
             $this->returns->save($salesReturn, ['total_amount' => round($totalAmount, 2)]);
-            $this->reduceReceivable((int) $customer->id, $totalAmount);
+            $this->reduceReceivable((int) $customer->id, $totalAmount, $user);
             $this->postAccounting($salesReturn, (int) $customer->id, $totalAmount, $user);
 
             return $this->returns->fresh($salesReturn);
@@ -125,7 +125,7 @@ class SalesReturnService
         DB::transaction(function () use ($salesReturn, $user): void {
             $salesReturn->load('items');
             $this->reverseReturnEffects($salesReturn, $user);
-            $this->restoreReceivable((int) $salesReturn->customer_id, (float) $salesReturn->total_amount);
+            $this->restoreReceivable((int) $salesReturn->customer_id, (float) $salesReturn->total_amount, $user);
             $this->accounts->replaceForSource($user, 'sales_return', $salesReturn->id, now()->toDateString(), []);
             $this->returns->deleteItems($salesReturn);
             $this->returns->delete($salesReturn);
@@ -350,17 +350,17 @@ class SalesReturnService
         );
     }
 
-    private function reduceReceivable(int $customerId, float $totalAmount): void
+    private function reduceReceivable(int $customerId, float $totalAmount, User $user): void
     {
         if ($customerId > 0 && $totalAmount > 0) {
-            $this->receivables->adjustCustomerBalance($customerId, -1 * round($totalAmount, 2));
+            $this->receivables->adjustCustomerBalance($customerId, -1 * round($totalAmount, 2), $user);
         }
     }
 
-    private function restoreReceivable(int $customerId, float $totalAmount): void
+    private function restoreReceivable(int $customerId, float $totalAmount, User $user): void
     {
         if ($customerId > 0 && $totalAmount > 0) {
-            $this->receivables->adjustCustomerBalance($customerId, round($totalAmount, 2));
+            $this->receivables->adjustCustomerBalance($customerId, round($totalAmount, 2), $user);
         }
     }
 }

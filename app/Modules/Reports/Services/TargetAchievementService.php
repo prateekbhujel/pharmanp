@@ -3,6 +3,7 @@
 namespace App\Modules\Reports\Services;
 
 use App\Core\Support\ApiResponse;
+use App\Core\Support\MoneyAmount;
 use App\Modules\Setup\Models\Target;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -30,17 +31,18 @@ class TargetAchievementService
         $page = $query->paginate($perPage);
         $rows = collect($page->items())->map(function (Target $target) {
             $achieved = $this->achievedAmount($target);
-            $targetAmount = (float) $target->target_amount;
+            $targetCents = MoneyAmount::cents($target->target_amount);
+            $achievedCents = MoneyAmount::cents($achieved);
 
             return [
                 'id' => $target->id,
                 'target_type' => $target->target_type,
                 'target_period' => $target->target_period,
                 'target_level' => $target->target_level,
-                'target_amount' => $targetAmount,
-                'target_quantity' => (float) $target->target_quantity,
+                'target_amount' => MoneyAmount::fromCents($targetCents),
+                'target_quantity' => (string) ($target->target_quantity ?? '0'),
                 'achieved_amount' => $achieved,
-                'achievement_percent' => $targetAmount > 0 ? ($achieved / $targetAmount) * 100 : null,
+                'achievement_percent' => $targetCents > 0 ? ($achievedCents / $targetCents) * 100 : null,
                 'start_date' => $target->start_date?->toDateString(),
                 'end_date' => $target->end_date?->toDateString(),
                 'branch_id' => $target->branch_id,
@@ -57,13 +59,13 @@ class TargetAchievementService
             'data' => $paginator->items(),
             'meta' => ApiResponse::paginationMeta($paginator),
             'summary' => [
-                'target_amount' => (float) $rows->sum('target_amount'),
-                'achieved_amount' => (float) $rows->sum('achieved_amount'),
+                'target_amount' => MoneyAmount::fromCents($rows->sum(fn (array $row) => MoneyAmount::cents($row['target_amount']))),
+                'achieved_amount' => MoneyAmount::fromCents($rows->sum(fn (array $row) => MoneyAmount::cents($row['achieved_amount']))),
             ],
         ];
     }
 
-    private function achievedAmount(Target $target): float
+    private function achievedAmount(Target $target): string
     {
         $base = DB::table('sales_invoices')
             ->whereNull('sales_invoices.deleted_at')
@@ -72,34 +74,34 @@ class TargetAchievementService
             ->when($target->company_id, fn ($builder, $companyId) => $builder->where('sales_invoices.company_id', $companyId));
 
         if ($target->target_level === 'product') {
-            return (float) $base
+            return MoneyAmount::decimal($base
                 ->join('sales_invoice_items', 'sales_invoice_items.sales_invoice_id', '=', 'sales_invoices.id')
                 ->where('sales_invoice_items.product_id', $target->product_id)
-                ->sum('sales_invoice_items.line_total');
+                ->sum('sales_invoice_items.line_total'));
         }
 
         if ($target->target_level === 'division') {
-            return (float) $base
+            return MoneyAmount::decimal($base
                 ->join('sales_invoice_items', 'sales_invoice_items.sales_invoice_id', '=', 'sales_invoices.id')
                 ->join('products', 'products.id', '=', 'sales_invoice_items.product_id')
                 ->where('products.division_id', $target->division_id)
-                ->sum('sales_invoice_items.line_total');
+                ->sum('sales_invoice_items.line_total'));
         }
 
         if ($target->target_level === 'employee') {
-            return (float) $base
+            return MoneyAmount::decimal($base
                 ->join('medical_representatives', 'medical_representatives.id', '=', 'sales_invoices.medical_representative_id')
                 ->where('medical_representatives.employee_id', $target->employee_id)
-                ->sum('sales_invoices.grand_total');
+                ->sum('sales_invoices.grand_total'));
         }
 
         if ($target->target_level === 'area') {
-            return (float) $base
+            return MoneyAmount::decimal($base
                 ->join('medical_representatives', 'medical_representatives.id', '=', 'sales_invoices.medical_representative_id')
                 ->where('medical_representatives.area_id', $target->area_id)
-                ->sum('sales_invoices.grand_total');
+                ->sum('sales_invoices.grand_total'));
         }
 
-        return (float) $base->sum('sales_invoices.grand_total');
+        return MoneyAmount::decimal($base->sum('sales_invoices.grand_total'));
     }
 }

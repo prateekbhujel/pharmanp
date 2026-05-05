@@ -4,6 +4,7 @@ namespace App\Modules\Reports\Services;
 
 use App\Core\DTOs\TableQueryData;
 use App\Core\Support\ApiResponse;
+use App\Core\Support\MoneyAmount;
 use App\Modules\Accounting\Support\AccountCatalog;
 use App\Modules\Analytics\Services\PharmaSignalService;
 use App\Modules\MR\Services\MrPerformanceService;
@@ -85,10 +86,10 @@ class ReportService
             return $row;
         })->all();
 
-        $totals = $this->reports->accountTransactionTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to, $accountType);
+        $totals = $this->reports->accountTransactionTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to, $accountType, $request->user()?->store_id);
         $page['summary'] = [
-            'debit' => (float) $totals->debit_total,
-            'credit' => (float) $totals->credit_total,
+            'debit' => MoneyAmount::decimal($totals->debit_total),
+            'credit' => MoneyAmount::decimal($totals->credit_total),
         ];
 
         return $page;
@@ -150,13 +151,13 @@ class ReportService
 
     private function trialBalance(Request $request, ?string $from, ?string $to, int $perPage): array
     {
-        $summary = $this->reports->accountTypeTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to);
+        $summary = $this->reports->accountTypeTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to, $request->user()?->store_id);
 
         $rows = collect(AccountCatalog::all())
             ->map(function (array $account) use ($summary) {
                 $totals = $summary->get($account['key']);
-                $debit = round((float) ($totals?->debit_total ?? 0), 2);
-                $credit = round((float) ($totals?->credit_total ?? 0), 2);
+                $debit = MoneyAmount::decimal($totals?->debit_total ?? 0);
+                $credit = MoneyAmount::decimal($totals?->credit_total ?? 0);
                 $closing = AccountCatalog::closingBalance($debit, $credit, $account['nature']);
 
                 return [
@@ -170,7 +171,7 @@ class ReportService
                     'closing_side' => $closing['side'],
                 ];
             })
-            ->filter(fn (array $row) => $row['debit'] > 0 || $row['credit'] > 0)
+            ->filter(fn (array $row) => MoneyAmount::cents($row['debit']) > 0 || MoneyAmount::cents($row['credit']) > 0)
             ->values();
 
         $page = LengthAwarePaginator::resolveCurrentPage();
@@ -181,21 +182,21 @@ class ReportService
             'data' => $paginator->items(),
             'meta' => ApiResponse::paginationMeta($paginator),
             'summary' => [
-                'debit' => round((float) $rows->sum('debit'), 2),
-                'credit' => round((float) $rows->sum('credit'), 2),
-                'difference' => round(abs((float) $rows->sum('debit') - (float) $rows->sum('credit')), 2),
+                'debit' => $this->sumMoney($rows, 'debit'),
+                'credit' => $this->sumMoney($rows, 'credit'),
+                'difference' => MoneyAmount::absoluteDifference($this->sumMoney($rows, 'debit'), $this->sumMoney($rows, 'credit')),
             ],
         ];
     }
 
     private function accountTree(Request $request, ?string $from, ?string $to, int $perPage): array
     {
-        $summary = $this->reports->accountTypeTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to);
+        $summary = $this->reports->accountTypeTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to, $request->user()?->store_id);
         $rows = collect(AccountCatalog::all())
             ->map(function (array $account) use ($summary) {
                 $totals = $summary->get($account['key']);
-                $debit = round((float) ($totals?->debit_total ?? 0), 2);
-                $credit = round((float) ($totals?->credit_total ?? 0), 2);
+                $debit = MoneyAmount::decimal($totals?->debit_total ?? 0);
+                $credit = MoneyAmount::decimal($totals?->credit_total ?? 0);
                 $closing = AccountCatalog::closingBalance($debit, $credit, $account['nature']);
 
                 return [
@@ -221,24 +222,24 @@ class ReportService
             'meta' => ApiResponse::paginationMeta($paginator),
             'summary' => [
                 'accounts' => $rows->count(),
-                'debit' => round((float) $rows->sum('debit'), 2),
-                'credit' => round((float) $rows->sum('credit'), 2),
+                'debit' => $this->sumMoney($rows, 'debit'),
+                'credit' => $this->sumMoney($rows, 'credit'),
             ],
         ];
     }
 
     private function profitLoss(Request $request, ?string $from, ?string $to, int $perPage): array
     {
-        $totals = $this->reports->accountTypeTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to);
+        $totals = $this->reports->accountTypeTotals($request->user()?->tenant_id, $request->user()?->company_id, $from, $to, $request->user()?->store_id);
         $rows = collect(AccountCatalog::all())
             ->filter(fn (array $account) => in_array($account['group'], ['Income', 'Expenses'], true))
             ->map(function (array $account) use ($totals) {
                 $entry = $totals->get($account['key']);
-                $debit = (float) ($entry?->debit_total ?? 0);
-                $credit = (float) ($entry?->credit_total ?? 0);
-                $amount = $account['nature'] === 'credit'
-                    ? $credit - $debit
-                    : $debit - $credit;
+                $debit = MoneyAmount::decimal($entry?->debit_total ?? 0);
+                $credit = MoneyAmount::decimal($entry?->credit_total ?? 0);
+                $amountCents = $account['nature'] === 'credit'
+                    ? MoneyAmount::cents($credit) - MoneyAmount::cents($debit)
+                    : MoneyAmount::cents($debit) - MoneyAmount::cents($credit);
 
                 return [
                     'code' => $account['code'],
@@ -246,21 +247,21 @@ class ReportService
                     'account' => $account['name'],
                     'debit' => $debit,
                     'credit' => $credit,
-                    'amount' => $amount,
+                    'amount' => MoneyAmount::fromCents($amountCents),
                 ];
             })
             ->values();
 
-        $incomeTotal = (float) $rows->where('section', 'Income')->sum('amount');
-        $expenseTotal = (float) $rows->where('section', 'Expenses')->sum('amount');
-        $netProfit = $incomeTotal - $expenseTotal;
+        $incomeTotal = $this->sumMoney($rows->where('section', 'Income'), 'amount');
+        $expenseTotal = $this->sumMoney($rows->where('section', 'Expenses'), 'amount');
+        $netProfitCents = MoneyAmount::cents($incomeTotal) - MoneyAmount::cents($expenseTotal);
         $rows->push([
             'code' => '',
             'section' => 'Result',
-            'account' => $netProfit >= 0 ? 'Net Profit' : 'Net Loss',
-            'debit' => 0,
-            'credit' => 0,
-            'amount' => $netProfit,
+            'account' => $netProfitCents >= 0 ? 'Net Profit' : 'Net Loss',
+            'debit' => '0.00',
+            'credit' => '0.00',
+            'amount' => MoneyAmount::fromCents($netProfitCents),
         ]);
 
         $page = LengthAwarePaginator::resolveCurrentPage();
@@ -273,9 +274,16 @@ class ReportService
             'summary' => [
                 'income' => $incomeTotal,
                 'expense' => $expenseTotal,
-                'net_profit' => $netProfit,
+                'net_profit' => MoneyAmount::fromCents($netProfitCents),
             ],
         ];
+    }
+
+    private function sumMoney(iterable $rows, string $key): string
+    {
+        $cents = collect($rows)->sum(fn (array $row): int => MoneyAmount::cents($row[$key] ?? 0));
+
+        return MoneyAmount::fromCents($cents);
     }
 
     private function mrPerformance(Request $request): array

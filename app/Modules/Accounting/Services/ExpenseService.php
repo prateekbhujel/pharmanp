@@ -5,6 +5,7 @@ namespace App\Modules\Accounting\Services;
 use App\Core\DTOs\TableQueryData;
 use App\Core\Security\TenantRecordScope;
 use App\Core\Support\ApiResponse;
+use App\Core\Support\MoneyAmount;
 use App\Models\User;
 use App\Modules\Accounting\Models\Expense;
 use App\Modules\Accounting\Repositories\Interfaces\ExpenseRepositoryInterface;
@@ -50,7 +51,7 @@ class ExpenseService
                 'vendor_name' => $data['vendor_name'] ?? null,
                 'payment_mode_id' => $paymentMode->id,
                 'payment_mode' => $paymentMode->data ?: strtolower($paymentMode->name),
-                'amount' => round((float) $data['amount'], 2),
+                'amount' => MoneyAmount::decimal($data['amount']),
                 'notes' => $data['notes'] ?? null,
                 'created_by' => $expense->exists ? $expense->created_by : $user->id,
                 'updated_by' => $user->id,
@@ -91,7 +92,7 @@ class ExpenseService
             'payment_mode' => $expense->payment_mode_label,
             'payment_mode_id' => $expense->payment_mode_id,
             'payment_mode_data' => $expense->paymentModeOption?->data,
-            'amount' => round((float) $expense->amount, 2),
+            'amount' => MoneyAmount::decimal($expense->amount),
             'notes' => $expense->notes,
             'created_by' => $expense->creator?->name ?? '-',
         ];
@@ -102,6 +103,7 @@ class ExpenseService
         $base = [
             'tenant_id' => $user->tenant_id,
             'company_id' => $user->company_id,
+            'store_id' => $user->store_id,
             'transaction_date' => $expense->expense_date,
             'source_type' => 'Expense',
             'source_id' => $expense->id,
@@ -111,16 +113,16 @@ class ExpenseService
         $this->expenses->createTransaction([
             ...$base,
             'account_type' => 'expense',
-            'debit' => $expense->amount,
-            'credit' => 0,
+            'debit' => MoneyAmount::decimal($expense->amount),
+            'credit' => '0.00',
             'notes' => 'Expense posted under '.$expense->category,
         ]);
 
         $this->expenses->createTransaction([
             ...$base,
             'account_type' => $paymentModeData === 'cash' ? 'cash' : 'bank',
-            'debit' => 0,
-            'credit' => $expense->amount,
+            'debit' => '0.00',
+            'credit' => MoneyAmount::decimal($expense->amount),
             'notes' => 'Expense payment by '.$paymentModeName,
         ]);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Accounting\Services;
 
+use App\Core\Support\MoneyAmount;
 use App\Models\User;
 use App\Modules\Accounting\Repositories\Interfaces\AccountTransactionRepositoryInterface;
 use App\Modules\Accounting\Support\AccountCatalog;
@@ -30,14 +31,15 @@ class AccountTransactionPostingService
                 $this->transactions->create([
                     'tenant_id' => $user->tenant_id,
                     'company_id' => $user->company_id,
+                    'store_id' => $user->store_id,
                     'transaction_date' => $transactionDate,
                     'account_type' => $entry['account_type'],
                     'party_type' => $entry['party_type'] ?? null,
                     'party_id' => $entry['party_id'] ?? null,
                     'source_type' => $sourceType,
                     'source_id' => $sourceId,
-                    'debit' => round((float) ($entry['debit'] ?? 0), 2),
-                    'credit' => round((float) ($entry['credit'] ?? 0), 2),
+                    'debit' => MoneyAmount::decimal($entry['debit'] ?? 0),
+                    'credit' => MoneyAmount::decimal($entry['credit'] ?? 0),
                     'notes' => $entry['notes'] ?? null,
                     'created_by' => $user->id,
                 ]);

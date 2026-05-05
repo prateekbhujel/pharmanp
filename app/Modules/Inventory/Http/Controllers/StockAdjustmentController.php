@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventory\Http\Controllers;
 
+use App\Core\Query\TableQueryApplier;
 use App\Http\Controllers\ModularController;
 use App\Modules\Inventory\Http\Requests\StockAdjustmentRequest;
 use App\Modules\Inventory\Http\Resources\StockAdjustmentResource;
@@ -9,6 +10,7 @@ use App\Modules\Inventory\Models\StockAdjustment;
 use App\Modules\Inventory\Services\StockAdjustmentService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * @OA\Tag(
@@ -31,13 +33,15 @@ class StockAdjustmentController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request, TableQueryApplier $tables): JsonResponse
     {
-        $search = trim((string) request('search'));
+        $search = trim((string) $request->query('search'));
 
         $query = StockAdjustment::query()
-            ->with(['product:id,name', 'batch:id,batch_no,quantity_available', 'adjustedBy:id,name'])
-            ->when(request()->user()?->tenant_id, fn (Builder $builder, int $tenantId) => $builder->where('tenant_id', $tenantId))
+            ->with(['product:id,name', 'batch:id,batch_no,quantity_available', 'adjustedBy:id,name']);
+        $tables->operatingContext($query, $request->user());
+
+        $adjustments = $query
             ->when($search !== '', function (Builder $builder) use ($search) {
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('adjustment_type', 'like', '%'.$search.'%')
@@ -46,16 +50,16 @@ class StockAdjustmentController extends ModularController
                         ->orWhereHas('batch', fn (Builder $batch) => $batch->where('batch_no', 'like', '%'.$search.'%'));
                 });
             })
-            ->when(request()->filled('product_id'), fn (Builder $builder) => $builder->where('product_id', request()->integer('product_id')))
-            ->when(request()->filled('batch_id'), fn (Builder $builder) => $builder->where('batch_id', request()->integer('batch_id')))
-            ->when(request()->filled('adjustment_type'), fn (Builder $builder) => $builder->where('adjustment_type', request('adjustment_type')))
-            ->when(request()->filled('from'), fn (Builder $builder) => $builder->whereDate('adjustment_date', '>=', request('from')))
-            ->when(request()->filled('to'), fn (Builder $builder) => $builder->whereDate('adjustment_date', '<=', request('to')))
+            ->when($request->filled('product_id'), fn (Builder $builder) => $builder->where('product_id', $request->integer('product_id')))
+            ->when($request->filled('batch_id'), fn (Builder $builder) => $builder->where('batch_id', $request->integer('batch_id')))
+            ->when($request->filled('adjustment_type'), fn (Builder $builder) => $builder->where('adjustment_type', $request->query('adjustment_type')))
+            ->when($request->filled('from'), fn (Builder $builder) => $builder->whereDate('adjustment_date', '>=', $request->query('from')))
+            ->when($request->filled('to'), fn (Builder $builder) => $builder->whereDate('adjustment_date', '<=', $request->query('to')))
             ->orderByDesc('adjustment_date')
             ->orderByDesc('id')
-            ->paginate(min(100, max(5, request()->integer('per_page', 15))));
+            ->paginate(min(100, max(5, $request->integer('per_page', 15))));
 
-        return StockAdjustmentResource::collection($query)->response();
+        return StockAdjustmentResource::collection($adjustments)->response();
     }
 
     /**
@@ -100,6 +104,8 @@ class StockAdjustmentController extends ModularController
      */
     public function update(StockAdjustmentRequest $request, StockAdjustment $adjustment, StockAdjustmentService $service): StockAdjustmentResource
     {
+        $service->assertAccessible($adjustment, $request->user(), 'update');
+
         return new StockAdjustmentResource($service->save($request->validated(), $request->user(), $adjustment));
     }
 
@@ -116,9 +122,10 @@ class StockAdjustmentController extends ModularController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function destroy(StockAdjustment $adjustment, StockAdjustmentService $service): JsonResponse
+    public function destroy(Request $request, StockAdjustment $adjustment, StockAdjustmentService $service): JsonResponse
     {
-        $service->delete($adjustment, request()->user());
+        $service->assertAccessible($adjustment, $request->user(), 'delete');
+        $service->delete($adjustment, $request->user());
 
         return response()->json(['message' => 'Stock adjustment removed and stock restored.']);
     }

@@ -77,6 +77,10 @@ class BatchService
             ->with('product:id,name')
             ->where('is_active', true)
             ->where('quantity_available', '>', 0)
+            ->where(function (Builder $builder): void {
+                $builder->whereNull('expires_at')
+                    ->orWhereDate('expires_at', '>=', today());
+            })
             ->when($request->filled('product_id'), fn (Builder $builder) => $builder->where('product_id', $request->integer('product_id')))
             ->when($request->filled('supplier_id'), fn (Builder $builder) => $builder->where('supplier_id', $request->integer('supplier_id')))
             ->orderBy('expires_at')

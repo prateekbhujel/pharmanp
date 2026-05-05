@@ -3,6 +3,7 @@
 namespace App\Modules\Reports\Services;
 
 use App\Core\Support\ApiResponse;
+use App\Core\Support\MoneyAmount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -57,17 +58,21 @@ class DumpingReportService
 
         return [
             'data' => collect($page->items())->map(function ($row) {
-                $stock = (float) $row->stock_on_hand;
-                $sold = (float) $row->sold_quantity;
+                $stockCents = MoneyAmount::cents($row->stock_on_hand ?? 0);
+                $soldCents = MoneyAmount::cents($row->sold_quantity ?? 0);
                 $daysToExpiry = $row->nearest_expiry ? now()->diffInDays($row->nearest_expiry, false) : null;
 
                 return [
                     ...get_object_vars($row),
+                    'stock_on_hand' => MoneyAmount::decimal($row->stock_on_hand ?? 0),
+                    'sold_quantity' => MoneyAmount::decimal($row->sold_quantity ?? 0),
+                    'purchase_price' => MoneyAmount::decimal($row->purchase_price ?? 0),
+                    'stock_value' => MoneyAmount::decimal($row->stock_value ?? 0),
                     'risk' => match (true) {
                         $daysToExpiry !== null && $daysToExpiry < 0 => 'expired',
-                        $daysToExpiry !== null && $daysToExpiry <= 90 && $stock > $sold => 'near_expiry_unsold',
-                        $sold <= 0 && $stock > 0 => 'no_movement',
-                        $stock > max($sold * 4, 100) => 'overstock',
+                        $daysToExpiry !== null && $daysToExpiry <= 90 && $stockCents > $soldCents => 'near_expiry_unsold',
+                        $soldCents <= 0 && $stockCents > 0 => 'no_movement',
+                        $stockCents > max($soldCents * 4, 10000) => 'overstock',
                         default => 'watch',
                     },
                     'days_to_expiry' => $daysToExpiry,
@@ -75,8 +80,8 @@ class DumpingReportService
             })->values(),
             'meta' => ApiResponse::paginationMeta($page),
             'summary' => [
-                'stock_on_hand' => (float) collect($page->items())->sum('stock_on_hand'),
-                'stock_value' => (float) collect($page->items())->sum('stock_value'),
+                'stock_on_hand' => MoneyAmount::fromCents(collect($page->items())->sum(fn ($row) => MoneyAmount::cents($row->stock_on_hand ?? 0))),
+                'stock_value' => MoneyAmount::fromCents(collect($page->items())->sum(fn ($row) => MoneyAmount::cents($row->stock_value ?? 0))),
             ],
         ];
     }

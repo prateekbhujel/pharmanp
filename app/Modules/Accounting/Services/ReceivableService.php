@@ -2,6 +2,7 @@
 
 namespace App\Modules\Accounting\Services;
 
+use App\Models\User;
 use App\Modules\Accounting\Repositories\Interfaces\PartyBalanceRepositoryInterface;
 
 class ReceivableService
@@ -10,8 +11,8 @@ class ReceivableService
         private readonly PartyBalanceRepositoryInterface $balances,
     ) {}
 
-    public function adjustCustomerBalance(int $customerId, float $amount): void
+    public function adjustCustomerBalance(int $customerId, float $amount, ?User $user = null): void
     {
-        $this->balances->adjustCustomerBalance($customerId, $amount);
+        $this->balances->adjustCustomerBalance($customerId, $amount, $user);
     }
 }

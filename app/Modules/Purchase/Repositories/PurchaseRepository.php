@@ -36,7 +36,7 @@ class PurchaseRepository implements PurchaseRepositoryInterface
         $query = Purchase::query()
             ->with(['supplier:id,name', 'paymentMode:id,name,data']);
 
-        $this->tables->tenant($query, $user, 'tenant_id');
+        $this->tables->operatingContext($query, $user);
 
         $query
             ->when($table->search, function (Builder $builder, string $search): void {

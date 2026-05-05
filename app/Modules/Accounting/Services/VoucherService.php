@@ -5,6 +5,7 @@ namespace App\Modules\Accounting\Services;
 use App\Core\DTOs\TableQueryData;
 use App\Core\Security\TenantRecordScope;
 use App\Core\Services\DocumentNumberService;
+use App\Core\Support\MoneyAmount;
 use App\Models\User;
 use App\Modules\Accounting\DTOs\VoucherData;
 use App\Modules\Accounting\Models\Voucher;
@@ -69,10 +70,14 @@ class VoucherService
 
         return DB::transaction(function () use ($dto, $user, $voucher) {
             $data = $dto->toArray();
-            $debit = collect($data['entries'])->where('entry_type', 'debit')->sum(fn ($entry) => (float) $entry['amount']);
-            $credit = collect($data['entries'])->where('entry_type', 'credit')->sum(fn ($entry) => (float) $entry['amount']);
+            $debitCents = collect($data['entries'])
+                ->where('entry_type', 'debit')
+                ->sum(fn ($entry) => MoneyAmount::cents($entry['amount']));
+            $creditCents = collect($data['entries'])
+                ->where('entry_type', 'credit')
+                ->sum(fn ($entry) => MoneyAmount::cents($entry['amount']));
 
-            if (round($debit, 2) !== round($credit, 2)) {
+            if ($debitCents !== $creditCents) {
                 throw ValidationException::withMessages(['entries' => 'Voucher debit and credit totals must match.']);
             }
 
@@ -82,7 +87,7 @@ class VoucherService
                 $voucher = $this->vouchers->update($voucher, [
                     'voucher_date' => $data['voucher_date'],
                     'voucher_type' => $data['voucher_type'],
-                    'total_amount' => round($debit, 2),
+                    'total_amount' => MoneyAmount::fromCents($debitCents),
                     'notes' => $data['notes'] ?? null,
                     'updated_by' => $user->id,
                 ]);
@@ -93,7 +98,7 @@ class VoucherService
                     'voucher_no' => $this->nextNumber($data['voucher_date'], $user),
                     'voucher_date' => $data['voucher_date'],
                     'voucher_type' => $data['voucher_type'],
-                    'total_amount' => round($debit, 2),
+                    'total_amount' => MoneyAmount::fromCents($debitCents),
                     'notes' => $data['notes'] ?? null,
                     'created_by' => $user->id,
                     'updated_by' => $user->id,
@@ -116,14 +121,15 @@ class VoucherService
                 $this->vouchers->createTransaction([
                     'tenant_id' => $user->tenant_id,
                     'company_id' => $user->company_id,
+                    'store_id' => $user->store_id,
                     'transaction_date' => $data['voucher_date'],
                     'account_type' => $entry['account_type'],
                     'party_type' => $entry['party_type'] ?? null,
                     'party_id' => $entry['party_id'] ?? null,
                     'source_type' => 'voucher',
                     'source_id' => $voucher->id,
-                    'debit' => $entry['entry_type'] === 'debit' ? $entry['amount'] : 0,
-                    'credit' => $entry['entry_type'] === 'credit' ? $entry['amount'] : 0,
+                    'debit' => $entry['entry_type'] === 'debit' ? MoneyAmount::decimal($entry['amount']) : '0.00',
+                    'credit' => $entry['entry_type'] === 'credit' ? MoneyAmount::decimal($entry['amount']) : '0.00',
                     'notes' => $voucherEntry->notes,
                     'created_by' => $user->id,
                 ]);

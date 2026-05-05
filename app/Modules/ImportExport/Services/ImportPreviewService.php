@@ -3,6 +3,7 @@
 namespace App\Modules\ImportExport\Services;
 
 use App\Core\Services\ProductCodeGenerator;
+use App\Core\Support\MoneyAmount;
 use App\Models\User;
 use App\Modules\ImportExport\DTOs\ImportJobData;
 use App\Modules\ImportExport\Models\ImportJob;
@@ -219,8 +220,8 @@ class ImportPreviewService
                     'email' => $data['email'] ?? null,
                     'pan_number' => $data['pan_number'] ?? null,
                     'address' => $data['address'] ?? null,
-                    'opening_balance' => (float) ($data['opening_balance'] ?? 0),
-                    'current_balance' => (float) ($data['opening_balance'] ?? 0),
+                    'opening_balance' => MoneyAmount::decimal($data['opening_balance'] ?? 0),
+                    'current_balance' => MoneyAmount::decimal($data['opening_balance'] ?? 0),
                     'created_by' => $user?->id,
                     'updated_by' => $user?->id,
                 ],
@@ -234,9 +235,9 @@ class ImportPreviewService
                     'email' => $data['email'] ?? null,
                     'pan_number' => $data['pan_number'] ?? null,
                     'address' => $data['address'] ?? null,
-                    'credit_limit' => (float) ($data['credit_limit'] ?? 0),
-                    'opening_balance' => (float) ($data['opening_balance'] ?? 0),
-                    'current_balance' => (float) ($data['opening_balance'] ?? 0),
+                    'credit_limit' => MoneyAmount::decimal($data['credit_limit'] ?? 0),
+                    'opening_balance' => MoneyAmount::decimal($data['opening_balance'] ?? 0),
+                    'current_balance' => MoneyAmount::decimal($data['opening_balance'] ?? 0),
                     'created_by' => $user?->id,
                     'updated_by' => $user?->id,
                 ],
@@ -271,9 +272,9 @@ class ImportPreviewService
                 'packaging_type' => $data['packaging_type'] ?? null,
                 'keywords' => $data['keywords'] ?? null,
                 'description' => $data['description'] ?? null,
-                'mrp' => (float) ($data['mrp'] ?? 0),
-                'purchase_price' => (float) ($data['purchase_price'] ?? 0),
-                'selling_price' => (float) ($data['selling_price'] ?? $data['mrp'] ?? 0),
+                'mrp' => MoneyAmount::decimal($data['mrp'] ?? 0),
+                'purchase_price' => MoneyAmount::decimal($data['purchase_price'] ?? 0),
+                'selling_price' => MoneyAmount::decimal($data['selling_price'] ?? $data['mrp'] ?? 0),
                 'reorder_level' => (int) ($data['reorder_level'] ?? 10),
                 'created_by' => $user?->id,
                 'updated_by' => $user?->id,
@@ -338,8 +339,8 @@ class ImportPreviewService
                 'expires_at' => $data['expires_at'] ?? null,
                 'quantity_received' => 0,
                 'quantity_available' => 0,
-                'purchase_price' => (float) ($data['purchase_price'] ?? 0),
-                'mrp' => (float) ($data['mrp'] ?? 0),
+                'purchase_price' => MoneyAmount::decimal($data['purchase_price'] ?? 0),
+                'mrp' => MoneyAmount::decimal($data['mrp'] ?? 0),
                 'created_by' => $user?->id,
                 'updated_by' => $user?->id,
             ],

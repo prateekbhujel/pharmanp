@@ -4,6 +4,7 @@ namespace App\Modules\Reports\Services;
 
 use App\Core\Database\SqlDialect;
 use App\Core\Support\ApiResponse;
+use App\Core\Support\MoneyAmount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -60,6 +61,8 @@ class ExpiryReportService
 
                 return [
                     ...get_object_vars($row),
+                    'remaining_quantity' => MoneyAmount::decimal($row->remaining_quantity ?? 0),
+                    'mrp' => MoneyAmount::decimal($row->mrp ?? 0),
                     'status' => match (true) {
                         $remaining < 0 => 'expired',
                         $remaining <= 30 => 'expiring_30',
@@ -88,10 +91,10 @@ class ExpiryReportService
 
         return [
             'batch_count' => (int) ($row->batch_count ?? 0),
-            'expired_quantity' => (float) ($row->expired_quantity ?? 0),
-            'expiring_30_quantity' => (float) ($row->expiring_30_quantity ?? 0),
-            'expiring_60_quantity' => (float) ($row->expiring_60_quantity ?? 0),
-            'expiring_90_quantity' => (float) ($row->expiring_90_quantity ?? 0),
+            'expired_quantity' => MoneyAmount::decimal($row->expired_quantity ?? 0),
+            'expiring_30_quantity' => MoneyAmount::decimal($row->expiring_30_quantity ?? 0),
+            'expiring_60_quantity' => MoneyAmount::decimal($row->expiring_60_quantity ?? 0),
+            'expiring_90_quantity' => MoneyAmount::decimal($row->expiring_90_quantity ?? 0),
         ];
     }
 
