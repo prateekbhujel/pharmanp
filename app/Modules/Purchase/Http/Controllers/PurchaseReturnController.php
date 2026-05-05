@@ -210,6 +210,9 @@ class PurchaseReturnController extends ModularController
     {
         $service->assertAccessible($purchaseReturn, $request->user());
 
+        @ini_set('memory_limit', '512M');
+        @ini_set('pcre.backtrack_limit', '5000000');
+
         return Pdf::loadView('prints.purchase-return', $service->printPayload($purchaseReturn))
             ->setPaper('a4', 'portrait')
             ->stream($purchaseReturn->return_no.'.pdf');

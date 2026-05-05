@@ -190,6 +190,9 @@ class SalesReturnController extends ModularController
     {
         $this->returns->assertAccessible($salesReturn, $request->user());
 
+        @ini_set('memory_limit', '512M');
+        @ini_set('pcre.backtrack_limit', '5000000');
+
         return Pdf::loadView('prints.sales-return', $this->returns->printPayload($salesReturn))
             ->setPaper('a4', 'portrait')
             ->stream($salesReturn->return_no.'.pdf');
