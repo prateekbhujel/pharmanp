@@ -34,15 +34,15 @@ export function apiUrl(path = '') {
 
 export function backendUrl(path = '') {
     const normalized = path.startsWith('/') ? path : `/${path}`;
+    let origin = window.location.origin;
 
-    if (apiBaseUrl) {
+    if (apiBaseUrl && apiBaseUrl.startsWith('http')) {
         try {
-            const url = new URL(apiBaseUrl);
-            return `${url.origin}${normalized}`;
+            origin = new URL(apiBaseUrl).origin;
         } catch (e) {
-            return `${apiBaseUrl.replace('/api/v1', '')}${normalized}`;
+            origin = apiBaseUrl.split('/api')[0];
         }
     }
 
-    return appUrl(normalized);
+    return `${origin}${normalized}`;
 }
