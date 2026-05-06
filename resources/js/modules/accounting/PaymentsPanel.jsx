@@ -11,6 +11,7 @@ import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { showRequestError, showRequestSuccess } from '../../core/api/feedback';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { dateRangeParams } from '../../core/utils/dateFilters';
 import { openDocumentDirectly } from '../../core/utils/documents';
@@ -36,6 +37,8 @@ export function PaymentsPanel() {
     const [customers, setCustomers] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [quickPaymentModeOpen, setQuickPaymentModeOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
     const [form] = Form.useForm();
     const paymentFormRef = useRef(null);
 
@@ -49,12 +52,16 @@ export function PaymentsPanel() {
     });
 
     async function loadParties() {
-        const [{ data: c }, { data: s }] = await Promise.all([
-            http.get(endpoints.customerOptions),
-            http.get(endpoints.supplierOptions),
-        ]);
-        setCustomers(c.data || []);
-        setSuppliers(s.data || []);
+        try {
+            const [{ data: c }, { data: s }] = await Promise.all([
+                http.get(endpoints.customerOptions),
+                http.get(endpoints.supplierOptions),
+            ]);
+            setCustomers(c.data || []);
+            setSuppliers(s.data || []);
+        } catch (error) {
+            showRequestError(notification, error, 'Payment party lookup failed');
+        }
     }
 
     async function loadPayments(page = 1, pageSize = meta.per_page) {
@@ -70,6 +77,8 @@ export function PaymentsPanel() {
             setRows(data.data || []);
             setMeta(data.meta || meta);
             setLookups(data.lookups || lookups);
+        } catch (error) {
+            showRequestError(notification, error, 'Payment list failed');
         } finally { setLoading(false); }
     }
 
@@ -79,20 +88,25 @@ export function PaymentsPanel() {
         form.resetFields();
 
         if (record?.id) {
-            const { data } = await http.get(`${endpoints.payments}/${record.id}`);
-            const payment = data.data;
-            setEditingId(payment.id);
-            form.setFieldsValue({
-                ...payment,
-                payment_date: dayjs(payment.payment_date),
-                payment_mode_id: payment.payment_mode_id || lookups.payment_modes.find((mode) => mode.name === payment.payment_mode)?.id,
-            });
-            setOutstandingBills(payment.allocations || []);
-            setAllocations((payment.allocations || []).map((allocation) => ({
-                bill_id: allocation.bill_id,
-                bill_type: allocation.bill_type,
-                allocated_amount: allocation.allocated_amount,
-            })));
+            try {
+                const { data } = await http.get(`${endpoints.payments}/${record.id}`);
+                const payment = data.data;
+                setEditingId(payment.id);
+                form.setFieldsValue({
+                    ...payment,
+                    payment_date: dayjs(payment.payment_date),
+                    payment_mode_id: payment.payment_mode_id || lookups.payment_modes.find((mode) => mode.name === payment.payment_mode)?.id,
+                });
+                setOutstandingBills(payment.allocations || []);
+                setAllocations((payment.allocations || []).map((allocation) => ({
+                    bill_id: allocation.bill_id,
+                    bill_type: allocation.bill_type,
+                    allocated_amount: allocation.allocated_amount,
+                })));
+            } catch (error) {
+                showRequestError(notification, error, 'Payment load failed');
+                return;
+            }
         } else {
             setEditingId(null);
             form.setFieldsValue({
@@ -110,7 +124,7 @@ export function PaymentsPanel() {
             const { data } = await http.get(`${endpoints.payments}/${record.id}`);
             setViewingPayment(data.data);
         } catch (error) {
-            notification.error({ message: 'Payment details failed', description: error?.response?.data?.message || error.message });
+            showRequestError(notification, error, 'Payment details failed');
         }
     }
 
@@ -120,7 +134,10 @@ export function PaymentsPanel() {
             const { data } = await http.get(endpoints.paymentOutstandingBills, { params: { party_id: partyId, party_type: partyType } });
             setOutstandingBills(data.data || []);
             setAllocations([]);
-        } catch { setOutstandingBills([]); }
+        } catch (error) {
+            setOutstandingBills([]);
+            showRequestError(notification, error, 'Outstanding bills failed');
+        }
     }
 
     function updateAllocation(billId, billType, amount) {
@@ -132,20 +149,23 @@ export function PaymentsPanel() {
     }
 
     async function submit(values) {
+        setSaving(true);
         try {
-            await http.post(endpoints.payments, {
+            const response = await http.post(endpoints.payments, {
                 ...values,
                 id: editingId || undefined,
                 payment_date: values.payment_date.format('YYYY-MM-DD'),
                 payment_mode_id: values.payment_mode_id,
                 allocations: allocations.filter((a) => a.allocated_amount > 0),
             });
-            notification.success({ message: 'Payment saved' });
+            showRequestSuccess(notification, response, 'Payment saved');
             setDrawerOpen(false);
             loadPayments(1);
         } catch (error) {
             form.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
-            notification.error({ message: 'Save failed', description: error?.response?.data?.message || error.message });
+            showRequestError(notification, error, 'Payment save failed');
+        } finally {
+            setSaving(false);
         }
     }
 
@@ -154,9 +174,17 @@ export function PaymentsPanel() {
             title: `Delete ${record.payment_no}?`,
             content: 'Linked bill allocations and accounting postings for this payment will be reversed.',
             onOk: async () => {
-                await http.delete(`${endpoints.payments}/${record.id}`);
-                notification.success({ message: 'Payment deleted' });
-                loadPayments(meta.current_page);
+                setDeletingId(record.id);
+                try {
+                    const response = await http.delete(`${endpoints.payments}/${record.id}`);
+                    showRequestSuccess(notification, response, 'Payment deleted');
+                    loadPayments(meta.current_page);
+                } catch (error) {
+                    showRequestError(notification, error, 'Payment delete failed');
+                    throw error;
+                } finally {
+                    setDeletingId(null);
+                }
             },
         });
     }
@@ -188,10 +216,10 @@ export function PaymentsPanel() {
                     <PharmaBadge tone="deleted">Deleted</PharmaBadge>
                 ) : (
                     <Space className="table-action-buttons">
-                        <Button aria-label="View" icon={<EyeOutlined />} onClick={() => viewPayment(record)} />
+                        <Button aria-label="View" icon={<EyeOutlined />} disabled={deletingId === record.id} onClick={() => viewPayment(record)} />
                         <Button aria-label="Print" icon={<PrinterOutlined />} onClick={() => openDocumentDirectly(record.print_url)} />
-                        <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openDrawer(record)} />
-                        <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => deletePayment(record)} />
+                        <Button aria-label="Edit" icon={<EditOutlined />} disabled={deletingId === record.id} onClick={() => openDrawer(record)} />
+                        <Button aria-label="Delete" danger icon={<DeleteOutlined />} loading={deletingId === record.id} disabled={deletingId === record.id} onClick={() => deletePayment(record)} />
                     </Space>
                 )
             ),
@@ -245,9 +273,12 @@ export function PaymentsPanel() {
             <FormModal
                 title={editingId ? 'Edit Payment' : 'New Payment'}
                 open={drawerOpen}
-                onCancel={() => setDrawerOpen(false)}
+                onCancel={() => !saving && setDrawerOpen(false)}
                 onOk={() => form.submit()}
                 okText="Save Payment"
+                confirmLoading={saving}
+                okButtonProps={{ disabled: saving }}
+                cancelButtonProps={{ disabled: saving }}
                 width={860}
                 destroyOnHidden
             >

@@ -9,7 +9,8 @@ import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { ServerTable } from '../../core/components/ServerTable';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { endpoints } from '../../core/api/endpoints';
-import { apiErrorMessage, formErrors, http } from '../../core/api/http';
+import { formErrors, http } from '../../core/api/http';
+import { showRequestError, showRequestSuccess } from '../../core/api/feedback';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
@@ -56,22 +57,34 @@ export function StockAdjustmentsPanel() {
     }, [range]);
 
     async function searchProducts(q) {
-        const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
-        setProducts(data.data || []);
+        try {
+            const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
+            setProducts(data.data || []);
+        } catch (error) {
+            showRequestError(notification, error, 'Product lookup failed.');
+        }
     }
 
     async function loadBatches(product_id = null) {
-        const { data } = await http.get(endpoints.inventoryBatchOptions, { params: { product_id } });
-        setBatches(data.data || []);
+        try {
+            const { data } = await http.get(endpoints.inventoryBatchOptions, { params: { product_id } });
+            setBatches(data.data || []);
+        } catch (error) {
+            showRequestError(notification, error, 'Batch options could not be loaded.');
+        }
     }
 
     async function loadAdjustmentTypes() {
-        const { data } = await http.get(endpoints.dropdownOptions, { params: { alias: 'adjustment_type' } });
-        const activeOptions = (data.data || [])
-            .filter((option) => option.alias === 'adjustment_type' && option.is_active)
-            .map((option) => ({ value: option.name, label: option.name, effect: option.data }));
+        try {
+            const { data } = await http.get(endpoints.dropdownOptions, { params: { alias: 'adjustment_type' } });
+            const activeOptions = (data.data || [])
+                .filter((option) => option.alias === 'adjustment_type' && option.is_active)
+                .map((option) => ({ value: option.name, label: option.name, effect: option.data }));
 
-        setAdjustmentTypes(activeOptions.length ? activeOptions : defaultAdjustmentTypes);
+            setAdjustmentTypes(activeOptions.length ? activeOptions : defaultAdjustmentTypes);
+        } catch (error) {
+            showRequestError(notification, error, 'Adjustment types could not be loaded.');
+        }
     }
 
     function productOptions() {
@@ -94,11 +107,11 @@ export function StockAdjustmentsPanel() {
                 adjustment_date: values.adjustment_date.format('YYYY-MM-DD'),
             };
             if (editing) {
-                await http.put(`${endpoints.stockAdjustments}/${editing.id}`, payload);
-                notification.success({ message: 'Stock adjustment updated' });
+                const response = await http.put(`${endpoints.stockAdjustments}/${editing.id}`, payload);
+                showRequestSuccess(notification, response, 'Stock adjustment updated.');
             } else {
-                await http.post(endpoints.stockAdjustments, payload);
-                notification.success({ message: 'Stock adjustment posted' });
+                const response = await http.post(endpoints.stockAdjustments, payload);
+                showRequestSuccess(notification, response, 'Stock adjustment posted.');
             }
             form.resetFields();
             form.setFieldsValue({ adjustment_date: dayjs(), adjustment_type: 'add' });
@@ -108,7 +121,7 @@ export function StockAdjustmentsPanel() {
             loadBatches(productId);
         } catch (error) {
             form.setFields(formErrors(error));
-            notification.error({ message: 'Adjustment failed', description: apiErrorMessage(error) });
+            showRequestError(notification, error, 'Adjustment failed.');
         } finally {
             setSaving(false);
         }
@@ -143,12 +156,12 @@ export function StockAdjustmentsPanel() {
             onOk: async () => {
                 setDeletingId(record.id);
                 try {
-                    await http.delete(`${endpoints.stockAdjustments}/${record.id}`);
-                    notification.success({ message: 'Adjustment deleted' });
+                    const response = await http.delete(`${endpoints.stockAdjustments}/${record.id}`);
+                    showRequestSuccess(notification, response, 'Adjustment deleted.');
                     table.reload();
                     loadBatches(productId);
                 } catch (error) {
-                    notification.error({ message: 'Adjustment delete failed', description: apiErrorMessage(error) });
+                    showRequestError(notification, error, 'Adjustment delete failed.');
                 } finally {
                     setDeletingId(null);
                 }

@@ -10,12 +10,14 @@ import { PharmaBadge } from '../../core/components/PharmaBadge';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { showRequestError, showRequestSuccess } from '../../core/api/feedback';
 import { accountCatalog, voucherTypeOptions } from '../../core/utils/accountCatalog';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
 import { appUrl } from '../../core/utils/url';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { dateRangeParams } from '../../core/utils/dateFilters';
 import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
+import { useDebounce } from '../../core/hooks/useDebounce';
 import { ExpensesPanel } from './ExpensesPanel';
 import { PaymentsPanel } from './PaymentsPanel';
 
@@ -65,7 +67,10 @@ export function AccountingPage() {
     const [voucherRows, setVoucherRows] = useState([]);
     const [voucherMeta, setVoucherMeta] = useState({ current_page: 1, per_page: 15, total: 0 });
     const [voucherLoading, setVoucherLoading] = useState(false);
+    const [voucherSaving, setVoucherSaving] = useState(false);
+    const [deletingVoucherId, setDeletingVoucherId] = useState(null);
     const [voucherSearch, setVoucherSearch] = useState('');
+    const debouncedVoucherSearch = useDebounce(voucherSearch);
     const [voucherRange, setVoucherRange] = useState([]);
     const [form] = Form.useForm();
     const voucherFormRef = useRef(null);
@@ -103,7 +108,7 @@ export function AccountingPage() {
         if (routeState.tab === 'voucher') {
             loadVouchers(1);
         }
-    }, [routeState.tab, voucherSearch, voucherRange]);
+    }, [routeState.tab, debouncedVoucherSearch, voucherRange]);
 
     useKeyboardFlow(voucherFormRef, {
         enabled: routeState.tab === 'voucher' && voucherMode === 'form',
@@ -118,12 +123,16 @@ export function AccountingPage() {
     });
 
     async function loadParties() {
-        const [{ data: customerData }, { data: supplierData }] = await Promise.all([
-            http.get(endpoints.customerOptions),
-            http.get(endpoints.supplierOptions),
-        ]);
-        setCustomers(customerData.data || []);
-        setSuppliers(supplierData.data || []);
+        try {
+            const [{ data: customerData }, { data: supplierData }] = await Promise.all([
+                http.get(endpoints.customerOptions),
+                http.get(endpoints.supplierOptions),
+            ]);
+            setCustomers(customerData.data || []);
+            setSuppliers(supplierData.data || []);
+        } catch (error) {
+            showRequestError(notification, error, 'Accounting party lookup failed');
+        }
     }
 
     async function loadVouchers(page = 1, pageSize = voucherMeta.per_page) {
@@ -133,14 +142,14 @@ export function AccountingPage() {
                 params: {
                     page,
                     per_page: pageSize,
-                    search: voucherSearch || undefined,
+                    search: debouncedVoucherSearch || undefined,
                     ...dateRangeParams(voucherRange),
                 },
             });
             setVoucherRows(data.data || []);
             setVoucherMeta(data.meta || voucherMeta);
         } catch (error) {
-            notification.error({ message: 'Voucher list failed', description: error?.response?.data?.message || error.message });
+            showRequestError(notification, error, 'Voucher list failed');
         } finally {
             setVoucherLoading(false);
         }
@@ -185,7 +194,7 @@ export function AccountingPage() {
                     notes: entry.notes,
                 })));
             } catch (error) {
-                notification.error({ message: 'Voucher load failed', description: error?.response?.data?.message || error.message });
+                showRequestError(notification, error, 'Voucher load failed');
                 return;
             } finally {
                 setVoucherLoading(false);
@@ -196,6 +205,7 @@ export function AccountingPage() {
     }
 
     async function submit(values) {
+        setVoucherSaving(true);
         try {
             const payload = {
                 ...values,
@@ -204,11 +214,11 @@ export function AccountingPage() {
             };
 
             if (editingVoucher) {
-                await http.put(`${endpoints.vouchers}/${editingVoucher.id}`, payload);
-                notification.success({ message: 'Voucher updated' });
+                const response = await http.put(`${endpoints.vouchers}/${editingVoucher.id}`, payload);
+                showRequestSuccess(notification, response, 'Voucher updated');
             } else {
-                await http.post(endpoints.vouchers, payload);
-                notification.success({ message: 'Voucher posted' });
+                const response = await http.post(endpoints.vouchers, payload);
+                showRequestSuccess(notification, response, 'Voucher posted');
             }
 
             resetVoucherForm();
@@ -218,7 +228,9 @@ export function AccountingPage() {
             const errors = validationErrors(error);
             setEntryErrors(validationErrorsByLine(errors, 'entries'));
             form.setFields(Object.entries(errors).map(([name, messages]) => ({ name: name.split('.'), errors: messages })));
-            notification.error({ message: 'Voucher failed', description: error?.response?.data?.message || error.message });
+            showRequestError(notification, error, 'Voucher failed');
+        } finally {
+            setVoucherSaving(false);
         }
     }
 
@@ -227,9 +239,17 @@ export function AccountingPage() {
             title: `Delete ${record.voucher_no}?`,
             content: 'The voucher and its accounting ledger postings will be removed.',
             onOk: async () => {
-                await http.delete(`${endpoints.vouchers}/${record.id}`);
-                notification.success({ message: 'Voucher deleted' });
-                loadVouchers(voucherMeta.current_page);
+                setDeletingVoucherId(record.id);
+                try {
+                    const response = await http.delete(`${endpoints.vouchers}/${record.id}`);
+                    showRequestSuccess(notification, response, 'Voucher deleted');
+                    loadVouchers(voucherMeta.current_page);
+                } catch (error) {
+                    showRequestError(notification, error, 'Voucher delete failed');
+                    throw error;
+                } finally {
+                    setDeletingVoucherId(null);
+                }
             },
         });
     }
@@ -321,8 +341,8 @@ export function AccountingPage() {
             width: 112,
             render: (_, record) => (
                 <Space className="table-action-buttons">
-                    <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openVoucher(record)} />
-                    <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => deleteVoucher(record)} />
+                    <Button aria-label="Edit" icon={<EditOutlined />} disabled={deletingVoucherId === record.id} onClick={() => openVoucher(record)} />
+                    <Button aria-label="Delete" danger icon={<DeleteOutlined />} loading={deletingVoucherId === record.id} disabled={deletingVoucherId === record.id} onClick={() => deleteVoucher(record)} />
                 </Space>
             ),
         },
@@ -356,7 +376,7 @@ export function AccountingPage() {
                                 { label: 'Credit', value: <Money value={credit} /> },
                                 { label: 'Difference', value: <Money value={Math.abs(debit - credit)} />, strong: true },
                             ]}
-                            actions={<Button type="primary" htmlType="submit" disabled={debit !== credit || debit <= 0}>{editingVoucher ? 'Update Voucher' : 'Post Voucher'}</Button>}
+                            actions={<Button type="primary" htmlType="submit" loading={voucherSaving} disabled={voucherSaving || debit !== credit || debit <= 0}>{editingVoucher ? 'Update Voucher' : 'Post Voucher'}</Button>}
                         />
                     </Form>
                 </div>

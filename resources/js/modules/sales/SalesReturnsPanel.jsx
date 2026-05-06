@@ -11,10 +11,11 @@ import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { applyRequestFormErrors, showRequestError, showRequestSuccess } from '../../core/api/feedback';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { openDocumentDirectly } from '../../core/utils/documents';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
-import { appUrl , backendUrl } from '../../core/utils/url';
+import { backendUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 
@@ -80,6 +81,9 @@ export function SalesReturnsPanel() {
     const [lineErrors, setLineErrors] = useState({});
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [loadingInvoiceItems, setLoadingInvoiceItems] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
+    const [customerSaving, setCustomerSaving] = useState(false);
     const [view, setView] = useState('list');
     const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
     const [range, setRange] = useState([]);
@@ -122,18 +126,30 @@ export function SalesReturnsPanel() {
     });
 
     async function loadCustomers() {
-        const { data } = await http.get(endpoints.customerOptions);
-        setCustomers(data.data || []);
+        try {
+            const { data } = await http.get(endpoints.customerOptions);
+            setCustomers(data.data || []);
+        } catch (error) {
+            showRequestError(notification, error, 'Customer options could not be loaded.');
+        }
     }
 
     async function loadInvoices(nextCustomerId) {
-        const { data } = await http.get(endpoints.salesReturnInvoiceOptions, { params: { customer_id: nextCustomerId } });
-        setInvoices(data.data || []);
+        try {
+            const { data } = await http.get(endpoints.salesReturnInvoiceOptions, { params: { customer_id: nextCustomerId } });
+            setInvoices(data.data || []);
+        } catch (error) {
+            showRequestError(notification, error, 'Sales invoices could not be loaded.');
+        }
     }
 
     async function searchProducts(q) {
-        const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
-        setProducts(data.data || []);
+        try {
+            const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
+            setProducts(data.data || []);
+        } catch (error) {
+            showRequestError(notification, error, 'Product lookup failed.');
+        }
     }
 
     function updateRow(index, patch) {
@@ -184,18 +200,26 @@ export function SalesReturnsPanel() {
             notification.warning({ message: 'Choose sales invoice first' });
             return;
         }
-        const { data } = await http.get(endpoints.salesReturnInvoiceItems(invoiceId));
-        setItems((data.data || []).filter((row) => Number(row.max_returnable || row.quantity || 0) > 0).map((row) => normalizeRow({
-            ...row,
-            product_name: row.product_name || row.product?.name,
-            batch_no: row.batch_no || row.batch?.batch_no || '',
-            rate: row.unit_price || row.rate || 0,
-            net_rate: row.unit_price || row.rate || 0,
-            max_returnable: Number(row.max_returnable || row.quantity || 0),
-            return_qty: 0,
-            locked: true,
-        })));
-        setLineErrors({});
+        setLoadingInvoiceItems(true);
+        try {
+            const { data } = await http.get(endpoints.salesReturnInvoiceItems(invoiceId));
+            setItems((data.data || []).filter((row) => Number(row.max_returnable || row.quantity || 0) > 0).map((row) => normalizeRow({
+                ...row,
+                product_name: row.product_name || row.product?.name,
+                batch_no: row.batch_no || row.batch?.batch_no || '',
+                rate: row.unit_price || row.rate || 0,
+                net_rate: row.unit_price || row.rate || 0,
+                max_returnable: Number(row.max_returnable || row.quantity || 0),
+                return_qty: 0,
+                locked: true,
+            })));
+            setLineErrors({});
+            showRequestSuccess(notification, data, 'Sales invoice items loaded.');
+        } catch (error) {
+            showRequestError(notification, error, 'Sales invoice items could not be loaded.');
+        } finally {
+            setLoadingInvoiceItems(false);
+        }
     }
 
     function removeRow(index) {
@@ -242,10 +266,11 @@ export function SalesReturnsPanel() {
                         net_rate: row.net_rate,
                     })),
             };
-            const { data } = editing
+            const response = editing
                 ? await http.put(`${endpoints.salesReturns}/${editing.id}`, payload)
                 : await http.post(endpoints.salesReturns, payload);
-            notification.success({ message: editing ? 'Sales return updated' : 'Sales return posted' });
+            const { data } = response;
+            showRequestSuccess(notification, response, editing ? 'Sales return updated.' : 'Sales return posted.');
             setEditing(null);
             setItems([]);
             setLineErrors({});
@@ -260,46 +285,51 @@ export function SalesReturnsPanel() {
             const errors = validationErrors(error);
             setLineErrors(validationErrorsByLine(errors, 'items'));
             form.setFields(Object.entries(errors).map(([name, messages]) => ({ name: name.split('.'), errors: messages })));
-            notification.error({ message: 'Sales return failed', description: error?.response?.data?.message || error.message });
+            showRequestError(notification, error, 'Sales return failed.');
         } finally {
             setSaving(false);
         }
     }
 
     async function editReturn(row) {
-        setView('form');
-        const { data } = await http.get(`${endpoints.salesReturns}/${row.id}`);
-        const record = data.data;
-        setEditing(record);
-        form.setFieldsValue({
-            customer_id: record.customer_id,
-            sales_invoice_id: record.sales_invoice_id,
-            return_mode: record.sales_invoice_id ? 'invoice' : 'product',
-            return_type: record.return_type || 'regular',
-            return_date: dayjs(record.return_date),
-            reason: record.reason,
-            notes: record.notes,
-        });
-        if (record.customer_id) {
-            loadInvoices(record.customer_id);
+        try {
+            setView('form');
+            const { data } = await http.get(`${endpoints.salesReturns}/${row.id}`);
+            const record = data.data;
+            setEditing(record);
+            form.setFieldsValue({
+                customer_id: record.customer_id,
+                sales_invoice_id: record.sales_invoice_id,
+                return_mode: record.sales_invoice_id ? 'invoice' : 'product',
+                return_type: record.return_type || 'regular',
+                return_date: dayjs(record.return_date),
+                reason: record.reason,
+                notes: record.notes,
+            });
+            if (record.customer_id) {
+                loadInvoices(record.customer_id);
+            }
+            setItems((record.items || []).map((item) => normalizeRow({
+                ...item,
+                product_name: item.product?.name || item.product_name,
+                batch_no: item.batch?.batch_no || item.batch_no || '',
+                batch_options: item.batch ? [{
+                    id: item.batch.id,
+                    label: `${item.batch.batch_no} | Qty: ${Number(item.batch.quantity_available || 0).toFixed(3)}`,
+                    quantity_available: Number(item.batch.quantity_available || 0) + Number(item.return_qty || item.quantity || 0),
+                }] : [],
+                max_returnable: item.batch
+                    ? Number(item.batch.quantity_available || 0) + Number(item.return_qty || item.quantity || 0)
+                    : Number(item.return_qty || item.quantity || 0),
+                return_qty: item.return_qty || item.quantity || 0,
+                rate: item.rate || item.unit_price || 0,
+                net_rate: item.net_rate || item.unit_price || 0,
+                locked: Boolean(record.sales_invoice_id),
+            })));
+        } catch (error) {
+            setView('list');
+            showRequestError(notification, error, 'Sales return details could not be loaded.');
         }
-        setItems((record.items || []).map((item) => normalizeRow({
-            ...item,
-            product_name: item.product?.name || item.product_name,
-            batch_no: item.batch?.batch_no || item.batch_no || '',
-            batch_options: item.batch ? [{
-                id: item.batch.id,
-                label: `${item.batch.batch_no} | Qty: ${Number(item.batch.quantity_available || 0).toFixed(3)}`,
-                quantity_available: Number(item.batch.quantity_available || 0) + Number(item.return_qty || item.quantity || 0),
-            }] : [],
-            max_returnable: item.batch
-                ? Number(item.batch.quantity_available || 0) + Number(item.return_qty || item.quantity || 0)
-                : Number(item.return_qty || item.quantity || 0),
-            return_qty: item.return_qty || item.quantity || 0,
-            rate: item.rate || item.unit_price || 0,
-            net_rate: item.net_rate || item.unit_price || 0,
-            locked: Boolean(record.sales_invoice_id),
-        })));
     }
 
     function deleteReturn(row) {
@@ -307,24 +337,36 @@ export function SalesReturnsPanel() {
             title: 'Delete sales return?',
             content: `${row.return_no || 'This return'} will be removed and stock restored.`,
             onOk: async () => {
-                await http.delete(`${endpoints.salesReturns}/${row.id}`);
-                notification.success({ message: 'Sales return deleted' });
-                table.reload();
+                setDeletingId(row.id);
+                try {
+                    const response = await http.delete(`${endpoints.salesReturns}/${row.id}`);
+                    showRequestSuccess(notification, response, 'Sales return deleted.');
+                    table.reload();
+                } catch (error) {
+                    showRequestError(notification, error, 'Sales return delete failed.');
+                    throw error;
+                } finally {
+                    setDeletingId(null);
+                }
             },
         });
     }
 
     async function submitCustomer(values) {
+        setCustomerSaving(true);
         try {
-            const { data } = await http.post(endpoints.customers, values);
+            const response = await http.post(endpoints.customers, values);
+            const { data } = response;
             await loadCustomers();
             form.setFieldValue('customer_id', data.data.id);
             customerForm.resetFields();
             setQuickCustomerOpen(false);
-            notification.success({ message: 'Customer added' });
+            showRequestSuccess(notification, response, 'Customer added.');
         } catch (error) {
-            customerForm.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name, errors })));
-            notification.error({ message: 'Customer save failed', description: error?.response?.data?.message || error.message });
+            applyRequestFormErrors(customerForm, error);
+            showRequestError(notification, error, 'Customer save failed.');
+        } finally {
+            setCustomerSaving(false);
         }
     }
 
@@ -409,9 +451,9 @@ export function SalesReturnsPanel() {
                     <PharmaBadge tone="deleted">Deleted</PharmaBadge>
                 ) : (
                     <Space>
-                        <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => editReturn(row)} />
-                        <Button icon={<PrinterOutlined />} onClick={() => openDocumentDirectly(backendUrl(`/sales/returns/${row.id}/print`))}>Print</Button>
-                        <Button danger icon={<DeleteOutlined />} onClick={() => deleteReturn(row)} />
+                        <Button aria-label="Edit" icon={<EditOutlined />} disabled={deletingId === row.id} onClick={() => editReturn(row)} />
+                        <Button icon={<PrinterOutlined />} disabled={deletingId === row.id} onClick={() => openDocumentDirectly(backendUrl(`/sales/returns/${row.id}/print`))}>Print</Button>
+                        <Button danger icon={<DeleteOutlined />} loading={deletingId === row.id} disabled={Boolean(deletingId)} onClick={() => deleteReturn(row)} />
                     </Space>
                 )
             ),
@@ -470,7 +512,7 @@ export function SalesReturnsPanel() {
                                             }))}
                                         />
                                     </Form.Item>
-                                    <Form.Item label=" "><Button icon={<ReloadOutlined />} onClick={loadInvoiceItems}>Load Invoice Items</Button></Form.Item>
+                                    <Form.Item label=" "><Button icon={<ReloadOutlined />} loading={loadingInvoiceItems} disabled={loadingInvoiceItems} onClick={loadInvoiceItems}>Load Invoice Items</Button></Form.Item>
                                 </div>
                             )}
                             <TransactionLineItems
@@ -489,8 +531,8 @@ export function SalesReturnsPanel() {
                                 ]}
                                 actions={(
                                     <Space>
-                                        <Button onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice', return_type: defaultReturnType() }); }}>Cancel</Button>
-                                        <Button type="primary" htmlType="submit" loading={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
+                                        <Button disabled={saving} onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'invoice', return_type: defaultReturnType() }); }}>Cancel</Button>
+                                        <Button type="primary" htmlType="submit" loading={saving} disabled={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
                                     </Space>
                                 )}
                             />
@@ -535,8 +577,11 @@ export function SalesReturnsPanel() {
             <Modal
                 title="Quick Add Customer"
                 open={quickCustomerOpen}
-                onCancel={() => setQuickCustomerOpen(false)}
+                onCancel={() => !customerSaving && setQuickCustomerOpen(false)}
                 onOk={() => customerForm.submit()}
+                confirmLoading={customerSaving}
+                okButtonProps={{ disabled: customerSaving }}
+                cancelButtonProps={{ disabled: customerSaving }}
                 destroyOnHidden
             >
                 <Form form={customerForm} layout="vertical" onFinish={submitCustomer}>

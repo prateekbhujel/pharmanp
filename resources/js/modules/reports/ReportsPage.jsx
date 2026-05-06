@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Col, Empty, Row, Segmented, Select, Space, Statistic, Table, Tabs } from 'antd';
+import { App, Button, Card, Col, Empty, Row, Segmented, Select, Space, Statistic, Table, Tabs } from 'antd';
 import { DateText } from '../../core/components/DateText';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { BarChart } from '../../core/components/Charts';
@@ -7,6 +7,7 @@ import { ExportButtons } from '../../core/components/ListToolbarActions';
 import { PageHeader } from '../../core/components/PageHeader';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
+import { showRequestError } from '../../core/api/feedback';
 import { accountCatalog, paymentStatusOptions } from '../../core/utils/accountCatalog';
 import { isLikelyDateValue } from '../../core/utils/calendar';
 import { dateRangeParams } from '../../core/utils/dateFilters';
@@ -133,6 +134,7 @@ function inferChart(rows, report) {
 }
 
 export function ReportsPage() {
+    const { notification } = App.useApp();
     const initialReport = reportFromPath();
     const [report, setReport] = useState(initialReport);
     const [group, setGroup] = useState(inferGroup(initialReport));
@@ -181,6 +183,7 @@ export function ReportsPage() {
                 areas: areaData.data || [],
             });
         } catch {
+            showRequestError(notification, null, 'Report lookups failed');
             setLookups({ suppliers: [], customers: [], medicalRepresentatives: [], companies: [], divisions: [], areas: [] });
         }
     }
@@ -199,6 +202,10 @@ export function ReportsPage() {
             setRows(data.data || []);
             setMeta(data.meta || meta);
             setSummary(data.summary || null);
+        } catch (error) {
+            setRows([]);
+            setSummary(null);
+            showRequestError(notification, error, 'Report failed');
         } finally {
             setLoading(false);
         }
@@ -237,8 +244,12 @@ export function ReportsPage() {
     }
 
     async function searchProducts(q) {
-        const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
-        setProductOptions((data.data || []).map((item) => ({ value: item.id, label: item.name })));
+        try {
+            const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
+            setProductOptions((data.data || []).map((item) => ({ value: item.id, label: item.name })));
+        } catch (error) {
+            showRequestError(notification, error, 'Product lookup failed');
+        }
     }
 
     function renderFilters() {

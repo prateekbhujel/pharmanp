@@ -8,7 +8,8 @@ import { Money } from '../../core/components/Money';
 import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
-import { apiErrorMessage, formErrors, http, validationErrors } from '../../core/api/http';
+import { formErrors, http, validationErrors } from '../../core/api/http';
+import { showRequestError, showRequestSuccess } from '../../core/api/feedback';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { focusFirstKeyboardField, useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { itemFreeGoodsValue, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
@@ -62,17 +63,21 @@ export const SalesPosPanel = React.forwardRef(({
     });
 
     async function scan(value) {
-        const { data } = await http.get(endpoints.salesProductLookup, { params: { barcode: value } });
-        const product = data.data?.[0];
-        const batch = product?.batches?.[0];
+        try {
+            const { data } = await http.get(endpoints.salesProductLookup, { params: { barcode: value } });
+            const product = data.data?.[0];
+            const batch = product?.batches?.[0];
 
-        if (!product || !batch) {
-            notification.warning({ message: 'No saleable stock found for barcode' });
-            return;
+            if (!product || !batch) {
+                notification.warning({ message: 'No saleable stock found for barcode' });
+                return;
+            }
+
+            addItem(product, batch);
+            setBarcode('');
+        } catch (error) {
+            showRequestError(notification, error, 'Barcode lookup failed.');
         }
-
-        addItem(product, batch);
-        setBarcode('');
     }
 
     function addItem(product, batch) {
@@ -113,7 +118,7 @@ export const SalesPosPanel = React.forwardRef(({
 
         setSubmitting(true);
         try {
-            const { data } = await http.post(endpoints.salesInvoices, {
+            const response = await http.post(endpoints.salesInvoices, {
                 customer_id: customerId,
                 medical_representative_id: medicalRepresentativeId,
                 invoice_date: invoiceDate.format('YYYY-MM-DD'),
@@ -124,7 +129,8 @@ export const SalesPosPanel = React.forwardRef(({
                 payment_mode_id: paymentModeId,
                 items,
             });
-            notification.success({ message: 'Invoice posted and stock deducted' });
+            const { data } = response;
+            showRequestSuccess(notification, response, 'Invoice posted and stock deducted.');
             setItems([]);
             setLineErrors({});
             setPaidAmount(0);
@@ -135,7 +141,7 @@ export const SalesPosPanel = React.forwardRef(({
             onInvoiceSuccess(data.print_url);
         } catch (error) {
             setLineErrors(validationErrorsByLine(validationErrors(error), 'items'));
-            notification.error({ message: 'Invoice failed', description: apiErrorMessage(error) });
+            showRequestError(notification, error, 'Invoice failed.');
         } finally {
             setSubmitting(false);
         }
@@ -144,15 +150,16 @@ export const SalesPosPanel = React.forwardRef(({
     async function submitCustomer(values) {
         setQuickCustomerSaving(true);
         try {
-            const { data } = await http.post(endpoints.customers, values);
+            const response = await http.post(endpoints.customers, values);
+            const { data } = response;
             if (onCustomerAdded) await onCustomerAdded();
             setCustomerId(data.data.id);
             customerForm.resetFields();
             setQuickCustomerOpen(false);
-            notification.success({ message: 'Customer added' });
+            showRequestSuccess(notification, response, 'Customer added.');
         } catch (error) {
             customerForm.setFields(formErrors(error));
-            notification.error({ message: 'Customer save failed', description: apiErrorMessage(error) });
+            showRequestError(notification, error, 'Customer save failed.');
         } finally {
             setQuickCustomerSaving(false);
         }
@@ -161,15 +168,16 @@ export const SalesPosPanel = React.forwardRef(({
     async function submitMr(values) {
         setQuickMrSaving(true);
         try {
-            const { data } = await http.post(endpoints.mrRepresentatives, { ...values, is_active: true });
+            const response = await http.post(endpoints.mrRepresentatives, { ...values, is_active: true });
+            const { data } = response;
             if (onMrAdded) await onMrAdded();
             setMedicalRepresentativeId(data.data.id);
             mrForm.resetFields();
             setQuickMrOpen(false);
-            notification.success({ message: 'MR added' });
+            showRequestSuccess(notification, response, 'MR added.');
         } catch (error) {
             mrForm.setFields(formErrors(error));
-            notification.error({ message: 'MR save failed', description: apiErrorMessage(error) });
+            showRequestError(notification, error, 'MR save failed.');
         } finally {
             setQuickMrSaving(false);
         }
