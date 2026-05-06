@@ -37,6 +37,21 @@ class ImportPreviewTest extends TestCase
             ->assertJsonPath('data.rows.0.raw_data.name', 'Paracetamol 500');
     }
 
+    public function test_import_preview_rejects_unsupported_file_types(): void
+    {
+        Setting::putValue('app.installed', ['installed' => true]);
+        $user = User::factory()->create(['is_owner' => true]);
+
+        $file = UploadedFile::fake()->image('bill.png');
+
+        $this->actingAs($user)->postJson('/api/v1/imports/preview', [
+            'target' => 'products',
+            'file' => $file,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('file');
+    }
+
     public function test_import_confirm_inserts_products(): void
     {
         Setting::putValue('app.installed', ['installed' => true]);

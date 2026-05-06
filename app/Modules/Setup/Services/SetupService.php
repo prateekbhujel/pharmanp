@@ -2,6 +2,7 @@
 
 namespace App\Modules\Setup\Services;
 
+use App\Core\Services\EmployeeCodeGenerator;
 use App\Core\Services\InstallationService;
 use App\Core\Support\AssetUrl;
 use App\Models\Setting;
@@ -10,6 +11,10 @@ use App\Modules\Inventory\Models\Company;
 use App\Modules\Inventory\Models\Store;
 use App\Modules\Inventory\Models\Unit;
 use App\Modules\MR\Models\Branch;
+use App\Modules\Setup\Models\Area;
+use App\Modules\Setup\Models\Division;
+use App\Modules\Setup\Models\DropdownOption;
+use App\Modules\Setup\Models\Employee;
 use App\Modules\Setup\Models\FiscalYear;
 use App\Modules\Setup\Models\Tenant;
 use Illuminate\Http\UploadedFile;
@@ -24,6 +29,7 @@ class SetupService
     public function __construct(
         private readonly InstallationService $installation,
         private readonly AccessControlService $accessControl,
+        private readonly EmployeeCodeGenerator $employeeCodes,
     ) {}
 
     public function complete(array $data): array
@@ -72,13 +78,16 @@ class SetupService
                 'is_active' => true,
             ]);
 
+            $branchData = $data['branch'] ?? [];
             $branch = Branch::query()->create([
                 'tenant_id' => $tenant->id,
                 'company_id' => $company->id,
                 'store_id' => $store->id,
-                'name' => $store->name,
-                'code' => $store->code ?: 'HQ',
+                'name' => $branchData['name'] ?? $store->name,
+                'code' => $branchData['code'] ?? ($store->code ?: 'HQ'),
                 'type' => 'hq',
+                'address' => $branchData['address'] ?? $store->address,
+                'phone' => $branchData['phone'] ?? $store->phone,
                 'is_active' => true,
             ]);
 
@@ -96,6 +105,7 @@ class SetupService
 
             $this->seedPermissions($admin);
             $this->seedOperatingDefaults($tenant->id, $company->id, $admin->id);
+            $this->seedInitialStructure($data, $tenant->id, $company->id, $branch->id, $admin);
             $this->createFiscalYear($data, $tenant->id, $company->id, $admin->id);
             $this->storeBranding($data, $tenant->id, $company->id, $store->id);
             $this->installation->markInstalled([
@@ -142,6 +152,65 @@ class SetupService
             ['tenant_id' => $tenantId, 'code' => 'PCS', 'type' => 'both', 'factor' => 1, 'created_by' => $userId, 'updated_by' => $userId],
         );
 
+    }
+
+    private function seedInitialStructure(array $data, int $tenantId, int $companyId, int $branchId, User $admin): void
+    {
+        $divisions = collect($data['divisions'] ?? [])
+            ->filter(fn (array $division) => filled($division['name'] ?? null))
+            ->map(fn (array $division) => Division::query()->firstOrCreate(
+                ['company_id' => $companyId, 'name' => $division['name']],
+                [
+                    'tenant_id' => $tenantId,
+                    'code' => filled($division['code'] ?? null) ? strtoupper(trim((string) $division['code'])) : null,
+                    'is_active' => true,
+                    'created_by' => $admin->id,
+                    'updated_by' => $admin->id,
+                ],
+            ));
+
+        $areas = collect($data['areas'] ?? [])
+            ->filter(fn (array $area) => filled($area['name'] ?? null))
+            ->map(fn (array $area) => Area::query()->firstOrCreate(
+                ['branch_id' => $branchId, 'name' => $area['name']],
+                [
+                    'tenant_id' => $tenantId,
+                    'company_id' => $companyId,
+                    'code' => filled($area['code'] ?? null) ? strtoupper(trim((string) $area['code'])) : null,
+                    'district' => $area['district'] ?? null,
+                    'province' => $area['province'] ?? null,
+                    'is_active' => true,
+                    'created_by' => $admin->id,
+                    'updated_by' => $admin->id,
+                ],
+            ));
+
+        collect($data['payment_modes'] ?? [])
+            ->filter(fn (array $mode) => filled($mode['name'] ?? null))
+            ->each(fn (array $mode) => DropdownOption::query()->firstOrCreate(
+                ['alias' => 'payment_mode', 'name' => $mode['name']],
+                ['data' => $mode['data'] ?? null, 'status' => true],
+            ));
+
+        collect($data['employees'] ?? [])
+            ->filter(fn (array $employee) => filled($employee['name'] ?? null))
+            ->each(function (array $employee) use ($admin, $areas, $branchId, $companyId, $divisions, $tenantId) {
+                Employee::query()->create([
+                    'tenant_id' => $tenantId,
+                    'company_id' => $companyId,
+                    'branch_id' => $branchId,
+                    'area_id' => $areas->first()?->id,
+                    'division_id' => $divisions->first()?->id,
+                    'employee_code' => $this->employeeCodes->next($admin),
+                    'name' => $employee['name'],
+                    'designation' => $employee['designation'] ?? null,
+                    'phone' => $employee['phone'] ?? null,
+                    'email' => $employee['email'] ?? null,
+                    'is_active' => true,
+                    'created_by' => $admin->id,
+                    'updated_by' => $admin->id,
+                ]);
+            });
     }
 
     private function createFiscalYear(array $data, int $tenantId, int $companyId, int $userId): void

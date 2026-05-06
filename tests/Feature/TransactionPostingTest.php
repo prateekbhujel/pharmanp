@@ -29,6 +29,8 @@ class TransactionPostingTest extends TestCase
         $this->actingAs($user)->postJson('/api/v1/purchases', [
             'supplier_id' => $supplier->id,
             'purchase_date' => '2026-04-25',
+            'due_date' => '2026-05-10',
+            'payment_type' => 'credit',
             'paid_amount' => 50,
             'items' => [[
                 'product_id' => $product->id,
@@ -43,6 +45,11 @@ class TransactionPostingTest extends TestCase
 
         $batch = Batch::query()->where('batch_no', 'B-001')->firstOrFail();
         $this->assertSame('12.000', (string) $batch->quantity_available);
+        $this->assertDatabaseHas('purchases', [
+            'supplier_id' => $supplier->id,
+            'due_date' => '2026-05-10 00:00:00',
+            'payment_type' => 'credit',
+        ]);
         $this->assertDatabaseHas('purchase_items', ['product_id' => $product->id, 'batch_id' => $batch->id]);
         $this->assertDatabaseHas('stock_movements', ['movement_type' => 'purchase_receive', 'quantity_in' => 12]);
 
@@ -308,6 +315,7 @@ class TransactionPostingTest extends TestCase
         $returnResponse = $this->actingAs($user)->postJson('/api/v1/sales/returns', [
             'customer_id' => $customer->id,
             'sales_invoice_id' => $invoiceResponse->json('data.id'),
+            'return_type' => 'expiry',
             'return_date' => '2026-04-26',
             'reason' => 'Customer returned item',
             'items' => [[
@@ -321,6 +329,7 @@ class TransactionPostingTest extends TestCase
 
         $this->assertSame('11.000', (string) $batch->fresh()->quantity_available);
         $this->assertSame('8.00', (string) $customer->fresh()->current_balance);
+        $this->assertDatabaseHas('sales_returns', ['id' => $returnResponse->json('data.id'), 'return_type' => 'expiry']);
         $this->assertDatabaseHas('stock_movements', ['movement_type' => 'sales_return_in', 'quantity_in' => 1]);
         $this->assertDatabaseHas('account_transactions', [
             'source_type' => 'sales_return',
@@ -403,6 +412,66 @@ class TransactionPostingTest extends TestCase
             ->assertJsonPath('summary.balance', 6);
     }
 
+    public function test_payment_in_allocates_customer_invoice_and_refreshes_balance(): void
+    {
+        [$user, $product, $supplier, $customer] = $this->fixture();
+        $paymentMode = DropdownOption::query()->firstOrCreate(
+            ['alias' => 'payment_mode', 'name' => 'Cash'],
+            ['data' => 'cash', 'status' => true],
+        );
+
+        $this->actingAs($user)->postJson('/api/v1/purchases', [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => '2026-04-25',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_no' => 'PAY-IN-001',
+                'expires_at' => '2027-04-25',
+                'quantity' => 10,
+                'purchase_price' => 5,
+                'mrp' => 8,
+            ]],
+        ])->assertCreated();
+
+        $invoiceResponse = $this->actingAs($user)->postJson('/api/v1/sales/invoices', [
+            'customer_id' => $customer->id,
+            'invoice_date' => '2026-04-25',
+            'sale_type' => 'pos',
+            'paid_amount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
+                'quantity' => 2,
+                'unit_price' => 8,
+            ]],
+        ])->assertCreated();
+
+        $invoiceId = $invoiceResponse->json('data.id');
+
+        $paymentResponse = $this->actingAs($user)->postJson('/api/v1/accounting/payments', [
+            'direction' => 'in',
+            'party_type' => 'customer',
+            'party_id' => $customer->id,
+            'payment_date' => '2026-04-26',
+            'amount' => 10,
+            'payment_mode_id' => $paymentMode->id,
+            'allocations' => [[
+                'bill_id' => $invoiceId,
+                'bill_type' => 'sales_invoice',
+                'allocated_amount' => 10,
+            ]],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('sales_invoices', ['id' => $invoiceId, 'paid_amount' => 10, 'payment_status' => 'partial']);
+        $this->assertDatabaseHas('payment_bill_allocations', [
+            'payment_id' => $paymentResponse->json('data.id'),
+            'bill_id' => $invoiceId,
+            'bill_type' => 'sales_invoice',
+            'allocated_amount' => 10,
+        ]);
+        $this->assertSame('6.00', (string) $customer->fresh()->current_balance);
+    }
+
     public function test_unbalanced_voucher_is_rejected(): void
     {
         [$user] = $this->fixture();
@@ -443,6 +512,7 @@ class TransactionPostingTest extends TestCase
         $returnResponse = $this->actingAs($user)->postJson('/api/v1/purchase/returns', [
             'supplier_id' => $supplier->id,
             'purchase_id' => $purchaseId,
+            'return_type' => 'expiry',
             'return_date' => '2026-04-26',
             'items' => [[
                 'purchase_item_id' => $purchaseItemId,
@@ -456,6 +526,7 @@ class TransactionPostingTest extends TestCase
 
         $this->assertSame('10.000', (string) $batch->fresh()->quantity_available);
         $this->assertSame('40.00', (string) $supplier->fresh()->current_balance);
+        $this->assertDatabaseHas('purchase_returns', ['id' => $returnResponse->json('data.id'), 'return_type' => 'expiry']);
         $this->assertDatabaseHas('stock_movements', ['movement_type' => 'purchase_return_out', 'quantity_out' => 2]);
         $this->assertDatabaseHas('purchase_return_items', ['product_id' => $product->id, 'batch_id' => $batch->id]);
 

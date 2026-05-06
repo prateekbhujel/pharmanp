@@ -7,6 +7,7 @@ import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { showRequestError, showRequestSuccess } from '../../core/api/feedback';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { itemFreeGoodsValue, itemGross, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
@@ -41,6 +42,7 @@ export function PurchaseEntryPanel({
     const [purchaseItems, setPurchaseItems] = useState([{ ...emptyPurchaseItem }]);
     const [purchaseLineErrors, setPurchaseLineErrors] = useState({});
     const [quickProductOpen, setQuickProductOpen] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
     useKeyboardFlow(purchaseEntryRef, {
         enabled: true,
@@ -74,6 +76,7 @@ export function PurchaseEntryPanel({
     const purchaseSummary = useMemo(() => summarizeItems(purchaseItems, 'purchase_price'), [purchaseItems]);
 
     async function submitPurchase(values) {
+        setSubmitting(true);
         try {
             const payload = {
                 ...values,
@@ -85,17 +88,19 @@ export function PurchaseEntryPanel({
                     manufactured_at: item.manufactured_at?.format('YYYY-MM-DD'),
                 })),
             };
-            const { data } = await http.post(endpoints.purchases, payload);
-            notification.success({ message: 'Purchase posted and stock received' });
+            const response = await http.post(endpoints.purchases, payload);
+            showRequestSuccess(notification, response, 'Purchase posted and stock received');
             purchaseForm.resetFields();
             setPurchaseItems([{ ...emptyPurchaseItem }]);
             setPurchaseLineErrors({});
-            onSuccess(data.print_url);
+            onSuccess(response.data.data?.print_url);
         } catch (error) {
             const errors = validationErrors(error);
             setPurchaseLineErrors(validationErrorsByLine(errors, 'items'));
             purchaseForm.setFields(Object.entries(errors).map(([name, messages]) => ({ name: name.split('.'), errors: messages })));
-            notification.error({ message: 'Purchase failed', description: error?.response?.data?.message || error.message });
+            showRequestError(notification, error, 'Purchase failed');
+        } finally {
+            setSubmitting(false);
         }
     }
 
@@ -199,7 +204,7 @@ export function PurchaseEntryPanel({
                                 { label: 'Free Goods Value', value: <Money value={purchaseSummary.freeGoods} /> },
                                 { label: 'Grand Total', value: <Money value={purchaseSummary.grandTotal} />, strong: true },
                             ]}
-                            actions={<Button type="primary" htmlType="submit">Post Purchase</Button>}
+                            actions={<Button type="primary" htmlType="submit" loading={submitting} disabled={submitting}>Post Purchase</Button>}
                         />
                     </Form>
                 </div>

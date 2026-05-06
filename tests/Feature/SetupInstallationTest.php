@@ -5,6 +5,11 @@ namespace Tests\Feature;
 use App\Models\Setting;
 use App\Models\User;
 use App\Modules\Inventory\Models\Store;
+use App\Modules\MR\Models\Branch;
+use App\Modules\Setup\Models\Area;
+use App\Modules\Setup\Models\Division;
+use App\Modules\Setup\Models\DropdownOption;
+use App\Modules\Setup\Models\Employee;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
@@ -53,6 +58,63 @@ class SetupInstallationTest extends TestCase
         $this->assertTrue(File::exists(storage_path('app/installed')));
 
         $this->postJson('/setup/complete', $payload)->assertStatus(409);
+    }
+
+    public function test_setup_completion_bootstraps_initial_branch_area_division_payment_and_employee_data(): void
+    {
+        $response = $this->postJson('/setup/complete', [
+            'company' => ['name' => 'Kathmandu Care Pharmacy', 'address' => 'Maharajgunj'],
+            'store' => ['name' => 'Main Store'],
+            'branch' => ['name' => 'Kathmandu HQ', 'code' => 'KTM-HQ', 'address' => 'Maharajgunj'],
+            'areas' => [
+                ['name' => 'Maharajgunj', 'code' => 'MHR'],
+                ['name' => 'Baluwatar', 'code' => 'BLW'],
+            ],
+            'divisions' => [
+                ['name' => 'General Medicine', 'code' => 'GEN'],
+                ['name' => 'Cardio Care', 'code' => 'CAR'],
+            ],
+            'payment_modes' => [
+                ['name' => 'Cash'],
+                ['name' => 'QR'],
+            ],
+            'employees' => [
+                ['name' => 'Ranjan Bhujel', 'designation' => 'MR'],
+            ],
+            'branding' => [
+                'app_name' => 'Kathmandu Care Pharmacy',
+                'country_code' => 'NP',
+                'currency_symbol' => 'Rs.',
+                'calendar_type' => 'bs',
+            ],
+            'fiscal_year' => [
+                'name' => '2026/27',
+                'starts_on' => '2026-01-01',
+                'ends_on' => '2026-12-31',
+            ],
+            'admin' => [
+                'name' => 'Pratik Admin',
+                'email' => 'pratik@admin.com',
+                'password' => 'Done@12345',
+                'password_confirmation' => 'Done@12345',
+            ],
+        ]);
+
+        $response->assertCreated();
+
+        $branch = Branch::query()->where('code', 'KTM-HQ')->firstOrFail();
+
+        $this->assertSame('Kathmandu HQ', $branch->name);
+        $this->assertSame(2, Area::query()->where('branch_id', $branch->id)->count());
+        $this->assertSame(2, Division::query()->where('company_id', $branch->company_id)->count());
+        $this->assertTrue(DropdownOption::query()->where('alias', 'payment_mode')->where('name', 'QR')->exists());
+
+        $employee = Employee::query()->where('name', 'Ranjan Bhujel')->firstOrFail();
+
+        $this->assertNotNull($employee->employee_code);
+        $this->assertSame($branch->id, $employee->branch_id);
+        $this->assertNotNull($employee->area_id);
+        $this->assertNotNull($employee->division_id);
     }
 
     public function test_owner_can_update_application_branding(): void

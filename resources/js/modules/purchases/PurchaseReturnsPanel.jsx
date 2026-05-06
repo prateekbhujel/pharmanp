@@ -11,11 +11,12 @@ import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
 import { http, validationErrors } from '../../core/api/http';
+import { applyRequestFormErrors, showRequestError, showRequestSuccess } from '../../core/api/feedback';
 import { useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { openDocumentDirectly } from '../../core/utils/documents';
 import { validationErrorsByLine } from '../../core/utils/lineItems';
-import { appUrl , backendUrl } from '../../core/utils/url';
+import { backendUrl } from '../../core/utils/url';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
 const emptyReturnItem = {
@@ -80,6 +81,9 @@ export function PurchaseReturnsPanel() {
     const [lineErrors, setLineErrors] = useState({});
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [loadingBillItems, setLoadingBillItems] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
+    const [supplierSaving, setSupplierSaving] = useState(false);
     const [view, setView] = useState('list');
     const [quickSupplierOpen, setQuickSupplierOpen] = useState(false);
     const [range, setRange] = useState([]);
@@ -121,26 +125,43 @@ export function PurchaseReturnsPanel() {
     }, [range]);
 
     async function loadSuppliers() {
-        const { data } = await http.get(endpoints.supplierOptions);
-        setSuppliers(data.data || []);
+        try {
+            const { data } = await http.get(endpoints.supplierOptions);
+            setSuppliers(data.data || []);
+        } catch (error) {
+            showRequestError(notification, error, 'Supplier options could not be loaded.');
+        }
     }
 
     async function loadPurchases(nextSupplierId) {
-        const { data } = await http.get(endpoints.purchaseReturnPurchases, { params: { supplier_id: nextSupplierId } });
-        setPurchases(data.data || []);
+        try {
+            const { data } = await http.get(endpoints.purchaseReturnPurchases, { params: { supplier_id: nextSupplierId } });
+            setPurchases(data.data || []);
+        } catch (error) {
+            showRequestError(notification, error, 'Purchase bills could not be loaded.');
+        }
     }
 
     async function searchProducts(q) {
-        const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
-        setProducts(data.data || []);
+        try {
+            const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
+            setProducts(data.data || []);
+        } catch (error) {
+            showRequestError(notification, error, 'Product lookup failed.');
+        }
     }
 
     async function supplierBatches(product_id) {
-        const { data } = await http.get(endpoints.purchaseReturnBatches, {
-            params: { supplier_id: form.getFieldValue('supplier_id'), product_id },
-        });
+        try {
+            const { data } = await http.get(endpoints.purchaseReturnBatches, {
+                params: { supplier_id: form.getFieldValue('supplier_id'), product_id },
+            });
 
-        return data.data || [];
+            return data.data || [];
+        } catch (error) {
+            showRequestError(notification, error, 'Supplier batches could not be loaded.');
+            return [];
+        }
     }
 
     function updateRow(index, patch) {
@@ -186,9 +207,17 @@ export function PurchaseReturnsPanel() {
             notification.warning({ message: 'Choose purchase bill first' });
             return;
         }
-        const { data } = await http.get(endpoints.purchaseReturnItems(purchaseId));
-        setItems((data.data || []).filter((row) => Number(row.max_returnable || 0) > 0).map((row) => normalizeRow({ ...row, locked: true })));
-        setLineErrors({});
+        setLoadingBillItems(true);
+        try {
+            const { data } = await http.get(endpoints.purchaseReturnItems(purchaseId));
+            setItems((data.data || []).filter((row) => Number(row.max_returnable || 0) > 0).map((row) => normalizeRow({ ...row, locked: true })));
+            setLineErrors({});
+            showRequestSuccess(notification, data, 'Purchase bill items loaded.');
+        } catch (error) {
+            showRequestError(notification, error, 'Purchase bill items could not be loaded.');
+        } finally {
+            setLoadingBillItems(false);
+        }
     }
 
     function removeRow(index) {
@@ -231,10 +260,11 @@ export function PurchaseReturnsPanel() {
                     net_rate: row.net_rate,
                 })),
             };
-            const { data } = editing
+            const response = editing
                 ? await http.put(`${endpoints.purchaseReturns}/${editing.id}`, payload)
                 : await http.post(endpoints.purchaseReturns, payload);
-            notification.success({ message: editing ? 'Purchase return updated' : 'Purchase return posted' });
+            const { data } = response;
+            showRequestSuccess(notification, response, editing ? 'Purchase return updated.' : 'Purchase return posted.');
             setEditing(null);
             setItems([]);
             setLineErrors({});
@@ -249,40 +279,45 @@ export function PurchaseReturnsPanel() {
             const errors = validationErrors(error);
             setLineErrors(validationErrorsByLine(errors, 'items'));
             form.setFields(Object.entries(errors).map(([name, messages]) => ({ name: name.split('.'), errors: messages })));
-            notification.error({ message: 'Purchase return failed', description: error?.response?.data?.message || error.message });
+            showRequestError(notification, error, 'Purchase return failed.');
         } finally {
             setSaving(false);
         }
     }
 
     async function editReturn(row) {
-        setView('form');
-        const { data } = await http.get(`${endpoints.purchaseReturns}/${row.id}`);
-        const record = data.data;
-        setEditing(record);
-        form.setFieldsValue({
-            supplier_id: record.supplier_id,
-            purchase_id: record.purchase_id,
-            return_mode: record.purchase_id ? 'bill' : 'product',
-            return_type: record.return_type || 'regular',
-            return_date: dayjs(record.return_date),
-            notes: record.notes,
-        });
-        if (record.supplier_id) {
-            loadPurchases(record.supplier_id);
+        try {
+            setView('form');
+            const { data } = await http.get(`${endpoints.purchaseReturns}/${row.id}`);
+            const record = data.data;
+            setEditing(record);
+            form.setFieldsValue({
+                supplier_id: record.supplier_id,
+                purchase_id: record.purchase_id,
+                return_mode: record.purchase_id ? 'bill' : 'product',
+                return_type: record.return_type || 'regular',
+                return_date: dayjs(record.return_date),
+                notes: record.notes,
+            });
+            if (record.supplier_id) {
+                loadPurchases(record.supplier_id);
+            }
+            setItems((record.items || []).map((item) => normalizeRow({
+                ...item,
+                product_name: item.product?.name,
+                batch_options: item.batch ? [{
+                    id: item.batch.id,
+                    label: `${item.batch.batch_no} | Qty: ${Number(item.batch.quantity_available || 0).toFixed(3)}`,
+                    quantity_available: Number(item.batch.quantity_available || 0) + Number(item.return_qty || 0),
+                    purchase_price: item.rate,
+                }] : [],
+                max_returnable: item.batch ? Number(item.batch.quantity_available || 0) + Number(item.return_qty || 0) : Number(item.return_qty || 0),
+                locked: Boolean(record.purchase_id),
+            })));
+        } catch (error) {
+            setView('list');
+            showRequestError(notification, error, 'Purchase return details could not be loaded.');
         }
-        setItems((record.items || []).map((item) => normalizeRow({
-            ...item,
-            product_name: item.product?.name,
-            batch_options: item.batch ? [{
-                id: item.batch.id,
-                label: `${item.batch.batch_no} | Qty: ${Number(item.batch.quantity_available || 0).toFixed(3)}`,
-                quantity_available: Number(item.batch.quantity_available || 0) + Number(item.return_qty || 0),
-                purchase_price: item.rate,
-            }] : [],
-            max_returnable: item.batch ? Number(item.batch.quantity_available || 0) + Number(item.return_qty || 0) : Number(item.return_qty || 0),
-            locked: Boolean(record.purchase_id),
-        })));
     }
 
     function deleteReturn(row) {
@@ -290,24 +325,36 @@ export function PurchaseReturnsPanel() {
             title: 'Delete purchase return?',
             content: `${row.return_no} will be removed and stock restored.`,
             onOk: async () => {
-                await http.delete(`${endpoints.purchaseReturns}/${row.id}`);
-                notification.success({ message: 'Purchase return deleted' });
-                table.reload();
+                setDeletingId(row.id);
+                try {
+                    const response = await http.delete(`${endpoints.purchaseReturns}/${row.id}`);
+                    showRequestSuccess(notification, response, 'Purchase return deleted.');
+                    table.reload();
+                } catch (error) {
+                    showRequestError(notification, error, 'Purchase return delete failed.');
+                    throw error;
+                } finally {
+                    setDeletingId(null);
+                }
             },
         });
     }
 
     async function submitSupplier(values) {
+        setSupplierSaving(true);
         try {
-            const { data } = await http.post(endpoints.suppliers, values);
+            const response = await http.post(endpoints.suppliers, values);
+            const { data } = response;
             await loadSuppliers();
             form.setFieldValue('supplier_id', data.data.id);
             supplierForm.resetFields();
             setQuickSupplierOpen(false);
-            notification.success({ message: 'Supplier added' });
+            showRequestSuccess(notification, response, 'Supplier added.');
         } catch (error) {
-            supplierForm.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name, errors })));
-            notification.error({ message: 'Supplier save failed', description: error?.response?.data?.message || error.message });
+            applyRequestFormErrors(supplierForm, error);
+            showRequestError(notification, error, 'Supplier save failed.');
+        } finally {
+            setSupplierSaving(false);
         }
     }
 
@@ -377,9 +424,9 @@ export function PurchaseReturnsPanel() {
                     <PharmaBadge tone="deleted">Deleted</PharmaBadge>
                 ) : (
                     <Space>
-                        <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => editReturn(row)} />
-                        <Button icon={<PrinterOutlined />} onClick={() => openDocumentDirectly(backendUrl(`/purchase-returns/${row.id}/print`))}>Print</Button>
-                        <Button danger icon={<DeleteOutlined />} onClick={() => deleteReturn(row)} />
+                        <Button aria-label="Edit" icon={<EditOutlined />} disabled={deletingId === row.id} onClick={() => editReturn(row)} />
+                        <Button icon={<PrinterOutlined />} disabled={deletingId === row.id} onClick={() => openDocumentDirectly(backendUrl(`/purchase-returns/${row.id}/print`))}>Print</Button>
+                        <Button danger icon={<DeleteOutlined />} loading={deletingId === row.id} disabled={Boolean(deletingId)} onClick={() => deleteReturn(row)} />
                     </Space>
                 )
             ),
@@ -432,7 +479,7 @@ export function PurchaseReturnsPanel() {
                                             options={purchases.map((item) => ({ value: item.id, label: item.label }))}
                                         />
                                     </Form.Item>
-                                    <Form.Item label=" "><Button icon={<ReloadOutlined />} onClick={loadBillItems}>Load Bill Items</Button></Form.Item>
+                                    <Form.Item label=" "><Button icon={<ReloadOutlined />} loading={loadingBillItems} disabled={loadingBillItems} onClick={loadBillItems}>Load Bill Items</Button></Form.Item>
                                 </div>
                             )}
                             <TransactionLineItems
@@ -451,8 +498,8 @@ export function PurchaseReturnsPanel() {
                                 ]}
                                 actions={(
                                     <Space>
-                                        <Button onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill', return_type: defaultReturnType() }); }}>Cancel</Button>
-                                        <Button type="primary" htmlType="submit" loading={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
+                                        <Button disabled={saving} onClick={() => { setView('list'); setEditing(null); setItems([]); form.resetFields(); form.setFieldsValue({ return_date: dayjs(), return_mode: 'bill', return_type: defaultReturnType() }); }}>Cancel</Button>
+                                        <Button type="primary" htmlType="submit" loading={saving} disabled={saving}>{editing ? 'Update Return' : 'Post Return'}</Button>
                                     </Space>
                                 )}
                             />
@@ -508,8 +555,11 @@ export function PurchaseReturnsPanel() {
             <Modal
                 title="Quick Add Supplier"
                 open={quickSupplierOpen}
-                onCancel={() => setQuickSupplierOpen(false)}
+                onCancel={() => !supplierSaving && setQuickSupplierOpen(false)}
                 onOk={() => supplierForm.submit()}
+                confirmLoading={supplierSaving}
+                okButtonProps={{ disabled: supplierSaving }}
+                cancelButtonProps={{ disabled: supplierSaving }}
                 destroyOnHidden
             >
                 <Form form={supplierForm} layout="vertical" onFinish={submitSupplier}>

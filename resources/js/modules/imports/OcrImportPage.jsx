@@ -4,6 +4,7 @@ import { CloseCircleOutlined, FileTextOutlined, InboxOutlined } from '@ant-desig
 import { PaymentStatusBadge, PharmaBadge } from '../../core/components/PharmaBadge';
 import { endpoints } from '../../core/api/endpoints';
 import { http } from '../../core/api/http';
+import { showRequestError, showRequestSuccess } from '../../core/api/feedback';
 import { appUrl } from '../../core/utils/url';
 
 const OCR_DRAFT_STORAGE_KEY = 'pharmanp-purchase-ocr-draft';
@@ -19,6 +20,7 @@ export function OcrImportPage() {
     const { notification } = App.useApp();
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [draftLoading, setDraftLoading] = useState(false);
     const [result, setResult] = useState(null);
 
     async function extract() {
@@ -32,13 +34,14 @@ export function OcrImportPage() {
         setLoading(true);
 
         try {
-            const { data } = await http.post(endpoints.purchaseOcrExtract, formData);
+            const response = await http.post(endpoints.purchaseOcrExtract, formData);
+            const { data } = response;
             setResult(data.data);
-            notification.success({ message: data.message });
+            showRequestSuccess(notification, response, 'OCR extraction complete.');
         } catch (error) {
             const payload = error?.response?.data?.data;
             setResult(payload || null);
-            notification.error({ message: error?.response?.data?.message || 'OCR extraction failed' });
+            showRequestError(notification, error, 'OCR extraction failed.');
         } finally {
             setLoading(false);
         }
@@ -47,17 +50,22 @@ export function OcrImportPage() {
     async function loadIntoPurchase() {
         if (!result) return;
 
+        setDraftLoading(true);
         try {
-            const { data } = await http.post(endpoints.purchaseOcrDraft, {
+            const response = await http.post(endpoints.purchaseOcrDraft, {
                 ocr_text: result.text || '',
                 analysis: result.analysis || {},
                 matches: result.matches || [],
             });
+            const { data } = response;
             window.sessionStorage.setItem(OCR_DRAFT_STORAGE_KEY, JSON.stringify(data.data));
+            showRequestSuccess(notification, response, 'Purchase draft prepared.');
             window.history.pushState({}, '', appUrl('/app/purchases/entry'));
             window.dispatchEvent(new PopStateEvent('popstate'));
         } catch (error) {
-            notification.error({ message: 'Could not prepare purchase draft', description: error?.response?.data?.message || error.message });
+            showRequestError(notification, error, 'Could not prepare purchase draft.');
+        } finally {
+            setDraftLoading(false);
         }
     }
 
@@ -88,7 +96,7 @@ export function OcrImportPage() {
                             </div>
                         )}
                     </div>
-                    <Button type="primary" loading={loading} onClick={extract}>Extract OCR</Button>
+                    <Button type="primary" loading={loading} disabled={loading} onClick={extract}>Extract OCR</Button>
                 </div>
             </Card>
 
@@ -112,7 +120,7 @@ export function OcrImportPage() {
                                 <PharmaBadge tone={result.extraction_status === 'success' ? 'success' : 'warning'} dot>
                                     {result.analysis?.next_action || 'manual_review'}
                                 </PharmaBadge>
-                                <Button type="primary" onClick={loadIntoPurchase}>Load Into Purchase Entry</Button>
+                                <Button type="primary" loading={draftLoading} disabled={draftLoading} onClick={loadIntoPurchase}>Load Into Purchase Entry</Button>
                             </Space>
                         }
                     >
