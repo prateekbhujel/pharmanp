@@ -139,6 +139,7 @@ export function buildNavigationModel(user, pathname) {
             show: canInventory,
             children: [
                 child('inventory-product', 'Products', appUrl('/app/inventory/products'), { description: 'Product master, pricing, barcode and stock setup' }),
+                child('inventory-batches', 'Batches', appUrl('/app/inventory/batches'), { description: 'Batch register, expiry, available stock and movement links' }),
                 child('inventory-company', 'Companies (MFR)', appUrl('/app/inventory/companies'), { description: 'Manufacturer and company master records' }),
                 child('inventory-unit', 'Units', appUrl('/app/inventory/units'), { description: 'Product units and packaging units' }),
                 child('inventory-adjustment', 'Stock Adjustment', appUrl('/app/inventory/stock-adjustment'), { description: 'Manual stock correction with ledger impact' }),

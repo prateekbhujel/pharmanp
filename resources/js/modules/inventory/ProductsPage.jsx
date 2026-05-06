@@ -7,13 +7,14 @@ import { PageHeader } from '../../core/components/PageHeader';
 import { ServerTable } from '../../core/components/ServerTable';
 import { confirmDelete } from '../../core/components/ConfirmDelete';
 import { endpoints } from '../../core/api/endpoints';
-import { http, validationErrors } from '../../core/api/http';
+import { apiErrorMessage, formErrors, http, validationErrors } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { printBarcodeLabels } from '../../core/components/BarcodeLabel';
 import { makeBarcodeCandidate } from '../../core/utils/code128';
 import { InventoryMasterTable } from './InventoryMasterTable';
 import { StockAdjustmentsPanel } from './StockAdjustmentsPanel';
 import { StockMovementsPanel } from './StockMovementsPanel';
+import { BatchesPanel } from './BatchesPanel';
 import { ProductHistoryDrawer } from './ProductHistoryDrawer';
 import { ProductFormDrawer } from './ProductFormDrawer';
 import { productColumns, ProductExpandedRow } from './productColumns';
@@ -22,6 +23,7 @@ import { productPayload, productFormDefaults, productEditValues } from './produc
 const inventorySections = {
     companies: { title: 'Company', master: 'companies' },
     units: { title: 'Unit', master: 'units' },
+    batches: { title: 'Batches' },
     'stock-adjustment': { title: 'Stock Adjustment' },
     'stock-ledger': { title: 'Stock Ledger' },
     products: { title: 'Product' },
@@ -42,6 +44,7 @@ export function ProductsPage() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [productActionId, setProductActionId] = useState(null);
     const [quickMaster, setQuickMaster] = useState(null);
     const [historyProduct, setHistoryProduct] = useState(null);
     const [form] = Form.useForm();
@@ -83,9 +86,8 @@ export function ProductsPage() {
             setDrawerOpen(false);
             table.reload();
         } catch (error) {
-            const errors = validationErrors(error);
-            form.setFields(Object.entries(errors).map(([name, messages]) => ({ name, errors: messages })));
-            notification.error({ message: 'Product save failed', description: error?.response?.data?.message || error.message });
+            form.setFields(formErrors(error));
+            notification.error({ message: 'Product save failed', description: apiErrorMessage(error) });
         } finally {
             setSaving(false);
         }
@@ -129,9 +131,16 @@ export function ProductsPage() {
             title: 'Delete product?',
             content: `${record.name} will be soft deleted.`,
             onOk: async () => {
-                await http.delete(`${endpoints.products}/${record.id}`);
-                notification.success({ message: 'Product deleted' });
-                table.reload();
+                setProductActionId(record.id);
+                try {
+                    await http.delete(`${endpoints.products}/${record.id}`);
+                    notification.success({ message: 'Product deleted' });
+                    table.reload();
+                } catch (error) {
+                    notification.error({ message: 'Product delete failed', description: apiErrorMessage(error) });
+                } finally {
+                    setProductActionId(null);
+                }
             },
         });
     }
@@ -143,9 +152,16 @@ export function ProductsPage() {
             okText: 'Restore',
             danger: false,
             onOk: async () => {
-                await http.post(endpoints.productRestore(record.id));
-                notification.success({ message: 'Product restored' });
-                table.reload();
+                setProductActionId(record.id);
+                try {
+                    await http.post(endpoints.productRestore(record.id));
+                    notification.success({ message: 'Product restored' });
+                    table.reload();
+                } catch (error) {
+                    notification.error({ message: 'Product restore failed', description: apiErrorMessage(error) });
+                } finally {
+                    setProductActionId(null);
+                }
             },
         });
     }
@@ -183,8 +199,9 @@ export function ProductsPage() {
         onDelete: remove,
         onRestore: restore,
         onPrintBarcode: printProductBarcode,
+        actionId: productActionId,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), []);
+    }), [productActionId]);
 
     function sectionBody() {
         if (sectionConfig.master) {
@@ -193,6 +210,10 @@ export function ProductsPage() {
 
         if (section === 'stock-adjustment') {
             return <StockAdjustmentsPanel />;
+        }
+
+        if (section === 'batches') {
+            return <BatchesPanel />;
         }
 
         if (section === 'stock-ledger') {

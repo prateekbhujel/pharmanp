@@ -219,18 +219,42 @@ class ErpReadinessHardeningTest extends TestCase
 
     public function test_operational_lists_hide_same_tenant_other_company_or_store_rows(): void
     {
-        [$tenant, $companyA, $storeA] = $this->context('tenant-a');
+        [$tenant, $companyA, $storeA, $unitA] = $this->context('tenant-a');
         $companyB = Company::query()->create(['tenant_id' => $tenant->id, 'name' => 'Other Company']);
         $storeB = Store::query()->create(['tenant_id' => $tenant->id, 'company_id' => $companyB->id, 'name' => 'Other Store']);
+        $unitB = Unit::query()->create(['tenant_id' => $tenant->id, 'company_id' => $companyB->id, 'name' => 'Box']);
         $userA = User::factory()->create(['tenant_id' => $tenant->id, 'company_id' => $companyA->id, 'store_id' => $storeA->id, 'is_owner' => true]);
 
         $visible = $this->operationalRows($tenant, $companyA, $storeA, 'VISIBLE');
         $hidden = $this->operationalRows($tenant, $companyB, $storeB, 'HIDDEN');
+        [$visibleProduct, $visibleBatch] = $this->productBatch($tenant, $companyA, $storeA, $unitA, 'Visible Stock Product');
+        [$hiddenProduct, $hiddenBatch] = $this->productBatch($tenant, $companyB, $storeB, $unitB, 'Hidden Stock Product');
+        $visibleMovement = StockMovement::query()->create([
+            'tenant_id' => $tenant->id,
+            'company_id' => $companyA->id,
+            'store_id' => $storeA->id,
+            'movement_date' => '2026-05-05',
+            'product_id' => $visibleProduct->id,
+            'batch_id' => $visibleBatch->id,
+            'movement_type' => 'manual_batch_in',
+            'quantity_in' => 1,
+        ]);
+        $hiddenMovement = StockMovement::query()->create([
+            'tenant_id' => $tenant->id,
+            'company_id' => $companyB->id,
+            'store_id' => $storeB->id,
+            'movement_date' => '2026-05-05',
+            'product_id' => $hiddenProduct->id,
+            'batch_id' => $hiddenBatch->id,
+            'movement_type' => 'manual_batch_in',
+            'quantity_in' => 1,
+        ]);
 
         $this->assertListContainsOnly('/api/v1/accounting/payments', $userA, $visible['payment']->id, $hidden['payment']->id);
         $this->assertListContainsOnly('/api/v1/accounting/vouchers', $userA, $visible['voucher']->id, $hidden['voucher']->id);
         $this->assertListContainsOnly('/api/v1/sales/invoices', $userA, $visible['invoice']->id, $hidden['invoice']->id);
         $this->assertListContainsOnly('/api/v1/purchases', $userA, $visible['purchase']->id, $hidden['purchase']->id);
+        $this->assertListContainsOnly('/api/v1/inventory/stock-movements', $userA, $visibleMovement->id, $hiddenMovement->id);
     }
 
     public function test_pos_lookup_and_batch_options_only_return_saleable_current_context_batches(): void

@@ -65,6 +65,7 @@ class BatchRequest extends FormRequest
             'expires_at' => ['required', 'date'],
             'quantity_received' => ['required', 'numeric', 'min:0'],
             'quantity_available' => ['nullable', 'numeric', 'min:0'],
+            'adjustment_reason' => ['nullable', 'string', 'max:255'],
             'purchase_price' => ['required', 'numeric', 'min:0', 'max:999999999'],
             'mrp' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             'is_active' => ['nullable', 'boolean'],

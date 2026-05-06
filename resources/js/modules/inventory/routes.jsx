@@ -12,6 +12,7 @@ export const inventoryFrontendModule = {
 
 export const inventoryRoutes = appRoutes([
     '/app/inventory/products',
+    '/app/inventory/batches',
     '/app/inventory/companies',
     '/app/inventory/units',
     '/app/inventory/stock-adjustment',

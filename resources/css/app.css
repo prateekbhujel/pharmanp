@@ -31,6 +31,7 @@
 html,
 body,
 #pharmanp-root {
+    height: 100%;
     min-height: 100%;
 }
 
@@ -38,6 +39,7 @@ body {
     background: #f3f4f6;
     color: #111827;
     margin: 0;
+    overflow-x: hidden;
 }
 
 .screen-center {
@@ -49,7 +51,9 @@ body {
 
 .app-shell {
     background: #f3f4f6;
+    height: 100vh;
     min-height: 100vh;
+    overflow: hidden;
 }
 
 .app-shell>.ant-layout,
@@ -61,6 +65,12 @@ body {
     min-width: 0;
 }
 
+.app-shell>.ant-layout,
+.app-shell .ant-layout {
+    height: 100%;
+    min-height: 0;
+}
+
 .ant-tabs,
 .ant-tabs-content,
 .ant-tabs-tabpane {
@@ -70,12 +80,17 @@ body {
 .app-sidebar {
     background: #ffffff;
     border-right: 1px solid #e7ecf3;
+    height: 100vh;
+    overflow: hidden;
+    position: sticky;
+    top: 0;
     box-shadow: 10px 0 30px rgb(15 23 42 / 5%);
 }
 
 .app-sidebar .ant-layout-sider-children {
     display: grid;
     grid-template-rows: 64px minmax(0, 1fr);
+    height: 100%;
 }
 
 .app-shell-horizontal .app-topbar {
@@ -617,6 +632,7 @@ body {
 }
 
 .main-sidebar {
+    min-height: 0;
     overflow: auto;
     padding: 14px 12px 18px;
 }
@@ -692,6 +708,8 @@ body {
 }
 
 .app-content {
+    min-height: 0;
+    overflow: auto;
     overflow-x: hidden;
     padding: 16px 20px;
 }
@@ -904,6 +922,7 @@ body {
     background: #ffffff;
     border-top: 1px solid #e2e8f0;
     display: flex;
+    flex: 0 0 auto;
     font-size: 13px;
     gap: 10px 18px;
     justify-content: space-between;
@@ -1359,6 +1378,18 @@ body {
     font-size: 13px;
     gap: 8px;
     white-space: nowrap;
+}
+
+.batch-summary-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.drawer-footer-actions {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
 }
 
 .table-toolbar-wide {
@@ -2460,6 +2491,7 @@ body {
 
     .table-toolbar,
     .table-toolbar-products,
+    .batch-summary-grid,
     .form-grid,
     .form-grid-3,
     .form-grid-4,

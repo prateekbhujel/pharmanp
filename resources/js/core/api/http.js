@@ -97,6 +97,24 @@ export function formErrors(error) {
     }));
 }
 
+export function firstValidationMessage(error) {
+    const errors = validationErrors(error);
+    const first = Object.values(errors).flat()[0];
+
+    return first || null;
+}
+
+export function apiErrorMessage(error, fallback = 'Request failed') {
+    return error?.response?.data?.message
+        || firstValidationMessage(error)
+        || error?.message
+        || fallback;
+}
+
+export function apiSuccessMessage(response, fallback = 'Saved successfully') {
+    return response?.data?.message || fallback;
+}
+
 function normalizeErrorField(field) {
     const value = String(field || 'form')
         .replace(/^errors\.?\d+\.?/i, '')

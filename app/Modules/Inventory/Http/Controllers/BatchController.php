@@ -140,8 +140,12 @@ class BatchController extends ModularController
         $service->assertAccessible($batch, $request->user());
         $this->authorize('delete', $batch);
 
-        $service->delete($batch, $request->user());
+        $result = $service->delete($batch, $request->user());
 
-        return response()->json(['message' => 'Batch removed.']);
+        return response()->json([
+            'message' => $result === 'closed'
+                ? 'Batch has stock history and was closed instead of deleted.'
+                : 'Batch removed.',
+        ]);
     }
 }

@@ -35,6 +35,13 @@ class BatchResource extends JsonResource
             'mrp' => (float) $this->mrp,
             'is_active' => (bool) $this->is_active,
             'expiry_status' => $this->expiryStatus(),
+            'has_history' => (bool) (
+                $this->stock_movements_exists ||
+                $this->purchase_items_exists ||
+                $this->purchase_return_items_exists ||
+                $this->sales_items_exists ||
+                $this->sales_return_items_exists
+            ),
             'product' => $this->whenLoaded('product', fn () => [
                 'id' => $this->product?->id,
                 'name' => $this->product?->name,

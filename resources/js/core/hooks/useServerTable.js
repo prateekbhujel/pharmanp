@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { App } from 'antd';
-import { apiData, apiExtra, apiMeta, http } from '../api/http';
+import { apiData, apiErrorMessage, apiExtra, apiMeta, http } from '../api/http';
 import { useDebounce } from './useDebounce';
 
 export function useServerTable({ endpoint, defaultSort = { field: 'updated_at', order: 'desc' }, defaultFilters = {}, enabled = true }) {
@@ -8,11 +8,11 @@ export function useServerTable({ endpoint, defaultSort = { field: 'updated_at', 
     const [rows, setRows] = useState([]);
     const [extra, setExtra] = useState({});
     const [loading, setLoading] = useState(false);
-    const [search, setSearch] = useState('');
+    const [search, setSearchValue] = useState('');
     const debouncedSearch = useDebounce(search);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 });
     const [sort, setSort] = useState(defaultSort);
-    const [filters, setFilters] = useState(defaultFilters);
+    const [filters, setFilterValues] = useState(defaultFilters);
 
     const params = useMemo(() => ({
         page: pagination.current,
@@ -45,7 +45,7 @@ export function useServerTable({ endpoint, defaultSort = { field: 'updated_at', 
             .catch((error) => {
                 notification.error({
                     message: 'Table request failed',
-                    description: error?.response?.data?.message || error.message,
+                    description: apiErrorMessage(error),
                 });
             })
             .finally(() => setLoading(false));
@@ -71,6 +71,16 @@ export function useServerTable({ endpoint, defaultSort = { field: 'updated_at', 
             });
         }
     }
+
+    const setSearch = useCallback((value) => {
+        setSearchValue(value);
+        setPagination((current) => ({ ...current, current: 1 }));
+    }, []);
+
+    const setFilters = useCallback((nextFilters) => {
+        setFilterValues((current) => (typeof nextFilters === 'function' ? nextFilters(current) : nextFilters));
+        setPagination((current) => ({ ...current, current: 1 }));
+    }, []);
 
     return {
         rows,

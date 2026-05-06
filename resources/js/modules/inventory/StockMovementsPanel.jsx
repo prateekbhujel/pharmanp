@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Input, Select, Statistic } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { DateText } from '../../core/components/DateText';
@@ -23,9 +23,15 @@ const movementTypes = [
 export function StockMovementsPanel() {
     const [products, setProducts] = useState([]);
     const [range, setRange] = useState([]);
+    const initialFilters = useMemo(() => {
+        const batchId = new URLSearchParams(window.location.search).get('batch_id');
+
+        return batchId ? { batch_id: batchId } : {};
+    }, []);
     const table = useServerTable({
         endpoint: endpoints.stockMovements,
         defaultSort: { field: 'movement_date', order: 'desc' },
+        defaultFilters: initialFilters,
     });
 
     useEffect(() => {
@@ -74,6 +80,9 @@ export function StockMovementsPanel() {
                         options={movementTypes}
                         onChange={(movement_type) => table.setFilters((filters) => ({ ...filters, movement_type }))}
                     />
+                    {table.filters.batch_id ? (
+                        <Button onClick={() => table.setFilters((filters) => ({ ...filters, batch_id: undefined }))}>Clear Batch</Button>
+                    ) : null}
                     <SmartDatePicker.RangePicker value={range} onChange={setRange} />
                     <Button icon={<ReloadOutlined />} onClick={table.reload}>Refresh</Button>
                 </div>

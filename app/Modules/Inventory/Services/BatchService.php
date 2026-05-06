@@ -36,6 +36,13 @@ class BatchService
 
         $query = Batch::query()
             ->with(['product.company', 'supplier'])
+            ->withExists([
+                'stockMovements',
+                'purchaseItems',
+                'purchaseReturnItems',
+                'salesItems',
+                'salesReturnItems',
+            ])
             ->when($search !== '', function (Builder $builder) use ($search) {
                 $builder->where(function (Builder $inner) use ($search) {
                     $inner->where('batch_no', 'like', '%'.$search.'%')
@@ -138,6 +145,16 @@ class BatchService
 
             $diff = round($quantityAvailable - $oldQuantity, 3);
             if ($diff !== 0.0) {
+                $movementReason = trim((string) ($data['adjustment_reason'] ?? ''));
+
+                if ($batch->wasRecentlyCreated) {
+                    $movementReason = $movementReason !== '' ? $movementReason : 'Opening/manual batch entry.';
+                } elseif ($movementReason === '') {
+                    throw ValidationException::withMessages([
+                        'adjustment_reason' => 'Write a stock adjustment reason before changing available quantity.',
+                    ]);
+                }
+
                 $this->stock->record([
                     'tenant_id' => $batch->tenant_id,
                     'company_id' => $batch->company_id,
@@ -152,7 +169,7 @@ class BatchService
                     'source_id' => $batch->id,
                     'reference_type' => 'batch',
                     'reference_id' => $batch->id,
-                    'notes' => $batch->wasRecentlyCreated ? 'Manual batch entry.' : 'Manual batch quantity update.',
+                    'notes' => $movementReason,
                     'created_by' => $user->id,
                 ]);
             }
@@ -161,11 +178,11 @@ class BatchService
         });
     }
 
-    public function delete(Batch $batch, User $user): void
+    public function delete(Batch $batch, User $user): string
     {
         $this->assertAccessible($batch, $user);
 
-        DB::transaction(function () use ($batch, $user) {
+        return DB::transaction(function () use ($batch, $user) {
             $hasHistory = $batch->stockMovements()->withoutGlobalScopes()->exists() ||
                          $batch->purchaseItems()->withoutGlobalScopes()->exists() ||
                          $batch->purchaseReturnItems()->withoutGlobalScopes()->exists() ||
@@ -178,7 +195,7 @@ class BatchService
                     'updated_by' => $user->id,
                 ])->save();
 
-                return;
+                return 'closed';
             }
 
             $batch->forceFill([
@@ -187,6 +204,8 @@ class BatchService
             ])->save();
 
             $batch->delete();
+
+            return 'deleted';
         });
     }
 

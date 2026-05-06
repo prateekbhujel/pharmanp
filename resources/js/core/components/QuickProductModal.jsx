@@ -3,7 +3,7 @@ import { App, Button, Form, Input, InputNumber, Modal, Select } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { BarcodeInput } from './BarcodeInput';
 import { endpoints } from '../api/endpoints';
-import { http, validationErrors } from '../api/http';
+import { apiErrorMessage, formErrors, http, validationErrors } from '../api/http';
 
 export function QuickProductModal({ open, onClose, onCreated }) {
     const { notification } = App.useApp();
@@ -36,8 +36,8 @@ export function QuickProductModal({ open, onClose, onCreated }) {
             onCreated?.(data.data);
             onClose?.();
         } catch (error) {
-            form.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
-            notification.error({ message: 'Product save failed', description: error?.response?.data?.message || error.message });
+            form.setFields(formErrors(error));
+            notification.error({ message: 'Product save failed', description: apiErrorMessage(error) });
         } finally {
             setSaving(false);
         }
@@ -67,7 +67,7 @@ export function QuickProductModal({ open, onClose, onCreated }) {
             if (quickMaster === 'unit') form.setFieldValue('unit_id', data.data.id);
         } catch (error) {
             quickForm.setFields(Object.entries(validationErrors(error)).map(([name, messages]) => ({ name, errors: messages })));
-            notification.error({ message: `${config.label} save failed` });
+            notification.error({ message: `${config.label} save failed`, description: apiErrorMessage(error) });
         }
     }
 
@@ -148,6 +148,7 @@ export function QuickProductModal({ open, onClose, onCreated }) {
                 open={Boolean(quickMaster)}
                 onCancel={() => setQuickMaster(null)}
                 onOk={() => quickForm.submit()}
+                okButtonProps={{ disabled: saving }}
                 destroyOnHidden
                 zIndex={1050}
             >

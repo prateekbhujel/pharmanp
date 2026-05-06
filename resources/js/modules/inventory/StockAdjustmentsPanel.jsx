@@ -9,7 +9,7 @@ import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { ServerTable } from '../../core/components/ServerTable';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { endpoints } from '../../core/api/endpoints';
-import { http, validationErrors } from '../../core/api/http';
+import { apiErrorMessage, formErrors, http } from '../../core/api/http';
 import { useServerTable } from '../../core/hooks/useServerTable';
 import { applyDateRangeFilter } from '../../core/utils/dateFilters';
 
@@ -29,6 +29,7 @@ export function StockAdjustmentsPanel() {
     const [editing, setEditing] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
     const [adjustmentTypes, setAdjustmentTypes] = useState(defaultAdjustmentTypes);
     const [quickProductOpen, setQuickProductOpen] = useState(false);
     const [quickAdjustmentOpen, setQuickAdjustmentOpen] = useState(false);
@@ -106,8 +107,8 @@ export function StockAdjustmentsPanel() {
             table.reload();
             loadBatches(productId);
         } catch (error) {
-            form.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name, errors })));
-            notification.error({ message: 'Adjustment failed', description: error?.response?.data?.message || error.message });
+            form.setFields(formErrors(error));
+            notification.error({ message: 'Adjustment failed', description: apiErrorMessage(error) });
         } finally {
             setSaving(false);
         }
@@ -140,10 +141,17 @@ export function StockAdjustmentsPanel() {
             title: 'Delete adjustment?',
             content: 'This will reverse the stock effect from the selected batch.',
             onOk: async () => {
-                await http.delete(`${endpoints.stockAdjustments}/${record.id}`);
-                notification.success({ message: 'Adjustment deleted' });
-                table.reload();
-                loadBatches(productId);
+                setDeletingId(record.id);
+                try {
+                    await http.delete(`${endpoints.stockAdjustments}/${record.id}`);
+                    notification.success({ message: 'Adjustment deleted' });
+                    table.reload();
+                    loadBatches(productId);
+                } catch (error) {
+                    notification.error({ message: 'Adjustment delete failed', description: apiErrorMessage(error) });
+                } finally {
+                    setDeletingId(null);
+                }
             },
         });
     }
@@ -172,7 +180,7 @@ export function StockAdjustmentsPanel() {
             render: (_, record) => (
                 <Space>
                     <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-                    <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => remove(record)} />
+                    <Button aria-label="Delete" danger loading={deletingId === record.id} disabled={deletingId === record.id} icon={<DeleteOutlined />} onClick={() => remove(record)} />
                 </Space>
             ),
         },
@@ -200,9 +208,11 @@ export function StockAdjustmentsPanel() {
             <Modal
                 title={editing ? 'Edit Stock Adjustment' : 'Adjustment Form'}
                 open={modalOpen}
-                onCancel={() => setModalOpen(false)}
+                onCancel={() => !saving && setModalOpen(false)}
                 onOk={() => form.submit()}
                 confirmLoading={saving}
+                okButtonProps={{ disabled: saving }}
+                cancelButtonProps={{ disabled: saving }}
                 okText={editing ? 'Update Adjustment' : 'Save Adjustment'}
                 destroyOnHidden
                 width={760}

@@ -116,7 +116,7 @@ export function SalesPage() {
         const { data } = await http.get(endpoints.salesProductLookup, { params: { q } });
         return (data.data || []).flatMap((product) => (product.batches || []).map((batch) => ({
             value: `${product.id}:${batch.id}`,
-            label: `${product.name} | ${batch.batch_no} | stock ${batch.quantity_available}`,
+            label: `${product.name} | ${batch.batch_no} | exp ${batch.expires_at || '-'} | stock ${batch.quantity_available} | MRP ${batch.mrp || 0} | cost ${batch.purchase_price || 0}`,
             product,
             batch,
         })));

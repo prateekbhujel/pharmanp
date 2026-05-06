@@ -18,7 +18,7 @@ import { endpoints } from '../../core/api/endpoints';
  * @param {Function} handlers.onPrintBarcode - Print barcode label for a record.
  * @returns {Array} - Ant Design table column configs.
  */
-export function productColumns({ onHistory, onEdit, onDelete, onRestore, onPrintBarcode }) {
+export function productColumns({ onHistory, onEdit, onDelete, onRestore, onPrintBarcode, actionId = null }) {
     return [
         {
             title: 'Product Name',
@@ -54,13 +54,13 @@ export function productColumns({ onHistory, onEdit, onDelete, onRestore, onPrint
             width: 190,
             render: (_, record) => (
                 record.deleted_at ? (
-                    <Button aria-label="Restore" icon={<UndoOutlined />} onClick={() => onRestore(record)}>Restore</Button>
+                    <Button aria-label="Restore" loading={actionId === record.id} disabled={actionId === record.id} icon={<UndoOutlined />} onClick={() => onRestore(record)}>Restore</Button>
                 ) : (
                     <Space>
                         <Button aria-label="History" icon={<HistoryOutlined />} onClick={() => onHistory(record)} />
                         <Button aria-label="Print Barcode" icon={<BarcodeOutlined />} onClick={() => onPrintBarcode(record)} />
                         <Button aria-label="Edit" icon={<EditOutlined />} onClick={() => onEdit(record)} />
-                        <Button aria-label="Delete" danger icon={<DeleteOutlined />} onClick={() => onDelete(record)} />
+                        <Button aria-label="Delete" danger loading={actionId === record.id} disabled={actionId === record.id} icon={<DeleteOutlined />} onClick={() => onDelete(record)} />
                     </Space>
                 )
             ),

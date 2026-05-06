@@ -78,6 +78,7 @@ class InventoryHardeningTest extends TestCase
                 'expires_at' => '2027-01-01',
                 'quantity_received' => 10,
                 'quantity_available' => 15,
+                'adjustment_reason' => 'Physical count correction',
                 'purchase_price' => 5,
             ])
             ->assertOk();
@@ -86,6 +87,57 @@ class InventoryHardeningTest extends TestCase
             'batch_id' => $batch->id,
             'quantity_in' => 5,
             'movement_type' => 'manual_batch_in',
+            'notes' => 'Physical count correction',
+        ]);
+    }
+
+    public function test_batch_quantity_adjustment_requires_reason_and_does_not_mutate_stock_on_failure(): void
+    {
+        $tenant = Tenant::query()->create(['name' => 'T1', 'slug' => 't1']);
+        $company = Company::query()->create(['tenant_id' => $tenant->id, 'name' => 'C1']);
+        $user = User::factory()->create(['tenant_id' => $tenant->id, 'company_id' => $company->id, 'is_owner' => true]);
+
+        $this->setupFiscalYear($tenant->id, $company->id);
+
+        $unit = Unit::query()->create(['tenant_id' => $tenant->id, 'company_id' => $company->id, 'name' => 'Pcs']);
+        $product = Product::query()->create([
+            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
+            'unit_id' => $unit->id,
+            'name' => 'P1',
+            'mrp' => 10,
+            'purchase_price' => 5,
+            'selling_price' => 10,
+        ]);
+
+        $batch = Batch::query()->create([
+            'tenant_id' => $tenant->id,
+            'company_id' => $company->id,
+            'product_id' => $product->id,
+            'batch_no' => 'B1',
+            'expires_at' => '2027-01-01',
+            'quantity_received' => 10,
+            'quantity_available' => 10,
+            'purchase_price' => 5,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->putJson('/api/v1/inventory/batches/'.$batch->id, [
+                'product_id' => $product->id,
+                'batch_no' => 'B1',
+                'expires_at' => '2027-01-01',
+                'quantity_received' => 10,
+                'quantity_available' => 8,
+                'purchase_price' => 5,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('adjustment_reason');
+
+        $this->assertSame('10.000', (string) $batch->fresh()->quantity_available);
+        $this->assertDatabaseMissing('stock_movements', [
+            'batch_id' => $batch->id,
+            'movement_type' => 'manual_batch_out',
         ]);
     }
 

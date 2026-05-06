@@ -8,7 +8,7 @@ import { Money } from '../../core/components/Money';
 import { QuickProductModal } from '../../core/components/QuickProductModal';
 import { TransactionLineItems } from '../../core/components/TransactionLineItems';
 import { endpoints } from '../../core/api/endpoints';
-import { http, validationErrors } from '../../core/api/http';
+import { apiErrorMessage, formErrors, http, validationErrors } from '../../core/api/http';
 import { SmartDatePicker } from '../../core/components/SmartDatePicker';
 import { focusFirstKeyboardField, useKeyboardFlow } from '../../core/hooks/useKeyboardFlow';
 import { itemFreeGoodsValue, itemNet, summarizeItems, validationErrorsByLine } from '../../core/utils/lineItems';
@@ -35,10 +35,13 @@ export const SalesPosPanel = React.forwardRef(({
     const [paymentType, setPaymentType] = useState('cash');
     const [paymentModeId, setPaymentModeId] = useState(undefined);
     const [paidAmount, setPaidAmount] = useState(0);
+    const [submitting, setSubmitting] = useState(false);
 
     const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
     const [quickProductOpen, setQuickProductOpen] = useState(false);
     const [quickMrOpen, setQuickMrOpen] = useState(false);
+    const [quickCustomerSaving, setQuickCustomerSaving] = useState(false);
+    const [quickMrSaving, setQuickMrSaving] = useState(false);
     const [qrVisible, setQrVisible] = useState(false);
     const [productOptions, setProductOptions] = useState([]);
 
@@ -104,6 +107,11 @@ export const SalesPosPanel = React.forwardRef(({
     const invoiceSummary = useMemo(() => summarizeItems(items, 'unit_price'), [items]);
 
     async function submitInvoice() {
+        if (submitting || !items.length) {
+            return;
+        }
+
+        setSubmitting(true);
         try {
             const { data } = await http.post(endpoints.salesInvoices, {
                 customer_id: customerId,
@@ -127,11 +135,14 @@ export const SalesPosPanel = React.forwardRef(({
             onInvoiceSuccess(data.print_url);
         } catch (error) {
             setLineErrors(validationErrorsByLine(validationErrors(error), 'items'));
-            notification.error({ message: 'Invoice failed', description: error?.response?.data?.message || error.message });
+            notification.error({ message: 'Invoice failed', description: apiErrorMessage(error) });
+        } finally {
+            setSubmitting(false);
         }
     }
 
     async function submitCustomer(values) {
+        setQuickCustomerSaving(true);
         try {
             const { data } = await http.post(endpoints.customers, values);
             if (onCustomerAdded) await onCustomerAdded();
@@ -140,12 +151,15 @@ export const SalesPosPanel = React.forwardRef(({
             setQuickCustomerOpen(false);
             notification.success({ message: 'Customer added' });
         } catch (error) {
-            customerForm.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name, errors })));
-            notification.error({ message: 'Customer save failed', description: error?.response?.data?.message || error.message });
+            customerForm.setFields(formErrors(error));
+            notification.error({ message: 'Customer save failed', description: apiErrorMessage(error) });
+        } finally {
+            setQuickCustomerSaving(false);
         }
     }
 
     async function submitMr(values) {
+        setQuickMrSaving(true);
         try {
             const { data } = await http.post(endpoints.mrRepresentatives, { ...values, is_active: true });
             if (onMrAdded) await onMrAdded();
@@ -154,8 +168,10 @@ export const SalesPosPanel = React.forwardRef(({
             setQuickMrOpen(false);
             notification.success({ message: 'MR added' });
         } catch (error) {
-            mrForm.setFields(Object.entries(validationErrors(error)).map(([name, errors]) => ({ name, errors })));
-            notification.error({ message: 'MR save failed', description: error?.response?.data?.message || error.message });
+            mrForm.setFields(formErrors(error));
+            notification.error({ message: 'MR save failed', description: apiErrorMessage(error) });
+        } finally {
+            setQuickMrSaving(false);
         }
     }
 
@@ -296,12 +312,12 @@ export const SalesPosPanel = React.forwardRef(({
                             <Space>
                                 <Button
                                     icon={<QrcodeOutlined />}
-                                    disabled={!items.length}
+                                    disabled={!items.length || submitting}
                                     onClick={() => setQrVisible(true)}
                                 >
                                     Payment QR
                                 </Button>
-                                <Button id="pos-submit-btn" type="primary" disabled={!items.length} onClick={submitInvoice}>Post Invoice</Button>
+                                <Button id="pos-submit-btn" type="primary" loading={submitting} disabled={!items.length || submitting} onClick={submitInvoice}>Post Invoice</Button>
                             </Space>
                         )}
                     />
@@ -317,8 +333,11 @@ export const SalesPosPanel = React.forwardRef(({
             <Modal
                 title="Quick Add Customer"
                 open={quickCustomerOpen}
-                onCancel={() => setQuickCustomerOpen(false)}
+                onCancel={() => !quickCustomerSaving && setQuickCustomerOpen(false)}
                 onOk={() => customerForm.submit()}
+                confirmLoading={quickCustomerSaving}
+                okButtonProps={{ disabled: quickCustomerSaving }}
+                cancelButtonProps={{ disabled: quickCustomerSaving }}
                 destroyOnClose
             >
                 <Form form={customerForm} layout="vertical" onFinish={submitCustomer}>
@@ -334,8 +353,11 @@ export const SalesPosPanel = React.forwardRef(({
             <Modal
                 title="Quick Add MR"
                 open={quickMrOpen}
-                onCancel={() => setQuickMrOpen(false)}
+                onCancel={() => !quickMrSaving && setQuickMrOpen(false)}
                 onOk={() => mrForm.submit()}
+                confirmLoading={quickMrSaving}
+                okButtonProps={{ disabled: quickMrSaving }}
+                cancelButtonProps={{ disabled: quickMrSaving }}
                 destroyOnClose
             >
                 <Form form={mrForm} layout="vertical" onFinish={submitMr}>
